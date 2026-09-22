@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,16 @@ class Storage:
     def __init__(self, path: str | Path = "flowforge.db"):
         self.conn = sqlite3.connect(path, check_same_thread=False)
         self.conn.executescript(SCHEMA)
+
+    def save_run(self, run_id: str, result: Any) -> None:
+        """`result` is an executor RunResult."""
+        self.conn.execute(
+            "INSERT OR REPLACE INTO runs (id, workflow_id, policy, status, makespan_ms, result_json)"
+            " VALUES (?, ?, ?, ?, ?, ?)",
+            (run_id, result.workflow_id, result.policy, result.status, result.makespan_ms,
+             json.dumps(asdict(result), default=str)),
+        )
+        self.conn.commit()
 
     def get_cached(self, key: str) -> tuple[bool, Any]:
         row = self.conn.execute("SELECT output_json FROM cache WHERE key = ?", (key,)).fetchone()

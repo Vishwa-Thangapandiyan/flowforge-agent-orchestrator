@@ -13,6 +13,7 @@ uv sync                      # installs deps + dev tools into .venv
 cp .env.example .env         # add your free NVIDIA_API_KEY from build.nvidia.com
 uv run pytest                # tests never hit the network
 uv run uvicorn flowforge.main:app --reload
+# open http://localhost:8000 — pick an example, choose a policy, hit Run
 ```
 
 ## Status
@@ -23,6 +24,7 @@ uv run uvicorn flowforge.main:app --reload
 | `scheduler/graph.py`, `critical_path.py`, `durations.py` | A | done — unit + property tests |
 | `scheduler/executor.py`, `rate_limit.py`, `cache.py` | B | done — unit + property tests |
 | `nodes/llm_node.py`, `http_node.py`, `mcp_node.py` | C | done — offline tests (fake client, mock transport, in-process MCP server) |
-| `main.py`, `frontend/`, `benchmarks/` | C | stub |
+| `main.py` (API + SSE), `frontend/index.html` | C | done — API tests, checked in headless Chromium |
+| `benchmarks/` | C | stub |
 
 Every stub's docstring states exactly what it must do.

@@ -66,6 +66,7 @@ class StepResult:
     cache_hit: bool = False
     started_at: float | None = None   # seconds since run start
     finished_at: float | None = None
+    call_ms: float | None = None      # the successful node call alone: no token wait, no backoff
 
     @property
     def duration_ms(self) -> float:
@@ -195,8 +196,11 @@ async def run_workflow(
             if bucket is not None:
                 await bucket.acquire()
             results[step.id].attempts += 1
+            call_start = loop.time()
             try:
-                return await asyncio.wait_for(node.run(params), step.effective_timeout_s)
+                output = await asyncio.wait_for(node.run(params), step.effective_timeout_s)
+                results[step.id].call_ms = (loop.time() - call_start) * 1000
+                return output
             except (TransientNodeError, TimeoutError) as exc:
                 if attempt == step.retries:
                     raise

@@ -4,6 +4,8 @@ Goal for V1: a working, single-machine version that proves the core algorithms a
 
 Design decisions for every open question are in [DECISIONS.md](DECISIONS.md) (referred to as D1–D9 below).
 
+**Status (22 Sep 2026):** all V1 code in the build order below is implemented and tested. Remaining: run the real-track benchmark with a NIM key, record the demo video, and write the report.
+
 ---
 
 ## What V1 Must Prove
@@ -76,7 +78,7 @@ Project/
 
 ## Build Order (don't skip ahead)
 
-1. **Workflow JSON shape + `schema.py` validation.** *(done in scaffold)*
+1. **Workflow JSON shape + `schema.py` validation.**
 2. **`graph.py`:** build the DAG, topological sort (Kahn's), cycle detection that reports the actual loop. Test on small examples you can check by hand, then use property tests.
 3. **`executor.py` (basic):** run in a valid order with unlimited concurrency, using `mock` steps only.
 4. **Wire in one real step type:** `llm_node.py` against NIM, so early on you're proving it on something real.

@@ -41,3 +41,17 @@ def test_bottom_levels():
 def test_lower_bound():
     # total work 700 / k=2 = 350 < critical path 500
     assert cp.lower_bound_ms(graph.build_dag(DIAMOND), W, k=2) == 500
+
+
+def test_ties_prefer_earlier_parent():
+    wf = Workflow.model_validate(
+        {
+            "id": "tie",
+            "steps": [
+                {"id": "x", "type": "mock"},
+                {"id": "y", "type": "mock"},
+                {"id": "z", "type": "mock", "depends_on": ["x", "y"]},
+            ],
+        }
+    )
+    assert cp.critical_path(graph.build_dag(wf), {"x": 5, "y": 5, "z": 1}).path == ["x", "z"]

@@ -19,5 +19,17 @@ def ewma(previous: float | None, observed: float, alpha: float = EWMA_ALPHA) -> 
 
 
 def estimate_weights(workflow: Workflow, history: dict[str, float] | None = None) -> dict[str, float]:
-    """Weight per step id. `history` maps step id → stored EWMA for this workflow (from storage.py)."""
-    raise NotImplementedError
+    """Weight per step id. `history` maps step id → stored EWMA for this workflow (from storage.py).
+
+    Fallback chain: measured history → the step's estimated_ms → per-type default.
+    """
+    history = history or {}
+    weights: dict[str, float] = {}
+    for step in workflow.steps:
+        if step.id in history:
+            weights[step.id] = history[step.id]
+        elif step.estimated_ms is not None:
+            weights[step.id] = step.estimated_ms
+        else:
+            weights[step.id] = default_estimate(step)
+    return weights

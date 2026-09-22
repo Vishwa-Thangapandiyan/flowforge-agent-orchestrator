@@ -7,6 +7,8 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
+from flowforge.scheduler.durations import EWMA_ALPHA, ewma
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS runs (
     id TEXT PRIMARY KEY, workflow_id TEXT, policy TEXT, status TEXT,
@@ -43,14 +45,15 @@ class Storage:
         )
         return dict(rows.fetchall())
 
-    def record_durations(self, workflow_id: str, observed_ms: dict[str, float], alpha: float = 0.3) -> None:
+    def record_durations(self, workflow_id: str, observed_ms: dict[str, float], alpha: float = EWMA_ALPHA) -> None:
         for step_id, ms in observed_ms.items():
             row = self.conn.execute(
                 "SELECT ewma_ms, samples FROM durations WHERE workflow_id = ? AND step_id = ?",
                 (workflow_id, step_id),
             ).fetchone()
-            ewma, n = (ms, 1) if row is None else (alpha * ms + (1 - alpha) * row[0], row[1] + 1)
+            prev, n = (None, 0) if row is None else row
             self.conn.execute(
-                "INSERT OR REPLACE INTO durations VALUES (?, ?, ?, ?)", (workflow_id, step_id, ewma, n)
+                "INSERT OR REPLACE INTO durations VALUES (?, ?, ?, ?)",
+                (workflow_id, step_id, ewma(prev, ms, alpha), n + 1),
             )
         self.conn.commit()

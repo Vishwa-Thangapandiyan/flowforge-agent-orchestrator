@@ -20,8 +20,7 @@ uv run uvicorn flowforge.main:app --reload
 | Module | Owner | State |
 |---|---|---|
 | `schema.py`, `templating.py`, `storage.py`, `nodes/base.py`, `nodes/mock_node.py` | — | done |
-| `scheduler/graph.py` | A | done — unit + property tests |
-| `scheduler/critical_path.py`, `durations.py` | A | stub + contract tests in `tests/test_critical_path.py` |
+| `scheduler/graph.py`, `critical_path.py`, `durations.py` | A | done — unit + property tests |
 | `scheduler/executor.py`, `rate_limit.py`, `cache.py` | B | stub |
 | `nodes/llm_node.py`, `http_node.py`, `mcp_node.py`, `main.py`, `frontend/`, `benchmarks/` | C | stub |
 

@@ -1,0 +1,13 @@
+{
+  "id": "diamond_mock",
+  "name": "Mock diamond — hand-checkable",
+  "max_concurrency": 2,
+  "steps": [
+    { "id": "a", "type": "mock", "params": { "duration_ms": 100 } },
+    { "id": "b", "type": "mock", "depends_on": ["a"], "params": { "duration_ms": 300 } },
+    { "id": "c", "type": "mock", "depends_on": ["a"], "params": { "duration_ms": 100 } },
+    { "id": "d", "type": "mock", "depends_on": ["a"], "params": { "duration_ms": 50 } },
+    { "id": "e", "type": "mock", "depends_on": ["b", "c"], "params": { "duration_ms": 100 } },
+    { "id": "f", "type": "mock", "depends_on": ["d"], "params": { "duration_ms": 50 } }
+  ]
+}

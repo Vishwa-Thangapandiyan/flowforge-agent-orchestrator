@@ -119,7 +119,7 @@ The accurate wording, for the report and the viva: *FlowForge runs independent, 
 - `depends_on` pointing at unknown steps
 - a step depending on itself
 - templates that reference steps outside `depends_on` (D2)
-- **cycles:** Kahn's algorithm detects them; a DFS then reports the actual loop, e.g. `a → b → c → a`
+- **cycles:** Kahn's algorithm detects them; following parent links from a leftover step then reports the actual loop, e.g. `a → b → c → a`
 
 **Failures** (Airflow's `upstream_failed` behaviour):
 - A failed step marks every step that depends on it, directly or indirectly, as `skipped`.
@@ -157,7 +157,7 @@ The accurate wording, for the report and the viva: *FlowForge runs independent, 
 | Storage | SQLite (`flowforge.db`): the run history, the duration history (D1) and the persistent cache (D3) |
 | MCP | the official `mcp` Python SDK over stdio, connected to `mcp-server-fetch` (run with `uvx`, free and open source) |
 | HTTP | `httpx` (async) |
-| Example workflow | `stripe_to_razorpay.json`: fetch the Stripe and Razorpay docs in parallel, summarise each with the LLM, map Stripe endpoints to Razorpay endpoints, then generate migration notes and a risk report. It has parallel branches, a clear critical path and a duplicate fetch for the cache to catch |
+| Example workflow | `stripe_to_razorpay.json`: fetch the Stripe and Razorpay API docs (their `.md` versions over HTTP, plus the Stripe lifecycle page through MCP fetch) in parallel, summarise each with the LLM, map Stripe endpoints to Razorpay endpoints, then generate migration notes and a risk report. It has parallel branches, a clear critical path and a duplicate fetch for the cache to catch |
 
 ## Step JSON schema (reference)
 

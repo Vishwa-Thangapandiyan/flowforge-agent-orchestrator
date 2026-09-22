@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from typing import Any, ClassVar
 
 
@@ -33,3 +35,23 @@ class Node(ABC):
     def cacheable_across_runs(self, params: dict[str, Any]) -> bool:
         """Per-type default for the persistent cache (D3). Overridden by step.cache."""
         return False
+
+    async def aclose(self) -> None:
+        """Release connections/processes held across calls."""
+
+
+def parse_retry_after(value: str | None) -> float | None:
+    """Retry-After is either delta-seconds or an HTTP date."""
+    if not value:
+        return None
+    try:
+        return max(0.0, float(value))
+    except ValueError:
+        pass
+    try:
+        when = parsedate_to_datetime(value)
+    except (TypeError, ValueError):
+        return None
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=timezone.utc)
+    return max(0.0, (when - datetime.now(timezone.utc)).total_seconds())

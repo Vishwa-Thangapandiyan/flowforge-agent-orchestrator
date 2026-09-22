@@ -22,6 +22,7 @@ uv run uvicorn flowforge.main:app --reload
 | `schema.py`, `templating.py`, `storage.py`, `nodes/base.py`, `nodes/mock_node.py` | — | done |
 | `scheduler/graph.py`, `critical_path.py`, `durations.py` | A | done — unit + property tests |
 | `scheduler/executor.py`, `rate_limit.py`, `cache.py` | B | done — unit + property tests |
-| `nodes/llm_node.py`, `http_node.py`, `mcp_node.py`, `main.py`, `frontend/`, `benchmarks/` | C | stub |
+| `nodes/llm_node.py`, `http_node.py`, `mcp_node.py` | C | done — offline tests (fake client, mock transport, in-process MCP server) |
+| `main.py`, `frontend/`, `benchmarks/` | C | stub |
 
 Every stub's docstring states exactly what it must do.

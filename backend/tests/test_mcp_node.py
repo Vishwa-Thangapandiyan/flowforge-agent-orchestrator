@@ -4,8 +4,8 @@ from mcp.server.mcpserver import MCPServer
 from flowforge.nodes import NodeError
 from flowforge.nodes.mcp_node import MCPNode
 from flowforge.nodes.mock_node import MockNode
-from flowforge.schema import Workflow
 from flowforge.scheduler.executor import run_workflow
+from flowforge.schema import Workflow
 
 
 def make_server():

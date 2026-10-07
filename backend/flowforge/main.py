@@ -39,12 +39,12 @@ from flowforge.nodes.llm_node import LLMNode
 from flowforge.nodes.local_node import LocalNode
 from flowforge.nodes.mcp_node import MCPNode, check_call
 from flowforge.nodes.mock_node import MockNode
-from flowforge.schema import Workflow
 from flowforge.scheduler import graph
 from flowforge.scheduler.critical_path import critical_path
 from flowforge.scheduler.durations import estimate_weights
 from flowforge.scheduler.executor import POLICIES, Event, Policy, RunResult, check_nodes, run_workflow
 from flowforge.scheduler.rate_limit import TokenBucket
+from flowforge.schema import Workflow
 from flowforge.storage import Storage
 from flowforge.templating import referenced_steps
 

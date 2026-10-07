@@ -33,12 +33,12 @@ from typing import Any, Literal
 
 from flowforge import templating
 from flowforge.nodes.base import Node, NodeError, TransientNodeError
-from flowforge.schema import Step, Workflow
 from flowforge.scheduler import graph
 from flowforge.scheduler.cache import CallCache, cache_key
 from flowforge.scheduler.critical_path import bottom_levels, critical_path
 from flowforge.scheduler.durations import estimate_weights
 from flowforge.scheduler.rate_limit import TokenBucket
+from flowforge.schema import Step, Workflow
 
 Policy = Literal["sequential", "levels", "greedy", "fifo", "critical_path"]
 POLICIES: tuple[Policy, ...] = ("sequential", "levels", "greedy", "fifo", "critical_path")

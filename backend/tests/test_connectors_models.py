@@ -14,8 +14,8 @@ from flowforge.connectors.models import (
     parse_connector,
 )
 from flowforge.connectors.secrets import SecretRefError, resolve_secret
-from flowforge.schema import DEFAULT_TIMEOUT_S, Workflow
 from flowforge.scheduler.durations import default_estimate
+from flowforge.schema import DEFAULT_TIMEOUT_S, Workflow
 
 FAKE_KEY = "nvapi-FAKEFAKEFAKE1234"
 WORKFLOWS = Path(__file__).parent.parent / "workflows"

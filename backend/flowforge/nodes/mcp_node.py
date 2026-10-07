@@ -96,7 +96,8 @@ def check_call(tools: list[dict[str, Any]], tool: str, arguments: Any) -> str | 
     if errors:
         first = errors[0]
         where = "/".join(map(str, first.path))
-        return f"arguments for tool '{tool}' don't match its schema: {first.message}" + (f" (at '{where}')" if where else "")
+        at = f" (at '{where}')" if where else ""
+        return f"arguments for tool '{tool}' don't match its schema: {first.message}{at}"
     return None
 
 

@@ -4,8 +4,8 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from flowforge.schema import Workflow
 from flowforge.scheduler import graph
+from flowforge.schema import Workflow
 
 
 @st.composite

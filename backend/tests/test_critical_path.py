@@ -1,8 +1,8 @@
 """Contract tests for critical_path.py."""
 
-from flowforge.schema import Workflow
 from flowforge.scheduler import critical_path as cp
 from flowforge.scheduler import graph
+from flowforge.schema import Workflow
 
 # a → b → e,  a → c → e,  a → d → f   (durations: a100 b300 c100 d50 e100 f50)
 DIAMOND = Workflow.model_validate(

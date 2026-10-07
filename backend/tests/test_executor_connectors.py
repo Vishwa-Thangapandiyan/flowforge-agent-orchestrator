@@ -7,15 +7,14 @@ import json
 import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
+from test_graph_properties import random_dags
 
 from flowforge.nodes.base import Node, NodeError, TransientNodeError
-from flowforge.schema import Workflow
 from flowforge.scheduler.cache import cache_key
 from flowforge.scheduler.executor import POLICIES, StepState, run_workflow
 from flowforge.scheduler.rate_limit import TokenBucket
+from flowforge.schema import Workflow
 from flowforge.storage import Storage
-
-from test_graph_properties import random_dags
 
 
 class FakeNode(Node):

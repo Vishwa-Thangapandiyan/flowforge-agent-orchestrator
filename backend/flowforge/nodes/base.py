@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from contextvars import ContextVar
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 from typing import Any
-
 
 # The run a node call belongs to, for naming artifact folders (D12). Set by the API before
 # run_workflow; step tasks inherit it. None outside a run.
@@ -54,7 +53,7 @@ class Node(ABC):
         """Per-type default for the persistent cache (D3). Overridden by step.cache."""
         return False
 
-    async def aclose(self) -> None:
+    async def aclose(self) -> None:  # noqa: B027 — optional hook; most nodes hold nothing
         """Release connections/processes held across calls."""
 
 
@@ -71,5 +70,5 @@ def parse_retry_after(value: str | None) -> float | None:
     except (TypeError, ValueError):
         return None
     if when.tzinfo is None:
-        when = when.replace(tzinfo=timezone.utc)
-    return max(0.0, (when - datetime.now(timezone.utc)).total_seconds())
+        when = when.replace(tzinfo=UTC)
+    return max(0.0, (when - datetime.now(UTC)).total_seconds())

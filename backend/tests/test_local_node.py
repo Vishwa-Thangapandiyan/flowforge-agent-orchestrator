@@ -10,8 +10,8 @@ import pytest
 from flowforge.connectors.models import parse_connector
 from flowforge.nodes import NodeError, TransientNodeError
 from flowforge.nodes.local_node import LocalNode
-from flowforge.schema import Workflow
 from flowforge.scheduler.executor import StepState, run_workflow
+from flowforge.schema import Workflow
 
 FAKE_SECRET = "sk_test_FAKEFAKE12345678"
 

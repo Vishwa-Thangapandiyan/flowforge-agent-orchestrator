@@ -14,6 +14,8 @@ from flowforge.connectors.secrets import SECRET_REF_PATTERN
 
 CONNECTOR_ID_PATTERN = r"^[A-Za-z][A-Za-z0-9_-]{0,63}$"
 ENV_VAR_PATTERN = r"^[A-Za-z_][A-Za-z0-9_]*$"
+# Step types name their default node in the executor's node map (D10), so no connector may use them.
+RESERVED_IDS = frozenset({"llm", "mcp", "http", "local", "mock"})
 
 
 class _Model(BaseModel):
@@ -96,6 +98,8 @@ class ConnectorBase(_Model):
 
     @model_validator(mode="after")
     def _fallback_not_self(self) -> ConnectorBase:
+        if self.id in RESERVED_IDS:
+            raise ValueError(f"'{self.id}' is reserved for the {self.id} type's default node; pick another id")
         if self.fallback == self.id:
             raise ValueError(f"connector '{self.id}' cannot fall back to itself")
         return self

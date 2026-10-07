@@ -4,6 +4,7 @@ POST /validate               workflow JSON → {"ok", "order", "levels", "critic
 POST /runs?policy=&use_cache= workflow JSON → {"run_id"}; the run executes in the background
 GET  /runs/{run_id}          → {"status", "result"}
 GET  /runs/{run_id}/events   → Server-Sent Events: every executor event, replayed from the start
+GET  /connectors             → every configured connector (secret references only, never values) (D10)
 GET  /connectors/{id}/tools   → an MCP connector's discovered tools (D12)
 GET  /workflows              → names of the example workflows
 GET  /workflows/{name}       → one example workflow's JSON
@@ -28,9 +29,14 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import FileResponse
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 
+from flowforge.connectors.models import Connector
+from flowforge.connectors.presets import with_env_overrides
+from flowforge.connectors.registry import Registry, check_references, load_connectors_file
+from flowforge.home import flowforge_home
 from flowforge.nodes.base import Node, NodeError, TransientNodeError, current_run_id
 from flowforge.nodes.http_node import HTTPNode
 from flowforge.nodes.llm_node import LLMNode
+from flowforge.nodes.local_node import LocalNode
 from flowforge.nodes.mcp_node import MCPNode, check_call
 from flowforge.nodes.mock_node import MockNode
 from flowforge.schema import Workflow
@@ -69,6 +75,7 @@ class AppState:
     nodes: dict[str, Node]
     rate_limits: dict[str, TokenBucket]
     storage: Storage
+    registry: Registry
     runs: dict[str, Run] = field(default_factory=dict)
     tasks: set[asyncio.Task[Any]] = field(default_factory=set)
 
@@ -76,18 +83,47 @@ class AppState:
 state: AppState | None = None
 
 
+NODE_BUILDERS = {"llm": LLMNode.from_connector, "mcp": MCPNode.from_connector,
+                 "http": HTTPNode.from_connector, "local": LocalNode.from_connector}
+
+
+def build_nodes(connectors: list[Connector]) -> tuple[dict[str, Node], dict[str, TokenBucket]]:
+    """One node per connector, keyed by id, plus each type's default under the type name (D10).
+
+    The default llm is the `nim` connector; it keeps the V1 cache namespace and the "nim"
+    bucket. mcp and http keep their V1 nodes as defaults (a step may still pass params.server).
+    """
+    nodes: dict[str, Node] = {"http": HTTPNode(), "mcp": MCPNode(), "mock": MockNode()}
+    buckets: dict[str, TokenBucket] = {}
+    for connector in map(with_env_overrides, connectors):
+        node = nodes[connector.id] = NODE_BUILDERS[connector.type](connector)
+        if connector.rate_limit_rpm and node.rate_limit_key:
+            buckets[node.rate_limit_key] = TokenBucket(connector.rate_limit_rpm)
+    if isinstance(nodes.get("nim"), LLMNode):
+        nodes["nim"].default_for_type = True
+        nodes["llm"] = nodes["nim"]
+    else:  # the nim connector was removed: fall back to the V1 env-configured node
+        nodes["llm"] = LLMNode()
+    buckets.setdefault("nim", TokenBucket(float(os.getenv("NIM_RPM", "40"))))
+    return nodes, buckets
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     global state
-    state = AppState(
-        nodes={"llm": LLMNode(), "http": HTTPNode(), "mcp": MCPNode(), "mock": MockNode()},
-        rate_limits={"nim": TokenBucket(float(os.getenv("NIM_RPM", "40")))},
-        storage=Storage(os.getenv("FLOWFORGE_DB", ROOT / "flowforge.db")),
-    )
+    storage = Storage(os.getenv("FLOWFORGE_DB", ROOT / "flowforge.db"))
+    registry = Registry(storage)
+    registry.ensure_defaults()
+    for connector in load_connectors_file(flowforge_home() / "connectors.json"):
+        registry.save(connector)
+    connectors = registry.all()
+    check_references(connectors)
+    nodes, buckets = build_nodes(connectors)
+    state = AppState(nodes=nodes, rate_limits=buckets, storage=storage, registry=registry)
     yield
     for task in state.tasks:
         task.cancel()
-    for node in state.nodes.values():
+    for node in {id(n): n for n in state.nodes.values()}.values():
         await node.aclose()
 
 
@@ -220,6 +256,11 @@ async def run_events(run_id: str) -> AsyncIterator[ServerSentEvent]:
             yield ServerSentEvent(data={"type": "end"}, event="end")
             return
         await run.changed.wait()
+
+
+@app.get("/connectors")
+def list_connectors() -> list[dict[str, Any]]:
+    return [c.model_dump(mode="json") for c in app_state().registry.all()]
 
 
 @app.get("/connectors/{connector_id}/tools")

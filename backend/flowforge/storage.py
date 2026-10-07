@@ -1,4 +1,4 @@
-"""SQLite persistence: runs, duration history (D1), persistent cache (D3)."""
+"""SQLite persistence: runs, duration history (D1), persistent cache (D3), connectors (D10)."""
 
 from __future__ import annotations
 
@@ -21,6 +21,9 @@ CREATE TABLE IF NOT EXISTS durations (
 );
 CREATE TABLE IF NOT EXISTS cache (
     key TEXT PRIMARY KEY, output_json TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS connectors (
+    id TEXT PRIMARY KEY, json TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 """
 
@@ -67,4 +70,19 @@ class Storage:
                 "INSERT OR REPLACE INTO durations VALUES (?, ?, ?, ?)",
                 (workflow_id, step_id, ewma(prev, ms, alpha), n + 1),
             )
+        self.conn.commit()
+
+    def connector_rows(self) -> list[tuple[str, str]]:
+        """(id, json) for every saved connector, by id. Rows hold secret references, never values."""
+        return self.conn.execute("SELECT id, json FROM connectors ORDER BY id").fetchall()
+
+    def put_connector(self, connector_id: str, connector_json: str) -> None:
+        self.conn.execute(
+            "INSERT INTO connectors (id, json) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET json = excluded.json",
+            (connector_id, connector_json),
+        )
+        self.conn.commit()
+
+    def delete_connector(self, connector_id: str) -> None:
+        self.conn.execute("DELETE FROM connectors WHERE id = ?", (connector_id,))
         self.conn.commit()

@@ -73,7 +73,11 @@ async def test_levels_barrier_vs_greedy():
     wf = mk([m("a", 20), m("b", 20, ["a"]), m("c", 60)], max_concurrency=4)
     levels, _ = await run(wf, policy="levels")
     greedy, _ = await run(wf, policy="greedy")
-    assert greedy.makespan_ms < 75 and levels.makespan_ms >= 80  # b waits for c's layer
+    # b waits for c's layer under levels, not under greedy. Assert the scheduling decision,
+    # not wall-clock thresholds: timer granularity varies by OS.
+    assert greedy.steps["b"].started_at < greedy.steps["c"].finished_at
+    assert levels.steps["b"].started_at >= levels.steps["c"].finished_at
+    assert greedy.makespan_ms < levels.makespan_ms
 
 
 async def test_failure_skips_descendants_only():

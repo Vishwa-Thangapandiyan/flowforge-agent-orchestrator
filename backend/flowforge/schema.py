@@ -10,11 +10,12 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from flowforge.connectors.models import CONNECTOR_ID_PATTERN
 from flowforge.templating import referenced_steps
 
-StepType = Literal["llm", "mcp", "http", "mock"]
+StepType = Literal["llm", "mcp", "http", "local", "mock"]
 
-DEFAULT_TIMEOUT_S: dict[str, float] = {"llm": 60, "mcp": 30, "http": 30, "mock": 30}
+DEFAULT_TIMEOUT_S: dict[str, float] = {"llm": 60, "mcp": 30, "http": 30, "local": 60, "mock": 30}
 
 
 class Step(BaseModel):
@@ -22,6 +23,7 @@ class Step(BaseModel):
 
     id: str = Field(pattern=r"^[A-Za-z_][A-Za-z0-9_]*$")
     type: StepType
+    connector: str | None = Field(default=None, pattern=CONNECTOR_ID_PATTERN)  # None = type default (D10)
     depends_on: list[str] = Field(default_factory=list)
     params: dict[str, Any] = Field(default_factory=dict)
     estimated_ms: float | None = Field(default=None, gt=0)

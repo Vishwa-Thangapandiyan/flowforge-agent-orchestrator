@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from flowforge.schema import Step, Workflow
 
-DEFAULT_ESTIMATE_MS: dict[str, float] = {"llm": 3000, "mcp": 1000, "http": 300}
+DEFAULT_ESTIMATE_MS: dict[str, float] = {"llm": 3000, "mcp": 1000, "http": 300, "local": 1000}
 EWMA_ALPHA = 0.3
 
 

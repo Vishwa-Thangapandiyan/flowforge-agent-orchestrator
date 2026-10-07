@@ -1,9 +1,9 @@
 import pytest
 
-from flowforge.schema import Workflow
+from flowforge.nodes.mock_node import MockNode
 from flowforge.scheduler.executor import StepState, run_workflow
 from flowforge.scheduler.rate_limit import TokenBucket
-from flowforge.nodes.mock_node import MockNode
+from flowforge.schema import Workflow
 from flowforge.storage import Storage
 
 
@@ -34,11 +34,25 @@ DIAMOND = mk(
 
 
 async def test_diamond_meets_lower_bound():
-    result, _ = await run(DIAMOND)
+    events = []
+    result, _ = await run(DIAMOND, on_event=lambda e: events.append((e["step_id"], e["state"])) if e["type"] == "step" else None)
     assert result.status == "succeeded"
     assert result.predicted_critical_path == ["a", "b", "e"]
     assert result.actual_critical_path == ["a", "b", "e"]
-    assert 100 <= result.makespan_ms < 140  # lower bound is 100
+    assert result.makespan_ms >= 100  # lower bound is 100
+
+    # Meeting the bound means the critical chain never waits for a slot: when a chain step
+    # becomes ready, the steps already running plus any started ahead of it (equal-priority
+    # ties) still leave it a free slot. Checked on event order, not wall-clock windows,
+    # which OS timer granularity and load make unreliable.
+    def starts_without_waiting(step):
+        ready_at, started_at = events.index((step, "ready")), events.index((step, "running"))
+        running = {s for s, state in events[:ready_at] if state == "running"}
+        running -= {s for s, state in events[:ready_at] if state == "succeeded"}
+        started_ahead = [s for s, state in events[ready_at:started_at] if state == "running"]
+        return len(running) + len(started_ahead) < DIAMOND.max_concurrency
+
+    assert all(starts_without_waiting(s) for s in ["a", "b", "e"])
 
 
 async def test_dependencies_respected():

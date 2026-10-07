@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
-from typing import Any, ClassVar
+from typing import Any
 
 
 class NodeError(Exception):
@@ -24,9 +24,21 @@ class TransientNodeError(NodeError):
 
 
 class Node(ABC):
-    type: ClassVar[str]
-    # Name of the rate-limit bucket this node draws from (None = unlimited).
-    rate_limit_key: ClassVar[str | None] = None
+    type: str
+    # Name of the rate-limit bucket this node draws from (None = unlimited). Per instance
+    # when built from a connector (D10).
+    rate_limit_key: str | None = None
+    # Set when built from a connector (D10). Nodes built without one keep V1 behaviour.
+    connector_id: str | None = None
+    fallback: str | None = None  # connector id tried after transient exhaustion (D10)
+    default_for_type: bool = False  # the type's default connector keeps the V1 cache namespace
+
+    @property
+    def cache_namespace(self) -> str:
+        """Prefix of this node's cache keys: two connectors never share an answer (D10)."""
+        if self.connector_id is None or self.default_for_type:
+            return self.type
+        return f"{self.type}:{self.connector_id}"
 
     @abstractmethod
     async def run(self, params: dict[str, Any]) -> Any:

@@ -67,6 +67,7 @@ class StepResult:
     started_at: float | None = None   # seconds since run start
     finished_at: float | None = None
     call_ms: float | None = None      # the successful node call alone: no token wait, no backoff
+    answered_by: str | None = None    # connector that produced the output; differs from the step's on fallback (D10)
 
     @property
     def duration_ms(self) -> float:
@@ -100,6 +101,33 @@ def backoff_s(attempt: int, error: Exception, rng: random.Random, base_s: float,
     return rng.uniform(0, min(cap_s, base_s * 2**attempt))
 
 
+def node_for(step: Step, nodes: dict[str, Node]) -> Node:
+    """The step's connector node if it names one, else its type's default (D10)."""
+    return nodes[step.connector or step.type]
+
+
+def check_nodes(workflow: Workflow, nodes: dict[str, Node]) -> None:
+    """Reject a run up front if any step's connector or fallback can't be resolved (D10)."""
+    errors: list[str] = []
+    for step in workflow.steps:
+        key = step.connector or step.type
+        node = nodes.get(key)
+        if node is None:
+            what = f"connector '{key}'" if step.connector else f"step type '{key}'"
+            errors.append(f"step '{step.id}': no node registered for {what}")
+            continue
+        if node.type != step.type:
+            errors.append(f"step '{step.id}' has type '{step.type}' but connector '{key}' has type '{node.type}'")
+        if node.fallback is not None:
+            backup = nodes.get(node.fallback)
+            if backup is None:
+                errors.append(f"connector '{key}' names fallback '{node.fallback}', which is not registered")
+            elif backup.type != node.type:
+                errors.append(f"connector '{key}' falls back to '{node.fallback}' of a different type")
+    if errors:
+        raise ValueError("; ".join(errors))
+
+
 async def run_workflow(
     workflow: Workflow,
     nodes: dict[str, Node],
@@ -115,15 +143,15 @@ async def run_workflow(
     retry_cap_s: float = 30.0,
     seed: int | None = None,
 ) -> RunResult:
-    """Execute `workflow`. `nodes` maps step type → Node; `rate_limits` maps a node's
-    rate_limit_key → shared TokenBucket. `storage` (optional) enables the persistent
-    cache, supplies duration history and records this run's measured durations.
+    """Execute `workflow`. `nodes` maps step type → the type's default Node, and connector
+    id → that connector's Node (D10); a step uses its `connector` if set, else its type.
+    `rate_limits` maps a node's rate_limit_key → shared TokenBucket. `storage` (optional)
+    enables the persistent cache, supplies duration history and records this run's
+    measured durations.
     """
     if policy not in POLICIES:
         raise ValueError(f"unknown policy {policy!r}")
-    missing = {s.type for s in workflow.steps} - nodes.keys()
-    if missing:
-        raise ValueError(f"no node registered for step type(s): {sorted(missing)}")
+    check_nodes(workflow, nodes)
 
     dag = graph.build_dag(workflow)
     topo = graph.topological_order(dag)
@@ -186,11 +214,10 @@ async def run_workflow(
         """(dedupe within run, persist across runs) per D3."""
         if not use_cache or step.cache is False:
             return False, False
-        persistent = step.cache is True or nodes[step.type].cacheable_across_runs(params)
+        persistent = step.cache is True or node_for(step, nodes).cacheable_across_runs(params)
         return True, persistent and storage is not None
 
-    async def call_with_retries(step: Step, params: dict[str, Any]) -> Any:
-        node = nodes[step.type]
+    async def attempts_on(node: Node, step: Step, params: dict[str, Any]) -> Any:
         bucket = rate_limits.get(node.rate_limit_key) if node.rate_limit_key else None
         for attempt in range(step.retries + 1):
             if bucket is not None:
@@ -200,6 +227,7 @@ async def run_workflow(
             try:
                 output = await asyncio.wait_for(node.run(params), step.effective_timeout_s)
                 results[step.id].call_ms = (loop.time() - call_start) * 1000
+                results[step.id].answered_by = node.connector_id
                 return output
             except (TransientNodeError, TimeoutError) as exc:
                 if attempt == step.retries:
@@ -210,12 +238,25 @@ async def run_workflow(
                 await asyncio.sleep(delay)
         raise AssertionError("unreachable")
 
+    async def call_with_retries(step: Step, params: dict[str, Any]) -> Any:
+        node = node_for(step, nodes)
+        try:
+            return await attempts_on(node, step, params)
+        except (TransientNodeError, TimeoutError) as exc:
+            if node.fallback is None:
+                raise
+            # one hop, only after transient exhaustion; permanent errors never get here (D10)
+            emit({"type": "fallback", "step_id": step.id, "from": node.connector_id, "to": node.fallback,
+                  "error": str(exc) or type(exc).__name__})
+            return await attempts_on(nodes[node.fallback], step, params)
+
     async def execute(step: Step, params: dict[str, Any]) -> Any:
         dedupe, persistent = caching_for(step, params)
         if not dedupe:
             return await call_with_retries(step, params)
         value, hit = await cache.get_or_run(
-            cache_key(step.type, params), lambda: call_with_retries(step, params), persistent
+            cache_key(node_for(step, nodes).cache_namespace, params), lambda: call_with_retries(step, params),
+            persistent,
         )
         results[step.id].cache_hit = hit
         return value
@@ -256,7 +297,7 @@ async def run_workflow(
                 fail(step_id, f"template error: {exc}")
                 continue
             dedupe, _ = caching_for(step, params)
-            if dedupe and cache.has(cache_key(step.type, params)):
+            if dedupe and cache.has(cache_key(node_for(step, nodes).cache_namespace, params)):
                 start(step_id, params, holds_slot=False)
                 continue
             type_full = type_running.get(step.type, 0) >= type_limits.get(step.type, math.inf)

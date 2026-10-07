@@ -141,6 +141,8 @@ The accurate wording, in docs and the UI: *FlowForge runs independent, I/O-bound
 
 ## D8. The LLM provider: NVIDIA NIM (free)
 
+> Superseded in part by **D10**: NIM is now the *default* LLM connector, not the only provider. Everything below still describes the default.
+
 - **Endpoint:** `https://integrate.api.nvidia.com/v1`. It is OpenAI-compatible, so the free `openai` Python package is the client.
 - **Key:** `NVIDIA_API_KEY`, from a free NVIDIA developer account at build.nvidia.com. It goes in `.env`, which is gitignored.
 - **Default model:** `meta/llama-3.1-8b-instruct`. It is small and fast. Any catalog model can be set per step.
@@ -158,6 +160,70 @@ The accurate wording, in docs and the UI: *FlowForge runs independent, I/O-bound
 | MCP | the official `mcp` Python SDK over stdio, connected to `mcp-server-fetch` (run with `uvx`, free and open source) |
 | HTTP | `httpx` (async) |
 | Example workflow | `stripe_to_razorpay.json`: fetch the Stripe and Razorpay API docs (their `.md` versions over HTTP, plus the Stripe lifecycle page through MCP fetch) in parallel, summarise each with the LLM, map Stripe endpoints to Razorpay endpoints, then generate migration notes and a risk report. It has parallel branches, a clear critical path and a duplicate fetch for the cache to catch |
+
+## D10. Connectors: any LLM, any HTTP API, configured once (Phase 1)
+
+**Supersedes D8** where D8 makes NIM the only LLM provider. NIM stays the **default** provider, with the same free endpoint, key and model.
+
+**Choice:** a **connector** is configuration (who, how to connect, which secret, how it looks). A **Node** is the runtime code that makes one call. Connectors build and configure Node instances. The executor still sees only `node.run(params)`.
+
+- **Model:** `Connector` in `connectors/models.py`, shaped as in CLAUDE.md §7.1 (`id`, `type`, `name`, `role`, `slot`, `style`, `connection`, `secret_ref`, `mode`, `rate_limit_rpm`, `data_sent`, `fallback`). `connection` depends on `type`:
+  - `llm`: `provider` (`openai_compatible` | `anthropic`), `base_url`, `model`. `openai_compatible` covers NIM, Gemini's OpenAI endpoint, Ollama, vLLM and OpenRouter.
+  - `http`: `base_url`, `auth_header`, `auth_scheme` (`bearer` | `basic` | `raw`).
+  - `mcp`: see D12. `local`: see D13.
+- **Step → connector:** `Step` gains an optional `connector` (a connector id). If it is missing, the step uses its **type's default connector**, so every workflow written before D10 is still valid and behaves the same. The connector's type must equal the step's type. An unknown connector or a type mismatch rejects the run before it starts.
+- **Secrets are references, never values.** `secret_ref` is `env:NAME` (read from the environment when the node first needs it) or `vault:NAME` (reserved for the Phase 3 vault, rejected until then with a clear message). No connector JSON, API response or log holds a key.
+- **Rate limits:** each connector with `rate_limit_rpm` owns its **own** token bucket, keyed by its id. The default NIM connector keeps the key `"nim"` and the `NIM_RPM` setting, so existing behaviour and benchmarks are unchanged.
+- **Cache (extends D3):** the cache key's namespace is the node's `cache_namespace` instead of the bare step type: `"<type>:<connector id>"`, so two providers given the same prompt never share an answer. Default connectors keep the bare type (`"llm"`, `"http"`, …), so cache rows written before D10 stay valid. The D3 rules on *what* is cacheable are unchanged.
+- **Fallback:** `connector.fallback` names another connector of the same type. It is used **only after every retry of a step failed with a transient error or a timeout** (D7). A permanent error (bad request, auth) never falls back, because the request itself is wrong. There is one hop, no chains. The fallback uses its own bucket and its own retries. The run emits a `fallback` event, and the step result records `answered_by`.
+- **Usage:** LLM output keeps `{"text", "model", "usage": {"prompt_tokens", "completion_tokens"}}` and adds `usage.credits`, which is `0` until a provider reports credits. FlowForge does not invent prices.
+- **Error mapping (unchanged from D7):** 429, 5xx, timeouts and connection errors are transient (honouring `Retry-After`); everything else is permanent. Error messages name the provider, not "NIM".
+- **Phase 1 configuration:** connectors live in the SQLite table `connectors`. `nim` (default `llm`) and `fetch` (default `mcp`) are seeded on first start. Further connectors are loaded at start-up from the optional file `FLOWFORGE_HOME/connectors.json` (default `~/.flowforge`), validated by the same models. Write routes and forms arrive in Phase 3. Brands (presets) appear only in `connectors/presets.py`.
+
+**Why:** "any LLM" must not mean "any LLM sharing one rate limit and one cache". Separate buckets and namespaces keep each provider's limits and answers apart, and keeping the old keys for the defaults means nothing that already works changes.
+
+**Code:** `connectors/`, `nodes/llm_node.py`, `nodes/http_node.py`, `scheduler/executor.py` (node lookup, cache namespace, fallback), `scheduler/cache.py`.
+
+## D11. Reserved: approval gates (Phase 4)
+
+Reserved for the gate step described in CLAUDE.md §8. Written before Phase 4's code.
+
+## D12. MCP connectors: any server, discovered tools (Phase 1)
+
+**Choice:**
+- **Connection:** `command`, `args`, `env` (plain values) and `env_refs` (env var name → secret ref, see D10). Secret env values are resolved only when the server process is spawned.
+- **Discovery:** `list_tools()` on the shared connection returns each tool's `name`, `description` and JSON `input_schema`. It is cached per connection and exposed at `GET /connectors/{id}/tools`.
+- **Validation at run time:** before calling, the node checks that `params.tool` exists and that `params.arguments` match its `input_schema` (JSON Schema). A mismatch is a permanent error and the tool is not called.
+- **Validation before a run:** `POST /validate` and `POST /runs` try discovery for each MCP connector the workflow uses (5 s timeout). If the server is reachable, a bad tool name or bad literal arguments reject the workflow with the exact reason (422). If it is not reachable, the response carries a warning instead and the run-time check still applies. Arguments containing `{{templates}}` are checked at run time only.
+- **Results:** text blocks are joined into `content` as before, and `structured` is unchanged. Non-text blocks go in a `blocks` list, which is **present only when there are any**, so text-only results keep their old shape:
+  - image or audio: `{"kind": "image"|"audio", "mime", "data_b64"}` if 64 KB or less, otherwise the bytes are written to `FLOWFORGE_HOME/artifacts/<run_id>/<sha256>.<ext>` and the block holds `"path"` instead
+  - resource link: `{"kind": "resource", "uri"}`
+  - embedded resource: its text inline, or a blob handled like an image
+- Large payloads are never put in the run JSON, events or cache.
+
+**Why:** "any MCP server" is only useful if FlowForge can tell the user what a server offers and catch a wrong call before it runs, and if images or audio don't swell the run history.
+
+**Code:** `nodes/mcp_node.py`, `main.py`.
+
+## D13. Local command step (Phase 1)
+
+New step type `local`: runs a command configured on a connector, with arguments from the step. It is how local scripts and tools plug in.
+
+**Choice (safety rules, all enforced in code and tested):**
+- The connector fixes the program (`command`, an argv list) and the folder (`cwd`). The step supplies `args` (a list of strings, appended), and optionally `stdin`, `subdir` and `ok_exit_codes`.
+- **No shell, ever.** The process is started from an argv list. Step values are separate arguments, never pasted into a command string. On Windows, `.bat` and `.cmd` programs are refused, because Windows runs them through `cmd.exe`, which would bring shell parsing back.
+- **Folder restriction:** `subdir`, after resolving `..` and symlinks, must stay inside the connector's `cwd`.
+- **Explicit environment:** the process gets the connector's `env`, its resolved `env_refs` and a minimal allowlist the OS needs to start a program (`PATH`; on Windows also `SYSTEMROOT`, `TEMP`, `TMP`). Nothing else is inherited from FlowForge's environment.
+- **Timeout:** the step's `timeout_s` (D7) applies. On timeout or cancellation the process is killed and reaped.
+- **Output:** `{"kind": "text", "stdout", "stderr", "exit_code"}`, each stream capped at the connector's `max_output_bytes` (default 1 MB). An exit code outside `ok_exit_codes` (default `[0]`) is a permanent error carrying the end of stderr.
+- **Cache:** not cached across runs by default (it may have side effects), like `mcp` in D3.
+- **Defaults (extends D1 and D7):** estimate 1000 ms, timeout 60 s.
+
+**Why:** local tools are where the most damage is possible, so the rules close off shell injection, path escape and environment leaks by construction rather than by care.
+
+**Code:** `nodes/local_node.py`, `schema.py`, `scheduler/durations.py`.
+
+---
 
 ## Step JSON schema (reference)
 
@@ -181,4 +247,4 @@ The accurate wording, in docs and the UI: *FlowForge runs independent, I/O-bound
 }
 ```
 
-`type` is one of `llm | mcp | http | mock`. Every field except `id`, `type` and `params` is optional.
+`type` is one of `llm | mcp | http | local | mock` (`local` since D13). Every field except `id`, `type` and `params` is optional, including `connector` (D10).

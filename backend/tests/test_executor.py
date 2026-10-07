@@ -57,8 +57,11 @@ TRAP = mk([m("x1", 40), m("x2", 40), m("x3", 40), m("l1", 40), m("l2", 40, ["l1"
 async def test_critical_path_beats_fifo():
     cp, _ = await run(TRAP, policy="critical_path")
     fifo, _ = await run(TRAP, policy="fifo")
-    # cp starts the chain at t=0 → 3 rounds (120 ms); fifo starts it late → 4 rounds (160 ms)
-    assert cp.makespan_ms < 150 <= fifo.makespan_ms
+    # cp starts the chain at t=0 → 3 rounds (120 ms); fifo starts it late → 4 rounds (160 ms).
+    # Assert the scheduling decision, not wall-clock thresholds: timer granularity varies by OS.
+    assert cp.steps["l1"].started_at < cp.steps["x1"].finished_at
+    assert fifo.steps["l1"].started_at >= fifo.steps["x1"].finished_at
+    assert cp.makespan_ms < fifo.makespan_ms
 
 
 async def test_sequential_is_sum_of_work():

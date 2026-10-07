@@ -1,4 +1,4 @@
-"""Benchmark runner (D6). Owner: Person C.
+"""Benchmark runner (D6).
 
 Simulated track (free, no network):
     uv run python benchmarks/run_benchmark.py sim --graphs 500 --k 4
@@ -166,11 +166,11 @@ def summarize_sim(rows: list[dict[str, Any]], k: int) -> str:
 async def real(args: argparse.Namespace) -> list[dict[str, Any]]:
     if not os.getenv("NVIDIA_API_KEY"):
         sys.exit("NVIDIA_API_KEY is not set — get a free key at build.nvidia.com and add it to .env")
-    wf = Workflow.model_validate(json.loads(Path(args.workflow).read_text()))
+    wf = Workflow.model_validate(json.loads(Path(args.workflow).read_text(encoding="utf-8")))
     types = {s.id: s.type for s in wf.steps}
     bucket = {"nim": TokenBucket(float(os.getenv("NIM_RPM", "40")))}
     nodes = {"llm": LLMNode(), "http": HTTPNode(), "mcp": MCPNode(), "mock": MockNode()}
-    latencies: dict[str, list[float]] = json.loads(LATENCIES.read_text()) if LATENCIES.exists() else {}
+    latencies: dict[str, list[float]] = json.loads(LATENCIES.read_text(encoding="utf-8")) if LATENCIES.exists() else {}
 
     rows = []
     variants = [(p, c) for p in POLICIES for c in (False, True)]
@@ -190,7 +190,7 @@ async def real(args: argparse.Namespace) -> list[dict[str, Any]]:
         for node in nodes.values():
             await node.aclose()
     RESULTS.mkdir(exist_ok=True)
-    LATENCIES.write_text(json.dumps(latencies, indent=1))
+    LATENCIES.write_text(json.dumps(latencies, indent=1), encoding="utf-8")
     print(f"saved {sum(map(len, latencies.values()))} measured latencies to {LATENCIES}")
     return rows
 
@@ -226,16 +226,18 @@ def write(rows: list[dict[str, Any]], summary: str, name: str) -> None:
     RESULTS.mkdir(exist_ok=True)
     stamp = time.strftime("%Y%m%d-%H%M%S")
     csv_path = RESULTS / f"{name}_{stamp}.csv"
-    with csv_path.open("w", newline="") as f:
+    with csv_path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)
-    (RESULTS / f"{name}_{stamp}.md").write_text(summary + "\n")
+    (RESULTS / f"{name}_{stamp}.md").write_text(summary + "\n", encoding="utf-8")
     print(f"\n{summary}\n\nwrote {csv_path} and {csv_path.with_suffix('.md')}")
 
 
 def main(argv: list[str] | None = None) -> None:
     load_dotenv()
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")  # summaries contain → and ±; Windows consoles default to cp1252
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="track", required=True)
 

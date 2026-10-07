@@ -49,8 +49,8 @@ def test_sim_track_end_to_end(tmp_path, monkeypatch):
     monkeypatch.setattr(run_benchmark, "LATENCIES", tmp_path / "none.json")
     run_benchmark.main(["sim", "--graphs", "2", "--min-steps", "4", "--max-steps", "6", "--scale", "0.002"])
     csvs = list(tmp_path.glob("sim_*.csv"))
-    assert len(csvs) == 1 and len(csvs[0].read_text().splitlines()) == 1 + 2 * 10  # header + graphs × variants
-    summary = next(tmp_path.glob("sim_*.md")).read_text()
+    assert len(csvs) == 1 and len(csvs[0].read_text(encoding="utf-8").splitlines()) == 1 + 2 * 10  # header + graphs × variants
+    summary = next(tmp_path.glob("sim_*.md")).read_text(encoding="utf-8")
     assert "Critical path vs FIFO" in summary and "| critical_path | on |" in summary
 
 

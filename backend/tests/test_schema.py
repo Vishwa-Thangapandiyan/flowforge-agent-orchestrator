@@ -15,7 +15,7 @@ def wf(*steps):
 
 @pytest.mark.parametrize("path", sorted(WORKFLOWS.glob("*.json")), ids=lambda p: p.name)
 def test_example_workflows_validate(path):
-    Workflow.model_validate(json.loads(path.read_text()))
+    Workflow.model_validate(json.loads(path.read_text(encoding="utf-8")))
 
 
 def test_duplicate_ids_rejected():

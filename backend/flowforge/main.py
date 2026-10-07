@@ -1,4 +1,4 @@
-"""FastAPI app. Owner: Person C.
+"""FastAPI app.
 
 POST /validate               workflow JSON → {"ok", "order", "levels", "critical_path"} or 422
 POST /runs?policy=&use_cache= workflow JSON → {"run_id"}; the run executes in the background
@@ -191,7 +191,7 @@ def get_workflow(name: str) -> dict[str, Any]:
     path = WORKFLOWS_DIR / f"{name}.json"
     if path.parent != WORKFLOWS_DIR or not path.exists():
         raise HTTPException(404, "unknown workflow")
-    return json.loads(path.read_text())
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 @app.get("/", include_in_schema=False)

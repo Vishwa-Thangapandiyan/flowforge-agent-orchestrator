@@ -1,10 +1,12 @@
-# FlowForge — V1 Plan, Stack & Scaffolding
+# FlowForge — V1 Plan, Stack & Scaffolding (DAA course project)
+
+> **This plan is complete and frozen.** V1 is the DAA course project. Its code is preserved unchanged on the `DAA` branch, which nobody commits to or merges into. `main` has moved on to the product: the scheduler layer for agent workflows plus a dashboard. The roadmap for that (Phases 1–6) and the rules for working on it are in [CLAUDE.md](CLAUDE.md). See [After V1](#after-v1) at the end for how this plan feeds into it.
 
 Goal for V1: a working, single-machine version that proves the core algorithms and calls real tools (an LLM through NVIDIA NIM, and MCP). No distributed systems yet. Target: about 1 month, 3-person team. **Zero cost: nothing paid.**
 
-Design decisions for every open question are in [DECISIONS.md](DECISIONS.md) (referred to as D1–D9 below).
+Design decisions for every open question are in [DECISIONS.md](DECISIONS.md) (referred to as D1–D9 below). D1–D9 stay in force on `main`. New decisions continue from D10 and never silently change these.
 
-**Status (22 Sep 2026):** all V1 code in the build order below is implemented and tested. Remaining: run the real-track benchmark with a NIM key, record the demo video, and write the report.
+**Status (7 Oct 2026):** all V1 code in the build order below is implemented, tested and benchmarked on the simulated track ([benchmarks/RESULTS.md](benchmarks/RESULTS.md): on 200 random DAGs with `k = 4`, critical-path priority gives an 8.3% ± 1.1% lower makespan than FIFO and is effectively at the lower bound). Course deliverables still open: run the real-track benchmark with a NIM key, record the demo video, and write the report. These are done against the `DAA` branch, not `main`.
 
 ---
 
@@ -106,3 +108,32 @@ Project/
 - **Person C:** `nodes/` (NIM/MCP/HTTP) + frontend + `benchmarks/`.
 
 All three co-own the final write-up and can each defend their own piece in a viva.
+
+---
+
+## After V1
+
+V1 is the foundation of the product, not something to replace. On `main` the rule is **extend it, don't rewrite it** (CLAUDE.md §4): the scheduler, the five policies, the caches and the benchmarks keep working unchanged through every later phase.
+
+### Known limits of V1 (these are Phase 1's job)
+
+| V1 limit | Fixed in |
+|---|---|
+| `LLMNode` is hard-wired to NIM (`rate_limit_key = "nim"`, one base URL and model from env, errors say "NIM") | Phase 1: provider-agnostic LLM connectors (OpenAI-compatible endpoints such as NIM, Gemini, Ollama, plus Anthropic), each with its own rate-limit bucket |
+| `MCPNode` has no tool discovery, no per-server env secrets, and only handles text results | Phase 1: any MCP server, discovered tools with schema checks, image/audio/resource results |
+| The four step types are hard-coded in `main.py`'s lifespan | Phase 1: connector registry in SQLite, plus a new `local` command step type |
+| Step outputs have no `kind` hint for viewers | Phase 1 onward (CLAUDE.md §7.4) |
+| Runs are kept in memory only | Phase 2: SQLite-backed run history |
+| One plain HTML status page | Phase 2: dashboard built to the design in `docs/design/system-map.html` |
+| No secrets handling beyond `.env` | Phase 3: vault, redaction, guards (CLAUDE.md §6) |
+| No linter, no CI | Phase 1: `ruff` + GitHub Actions, offline |
+
+### How V1 maps onto the roadmap
+
+| V1 piece | Where it goes next |
+|---|---|
+| Scheduler core (`graph`, `critical_path`, `durations`, `executor`, `rate_limit`, `cache`) | Unchanged. Connectors build `Node` instances; the executor keeps calling `node.run(params)` |
+| `nodes/` | Configured by connectors (Phase 1), placed on workers via `RemoteNode` (Phase 5) |
+| `frontend/index.html` | Kept until the Phase 2 dashboard reaches parity, then removed in its own commit |
+| `benchmarks/` | Must keep running unchanged; Phase 5 adds a worker-dropout track |
+| Two-machine idea | [FlowForge_Server_Orchestrator_Plan.md](FlowForge_Server_Orchestrator_Plan.md) (Phase 5, after Phase 3) |

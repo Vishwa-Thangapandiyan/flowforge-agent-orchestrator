@@ -1,4 +1,4 @@
-"""Plain HTTP call via httpx (D9). Owner: Person C.
+"""Plain HTTP call via httpx (D9).
 
 params: method (default GET), url, headers?, json?, max_chars? (default 20000),
         extract_text? (default: true for HTML responses — strips tags/scripts so an LLM

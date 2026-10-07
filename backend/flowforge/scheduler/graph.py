@@ -1,4 +1,4 @@
-"""DAG construction, topological sort, cycle detection (D7). Owner: Person A."""
+"""DAG construction, topological sort, cycle detection (D7)."""
 
 from __future__ import annotations
 

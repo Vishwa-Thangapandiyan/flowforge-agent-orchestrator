@@ -1,4 +1,4 @@
-"""Async token bucket (D5, D8). Owner: Person B."""
+"""Async token bucket (D5, D8)."""
 
 from __future__ import annotations
 

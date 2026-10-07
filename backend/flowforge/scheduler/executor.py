@@ -1,4 +1,4 @@
-"""Concurrent list scheduler (D4, D5, D7). Owner: Person B.
+"""Concurrent list scheduler (D4, D5, D7).
 
 One dispatcher loop owns all scheduling decisions; each running step is an asyncio task.
 

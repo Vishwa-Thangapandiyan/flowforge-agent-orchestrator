@@ -1,8 +1,8 @@
-# FlowForge — Design Decisions (V1)
+# FlowForge — Design Decisions
 
-Decisions that fill the gaps left open in [FlowForge_V1_Plan.md](FlowForge_V1_Plan.md). Each one has the choice, the reason, and where it lives in the code.
+Every design decision, with the choice, the reason, and where it lives in the code. D1–D9 were made for V1 ([FlowForge_V1_Plan.md](FlowForge_V1_Plan.md)) and still hold on `main`. New decisions take the next number (D10, D11, …) and are written before the code. A decision is never edited to mean something new: it is superseded by a later entry that says so.
 
-**Hard constraint: zero cost.** No paid API or service anywhere. The LLM provider is NVIDIA NIM's free tier (see D8).
+**Hard constraint: zero cost by default.** No paid API or service in the default install, the tests or CI. The default LLM provider is NVIDIA NIM's free tier (see D8).
 
 ---
 
@@ -20,7 +20,7 @@ Decisions that fill the gaps left open in [FlowForge_V1_Plan.md](FlowForge_V1_Pl
 - **History:** after every run, the measured durations go into SQLite. The estimate is an EWMA (α = 0.3) over past runs, keyed by `(workflow_id, step_id)`. The EWMA weights recent runs more heavily.
 - **Output:** every run reports the **predicted** critical path (computed before the run) and the **actual** one (measured afterwards).
 
-**Why:** the DP needs weights before execution starts. The EWMA corrects bad hand estimates over time. The predicted-vs-actual comparison is good material for the write-up.
+**Why:** the DP needs weights before execution starts. The EWMA corrects bad hand estimates over time. The predicted-vs-actual comparison shows users how accurate the estimates are.
 
 **Code:** `scheduler/durations.py`, `scheduler/critical_path.py`.
 
@@ -63,7 +63,7 @@ Two layers.
 
 ## D4. What "parallel" means
 
-The accurate wording, for the report and the viva: *FlowForge runs independent, I/O-bound steps **concurrently** on one asyncio event loop.* It is not CPU parallelism. Any future CPU-bound step type must use `loop.run_in_executor` with a process pool.
+The accurate wording, in docs and the UI: *FlowForge runs independent, I/O-bound steps **concurrently** on one asyncio event loop.* It is not CPU parallelism. Any future CPU-bound step type must use `loop.run_in_executor` with a process pool.
 
 ## D5. Scheduling with limited resources (the main algorithm)
 
@@ -75,7 +75,7 @@ The accurate wording, for the report and the viva: *FlowForge runs independent, 
   - a token-bucket **rate limiter** per provider (NIM: 40 requests/min, see D8)
 - When a slot and a token are both free, the ready step with the **highest bottom level** runs next. A heap handles this in `O(log n)`.
 
-**Theory for the viva:**
+**Theory:**
 - Scheduling a DAG on `k` workers to minimise the finish time is NP-hard (P|prec|Cmax).
 - Graham (1966): any list schedule has a finish time of at most `(2 − 1/k) · OPT`.
 - Critical-path priority is the standard heuristic that does well in practice.

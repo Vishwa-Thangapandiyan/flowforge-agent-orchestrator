@@ -1,4 +1,4 @@
-"""MCP tool call with the official `mcp` SDK (D9). Owner: Person C.
+"""MCP tool call with the official `mcp` SDK (D9).
 
 params: server  — a command list for a stdio server (default ["uvx", "mcp-server-fetch"])
                   or the name of a server registered with MCPNode(servers={...})

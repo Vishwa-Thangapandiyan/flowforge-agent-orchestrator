@@ -1,4 +1,4 @@
-"""Step-duration estimates: history (EWMA) → estimated_ms → per-type default (D1). Owner: Person A."""
+"""Step-duration estimates: history (EWMA) → estimated_ms → per-type default (D1)."""
 
 from __future__ import annotations
 

@@ -1,15 +1,8 @@
-"""Contract tests for critical_path.py (Person A). Skipped until implemented."""
-
-import pytest
+"""Contract tests for critical_path.py."""
 
 from flowforge.schema import Workflow
 from flowforge.scheduler import critical_path as cp
 from flowforge.scheduler import graph
-
-try:
-    cp.critical_path(graph.build_dag(Workflow.model_validate({"id": "p", "steps": [{"id": "a", "type": "mock"}]})), {"a": 1})
-except NotImplementedError:
-    pytest.skip("critical_path.py not implemented yet", allow_module_level=True)
 
 # a → b → e,  a → c → e,  a → d → f   (durations: a100 b300 c100 d50 e100 f50)
 DIAMOND = Workflow.model_validate(

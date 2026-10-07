@@ -1,4 +1,4 @@
-"""Call dedupe: single-flight in-run memo + safe persistent cache (D3). Owner: Person B."""
+"""Call dedupe: single-flight in-run memo + safe persistent cache (D3)."""
 
 from __future__ import annotations
 

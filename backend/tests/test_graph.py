@@ -1,4 +1,4 @@
-"""Tests for graph.py (Person A)."""
+"""Tests for graph.py."""
 
 import pytest
 

@@ -1,4 +1,4 @@
-"""NVIDIA NIM chat completion via the OpenAI-compatible API (D8). Owner: Person C.
+"""NVIDIA NIM chat completion via the OpenAI-compatible API (D8).
 
 params: prompt (str) | messages (list), model?, temperature? (default 0), max_tokens? (default 512)
 output: {"text": str, "model": str, "usage": {"prompt_tokens", "completion_tokens"}}

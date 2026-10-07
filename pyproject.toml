@@ -1,7 +1,7 @@
 [project]
 name = "flowforge"
 version = "0.1.0"
-description = "DAG workflow scheduler for API/LLM/MCP steps — DAA project"
+description = "The scheduler layer for agent workflows: runs LLM, MCP and HTTP steps as a DAG, critical path first"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

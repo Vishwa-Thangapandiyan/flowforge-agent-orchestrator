@@ -9,6 +9,8 @@ Instructions for any coding agent working in this repo (Claude Code, Codex, or o
 
 If this file and `CLAUDE.md` disagree, `CLAUDE.md` wins. Stop and tell Vishwa about the conflict.
 
+**Product direction (CLAUDE.md §1, D14):** the user never draws or edits a graph. They connect apps, the Planner proposes the steps, code validates them, the user confirms one "Here's what will happen" list, and the scheduler runs it. The LLM decides *what*; the scheduler decides *when*. Payments, code changes and side-effecting steps are always gated. Workflow JSON and the API stay as the Advanced path. Don't build features that put graph editing in the main flow.
+
 ---
 
 # Part A — Build agents
@@ -27,7 +29,7 @@ Each agent has one job, a set of paths it may write, and a hand-off it must prod
 | **Connectors** | Node classes, connector registry, presets, MCP discovery, local command node | `nodes/`, `connectors/` | Hard-code a brand outside `connectors/presets.py`; use `shell=True` | Diff + tests with stubbed clients |
 | **Security** | Vault, redaction, patterns, log filter, guards | `security/` | Add any route that returns a secret value | Diff + property/golden/leak test output |
 | **Frontend** | Dashboard to the design spec in `docs/design/system-map.html` | `frontend/` | Invent a new look; keep a secret in state, URL or `localStorage` | Diff + screenshots (light, dark, phone width) |
-| **Infra** | CI, ruff, packaging/CLI, Phase 5 queue, worker and deployment files | `.github/`, `pyproject.toml`, `deploy/`, `backend/flowforge/distributed/` | Add a paid service or a test that needs Redis/network by default | Diff + CI run result |
+| **Infra** | CI, ruff, packaging/CLI, Phase 6 queue, worker and deployment files | `.github/`, `pyproject.toml`, `deploy/`, `backend/flowforge/distributed/` | Add a paid service or a test that needs Redis/network by default | Diff + CI run result |
 | **Reviewer** (fresh context) | Independent review against `CLAUDE.md` and the D-entries; correctness first | nothing (comments only) | Fix what it reviews | Findings, most severe first |
 | **Security auditor** (fresh context) | Hunts leaks: route walk, DB/SSE/log/cache grep for fake keys, prompt contents, gitignore rules | nothing (comments only) | Approve its own fixes | Pass, or a blocking list. **Has veto on any phase touching secrets, LLM prompts, the network or the swap flow** |
 | **Verifier** | Runs the definition of done (`CLAUDE.md` §9.2) and reports actual output | `CLAUDE.md` §0 status, README quickstart | Claim green without pasted output | DoD checklist with command output |
@@ -75,10 +77,10 @@ Rules:
 | 1 Any LLM, any MCP | Scout, Spec (connector models), Test, **Connectors**, Core (`connector` field on `Step`, per-connector buckets), Infra (ruff, CI, CONTRIBUTING), Reviewer, Verifier | Yes, light (env/secret handling in LLM and MCP config) |
 | 2 Dashboard v1 | Scout, Spec (frontend stack, after Vishwa answers §12.1), Test, **Frontend**, Core (persisted runs, `GET /runs`), Infra (console script), Reviewer, Verifier | Yes, light (no secret in the DOM) |
 | 3 Connectors, secrets, security | Scout, Spec, Test (first and largest), **Security**, Connectors, Core (connector routes), Frontend (Views 2, 5, 6), Reviewer, Verifier | **Yes, full, with veto** |
-| 4 Gates + swap | Scout, Spec (gate step), Test, **Core** (gate step), Security (redact → LLM → verify → scan → restore), Connectors (`local`), Frontend (View 3), Reviewer, Verifier | **Yes, full, with veto** |
-| 4b AI-assisted tasks | Scout, Spec, Test (anti-hallucination, patch validation), Core (patch apply, versions), Connectors (fact sheet), Security (prompt contents), Frontend (View 7, once designed), Reviewer, Verifier | **Yes, full, with veto** |
-| 5 Server + ROG workers | Scout, Spec (P1–P9 in `FlowForge_Server_Orchestrator_Plan.md`), Test, **Infra**, Core (`RemoteNode`), Security (worker vault, token auth), Frontend (workers in Tool health), Reviewer, Verifier | **Yes, full, with veto** |
-| 6 Visual builder | Not planned yet | — |
+| 4 Approval gates + auto-plan | Scout, Spec (D11 gate step and D14 plan contract, written together), Test (evidence rule, plan validation, always-gated side effects, prompt-injection fixtures), **Core** (gate step, plan → DAG compiler, plan versions), Connectors (`describe()`, fact sheet), Security (redaction of facts, planner prompt contents), Frontend (View 7 plan review, once designed), Reviewer, Verifier | **Yes, full, with veto** |
+| 5 Swap an app | Scout, Spec, Test, Security (redact → LLM → verify → scan → restore), **Core** (swap as an auto-planned workflow), Connectors (`local`), Frontend (View 3), Reviewer, Verifier | **Yes, full, with veto** |
+| 6 Server + ROG workers | Scout, Spec (P1–P9 in `FlowForge_Server_Orchestrator_Plan.md`), Test, **Infra**, Core (`RemoteNode`), Security (worker vault, token auth), Frontend (workers in Tool health), Reviewer, Verifier | **Yes, full, with veto** |
+| 7 Visual builder | Not planned yet | — |
 
 ## A4. Mapping to tools
 
@@ -98,15 +100,15 @@ Spawning agents costs context and money. Use a subagent only when the work is cl
 
 # Part B — Runtime agents (what gets deployed and run)
 
-These are the long-running processes of FlowForge itself. Until Phase 5 everything is one process on one machine. The design is in `FlowForge_Server_Orchestrator_Plan.md`; this is the deployment checklist.
+These are the long-running processes of FlowForge itself. Until Phase 6 everything is one process on one machine. The design is in `FlowForge_Server_Orchestrator_Plan.md`; this is the deployment checklist.
 
-## B1. Today (Phases 1–4): one process, local
+## B1. Today (Phases 1–5): one process, local
 
 | Agent | Where | Start | Notes |
 |---|---|---|---|
 | `flowforge-core` | your machine | `uv run uvicorn flowforge.main:app --reload` (a `flowforge` console script is planned for Phase 2) | binds `127.0.0.1`; SQLite in `flowforge.db`; MCP servers it spawns over stdio are child processes, not separate agents |
 
-## B2. Phase 5: control plane + workers (planned, not built)
+## B2. Phase 6: control plane + workers (planned, not built)
 
 | Agent | Machine | Runs as | Job | Must have |
 |---|---|---|---|---|
@@ -116,7 +118,7 @@ These are the long-running processes of FlowForge itself. Until Phase 5 everythi
 | **`ollama`** | ASUS ROG | Ollama's own service | local model serving for `llm` connectors placed on the worker | listens on localhost only; the worker calls it, nothing else does |
 | **`tailscaled`** | both | OS service | private network between the machines | an ACL allowing only the ROG and Vishwa's devices to reach the server's ports |
 
-What is **not** a deployed agent: the AI planner (Phase 4b) and LLM steps. They are calls made by `flowforge-core` or a worker, scheduled like any other step, never processes with their own access.
+What is **not** a deployed agent: the Planner (Phase 4, D14) and LLM steps. They are calls made by `flowforge-core` or a worker, scheduled like any other step, never processes with their own access. The Planner only proposes a plan; nothing runs until the user confirms the plan review, and side-effecting steps are always gated.
 
 ## B3. Bring-up order and health checks
 

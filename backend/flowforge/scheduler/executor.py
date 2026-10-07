@@ -67,7 +67,7 @@ class StepResult:
     started_at: float | None = None   # seconds since run start
     finished_at: float | None = None
     call_ms: float | None = None      # the successful node call alone: no token wait, no backoff
-    answered_by: str | None = None    # connector that produced the output; differs from the step's on fallback (D10)
+    answered_by: str | None = None    # connector that answered (or was last tried); differs on fallback (D10)
 
     @property
     def duration_ms(self) -> float:
@@ -223,11 +223,11 @@ async def run_workflow(
             if bucket is not None:
                 await bucket.acquire()
             results[step.id].attempts += 1
+            results[step.id].answered_by = node.connector_id  # the last connector tried, so failures are attributed too
             call_start = loop.time()
             try:
                 output = await asyncio.wait_for(node.run(params), step.effective_timeout_s)
                 results[step.id].call_ms = (loop.time() - call_start) * 1000
-                results[step.id].answered_by = node.connector_id
                 return output
             except (TransientNodeError, TimeoutError) as exc:
                 if attempt == step.retries:
@@ -319,15 +319,17 @@ async def run_workflow(
     def succeed(step_id: str, output: Any) -> None:
         outputs[step_id] = output
         results[step_id].output = output
+        # the output rides on the event so a live view can show it before the run ends (D16)
         set_state(step_id, StepState.SUCCEEDED, cache_hit=results[step_id].cache_hit,
-                  duration_ms=round(results[step_id].duration_ms, 1))
+                  duration_ms=round(results[step_id].duration_ms, 1), output=output)
         for child in dag.children[step_id]:
             unmet[child] -= 1
             if unmet[child] == 0 and results[child].state == StepState.PENDING:
                 make_ready(child)
 
     emit({"type": "run", "state": "started", "workflow_id": workflow.id, "policy": policy,
-          "predicted_critical_path": predicted.path})
+          "predicted_critical_path": predicted.path, "predicted_critical_path_ms": predicted.length_ms,
+          "estimates": weights})
     for s in topo:
         if unmet[s] == 0:
             make_ready(s)

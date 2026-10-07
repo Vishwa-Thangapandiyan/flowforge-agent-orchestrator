@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Approvals</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;color:#0F1D26;background:#EEF3F5}
+a{color:#2457C5}a:hover{color:#0B7A70}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="display:flex;flex-wrap:wrap;min-height:900px;background:#EEF3F5">
+<nav style="flex:1 1 220px;box-sizing:border-box;padding:24px 16px;background:#0F1D26;display:flex;flex-direction:column;gap:6px;align-self:stretch">
+<div style="font-family:'Bricolage Grotesque','Segoe UI',sans-serif;font-size:24px;font-weight:700;color:#fff;padding:0 12px 18px">FlowForge</div>
+<a href="Main.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Overview</a>
+<a href="Connector.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Connectors</a>
+<a href="PlanReview.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Plan review</a>
+<a href="Run.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Live run</a>
+<a href="Approvals.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;background:#1D3340;color:#fff;font-weight:600;text-decoration:none;font-size:15px"><span>Approvals</span><span style="background:#F2B84B;color:#3A2D0E;border-radius:10px;padding:1px 8px;font-size:12px;font-weight:600">2</span></a>
+<a href="History.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Run history</a>
+<a href="Security.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Security</a>
+<a href="AddConnector.dc.html" style="margin-top:14px;padding:11px 12px;border-radius:8px;border:1px dashed #4A5E6A;color:#E8F0F3;text-decoration:none;font-size:15px;text-align:center">+ Add app</a>
+</nav>
+
+<main style="flex:999 1 560px;min-width:0;box-sizing:border-box;padding:32px;display:flex;flex-direction:column;gap:24px">
+<header style="display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:flex-end">
+<div style="display:flex;flex-direction:column;gap:6px">
+<span style="font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#8A5A00">Paused until you decide</span>
+<h1 style="margin:0;font-family:'Bricolage Grotesque','Segoe UI',sans-serif;font-size:36px;line-height:1.1">Approvals</h1>
+</div>
+<div style="display:flex;gap:6px">
+<span style="padding:8px 14px;border-radius:999px;background:#FCEFD0;color:#8A5A00;font-weight:600;font-size:14px">Waiting · 2</span>
+<span style="padding:8px 14px;border-radius:999px;background:#fff;border:1px solid #D3DDE3;color:#4A5E6A;font-size:14px">Approved</span>
+<span style="padding:8px 14px;border-radius:999px;background:#fff;border:1px solid #D3DDE3;color:#4A5E6A;font-size:14px">Rejected</span>
+</div>
+</header>
+
+<section style="background:#fff;border:1px solid #D3DDE3;border-left:6px solid #F2B84B;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center">
+<span style="background:#FCEFD0;color:#8A5A00;border-radius:6px;padding:3px 8px;font:500 12px 'IBM Plex Mono',monospace">payment</span>
+<span style="background:#EEF3F5;color:#4A5E6A;border-radius:6px;padding:3px 8px;font:500 12px 'IBM Plex Mono',monospace">Razorpay · test mode</span>
+<span style="color:#4A5E6A;font-size:14px">waiting 4 min</span>
+</div>
+<h2 style="margin:0;font-family:'Bricolage Grotesque','Segoe UI',sans-serif;font-size:24px">Refund ₹1,299 for order 1042</h2>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:12px">
+<div style="background:#EEF3F5;border-radius:10px;padding:12px"><div style="font-size:13px;color:#4A5E6A">Why it was proposed</div><div>Gemini rated the order high risk</div></div>
+<div style="background:#EEF3F5;border-radius:10px;padding:12px"><div style="font-size:13px;color:#4A5E6A">What happens if you approve</div><div>Razorpay refunds the full amount</div></div>
+<div style="background:#EEF3F5;border-radius:10px;padding:12px"><div style="font-size:13px;color:#4A5E6A">Can it be undone</div><div>No. A refund cannot be reversed.</div></div>
+</div>
+<span style="font-size:14px;color:#4A5E6A">You see this because payments always wait for you. The Planner cannot turn that off.</span>
+<div style="display:flex;flex-wrap:wrap;gap:10px">
+<button type="button" style="min-height:48px;padding:0 22px;border-radius:10px;border:0;background:#0B7A70;color:#fff;font-weight:600;font-size:16px">Approve refund</button>
+<button type="button" style="min-height:48px;padding:0 22px;border-radius:10px;border:1px solid #B93C2B;background:#fff;color:#B93C2B;font-weight:600;font-size:16px">Reject</button>
+<a href="Run.dc.html" style="display:inline-flex;align-items:center;min-height:48px;padding:0 8px;font-weight:600">See the run</a>
+</div>
+</section>
+
+<section style="background:#fff;border:1px solid #D3DDE3;border-left:6px solid #F2B84B;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center">
+<span style="background:#FCEFD0;color:#8A5A00;border-radius:6px;padding:3px 8px;font:500 12px 'IBM Plex Mono',monospace">code change</span>
+<span style="background:#EEF3F5;color:#4A5E6A;border-radius:6px;padding:3px 8px;font:500 12px 'IBM Plex Mono',monospace">branch flowforge/webhook-auth</span>
+<span style="color:#4A5E6A;font-size:14px">waiting 12 min</span>
+</div>
+<h2 style="margin:0;font-family:'Bricolage Grotesque','Segoe UI',sans-serif;font-size:24px">Open a fix PR for the webhook route</h2>
+<div style="display:flex;flex-wrap:wrap;gap:8px">
+<span style="background:#DCF2E4;color:#1F7A45;border-radius:999px;padding:6px 12px;font-size:14px;font-weight:600">41 tests passed</span>
+<span style="background:#DCF2E4;color:#1F7A45;border-radius:999px;padding:6px 12px;font-size:14px;font-weight:600">Sirius: 0 new issues</span>
+<span style="background:#EEF3F5;border-radius:999px;padding:6px 12px;font-size:14px">3 files · +42 −17</span>
+<span style="background:#DDF2EF;color:#0B7A70;border-radius:999px;padding:6px 12px;font-size:14px;font-weight:600">0 keys in the diff</span>
+</div>
+<div style="font:500 13px/1.6 'IBM Plex Mono',monospace;background:#0F1D26;color:#E8F0F3;border-radius:10px;padding:12px 14px;overflow-x:auto;white-space:pre">  routes/hooks.js
+<span style="color:#FF8C7A">- app.post('/hooks/razorpay', handle);</span>
+<span style="color:#66D18F">+ app.post('/hooks/razorpay', verifySignature, handle);</span>
+<span style="color:#66D18F">+ const secret = process.env.RAZORPAY_WEBHOOK_SECRET;</span></div>
+<span style="font-size:14px;color:#4A5E6A">Claude only saw placeholders. Keys were put back as environment variables, and .env stays out of git. Approving leaves the branch ready for you to merge. It does not merge by itself.</span>
+<div style="display:flex;flex-wrap:wrap;gap:10px">
+<button type="button" style="min-height:48px;padding:0 22px;border-radius:10px;border:0;background:#0B7A70;color:#fff;font-weight:600;font-size:16px">Approve branch</button>
+<button type="button" style="min-height:48px;padding:0 22px;border-radius:10px;border:1px solid #B93C2B;background:#fff;color:#B93C2B;font-weight:600;font-size:16px">Reject and delete branch</button>
+<button type="button" style="min-height:48px;padding:0 22px;border-radius:10px;border:1px solid #D3DDE3;background:#fff;color:#0F1D26;font-weight:600;font-size:16px">View full diff</button>
+</div>
+</section>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

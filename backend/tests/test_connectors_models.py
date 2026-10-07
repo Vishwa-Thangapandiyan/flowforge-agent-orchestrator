@@ -66,6 +66,16 @@ def test_secret_ref_format():
             parse_connector(llm(secret_ref=bad))
 
 
+@pytest.mark.parametrize("name", ["SK_TEST_FAKEFAKE12345678", "RZP_LIVE_FAKE1234567", "SK_LIVE_FAKEFAKE12345678", "AIZAFAKEFAKEFAKEFAKE12"])
+def test_a_key_pasted_as_a_variable_name_is_refused(name):
+    """A key upper-cased into the name field must not be stored as env:<the key> (D16)."""
+    with pytest.raises(ValidationError, match="looks like a key"):
+        parse_connector(llm(secret_ref=f"env:{name}"))
+    with pytest.raises(ValidationError, match="looks like a key"):
+        parse_connector({"id": "m", "type": "mcp", "name": "M",
+                         "connection": {"command": "x", "env_refs": {"TOKEN": f"env:{name}"}}})
+
+
 def test_fallback_cannot_point_at_itself():
     with pytest.raises(ValidationError, match="itself"):
         parse_connector(llm(fallback="gemini"))

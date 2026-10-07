@@ -1,6 +1,6 @@
 # FlowForge — V1 Plan, Stack & Scaffolding (DAA course project)
 
-> **This plan is complete and frozen.** V1 is the DAA course project. Its code is preserved unchanged on the `DAA` branch, which nobody commits to or merges into. `main` has moved on to the product: the scheduler layer for agent workflows plus a dashboard. The roadmap for that (Phases 1–6) and the rules for working on it are in [CLAUDE.md](CLAUDE.md). See [After V1](#after-v1) at the end for how this plan feeds into it.
+> **This plan is complete and frozen.** V1 is the DAA course project. Its code is preserved unchanged on the `DAA` branch, which nobody commits to or merges into. `main` has moved on to the product: the scheduler layer for agent workflows plus a dashboard. The roadmap for that (Phases 1–7) and the rules for working on it are in [CLAUDE.md](CLAUDE.md). See [After V1](#after-v1) at the end for how this plan feeds into it.
 
 Goal for V1: a working, single-machine version that proves the core algorithms and calls real tools (an LLM through NVIDIA NIM, and MCP). No distributed systems yet. Target: about 1 month, 3-person team. **Zero cost: nothing paid.**
 
@@ -133,7 +133,7 @@ V1 is the foundation of the product, not something to replace. On `main` the rul
 | V1 piece | Where it goes next |
 |---|---|
 | Scheduler core (`graph`, `critical_path`, `durations`, `executor`, `rate_limit`, `cache`) | Unchanged. Connectors build `Node` instances; the executor keeps calling `node.run(params)` |
-| `nodes/` | Configured by connectors (Phase 1), placed on workers via `RemoteNode` (Phase 5) |
+| `nodes/` | Configured by connectors (Phase 1), placed on workers via `RemoteNode` (Phase 6) |
 | `frontend/index.html` | Kept until the Phase 2 dashboard reaches parity, then removed in its own commit |
-| `benchmarks/` | Must keep running unchanged; Phase 5 adds a worker-dropout track |
-| Two-machine idea | [FlowForge_Server_Orchestrator_Plan.md](FlowForge_Server_Orchestrator_Plan.md) (Phase 5, after Phase 3) |
+| `benchmarks/` | Must keep running unchanged; Phase 6 adds a worker-dropout track |
+| Two-machine idea | [FlowForge_Server_Orchestrator_Plan.md](FlowForge_Server_Orchestrator_Plan.md) (Phase 6, after Phase 3) |

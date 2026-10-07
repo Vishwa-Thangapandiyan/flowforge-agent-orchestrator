@@ -1,0 +1,71 @@
+/* Design tokens, copied from docs/design/system-map.html (D15). Colour meanings are fixed:
+   teal = success / primary, blue = running, amber = waiting on you, coral = failed, violet = AI / Planner. */
+:root {
+  --bg: #EEF3F5; --surface: #FFFFFF; --surface-2: #F6F9FA; --fg: #0F1D26; --muted: #4A5E6A; --line: #D3DDE3; --idle: #9AAAB4;
+  --teal: #0B7A70;  --teal-bg: #DDF2EF; --teal-ink: #086A61;
+  --blue: #2457C5;  --blue-bg: #E1EAFB;
+  --amber: #8A5A00; --amber-bg: #FCEFD0; --amber-strong: #F2B84B;
+  --coral: #B93C2B; --coral-bg: #FBE4DF;
+  --green: #1F7A45; --green-bg: #DCF2E4;
+  --violet: #6B46C1;--violet-bg: #ECE6FA;
+  --slate: #3A4756; --slate-bg: #E6EBEF;
+  --on-teal: #FFFFFF; --on-violet: #FFFFFF;
+  --b-razor: #3395FF; --b-stripe: #635BFF; --b-gem: #4285F4; --b-nim: #76B900; --b-claude: #D97757; --b-sirius: #0B7A70;
+  --b-ollama: #1F2328; --b-fetch: #5B6B78;
+
+  --nav-bg: #0F1D26; --nav-fg: #C9D6DC; --nav-active: #1D3340; --nav-strong: #FFFFFF; --nav-line: #4A5E6A;
+
+  --display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
+  --body: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+
+  --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-pill: 999px;
+  --shadow-1: 0 1px 2px rgb(15 29 38 / 6%), 0 1px 1px rgb(15 29 38 / 4%);
+  --shadow-2: 0 2px 6px rgb(15 29 38 / 7%), 0 10px 24px -12px rgb(15 29 38 / 18%);
+  --shadow-3: 0 12px 32px -12px rgb(15 29 38 / 30%);
+  --glow: 0 0 0 4px color-mix(in srgb, var(--teal) 18%, transparent);
+  --hero: linear-gradient(160deg, #183242 0%, #0F1D26 58%);
+  --tile-sheen: linear-gradient(180deg, rgb(255 255 255 / 55%), rgb(255 255 255 / 0%) 60%);
+
+  --t-fast: 140ms; --t-med: 260ms; --t-slow: 520ms;
+  --ease: cubic-bezier(.2, .7, .2, 1);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0B1418; --surface: #122128; --surface-2: #0F1B21; --fg: #E8F0F3; --muted: #93A8B3; --line: #25363F; --idle: #5C7280;
+    --teal: #4FD1C0;  --teal-bg: #12332F; --teal-ink: #4FD1C0;
+    --blue: #7FA8FF;  --blue-bg: #16284A;
+    --amber: #F2B84B; --amber-bg: #3A2D0E;
+    --coral: #FF8C7A; --coral-bg: #40201B;
+    --green: #66D18F; --green-bg: #133423;
+    --violet: #B79CFF;--violet-bg: #2A2147;
+    --slate: #B6C3CC; --slate-bg: #1E2C34;
+    --on-teal: #062320; --on-violet: #1A1033;
+    --nav-bg: #070E11; --nav-active: #16262E; --nav-line: #2B3C45;
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
+    --shadow-2: 0 2px 8px rgb(0 0 0 / 35%), 0 12px 28px -14px rgb(0 0 0 / 60%);
+    --shadow-3: 0 14px 36px -12px rgb(0 0 0 / 70%);
+    --tile-sheen: linear-gradient(180deg, rgb(255 255 255 / 10%), rgb(255 255 255 / 0%) 60%);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0B1418; --surface: #122128; --surface-2: #0F1B21; --fg: #E8F0F3; --muted: #93A8B3; --line: #25363F; --idle: #5C7280;
+  --teal: #4FD1C0;  --teal-bg: #12332F; --teal-ink: #4FD1C0;
+  --blue: #7FA8FF;  --blue-bg: #16284A;
+  --amber: #F2B84B; --amber-bg: #3A2D0E;
+  --coral: #FF8C7A; --coral-bg: #40201B;
+  --green: #66D18F; --green-bg: #133423;
+  --violet: #B79CFF;--violet-bg: #2A2147;
+  --slate: #B6C3CC; --slate-bg: #1E2C34;
+  --on-teal: #062320; --on-violet: #1A1033;
+  --nav-bg: #070E11; --nav-active: #16262E; --nav-line: #2B3C45;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
+  --shadow-2: 0 2px 8px rgb(0 0 0 / 35%), 0 12px 28px -14px rgb(0 0 0 / 60%);
+  --shadow-3: 0 14px 36px -12px rgb(0 0 0 / 70%);
+  --tile-sheen: linear-gradient(180deg, rgb(255 255 255 / 10%), rgb(255 255 255 / 0%) 60%);
+  color-scheme: dark;
+}

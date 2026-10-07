@@ -8,3 +8,6 @@ __pycache__/
 benchmarks/results/
 graphify-out/
 .flowforge/
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo

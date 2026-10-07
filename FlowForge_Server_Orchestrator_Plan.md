@@ -1,6 +1,6 @@
-# FlowForge — Server + ROG Workers (Phase 5 plan)
+# FlowForge — Server + ROG Workers (Phase 6 plan)
 
-This is **Phase 5** of the roadmap in `CLAUDE.md` (section 5). It turns the single-process FlowForge core into a control plane on the Debian home server plus workers on the ASUS ROG, connected over Tailscale.
+This is **Phase 6** of the roadmap in `CLAUDE.md` (section 5). It turns the single-process FlowForge core into a control plane on the Debian home server plus workers on the ASUS ROG, connected over Tailscale.
 
 **Do not start this before Phase 3 (vault, redaction, guards) is done.** Distributing work across machines means secrets and step outputs travel over a network. The security spec in `CLAUDE.md` section 6 has to exist before that happens, not after.
 
@@ -49,7 +49,7 @@ Hub and spoke stays the rule (`CLAUDE.md` section 3): **nothing talks to anythin
 
 ### The key design move: the scheduler doesn't change
 
-The executor already calls `node.run(params)` after taking a rate-limit token and inside `asyncio.wait_for` (`scheduler/executor.py`). Phase 5 adds one Node, **`RemoteNode`**, which implements `run` by:
+The executor already calls `node.run(params)` after taking a rate-limit token and inside `asyncio.wait_for` (`scheduler/executor.py`). Phase 6 adds one Node, **`RemoteNode`**, which implements `run` by:
 
 1. publishing a job `{job_id, run_id, step_id, attempt, connector_id, params (redacted, resolved), deadline}` to the queue for that connector's placement,
 2. awaiting the result on a per-job reply channel,
@@ -88,7 +88,7 @@ Placement is a connector setting: `placement: "core" | "worker" | "worker:<name>
 A worker can finish a job and lose its connection before acknowledging it. The job then runs again. That is fine for reads and LLM calls but not for payments or writes.
 - Every job carries `idempotency_key = sha256(run_id, step_id)` (stable across attempts).
 - Nodes that talk to APIs with idempotency support (Stripe's `Idempotency-Key`, and similar) pass it through.
-- Steps with `side_effects: true` and no idempotency support are **pinned to `core`** and still sit behind a gate (`CLAUDE.md` 6.5). Phase 5 does not weaken any gate.
+- Steps with `side_effects: true` and no idempotency support are **pinned to `core`** and still sit behind a gate (`CLAUDE.md` 6.5). Phase 6 does not weaken any gate.
 
 ### P3. Rate limiting stays central
 Tokens are taken by the executor on the control plane *before* `node.run`, so with one control plane the existing in-process buckets remain correct for any number of workers. A Redis-backed bucket (a Lua script, atomic refill and take) is only needed if a second control plane is added later, and is out of scope until then. (This corrects the earlier version of this plan, which assumed Redis rate limiting was required from the start.)
@@ -119,7 +119,7 @@ The EWMA history (D1) must not learn queue wait time as step cost, because that 
 - No multi-user accounts (single-user rule still applies).
 
 ### P9. Storage ladder
-SQLite on the server remains the source of truth. Redis holds only in-flight traffic (jobs, results, heartbeats) and can be wiped without losing history. Postgres is the next step only when teams arrive, not part of Phase 5.
+SQLite on the server remains the source of truth. Redis holds only in-flight traffic (jobs, results, heartbeats) and can be wiped without losing history. Postgres is the next step only when teams arrive, not part of Phase 6.
 
 ---
 
@@ -132,24 +132,24 @@ SQLite on the server remains the source of truth. Redis holds only in-flight tra
 | Same job delivered twice | idempotency key | external API dedupes; side-effecting non-idempotent steps never leave `core` |
 | No worker online | no consumer for the stream | `waiting_for_worker`; optional timeout |
 | Redis restarts | connection error in `RemoteNode` | `TransientNodeError` → retry; history safe in SQLite |
-| Server restarts | — | runs in flight are marked `failed (interrupted)` on startup; open gates persist (D11). Resuming runs is **out of scope** for Phase 5 |
+| Server restarts | — | runs in flight are marked `failed (interrupted)` on startup; open gates persist (D11). Resuming runs is **out of scope** for Phase 6 |
 | Worker version mismatch | registration check | worker refused, dashboard shows why |
 | Secret missing on worker | worker vault lookup | permanent `NodeError`, connector shows `missing` on that worker |
 
 ---
 
-## 5. Milestones (one branch `feat/phase-5-<name>` each)
+## 5. Milestones (one branch `feat/phase-6-<name>` each)
 
 | # | Milestone | Acceptance (offline unless marked) |
 |---|---|---|
-| 5.1 | D-entries P1–P9 written and approved | Vishwa says yes |
-| 5.2 | `Queue` protocol + `InMemoryQueue` + `RemoteNode` + in-process worker | All existing tests and benchmarks pass unchanged. A workflow with every step routed through `RemoteNode` + `InMemoryQueue` gives the same results and the same step order as direct nodes under all five policies (property test) |
-| 5.3 | Leases, stale-result rejection, dead-letter | Tests: a worker that "sleeps" past its lease gets its job retried, and its late result is dropped; exhausted retries dead-letter and skip descendants |
-| 5.4 | `flowforge-worker` CLI, registration, heartbeats, capabilities, version check | Two in-memory workers with different capabilities each receive only their jobs; a lost heartbeat produces `worker_lost` |
-| 5.5 | `RedisQueue` + token auth + bind rules | `-m redis` tests (opt-in) pass against a local Redis; route walk confirms every route rejects a missing token when bound off-localhost |
-| 5.6 | Real deployment: systemd units on Debian, ROG worker start-up, Tailscale ACL | **Manual, on hardware:** close the ROG lid during an Ollama step → job retried after wake or dead-lettered; dashboard Tool health shows the worker going grey and back to green |
-| 5.7 | Dashboard: workers in Tool health, `queued_ms` in Money and time, dead-letter list in Controls | Component tests; scannable per `CLAUDE.md` UI principle |
-| 5.8 | Benchmark: simulated worker dropout track | `sim` gains `--dropout p`; the five policies are unchanged; report makespan vs dropout rate |
+| 6.1 | D-entries P1–P9 written and approved | Vishwa says yes |
+| 6.2 | `Queue` protocol + `InMemoryQueue` + `RemoteNode` + in-process worker | All existing tests and benchmarks pass unchanged. A workflow with every step routed through `RemoteNode` + `InMemoryQueue` gives the same results and the same step order as direct nodes under all five policies (property test) |
+| 6.3 | Leases, stale-result rejection, dead-letter | Tests: a worker that "sleeps" past its lease gets its job retried, and its late result is dropped; exhausted retries dead-letter and skip descendants |
+| 6.4 | `flowforge-worker` CLI, registration, heartbeats, capabilities, version check | Two in-memory workers with different capabilities each receive only their jobs; a lost heartbeat produces `worker_lost` |
+| 6.5 | `RedisQueue` + token auth + bind rules | `-m redis` tests (opt-in) pass against a local Redis; route walk confirms every route rejects a missing token when bound off-localhost |
+| 6.6 | Real deployment: systemd units on Debian, ROG worker start-up, Tailscale ACL | **Manual, on hardware:** close the ROG lid during an Ollama step → job retried after wake or dead-lettered; dashboard Tool health shows the worker going grey and back to green |
+| 6.7 | Dashboard: workers in Tool health, `queued_ms` in Money and time, dead-letter list in Controls | Component tests; scannable per `CLAUDE.md` UI principle |
+| 6.8 | Benchmark: simulated worker dropout track | `sim` gains `--dropout p`; the five policies are unchanged; report makespan vs dropout rate |
 
 Security work in every milestone follows `CLAUDE.md` 6.6: the leak test is extended so a fake key is grepped across the Redis stream contents, worker logs and the worker's result payloads, with zero hits expected.
 
@@ -159,6 +159,6 @@ Security work in every milestone follows `CLAUDE.md` 6.6: the leak test is exten
 
 1. **Worker on Windows:** run `flowforge-worker` natively on Windows 11 (Task Scheduler at log-on), or inside WSL2? Native is simpler; WSL2 matches the server's Linux.
 2. **Server also a worker?** Proposal: yes, the in-process worker handles `core` placement. Confirm that cloud LLM calls should never be routed to the ROG.
-3. **Redis vs a simpler first queue:** Redis Streams is proposed. The alternative is a SQLite-backed job table polled over the API (no Redis at all), which is slower but has one less service. Pick before 5.5.
-4. **Interrupted runs:** is "mark failed on server restart" acceptable for Phase 5, with resume deferred?
+3. **Redis vs a simpler first queue:** Redis Streams is proposed. The alternative is a SQLite-backed job table polled over the API (no Redis at all), which is slower but has one less service. Pick before 6.5.
+4. **Interrupted runs:** is "mark failed on server restart" acceptable for Phase 6, with resume deferred?
 5. **Ollama placement:** is Ollama only ever on the ROG, or also on the server (CPU-only, slow) as a fallback connector?

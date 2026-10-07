@@ -1,0 +1,893 @@
+<title>FlowForge System Map</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: four views in reading order (whole map, inside one app, swap, two apps talking). Brand colours are fixed swatches; everything else follows the theme tokens. */
+:root{
+  --bg:#EEF3F5; --surface:#FFFFFF; --fg:#0F1D26; --muted:#4A5E6A; --line:#D3DDE3; --idle:#9AAAB4;
+  --teal:#0B7A70;  --teal-bg:#DDF2EF;
+  --blue:#2457C5;  --blue-bg:#E1EAFB;
+  --amber:#8A5A00; --amber-bg:#FCEFD0;
+  --coral:#B93C2B; --coral-bg:#FBE4DF;
+  --green:#1F7A45; --green-bg:#DCF2E4;
+  --violet:#6B46C1;--violet-bg:#ECE6FA;
+  --b-razor:#3395FF; --b-stripe:#635BFF; --b-gem:#4285F4; --b-nim:#76B900; --b-claude:#D97757; --b-sirius:#0B7A70;
+  --display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --body:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0B1418; --surface:#122128; --fg:#E8F0F3; --muted:#93A8B3; --line:#25363F; --idle:#5C7280;
+    --teal:#4FD1C0;  --teal-bg:#12332F;
+    --blue:#7FA8FF;  --blue-bg:#16284A;
+    --amber:#F2B84B; --amber-bg:#3A2D0E;
+    --coral:#FF8C7A; --coral-bg:#40201B;
+    --green:#66D18F; --green-bg:#133423;
+    --violet:#B79CFF;--violet-bg:#2A2147;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0B1418; --surface:#122128; --fg:#E8F0F3; --muted:#93A8B3; --line:#25363F; --idle:#5C7280;
+  --teal:#4FD1C0;  --teal-bg:#12332F;
+  --blue:#7FA8FF;  --blue-bg:#16284A;
+  --amber:#F2B84B; --amber-bg:#3A2D0E;
+  --coral:#FF8C7A; --coral-bg:#40201B;
+  --green:#66D18F; --green-bg:#133423;
+  --violet:#B79CFF;--violet-bg:#2A2147;
+  color-scheme:dark;
+}
+body{background:var(--bg);color:var(--fg);font:400 17px/1.5 var(--body);padding-inline:clamp(16px,4vw,32px);padding-block:28px 72px}
+.wrap{max-width:960px;margin-inline:auto;display:flex;flex-direction:column;gap:60px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;line-height:1.1}
+h1{font-size:clamp(2.2rem,6.4vw,3.6rem);font-weight:800;letter-spacing:-.02em}
+h2{font-size:clamp(1.55rem,4vw,2.2rem);font-weight:800;letter-spacing:-.01em}
+h3{font-size:1.15rem;font-weight:700}
+p{margin:0}
+code,.mono{font-family:var(--mono);font-size:.82em}
+.eyebrow{font:500 .75rem/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.sec{display:flex;flex-direction:column;gap:18px}
+.lead{font-size:1.12rem;max-width:36em}
+.hero{display:flex;flex-direction:column;gap:16px}
+.hero .big{font-size:clamp(1.2rem,3.2vw,1.6rem);line-height:1.3;max-width:26em}
+.state{font-size:.88rem;color:var(--muted)}
+.demo{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:clamp(14px,3vw,24px);display:flex;flex-direction:column;gap:16px}
+.scroll{overflow-x:auto}
+figure{margin:0}
+figcaption{font-size:.92rem;color:var(--muted);margin-top:10px}
+svg{display:block;width:100%;min-width:640px;height:auto}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+button{font:600 1rem/1 var(--body);padding:13px 18px;border-radius:10px;border:0;cursor:pointer;color:var(--surface);background:var(--fg)}
+button.swap{background:var(--violet)}
+button.go{background:var(--teal)}
+button:disabled{opacity:.35;cursor:not-allowed}
+button:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.say{font:500 .9rem/1.4 var(--mono);color:var(--muted);min-height:2.6em;flex:1 1 260px}
+
+/* brand tiles (colour swatch + monogram, not a logo) */
+.brand-razor{--bc:var(--b-razor);--bt:#fff} .brand-stripe{--bc:var(--b-stripe);--bt:#fff}
+.brand-gem{--bc:var(--b-gem);--bt:#fff} .brand-nim{--bc:var(--b-nim);--bt:#0F1D26}
+.brand-claude{--bc:var(--b-claude);--bt:#1E1007} .brand-sirius{--bc:var(--b-sirius);--bt:#fff}
+.badge{fill:var(--bc)} .mono-t{fill:var(--bt);font:800 15px var(--display);text-anchor:middle}
+.hbadge{width:46px;height:46px;border-radius:11px;background:var(--bc);color:var(--bt);display:grid;place-items:center;font:800 1.1rem/1 var(--display);flex:none}
+
+/* hub svg */
+.app{cursor:pointer;outline:none}
+.app .box{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+.app:hover .box{stroke:var(--muted)}
+.app:focus-visible .box{stroke:var(--blue);stroke-width:3}
+.app.sel .box{stroke:var(--fg);stroke-width:2.8}
+.nm{fill:var(--fg);font:600 14px var(--body)}
+.meta{fill:var(--muted);font:500 11px var(--mono)}
+.dot{fill:var(--green)}
+.hub .box{fill:var(--fg)} .hub .nm{fill:var(--bg);font:700 17px var(--display)} .hub .meta{fill:var(--bg);opacity:.75}
+.link{fill:none;stroke:var(--idle);stroke-width:2;stroke-linecap:round}
+.link.sel{stroke:var(--fg);stroke-width:3}
+.lbl{fill:var(--fg);font:500 11.5px var(--mono);paint-order:stroke;stroke:var(--surface);stroke-width:5px;stroke-linejoin:round}
+
+/* drawer (view 2) */
+.crumb{font:500 .8rem/1 var(--mono);color:var(--muted)}
+.crumb b{color:var(--fg)}
+.dhead{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.dhead .t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.dhead .t b{font:800 1.5rem/1.1 var(--display)}
+.dhead .t span{color:var(--muted);font-size:.95rem}
+.pill{font:500 .72rem/1 var(--mono);letter-spacing:.05em;text-transform:uppercase;padding:7px 10px;border-radius:999px;background:var(--green-bg);color:var(--green)}
+.pill.ex{background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+.dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+.card{background:var(--bg);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.card .eyebrow{color:var(--muted)}
+.rows{display:flex;flex-direction:column;gap:8px;margin:0;padding:0;list-style:none}
+.rows li{display:flex;justify-content:space-between;gap:12px;font-size:.95rem;align-items:baseline}
+.rows li span:first-child{color:var(--muted)}
+.rows li span:last-child{text-align:right;min-width:0;overflow-wrap:anywhere}
+.rows .ok{color:var(--green);font-family:var(--mono);font-size:.85rem}
+.tasks li{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}
+.tasks li span:first-child,.tasks li span:last-child{color:inherit}
+.tasks .t-name{text-align:left}
+.tasks .tm{font:500 .8rem/1 var(--mono);color:var(--muted)}
+.tt{font:500 .68rem/1 var(--mono);letter-spacing:.05em;text-transform:uppercase;padding:5px 7px;border-radius:6px}
+.tt-http{background:var(--blue-bg);color:var(--blue)} .tt-app{background:var(--teal-bg);color:var(--teal)}
+.tt-llm{background:var(--violet-bg);color:var(--violet)} .tt-gate{background:var(--amber-bg);color:var(--amber)}
+.log{font:500 .8rem/1.5 var(--mono);color:var(--muted);display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.log li{overflow-wrap:anywhere}
+
+/* swap (view 3) */
+.slot{fill:none;stroke:var(--violet);stroke-width:2;stroke-dasharray:7 6}
+.slotlbl{fill:var(--violet);font:500 11px var(--mono);letter-spacing:.1em}
+.others{fill:var(--bg);stroke:var(--line);stroke-width:1.5}
+.tagS{opacity:0;transition:opacity .25s}
+.swapped .tagS{opacity:1}
+.tagrect{fill:var(--violet)} .tagtxt{fill:var(--surface);font:500 11px var(--mono);letter-spacing:.05em}
+.keep{fill:var(--green);font:500 11px var(--mono);letter-spacing:.05em}
+.cols3{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.tile{border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.tile .tag{font:500 .72rem/1 var(--mono);letter-spacing:.1em;text-transform:uppercase}
+.tile ul{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:6px;font-size:.97rem}
+.k-green{background:var(--green-bg)} .k-green .tag,.k-green h3{color:var(--green)}
+.k-coral{background:var(--coral-bg)} .k-coral .tag,.k-coral h3{color:var(--coral)}
+.k-violet{background:var(--violet-bg)} .k-violet .tag,.k-violet h3{color:var(--violet)}
+
+/* sequence (view 4) */
+.life{stroke:var(--line);stroke-width:1.5;stroke-dasharray:5 5}
+.head .box{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+.head.core .box{fill:var(--fg)} .head.core .nm{fill:var(--bg)} .head.core .meta{fill:var(--bg);opacity:.75}
+.arrow{fill:none;stroke:var(--muted);stroke-width:1.8;marker-end:url(#sa)}
+.arrow.ret{stroke-dasharray:6 5}
+.sah{fill:var(--muted)} .sahc{fill:var(--coral)}
+.nbox{fill:var(--teal-bg);stroke:var(--teal);stroke-width:1.4}
+.ntxt{fill:var(--fg);font:500 11.5px var(--mono)}
+.step{transition:opacity .2s}
+.seq.playing .step{opacity:.18}
+.seq.playing .step.shown{opacity:1}
+.step.lit .arrow{stroke:var(--coral);stroke-width:3;marker-end:url(#sac)}
+.step.lit .nbox{fill:var(--coral-bg);stroke:var(--coral);stroke-width:2.2}
+.step.lit .lbl{fill:var(--coral)}
+.step.ret.lit .arrow{stroke-dasharray:6 5}
+@media (prefers-reduced-motion:reduce){.step{transition:none}.tagS{transition:none}}
+.next{border-radius:16px;padding:22px;background:var(--violet-bg);display:flex;flex-direction:column;gap:8px}
+.next h2{color:var(--violet)}
+
+.step-block{display:flex;flex-direction:column;gap:10px;min-width:0}
+.types{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.tcard{position:relative;display:flex;flex-direction:column;gap:4px;background:var(--bg);border:1.5px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;min-width:0}
+.tcard input{position:absolute;opacity:0;inset:0;cursor:pointer;margin:0}
+.tcard b{font:700 1.05rem/1.2 var(--display)}
+.tcard span{font-size:.88rem;color:var(--muted)}
+.tcard.sel{border-color:var(--teal);background:var(--teal-bg)}
+.tcard.sel b{color:var(--teal)}
+.tcard:has(input:focus-visible){outline:3px solid var(--blue);outline-offset:2px}
+.builder{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:22px;align-items:start}
+@media (max-width:820px){.builder{grid-template-columns:minmax(0,1fr)}}
+.form,.pv{display:flex;flex-direction:column;gap:18px;min-width:0}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field>span{font:500 .72rem/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.field.small{flex:1 1 140px}
+input[type="text"],input[type="file"]{font:inherit;font-size:.95rem;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);width:100%;min-width:0}
+input[type="text"]:focus-visible,input[type="file"]:focus-visible{outline:3px solid var(--blue);outline-offset:1px}
+.swatches{display:flex;flex-wrap:wrap;gap:8px}
+.swatches button{width:34px;height:34px;padding:0;border-radius:50%;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--line)}
+.swatches button[aria-pressed="true"]{box-shadow:0 0 0 3px var(--fg)}
+.inline{display:flex;align-items:center;gap:8px;font-size:.9rem;color:var(--muted)}
+.inline input[type="color"]{width:40px;height:34px;padding:0;border:1px solid var(--line);border-radius:8px;background:var(--bg);cursor:pointer}
+.radios{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.95rem}
+.radios label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.logorow{display:flex;flex-wrap:wrap;gap:12px}
+.dot.off{fill:var(--idle)}
+.pill.off{background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+.hbadge{overflow:hidden}
+.hbadge img{width:100%;height:100%;object-fit:contain;padding:6px;box-sizing:border-box}
+.json{font:500 .78rem/1.5 var(--mono);background:var(--bg);border-radius:10px;padding:12px 14px;margin:0;overflow-x:auto;max-height:300px}
+.vgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.vcard{border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;font-size:.92rem}
+.vcard b{font:700 1.05rem/1.2 var(--display)}
+.v-blue{background:var(--blue-bg)} .v-blue b{color:var(--blue)}
+.v-teal{background:var(--teal-bg)} .v-teal b{color:var(--teal)}
+.v-amber{background:var(--amber-bg)} .v-amber b{color:var(--amber)}
+.v-violet{background:var(--violet-bg)} .v-violet b{color:var(--violet)}
+.v-coral{background:var(--coral-bg)} .v-coral b{color:var(--coral)}
+.v-green{background:var(--green-bg)} .v-green b{color:var(--green)}
+
+textarea{font:500 .85rem/1.5 var(--mono);padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);width:100%;box-sizing:border-box;resize:vertical;min-width:0}
+textarea:focus-visible,.spre:focus-visible{outline:3px solid var(--blue);outline-offset:1px}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.scol{border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.s-violet{background:var(--violet-bg)} .s-teal{background:var(--teal-bg)} .s-green{background:var(--green-bg)}
+.spre{font:500 .78rem/1.5 var(--mono);margin:0;white-space:pre;overflow-x:auto;background:var(--surface);border-radius:8px;padding:10px;min-height:5.5em}
+.guards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.g,.r{border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;font-size:.92rem;min-width:0}
+.g b,.r b{font:700 1.05rem/1.2 var(--display)}
+.g1{background:var(--blue-bg)} .g1 b{color:var(--blue)}
+.g2{background:var(--violet-bg)} .g2 b{color:var(--violet)}
+.g3{background:var(--violet-bg)} .g3 b{color:var(--violet)}
+.g4{background:var(--amber-bg)} .g4 b{color:var(--amber)}
+.g5{background:var(--amber-bg)} .g5 b{color:var(--amber)}
+.g6{background:var(--teal-bg)} .g6 b{color:var(--teal)}
+.g7{background:var(--green-bg)} .g7 b{color:var(--green)}
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.r{background:var(--surface);border:1px solid var(--line)}
+.limits{background:var(--coral-bg);border-radius:12px;padding:16px 18px}
+.limits b{font:700 1.05rem/1.2 var(--display);color:var(--coral)}
+.limits ul{margin:8px 0 0;padding-left:1.2em;display:flex;flex-direction:column;gap:6px}
+</style>
+
+<div class="wrap">
+
+<header class="hero">
+  <span class="eyebrow">Drawn out · six views</span>
+  <h1>FlowForge<br>System Map</h1>
+  <p class="big">Your project sits in the middle. Every app and LLM plugs into it, and FlowForge runs on every line.</p>
+</header>
+
+<!-- VIEW 1 -->
+<section class="sec">
+  <span class="eyebrow">View 1 of 6 · the whole map</span>
+  <h2>One project, five connected apps</h2>
+  <p class="lead">Example project: a baby-care shop. Click any box to look inside it in view 2.</p>
+  <div class="demo">
+    <figure>
+      <div class="scroll">
+      <svg viewBox="0 0 900 440" role="group" aria-label="Hub map. The baby-care shop project is in the centre. Razorpay for payments and Sirius for security scanning are above it. Gemini, Claude and NVIDIA NIM are below it. Each connects to the project.">
+        <path class="link" data-key="razor"  d="M260 62 C310 62,300 200,345 200"/>
+        <path class="link" data-key="sirius" d="M640 62 C590 62,600 200,555 200"/>
+        <path class="link" data-key="gem"    d="M260 378 C310 378,300 225,345 225"/>
+        <path class="link" data-key="nim"    d="M640 378 C590 378,600 225,555 225"/>
+        <path class="link" data-key="claude" d="M450 346 L450 254"/>
+        <text class="lbl" x="312" y="128">payments</text>
+        <text class="lbl" x="588" y="128" text-anchor="end">scans code</text>
+        <text class="lbl" x="312" y="306">reasoning</text>
+        <text class="lbl" x="588" y="306" text-anchor="end">fast + free</text>
+        <text class="lbl" x="462" y="304">writes code</text>
+
+        <g class="hub">
+          <rect class="box" x="345" y="170" width="210" height="84" rx="14"/>
+          <text class="nm" x="450" y="204" text-anchor="middle">Baby-care shop</text>
+          <text class="meta" x="450" y="224" text-anchor="middle">your project</text>
+          <text class="meta" x="450" y="241" text-anchor="middle">runs on FlowForge</text>
+        </g>
+
+        <g class="app brand-razor" data-key="razor" tabindex="0" role="button" aria-label="Razorpay, payments. Show inside.">
+          <rect class="box" x="40" y="30" width="220" height="64" rx="12"/>
+          <rect class="badge" x="50" y="40" width="44" height="44" rx="10"/><text class="mono-t" x="72" y="68">Rz</text>
+          <text class="nm" x="104" y="61">Razorpay</text><text class="meta" x="104" y="79">payments</text>
+          <circle class="dot" cx="246" cy="44" r="5"/>
+        </g>
+        <g class="app brand-sirius" data-key="sirius" tabindex="0" role="button" aria-label="Sirius, security scan. Show inside.">
+          <rect class="box" x="640" y="30" width="220" height="64" rx="12"/>
+          <rect class="badge" x="650" y="40" width="44" height="44" rx="10"/><text class="mono-t" x="672" y="68">Si</text>
+          <text class="nm" x="704" y="61">Sirius</text><text class="meta" x="704" y="79">security scan · your bot</text>
+          <circle class="dot" cx="846" cy="44" r="5"/>
+        </g>
+        <g class="app brand-gem" data-key="gem" tabindex="0" role="button" aria-label="Gemini, reasoning. Show inside.">
+          <rect class="box" x="40" y="346" width="220" height="64" rx="12"/>
+          <rect class="badge" x="50" y="356" width="44" height="44" rx="10"/><text class="mono-t" x="72" y="384">Ge</text>
+          <text class="nm" x="104" y="377">Gemini</text><text class="meta" x="104" y="395">LLM · reasoning</text>
+          <circle class="dot" cx="246" cy="360" r="5"/>
+        </g>
+        <g class="app brand-claude" data-key="claude" tabindex="0" role="button" aria-label="Claude, writes code. Show inside.">
+          <rect class="box" x="340" y="346" width="220" height="64" rx="12"/>
+          <rect class="badge" x="350" y="356" width="44" height="44" rx="10"/><text class="mono-t" x="372" y="384">Cl</text>
+          <text class="nm" x="404" y="377">Claude</text><text class="meta" x="404" y="395">LLM · writes code</text>
+          <circle class="dot" cx="546" cy="360" r="5"/>
+        </g>
+        <g class="app brand-nim" data-key="nim" tabindex="0" role="button" aria-label="NVIDIA NIM, fast and free LLM. Show inside.">
+          <rect class="box" x="640" y="346" width="220" height="64" rx="12"/>
+          <rect class="badge" x="650" y="356" width="44" height="44" rx="10"/><text class="mono-t" x="672" y="384">Nv</text>
+          <text class="nm" x="704" y="377">NVIDIA NIM</text><text class="meta" x="704" y="395">LLM · free tier</text>
+          <circle class="dot" cx="846" cy="360" r="5"/>
+        </g>
+      </svg>
+      </div>
+      <figcaption>Green dots mean connected. Nothing talks to anything else directly: every line goes through the project, with FlowForge handling order, keys and approvals.</figcaption>
+    </figure>
+    <p class="state">The coloured tiles use each company's brand colour (approximate) with a two-letter monogram. I can't draw the real logos, so drop the official ones from each brand kit into the tile slot when you build the real UI.</p>
+  </div>
+</section>
+
+<!-- VIEW 2 -->
+<section class="sec" id="zoom">
+  <span class="eyebrow">View 2 of 6 · zoom into one</span>
+  <h2>What you see inside a box</h2>
+  <p class="lead">This is the panel that opens when you click a box above. Pick a different one to compare.</p>
+  <div class="demo" id="drawer" aria-live="polite"></div>
+</section>
+
+<!-- VIEW 3 -->
+<section class="sec" id="swap">
+  <span class="eyebrow">View 3 of 6 · swap</span>
+  <h2>Swap one app, nothing else moves</h2>
+  <div class="demo">
+    <div class="controls">
+      <button id="swapBtn" class="swap" type="button">Swap Razorpay → Stripe</button>
+      <p class="say" id="swapSay" aria-live="polite">Payments is a slot. The app in it can change.</p>
+    </div>
+    <figure>
+      <div class="scroll">
+      <svg id="swapSvg" viewBox="0 0 900 300" role="img" aria-label="Before and after swap. The payments slot holds Razorpay or Stripe. It connects to the baby-care shop project, which connects to the four other apps. Only the app inside the slot changes.">
+        <rect class="slot" x="20" y="60" width="290" height="190" rx="16"/>
+        <text class="slotlbl" x="36" y="84">PAYMENTS SLOT</text>
+        <g class="tagS"><rect class="tagrect" x="214" y="68" width="82" height="22" rx="11"/><text class="tagtxt" x="255" y="83" text-anchor="middle">swapped</text></g>
+
+        <g id="swapNode" class="app brand-razor" style="cursor:default">
+          <rect class="box" x="40" y="112" width="250" height="84" rx="12"/>
+          <rect class="badge" x="54" y="130" width="48" height="48" rx="11"/><text class="mono-t" id="swapMono" x="78" y="160">Rz</text>
+          <text class="nm" id="swapName" x="116" y="148" style="font-size:16px">Razorpay</text>
+          <text class="meta" id="swapMeta" x="116" y="167">payments · test mode</text>
+          <circle class="dot" cx="274" cy="126" r="5"/>
+        </g>
+
+        <path class="link" d="M290 154 L380 154"/>
+        <text class="lbl" x="335" y="142" text-anchor="middle">payments</text>
+        <path class="link" d="M550 154 L640 154"/>
+        <text class="lbl" x="595" y="142" text-anchor="middle">4 apps</text>
+
+        <g class="hub">
+          <rect class="box" x="380" y="112" width="170" height="84" rx="14"/>
+          <text class="nm" x="465" y="148" text-anchor="middle">Baby-care shop</text>
+          <text class="meta" x="465" y="168" text-anchor="middle">your project</text>
+        </g>
+        <text class="keep" x="465" y="224" text-anchor="middle">unchanged</text>
+
+        <rect class="others" x="640" y="60" width="240" height="190" rx="16"/>
+        <text class="slotlbl" x="656" y="84" style="fill:var(--muted)">EVERYTHING ELSE</text>
+        <g class="brand-sirius"><rect class="badge" x="656" y="98" width="26" height="26" rx="7"/><text class="nm" x="694" y="116" style="font-size:13px">Sirius</text></g>
+        <g class="brand-gem"><rect class="badge" x="656" y="134" width="26" height="26" rx="7"/><text class="nm" x="694" y="152" style="font-size:13px">Gemini</text></g>
+        <g class="brand-claude"><rect class="badge" x="656" y="170" width="26" height="26" rx="7"/><text class="nm" x="694" y="188" style="font-size:13px">Claude</text></g>
+        <g class="brand-nim"><rect class="badge" x="656" y="206" width="26" height="26" rx="7"/><text class="nm" x="694" y="224" style="font-size:13px">NVIDIA NIM</text></g>
+        <text class="keep" x="760" y="272" text-anchor="middle">unchanged</text>
+      </svg>
+      </div>
+      <figcaption>The dashed outline is the slot. Swapping replaces what is inside it. The project and the other four apps keep running as they are.</figcaption>
+    </figure>
+    <div class="cols3">
+      <div class="tile k-green"><span class="tag">Stays the same</span><h3>Everything around it</h3>
+        <ul><li>The other four apps</li><li>Your dashboard and boards</li><li>Your order page and business rules</li><li>Run history</li></ul></div>
+      <div class="tile k-coral"><span class="tag">Changes inside the box</span><h3>The six migration tasks</h3>
+        <ul><li>SDK and env var names</li><li>Webhook event: <code>payment.captured</code> → <code>payment_intent.succeeded</code></li><li>Signature check: your own HMAC → Stripe's library</li><li>DB names: <code>razorpay_order_id</code> → <code>payment_intent_id</code></li><li>Checkout: modal → hosted Checkout or Elements (your choice in the form)</li></ul></div>
+      <div class="tile k-violet"><span class="tag">Who does what</span><h3>Four roles</h3>
+        <ul><li><b>You:</b> fill the form, approve the diff</li><li><b>Claude:</b> rewrites code, sees placeholders only</li><li><b>FlowForge:</b> holds keys, orders tasks, runs tests</li><li><b>Sirius:</b> scans the new code</li></ul></div>
+    </div>
+    <p class="state">The task list is the example from earlier. Check it against both providers' docs before a real migration.</p>
+  </div>
+</section>
+
+<!-- VIEW 4 -->
+<section class="sec">
+  <span class="eyebrow">View 4 of 6 · two apps and the project</span>
+  <h2>How they work together, inside</h2>
+  <p class="lead">Example: a payment arrives and Gemini checks the order for risk. Razorpay and Gemini never talk to each other. Everything passes through FlowForge.</p>
+  <div class="demo">
+    <div class="controls">
+      <button id="play" class="go" type="button">▶ Play</button>
+      <p class="say" id="seqSay" aria-live="polite">Nine steps. Press play to follow them.</p>
+    </div>
+    <figure>
+      <div class="scroll">
+      <svg id="seq" class="seq" viewBox="0 0 900 490" role="img" aria-label="Sequence of nine steps. Razorpay sends a payment.captured webhook to FlowForge. FlowForge verifies the signature, fetches the order from the shop, redacts personal data and checks cache and rate limit, asks Gemini for a risk check, receives risk low, updates the order in the shop, and streams the run to the dashboard.">
+        <defs>
+          <marker id="sa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><polygon class="sah" points="0,0 10,5 0,10"/></marker>
+          <marker id="sac" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><polygon class="sahc" points="0,0 10,5 0,10"/></marker>
+        </defs>
+        <line class="life" x1="100" y1="58" x2="100" y2="484"/>
+        <line class="life" x1="320" y1="58" x2="320" y2="484"/>
+        <line class="life" x1="540" y1="58" x2="540" y2="484"/>
+        <line class="life" x1="760" y1="58" x2="760" y2="484"/>
+
+        <g class="head brand-razor"><rect class="box" x="20" y="8" width="160" height="48" rx="10"/>
+          <rect class="badge" x="28" y="17" width="30" height="30" rx="8"/><text class="mono-t" x="43" y="38" style="font-size:12px">Rz</text>
+          <text class="nm" x="66" y="29" style="font-size:13px">Razorpay</text><text class="meta" x="66" y="43">payments</text></g>
+        <g class="head core"><rect class="box" x="240" y="8" width="160" height="48" rx="10"/>
+          <text class="nm" x="256" y="29" style="font-size:13px">FlowForge core</text><text class="meta" x="256" y="43">scheduler · vault</text></g>
+        <g class="head"><rect class="box" x="460" y="8" width="160" height="48" rx="10"/>
+          <text class="nm" x="476" y="29" style="font-size:13px">Your shop</text><text class="meta" x="476" y="43">the project</text></g>
+        <g class="head brand-gem"><rect class="box" x="680" y="8" width="160" height="48" rx="10"/>
+          <rect class="badge" x="688" y="17" width="30" height="30" rx="8"/><text class="mono-t" x="703" y="38" style="font-size:12px">Ge</text>
+          <text class="nm" x="726" y="29" style="font-size:13px">Gemini</text><text class="meta" x="726" y="43">LLM</text></g>
+
+        <g class="step" data-step="1"><path class="arrow" d="M100 104 L318 104"/><text class="lbl" x="210" y="96" text-anchor="middle">1 payment.captured</text></g>
+        <g class="step" data-step="2"><rect class="nbox" x="225" y="118" width="190" height="42" rx="8"/>
+          <text class="ntxt" x="320" y="135" text-anchor="middle">2 verify signature</text><text class="ntxt" x="320" y="151" text-anchor="middle" style="opacity:.75">secret comes from the vault</text></g>
+        <g class="step" data-step="3"><path class="arrow" d="M320 196 L538 196"/><text class="lbl" x="430" y="188" text-anchor="middle">3 GET order 1042</text></g>
+        <g class="step ret" data-step="4"><path class="arrow ret" d="M540 232 L322 232"/><text class="lbl" x="430" y="224" text-anchor="middle">4 order data</text></g>
+        <g class="step" data-step="5"><rect class="nbox" x="225" y="246" width="190" height="58" rx="8"/>
+          <text class="ntxt" x="320" y="263" text-anchor="middle">5 prepare the call</text>
+          <text class="ntxt" x="320" y="279" text-anchor="middle" style="opacity:.75">redact personal data</text>
+          <text class="ntxt" x="320" y="294" text-anchor="middle" style="opacity:.75">cache check, rate-limit token</text></g>
+        <g class="step" data-step="6"><path class="arrow" d="M320 338 L758 338"/><text class="lbl" x="650" y="330" text-anchor="middle">6 risk check (redacted order)</text></g>
+        <g class="step ret" data-step="7"><path class="arrow ret" d="M760 374 L322 374"/><text class="lbl" x="650" y="366" text-anchor="middle">7 risk: low</text></g>
+        <g class="step" data-step="8"><path class="arrow" d="M320 410 L538 410"/><text class="lbl" x="430" y="402" text-anchor="middle">8 mark order verified</text></g>
+        <g class="step" data-step="9"><rect class="nbox" x="225" y="424" width="190" height="44" rx="8"/>
+          <text class="ntxt" x="320" y="441" text-anchor="middle">9 stream the run</text><text class="ntxt" x="320" y="457" text-anchor="middle" style="opacity:.75">to your dashboard, live</text></g>
+      </svg>
+      </div>
+      <figcaption>Example: Razorpay's webhook points at FlowForge. Steps 2, 5 and 9 happen inside FlowForge. That is where scheduling, caching, secrets and approvals live.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- VIEW 5 -->
+<section class="sec" id="add">
+  <span class="eyebrow">View 5 of 6 · add your own</span>
+  <h2>Connect it, colour it, give it a logo</h2>
+  <p class="lead">Anything that isn't a preset goes through this screen. Four ways to connect cover every app, MCP server and model. Try it: nothing is sent or saved.</p>
+  <div class="demo">
+    <div class="step-block">
+      <span class="eyebrow">1 · How does it connect?</span>
+      <div class="types" id="types" role="radiogroup" aria-label="Connector type">
+        <label class="tcard"><input type="radio" name="ctype" value="llm"><b>LLM</b><span>OpenAI-style APIs, Anthropic, Ollama on your ROG</span></label>
+        <label class="tcard"><input type="radio" name="ctype" value="mcp" checked><b>MCP server</b><span>Any server. Its tools appear on their own.</span></label>
+        <label class="tcard"><input type="radio" name="ctype" value="http"><b>HTTP API</b><span>Razorpay, Stripe, any REST API</span></label>
+        <label class="tcard"><input type="radio" name="ctype" value="local"><b>Local command</b><span>Scripts, Sirius, models on your machine</span></label>
+      </div>
+    </div>
+
+    <div class="builder">
+      <div class="form">
+        <div class="step-block">
+          <span class="eyebrow">2 · Name it</span>
+          <label class="field"><span>Name</span><input id="fName" type="text" maxlength="28" value="Image studio" autocomplete="off"></label>
+          <label class="field"><span>What it does</span><input id="fRole" type="text" maxlength="40" value="makes product photos" autocomplete="off"></label>
+        </div>
+        <div class="step-block">
+          <span class="eyebrow">3 · Connect it</span>
+          <div id="connFields" class="step-block"></div>
+          <div class="controls">
+            <button id="vaultBtn" type="button" class="swap">Save key to the vault (simulated)</button>
+            <button id="testBtn" type="button" class="go">Test connection</button>
+          </div>
+          <p class="say" id="testMsg" aria-live="polite">Not tested yet.</p>
+        </div>
+        <div class="step-block">
+          <span class="eyebrow">4 · Style it</span>
+          <div class="field"><span>Colour</span>
+            <div class="swatches" id="swatches"></div>
+            <label class="inline"><input id="colorIn" type="color" value="#E4572E" aria-label="Custom colour"> <code id="colorHex">#E4572E</code> custom</label>
+          </div>
+          <div class="field"><span>Logo</span>
+            <div class="radios" role="radiogroup" aria-label="Logo style">
+              <label><input type="radio" name="logo" value="letters" checked> Letters</label>
+              <label><input type="radio" name="logo" value="upload"> Upload image</label>
+              <label><input type="radio" name="logo" value="none"> Colour only</label>
+            </div>
+            <div class="logorow">
+              <label class="field small"><span>Letters (max 2)</span><input id="fLetters" type="text" maxlength="2" placeholder="auto" autocomplete="off"></label>
+              <label class="field small"><span>Image, under 1 MB</span><input id="fFile" type="file" accept="image/*"></label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pv">
+        <span class="eyebrow">Preview · on the map</span>
+        <div class="scroll">
+        <svg viewBox="0 0 560 190" role="img" aria-label="Preview of your app connected to the baby-care shop project on the map" style="min-width:420px">
+          <defs><clipPath id="pvClip"><rect x="20" y="73" width="44" height="44" rx="10"/></clipPath></defs>
+          <path class="link" d="M250 95 L330 95"/>
+          <g class="hub">
+            <rect class="box" x="330" y="45" width="200" height="100" rx="14"/>
+            <text class="nm" x="430" y="90" text-anchor="middle">Baby-care shop</text>
+            <text class="meta" x="430" y="110" text-anchor="middle">your project</text>
+          </g>
+          <g class="app">
+            <rect class="box" x="10" y="62" width="240" height="66" rx="12"/>
+            <rect id="pvBadge" x="20" y="73" width="44" height="44" rx="10" fill="#E4572E"/>
+            <text id="pvMono" class="mono-t" x="42" y="101" style="fill:#fff">Is</text>
+            <image id="pvImg" x="24" y="77" width="36" height="36" preserveAspectRatio="xMidYMid meet" clip-path="url(#pvClip)" style="display:none"/>
+            <text id="pvName" class="nm" x="76" y="96">Image studio</text>
+            <text id="pvMeta" class="meta" x="76" y="114">makes product photos</text>
+            <circle id="pvDot" class="dot off" cx="234" cy="76" r="5"/>
+          </g>
+        </svg>
+        </div>
+        <span class="eyebrow">Preview · in the side panel</span>
+        <div class="dhead" id="pvHead">
+          <div class="hbadge" id="pvHB">Is</div>
+          <div class="t"><b id="pvHName">Image studio</b><span id="pvHRole">makes product photos</span></div>
+          <span class="pill ex" id="pvType">MCP server</span>
+          <span class="pill ex" id="pvStatus">Not connected</span>
+        </div>
+        <span class="eyebrow">What gets saved (no secrets)</span>
+        <pre class="json" id="json" tabindex="0"></pre>
+      </div>
+    </div>
+  </div>
+
+  <h3>What a step's result can look like</h3>
+  <p class="state">The zoom panel and run log pick a viewer to match the output. Image and video tools such as Higgsfield return media, so they need more than text.</p>
+  <div class="vgrid">
+    <div class="vcard v-blue"><b>Text</b><span>LLM answers, summaries, logs</span></div>
+    <div class="vcard v-teal"><b>JSON as a table</b><span>API responses, orders, issues</span></div>
+    <div class="vcard v-amber"><b>Chart</b><span>Stock data, costs over time</span></div>
+    <div class="vcard v-violet"><b>Image</b><span>Product photos, screenshots</span></div>
+    <div class="vcard v-coral"><b>Video and audio</b><span>Clips from media tools</span></div>
+    <div class="vcard v-green"><b>File or diff</b><span>Code changes, reports</span></div>
+  </div>
+  <p class="state">Media tools usually cost credits, so the "Money and time" panel counts credits next to tokens.</p>
+</section>
+
+<!-- VIEW 6 -->
+<section class="sec" id="security">
+  <span class="eyebrow">View 6 of 6 · security and privacy</span>
+  <h2>Keys never reach the LLM</h2>
+  <p class="lead">The AST finds every key, a vault holds the real value, and the LLM only ever sees a placeholder. Try it on fake keys below.</p>
+
+  <div class="demo">
+    <span class="eyebrow">Live demo · fake keys only, nothing leaves this page</span>
+    <label class="field"><span>Your code (real keys inside)</span>
+      <textarea id="secIn" rows="6" spellcheck="false">const rz = new Razorpay({ key_id: "rzp_test_FAKE1234567" });
+const stripe = new Stripe("sk_test_FAKEFAKE12345678");
+const gem = "AIzaFAKEFAKEFAKEFAKEFAKE1234";</textarea></label>
+    <div class="controls">
+      <button id="secRedact" type="button" class="swap">1 · Redact</button>
+      <button id="secRestore" type="button" class="go" disabled>2 · Restore after the LLM edits</button>
+      <button id="secReset" type="button">Reset</button>
+    </div>
+    <div class="sgrid">
+      <div class="scol s-violet"><span class="eyebrow">LLM sees</span><pre id="secLLM" class="spre" tabindex="0">Press Redact.</pre></div>
+      <div class="scol s-teal"><span class="eyebrow">Vault (stays home)</span><pre id="secVault" class="spre" tabindex="0">empty</pre></div>
+      <div class="scol s-green"><span class="eyebrow">After restore</span><pre id="secOut" class="spre" tabindex="0">waiting</pre></div>
+    </div>
+    <p class="say" id="secMsg" aria-live="polite">A regex finds key-shaped strings. The AST then confirms where each one sits in the code, even inside a function or config object.</p>
+  </div>
+
+  <h3>The guards, in the order they run</h3>
+  <div class="guards">
+    <div class="g g1"><b>1 · Find</b><span>AST and regex locate every key-shaped value in the code.</span></div>
+    <div class="g g2"><b>2 · Redact</b><span>Each becomes <code>&lt;REDACTED_STRIPE_KEY_1&gt;</code>. The real value goes to the vault.</span></div>
+    <div class="g g3"><b>3 · LLM edits</b><span>It sees names and placeholders only, never a value.</span></div>
+    <div class="g g4"><b>4 · Verify</b><span>Every placeholder must come back exactly once. A missing or extra one stops the run.</span></div>
+    <div class="g g5"><b>5 · Scan</b><span>The output is scanned for key-shaped strings, so an invented key is caught.</span></div>
+    <div class="g g6"><b>6 · Restore</b><span>Default is <code>process.env.STRIPE_SECRET_KEY</code> with the value in <code>.env</code>. Literal only for local runs.</span></div>
+    <div class="g g7"><b>7 · Approve</b><span>You review the diff and tests on a branch. Nothing lands on main by itself.</span></div>
+  </div>
+
+  <h3>Privacy rules for the whole app</h3>
+  <div class="rules">
+    <div class="r"><b>Placeholders everywhere</b><span>Logs, run history and the dashboard never show a real value. Keys display as "configured".</span></div>
+    <div class="r"><b>Vault, not git</b><span>The vault is encrypted on disk. <code>.env</code> is git-ignored.</span></div>
+    <div class="r"><b>Local first</b><span>Data lives in SQLite on your machine. No cloud account is needed to start.</span></div>
+    <div class="r"><b>One door</b><span>Every app talks through FlowForge core, so keys, cache and approvals are enforced in one place.</span></div>
+    <div class="r"><b>Least access</b><span>Each connector gets only its own key. Risky actions, like payments or deploys, wait for your approval.</span></div>
+    <div class="r"><b>Safe cache</b><span>Only deterministic calls are cached, and cached text is stored redacted.</span></div>
+  </div>
+
+  <div class="limits">
+    <b>Honest limits</b>
+    <ul>
+      <li>Redaction hides <em>keys</em>. The rest of the code still goes to the LLM you picked.</li>
+      <li>Private code or customer data in the code? Use a local model like Ollama on your ROG, so nothing leaves your network.</li>
+      <li>Regex and AST catch known key shapes. A key with an unusual format needs a custom pattern, added in the connector form.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="next">
+  <span class="eyebrow">If this matches your picture</span>
+  <h2>Next: turn it into the dashboard spec</h2>
+  <p>View 1 becomes the home screen, view 2 the side panel, view 3 the swap flow, view 4 the run log, view 5 the "Add app" screen, and view 6 the Security tab.</p>
+</section>
+
+</div>
+
+<script>
+(function(){
+  var APPS = {
+    razor:{name:'Razorpay',role:'Payments',mono:'Rz',brand:'brand-razor',status:'Connected · test mode',
+      conn:[['Account','Baby-care shop (test)'],['Mode','Test'],['Key id','configured ••••••','ok'],['Webhook secret','configured ••••••','ok'],['Last test call','OK, 2 min ago','ok']],
+      form:[['Currency','INR'],['Methods','UPI, cards, wallets'],['Webhook URL','/hooks/razorpay'],['Checkout','Standard modal']],
+      tasks:[['http','Create order','0.8s'],['app','Verify signature','0.1s'],['http','Handle payment.captured','0.4s'],['gate','Refund, needs your approval','human']],
+      log:['12:04  payment.captured  order_••••  ₹1,299','12:04  signature verified','11:58  test call OK']},
+    sirius:{name:'Sirius',role:'Security scan · your own bot',mono:'Si',brand:'brand-sirius',status:'Connected · local',
+      conn:[['Runs on','Your machine'],['Command','sirius scan'],['Access','Read-only repo'],['Key','none needed','ok']],
+      form:[['Scan on','Every pull request'],['Block merge at','High severity'],['Paths','/src, /payments']],
+      tasks:[['app','Scan code','6s'],['app','Find key-shaped strings','1s'],['app','Report issues','0.5s'],['gate','Open fix PR, needs your approval','human']],
+      log:['09:12  scanned 214 files','09:12  0 key-shaped strings found','09:13  1 medium: webhook route has no auth check']},
+    gem:{name:'Gemini',role:'LLM · reasoning',mono:'Ge',brand:'brand-gem',status:'Connected',
+      conn:[['Provider','Google AI'],['Model','your choice'],['API key','configured ••••••','ok'],['Data sent','Redacted only']],
+      form:[['Temperature','0 (results can be cached)'],['Max tokens','1,000'],['Fallback','NVIDIA NIM']],
+      tasks:[['llm','Classify order risk','2s'],['llm','Summarise failed runs','3s'],['llm','Explain a diff','4s']],
+      log:['12:04  risk check · 412 tokens · cache miss','12:06  same order · cache hit · 0 tokens','12:09  rate limit ok']},
+    claude:{name:'Claude',role:'LLM · writes code',mono:'Cl',brand:'brand-claude',status:'Connected',
+      conn:[['Provider','Anthropic'],['API key','configured ••••••','ok'],['Data sent','Placeholders only'],['Approval','Required before merge']],
+      form:[['Branch prefix','flowforge/'],['Test command','pytest'],['Merge','Never automatic']],
+      tasks:[['llm','Rewrite files','5s'],['llm','Fix failing tests','4s'],['llm','Write PR description','2s'],['gate','You review the diff','human']],
+      log:['14:20  placeholders returned intact: 3 of 3','14:21  branch flowforge/stripe-swap created','14:23  tests: 41 passed']},
+    nim:{name:'NVIDIA NIM',role:'LLM · free tier',mono:'Nv',brand:'brand-nim',status:'Connected',
+      conn:[['Provider','NVIDIA NIM'],['Model','your choice'],['API key','configured ••••••','ok'],['Rate limit','40 requests/min']],
+      form:[['Requests per minute','40'],['Retries','2'],['Fallback','Gemini']],
+      tasks:[['llm','Draft short text','2s'],['llm','Classify','1s']],
+      log:['10:02  rate limit: 31 of 40 left','10:03  429 received, waited 1.8s, retry OK','10:05  cache hit · 0 calls']}
+  };
+  var TT = {http:'tt-http',app:'tt-app',llm:'tt-llm',gate:'tt-gate'};
+
+  function el(tag, cls, text){ var e = document.createElement(tag); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; }
+  function card(title){ var c = el('div','card'); c.appendChild(el('span','eyebrow',title)); return c; }
+  function pairs(list){
+    var ul = el('ul','rows');
+    list.forEach(function(r){
+      var li = el('li'); li.appendChild(el('span',null,r[0])); li.appendChild(el('span', r[2] ? 'ok' : null, r[1])); ul.appendChild(li);
+    });
+    return ul;
+  }
+
+  var drawer = document.getElementById('drawer');
+  function render(key){
+    var a = APPS[key];
+    drawer.textContent = '';
+    var crumb = el('div','crumb'); crumb.appendChild(document.createTextNode('Baby-care shop  ›  ')); crumb.appendChild(el('b',null,a.name));
+    drawer.appendChild(crumb);
+
+    var head = el('div','dhead ' + a.brand);
+    head.appendChild(el('div','hbadge',a.mono));
+    var t = el('div','t'); t.appendChild(el('b',null,a.name)); t.appendChild(el('span',null,a.role)); head.appendChild(t);
+    head.appendChild(el('span','pill',a.status)); head.appendChild(el('span','pill ex','example data'));
+    drawer.appendChild(head);
+
+    var grid = el('div','dgrid');
+    var c1 = card('Connection'); c1.appendChild(pairs(a.conn)); grid.appendChild(c1);
+    var c2 = card('The form you filled in'); c2.appendChild(pairs(a.form)); grid.appendChild(c2);
+    var c3 = card('Tasks inside this box');
+    var ul = el('ul','rows tasks');
+    a.tasks.forEach(function(r){
+      var li = el('li'); li.appendChild(el('span','tt ' + TT[r[0]], r[0])); li.appendChild(el('span','t-name',r[1])); li.appendChild(el('span','tm',r[2])); ul.appendChild(li);
+    });
+    c3.appendChild(ul); grid.appendChild(c3);
+    var c4 = card('Recent activity'); var lg = el('ul','log'); a.log.forEach(function(l){ lg.appendChild(el('li',null,l)); }); c4.appendChild(lg); grid.appendChild(c4);
+    drawer.appendChild(grid);
+    drawer.appendChild(el('p','state','Keys show as "configured" only. The real values live in the vault.'));
+  }
+
+  var apps = document.querySelectorAll('.app[data-key]');
+  var links = document.querySelectorAll('.link[data-key]');
+  function select(key, scroll){
+    apps.forEach(function(g){ g.classList.toggle('sel', g.getAttribute('data-key') === key); });
+    links.forEach(function(p){ p.classList.toggle('sel', p.getAttribute('data-key') === key); });
+    render(key);
+    if (scroll) document.getElementById('zoom').scrollIntoView({behavior:'smooth', block:'start'});
+  }
+  apps.forEach(function(g){
+    g.addEventListener('click', function(){ select(g.getAttribute('data-key'), true); });
+    g.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); select(g.getAttribute('data-key'), true); } });
+  });
+  select('razor', false);
+
+  /* swap */
+  var node = document.getElementById('swapNode'), nm = document.getElementById('swapName'),
+      mono = document.getElementById('swapMono'), meta = document.getElementById('swapMeta'),
+      svg = document.getElementById('swapSvg'), btn = document.getElementById('swapBtn'), say = document.getElementById('swapSay');
+  var swapped = false;
+  btn.addEventListener('click', function(){
+    swapped = !swapped;
+    node.classList.toggle('brand-razor', !swapped); node.classList.toggle('brand-stripe', swapped);
+    svg.classList.toggle('swapped', swapped);
+    nm.textContent = swapped ? 'Stripe' : 'Razorpay';
+    mono.textContent = swapped ? 'St' : 'Rz';
+    meta.textContent = swapped ? 'payments · test mode' : 'payments · test mode';
+    btn.textContent = swapped ? 'Swap back to Razorpay' : 'Swap Razorpay → Stripe';
+    say.textContent = swapped
+      ? 'Only the slot changed. The shop and the other four apps are untouched.'
+      : 'Payments is a slot. The app in it can change.';
+  });
+
+  /* sequence */
+  var seq = document.getElementById('seq'), play = document.getElementById('play'), seqSay = document.getElementById('seqSay');
+  var steps = Array.prototype.slice.call(seq.querySelectorAll('.step')).sort(function(a,b){ return a.getAttribute('data-step') - b.getAttribute('data-step'); });
+  var TEXT = [
+    'Razorpay tells FlowForge that a payment was captured.',
+    'FlowForge checks the signature. The webhook secret comes from the vault, not from code.',
+    'FlowForge asks your shop for the order.',
+    'Your shop sends the order back.',
+    'Before calling the LLM: personal data is redacted, the cache is checked, a rate-limit token is taken.',
+    'Gemini gets only the redacted order. No keys, no personal data.',
+    'Gemini answers: risk is low.',
+    'FlowForge marks the order as verified in your shop.',
+    'The whole run appears live on your dashboard.'
+  ];
+  var timers = [];
+  play.addEventListener('click', function(){
+    timers.forEach(clearTimeout); timers = [];
+    play.disabled = true;
+    seq.classList.add('playing');
+    steps.forEach(function(s){ s.classList.remove('shown','lit'); });
+    steps.forEach(function(s, i){
+      timers.push(setTimeout(function(){
+        if (i > 0) steps[i-1].classList.remove('lit');
+        s.classList.add('shown','lit');
+        seqSay.textContent = (i+1) + ' of 9. ' + TEXT[i];
+      }, i * 1500));
+    });
+    timers.push(setTimeout(function(){
+      steps.forEach(function(s){ s.classList.remove('shown','lit'); });
+      seq.classList.remove('playing');
+      seqSay.textContent = 'Done. Nine steps, and no key or personal data reached the LLM.';
+      play.disabled = false; play.textContent = '▶ Replay';
+    }, steps.length * 1500 + 600));
+  });
+})();
+
+(function(){
+  var TYPES = {
+    llm:  {label:'LLM',           fields:[['base','Base URL','https://api.example.com/v1'],['model','Model','model-name']], key:'API_KEY'},
+    mcp:  {label:'MCP server',    fields:[['command','Command','npx'],['args','Arguments','my-image-mcp']], key:'ENV_KEY'},
+    http: {label:'HTTP API',      fields:[['base','Base URL','https://api.example.com'],['auth','Auth header','Authorization']], key:'API_KEY'},
+    local:{label:'Local command', fields:[['command','Command','./scan.sh'],['cwd','Run in folder','/home/you/project']], key:null}
+  };
+  var SW = ['#E4572E','#F2A900','#2E9E5B','#0B7A70','#2F6FD6','#635BFF','#C2398D','#3A4756'];
+  var st = {type:'mcp', color:'#E4572E', logo:'letters', file:null, fileName:'', vals:{}, vault:false, tested:false};
+  Object.keys(TYPES).forEach(function(k){ st.vals[k] = {}; TYPES[k].fields.forEach(function(f){ st.vals[k][f[0]] = f[2]; }); });
+
+  function $(id){ return document.getElementById(id); }
+  var fName=$('fName'), fRole=$('fRole'), fLetters=$('fLetters'), fFile=$('fFile'), colorIn=$('colorIn'), colorHex=$('colorHex');
+  var connFields=$('connFields'), vaultBtn=$('vaultBtn'), testBtn=$('testBtn'), testMsg=$('testMsg'), jsonEl=$('json');
+  var pvBadge=$('pvBadge'), pvMono=$('pvMono'), pvImg=$('pvImg'), pvName=$('pvName'), pvMeta=$('pvMeta'), pvDot=$('pvDot');
+  var pvHB=$('pvHB'), pvHName=$('pvHName'), pvHRole=$('pvHRole'), pvType=$('pvType'), pvStatus=$('pvStatus');
+
+  function ink(hex){
+    var n = parseInt(hex.slice(1), 16), r = (n>>16)&255, g = (n>>8)&255, b = n&255;
+    return ((0.299*r + 0.587*g + 0.114*b)/255) > 0.6 ? '#0F1D26' : '#FFFFFF';
+  }
+  function slug(t){ return (t.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')) || 'my-app'; }
+  function autoLetters(name){
+    var w = name.trim().split(/\s+/).filter(Boolean);
+    if (!w.length) return '?';
+    return (w.length > 1 ? w[0][0] + w[1][0] : w[0].slice(0,2)).toUpperCase();
+  }
+  function letters(){ var l = fLetters.value.trim(); return l ? l.slice(0,2) : autoLetters(fName.value); }
+
+  function renderFields(){
+    connFields.textContent = '';
+    TYPES[st.type].fields.forEach(function(f){
+      var lab = document.createElement('label'); lab.className = 'field';
+      var sp = document.createElement('span'); sp.textContent = f[1];
+      var inp = document.createElement('input'); inp.type = 'text'; inp.value = st.vals[st.type][f[0]]; inp.autocomplete = 'off'; inp.setAttribute('aria-label', f[1]);
+      inp.addEventListener('input', function(){ st.vals[st.type][f[0]] = inp.value; st.tested = false; update(); });
+      lab.appendChild(sp); lab.appendChild(inp); connFields.appendChild(lab);
+    });
+    vaultBtn.hidden = !TYPES[st.type].key;
+  }
+
+  function update(){
+    var t = TYPES[st.type], id = slug(fName.value), ik = ink(st.color), lt = letters();
+    // map preview
+    pvBadge.setAttribute('fill', st.color);
+    pvName.textContent = fName.value || 'Unnamed app';
+    pvMeta.textContent = fRole.value || 'what it does';
+    pvDot.classList.toggle('off', !st.tested);
+    var showImg = st.logo === 'upload' && st.file;
+    pvImg.style.display = showImg ? '' : 'none';
+    if (showImg) pvImg.setAttribute('href', st.file);
+    pvMono.textContent = st.logo === 'none' || showImg ? '' : lt;
+    pvMono.style.fill = ik;
+    // panel preview
+    pvHB.style.background = st.color; pvHB.style.color = ik; pvHB.textContent = '';
+    if (showImg){ var im = document.createElement('img'); im.src = st.file; im.alt = ''; pvHB.appendChild(im); }
+    else if (st.logo !== 'none'){ pvHB.textContent = lt; }
+    pvHName.textContent = fName.value || 'Unnamed app';
+    pvHRole.textContent = fRole.value || 'what it does';
+    pvType.textContent = t.label;
+    pvStatus.textContent = st.tested ? 'Connected (simulated)' : 'Not connected';
+    pvStatus.className = 'pill ' + (st.tested ? '' : 'off');
+    // vault button
+    vaultBtn.textContent = st.vault ? 'Key in the vault: configured ••••••' : 'Save key to the vault (simulated)';
+    vaultBtn.disabled = st.vault;
+    // json
+    var conn = {}; t.fields.forEach(function(f){ conn[f[0]] = st.vals[st.type][f[0]]; });
+    var obj = {
+      id: id, type: st.type, name: fName.value, role: fRole.value,
+      style: {color: st.color, logo: st.logo === 'upload' ? {type:'upload', file: st.fileName || null} : st.logo === 'letters' ? {type:'letters', text: lt} : {type:'none'}},
+      connection: conn
+    };
+    if (t.key) obj.secret_ref = 'vault:' + id.toUpperCase().replace(/-/g,'_') + '_' + t.key;
+    jsonEl.textContent = JSON.stringify(obj, null, 2);
+  }
+
+  // type cards
+  var cards = document.querySelectorAll('#types .tcard');
+  function syncCards(){ cards.forEach(function(c){ c.classList.toggle('sel', c.querySelector('input').checked); }); }
+  cards.forEach(function(c){
+    c.querySelector('input').addEventListener('change', function(e){
+      st.type = e.target.value; st.tested = false; st.vault = false;
+      testMsg.textContent = 'Not tested yet.'; syncCards(); renderFields(); update();
+    });
+  });
+
+  // swatches
+  var swWrap = $('swatches'), swBtns = [];
+  SW.forEach(function(c){
+    var b = document.createElement('button'); b.type = 'button'; b.style.background = c; b.setAttribute('aria-label', 'Colour ' + c);
+    b.addEventListener('click', function(){ setColor(c); });
+    swWrap.appendChild(b); swBtns.push([b, c]);
+  });
+  function setColor(c){
+    st.color = c; colorIn.value = c; colorHex.textContent = c.toUpperCase();
+    swBtns.forEach(function(p){ p[0].setAttribute('aria-pressed', p[1].toLowerCase() === c.toLowerCase() ? 'true' : 'false'); });
+    update();
+  }
+  colorIn.addEventListener('input', function(){ setColor(colorIn.value); });
+
+  // logo
+  document.querySelectorAll('input[name="logo"]').forEach(function(r){
+    r.addEventListener('change', function(e){ st.logo = e.target.value; update(); });
+  });
+  fLetters.addEventListener('input', function(){ if (st.logo !== 'letters'){ document.querySelector('input[name="logo"][value="letters"]').checked = true; st.logo = 'letters'; } update(); });
+  fFile.addEventListener('change', function(){
+    var f = fFile.files && fFile.files[0]; if (!f) return;
+    if (!/^image\//.test(f.type)){ testMsg.textContent = 'That file is not an image.'; return; }
+    if (f.size > 1048576){ testMsg.textContent = 'Image is over 1 MB. Pick a smaller one.'; return; }
+    var rd = new FileReader();
+    rd.onload = function(){ st.file = rd.result; st.fileName = f.name; st.logo = 'upload'; document.querySelector('input[name="logo"][value="upload"]').checked = true; update(); };
+    rd.readAsDataURL(f);
+  });
+
+  fName.addEventListener('input', update);
+  fRole.addEventListener('input', update);
+
+  // vault + test (both simulated)
+  vaultBtn.addEventListener('click', function(){ st.vault = true; testMsg.textContent = 'Key saved to the vault. The screen only ever says "configured".'; update(); });
+  testBtn.addEventListener('click', function(){
+    var t = TYPES[st.type], missing = t.fields.filter(function(f){ return !st.vals[st.type][f[0]].trim(); }).map(function(f){ return f[1]; });
+    if (!fName.value.trim()) missing.unshift('Name');
+    if (missing.length){ st.tested = false; testMsg.textContent = 'Fill in: ' + missing.join(', ') + '.'; }
+    else if (t.key && !st.vault){ st.tested = false; testMsg.textContent = 'Save the key to the vault first.'; }
+    else { st.tested = true; testMsg.textContent = 'Connected (simulated). A real test makes one harmless call.'; }
+    update();
+  });
+
+  syncCards(); renderFields(); setColor(st.color);
+})();
+
+(function(){
+  var PATS = [
+    ['STRIPE',   /sk_(?:live|test)_[A-Za-z0-9]{8,}/g],
+    ['RAZORPAY', /rzp_(?:live|test)_[A-Za-z0-9]{6,}/g],
+    ['GEMINI',   /AIza[0-9A-Za-z_-]{20,}/g],
+    ['NIM',      /nvapi-[A-Za-z0-9_-]{16,}/g],
+    ['CLAUDE',   /sk-ant-[A-Za-z0-9_-]{16,}/g]
+  ];
+  var DEF = document.getElementById('secIn').value;
+  var inp = document.getElementById('secIn'), llm = document.getElementById('secLLM'), vault = document.getElementById('secVault'),
+      out = document.getElementById('secOut'), msg = document.getElementById('secMsg'),
+      bR = document.getElementById('secRedact'), bS = document.getElementById('secRestore'), bX = document.getElementById('secReset');
+  var map = null, redacted = '';
+  function mask(v){ return v.slice(0, 4) + '••••••'; }
+  function reset(){
+    map = null; redacted = ''; llm.textContent = 'Press Redact.'; vault.textContent = 'empty'; out.textContent = 'waiting';
+    bS.disabled = true; bR.disabled = false;
+    msg.textContent = 'A regex finds key-shaped strings. The AST then confirms where each one sits in the code, even inside a function or config object.';
+  }
+  bR.addEventListener('click', function(){
+    var text = inp.value, counts = {}, m = {}, seen = {};
+    PATS.forEach(function(p){
+      text = text.replace(p[1], function(v){
+        if (seen[v]) return seen[v];
+        counts[p[0]] = (counts[p[0]] || 0) + 1;
+        var ph = '<REDACTED_' + p[0] + '_KEY_' + counts[p[0]] + '>';
+        m[ph] = v; seen[v] = ph; return ph;
+      });
+    });
+    map = m; redacted = text; llm.textContent = text;
+    var keys = Object.keys(m);
+    vault.textContent = keys.length ? keys.map(function(k){ return k + ' -> ' + mask(m[k]); }).join('\n') : 'no keys found';
+    out.textContent = 'waiting';
+    bS.disabled = !keys.length;
+    msg.textContent = keys.length ? 'Found ' + keys.length + ' key(s). The LLM gets the middle-left box only. The vault shows just the first 4 characters here; the real UI shows "configured".' : 'No key-shaped strings found, so nothing to redact.';
+  });
+  bS.addEventListener('click', function(){
+    if (!map) return;
+    var ENV = {STRIPE:'STRIPE_SECRET_KEY', RAZORPAY:'RAZORPAY_KEY_ID', GEMINI:'GEMINI_API_KEY', NIM:'NIM_API_KEY', CLAUDE:'ANTHROPIC_API_KEY'};
+    var res = redacted, ok = true, n = 0, keys = Object.keys(map);
+    keys.forEach(function(k){
+      var parts = res.split(k);
+      if (parts.length !== 2) ok = false;
+      else n++;
+      var kind = k.replace('<REDACTED_', '').replace(/_KEY_\d+>/, '');
+      res = parts.join('process.env.' + (ENV[kind] || kind + '_KEY') + (keys.filter(function(x){ return x.indexOf('<REDACTED_' + kind) === 0; }).length > 1 ? '_' + k.match(/_(\d+)>/)[1] : ''));
+    });
+    out.textContent = res;
+    msg.textContent = ok ? 'Verified: ' + n + ' of ' + keys.length + ' placeholders came back exactly once. Real values go to .env, not into the code.' : 'Stopped: a placeholder was missing or repeated.';
+    bS.disabled = true;
+  });
+  bX.addEventListener('click', function(){ inp.value = DEF; reset(); });
+  inp.addEventListener('input', reset);
+})();
+</script>

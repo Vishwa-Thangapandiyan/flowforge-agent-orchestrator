@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Run history</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;color:#0F1D26;background:#EEF3F5}
+a{color:#2457C5}a:hover{color:#0B7A70}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="display:flex;flex-wrap:wrap;min-height:900px;background:#EEF3F5">
+<nav style="flex:1 1 220px;box-sizing:border-box;padding:24px 16px;background:#0F1D26;display:flex;flex-direction:column;gap:6px;align-self:stretch">
+<div style="font-family:'Bricolage Grotesque','Segoe UI',sans-serif;font-size:24px;font-weight:700;color:#fff;padding:0 12px 18px">FlowForge</div>
+<a href="Main.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Overview</a>
+<a href="Connector.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Connectors</a>
+<a href="PlanReview.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Plan review</a>
+<a href="Run.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Live run</a>
+<a href="Approvals.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px"><span>Approvals</span><span style="background:#F2B84B;color:#3A2D0E;border-radius:10px;padding:1px 8px;font-size:12px;font-weight:600">2</span></a>
+<a href="History.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;background:#1D3340;color:#fff;font-weight:600;text-decoration:none;font-size:15px">Run history</a>
+<a href="Security.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Security</a>
+<a href="AddConnector.dc.html" style="margin-top:14px;padding:11px 12px;border-radius:8px;border:1px dashed #4A5E6A;color:#E8F0F3;text-decoration:none;font-size:15px;text-align:center">+ Add app</a>
+</nav>
+
+<main style="flex:999 1 560px;min-width:0;box-sizing:border-box;padding:32px;display:flex;flex-direction:column;gap:24px">
+<header style="display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:flex-end">
+<div style="display:flex;flex-direction:column;gap:6px">
+<span style="font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#4A5E6A">Baby-care shop</span>
+<h1 style="margin:0;font-family:'Bricolage Grotesque','Segoe UI',sans-serif;font-size:36px;line-height:1.1">Run history</h1>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:6px">
+<span style="padding:8px 14px;border-radius:999px;background:#DDF2EF;color:#0B7A70;font-weight:600;font-size:14px">All</span>
+<span style="padding:8px 14px;border-radius:999px;background:#fff;border:1px solid #D3DDE3;color:#4A5E6A;font-size:14px">Succeeded</span>
+<span style="padding:8px 14px;border-radius:999px;background:#fff;border:1px solid #D3DDE3;color:#4A5E6A;font-size:14px">Failed</span>
+<span style="padding:8px 14px;border-radius:999px;background:#fff;border:1px solid #D3DDE3;color:#4A5E6A;font-size:14px">Waiting for you</span>
+</div>
+</header>
+
+<section style="background:#fff;border:1px solid #D3DDE3;border-radius:16px;padding:8px 20px 20px;overflow-x:auto">
+<table style="width:100%;border-collapse:collapse;font-size:15px;min-width:760px">
+<tr style="text-align:left;color:#4A5E6A;font-size:13px">
+<th style="padding:14px 8px 10px;border-bottom:1px solid #D3DDE3;font-weight:600">Run</th>
+<th style="padding:14px 8px 10px;border-bottom:1px solid #D3DDE3;font-weight:600">Plan</th>
+<th style="padding:14px 8px 10px;border-bottom:1px solid #D3DDE3;font-weight:600">Status</th>
+<th style="padding:14px 8px 10px;border-bottom:1px solid #D3DDE3;font-weight:600">Time</th>
+<th style="padding:14px 8px 10px;border-bottom:1px solid #D3DDE3;font-weight:600">Skipped by cache</th>
+<th style="padding:14px 8px 10px;border-bottom:1px solid #D3DDE3;font-weight:600">Tokens</th>
+</tr>
+<tr>
+<td style="padding:12px 8px;border-bottom:1px solid #EEF3F5"><a href="Run.dc.html" style="font-family:'IBM Plex Mono',monospace;font-size:14px">a41c9e</a><div style="font-size:13px;color:#4A5E6A">today 14:20</div></td>
+<td style="padding:12px 8px;border-bottom:1px solid #EEF3F5">Nightly finance check</td>
+<td style="padding:12px 8px;border-bottom:1px solid #EEF3F5"><span style="background:#E1EAFB;color:#2457C5;border-radius:999px;padding:4px 10px;font-size:13px;font-weight:600">running</span></td>
+<td style="padding:12px 8px;border-bottom:1px solid #EEF3F5">7.0 s so far</td>
+<td style="padding:12px 8px;border-bottom:1px solid #EEF3F5">1</td>
+<td style="padding:12px 8px;border-bottom:1px solid #EEF3F5">1,040</td>
+</tr>
+<tr>
+<td style="padding:12px 8px;border-bottom:1px solid #EEF3F5"><a href="Approvals.dc.html" style="font-family:'IBM Plex Mono',monospace;font-size:14px">9f02b7</a><div style="font-size:13px;color:#4A5E6A">today 12:04</div></td>
+<td style="padding:12px 8px;border-bottom:1px solid #EEF3F5">Payment risk check</td>
+<td style="padding:12px 8px;border-bottom:1px solid #EEF3F5"><span style="background:#FCEFD0;color:#8A5A00;border-radius:999px;padding:4px 10px;font-size:13px;font-weight:600">waiting for you</span></td>
+<td style="padding:12px 8px;border-bottom:1px solid #EEF3F5">3.1 s</td>
+<td style="padding:12px 8px;border-bottom:1px solid #EEF3F5">0</td>
+<td style="padding:12px 8px;border-bottom:1px solid #EEF3F5">412</td>
+</tr>
+<tr>
+<td style="padding:12px 8px;border-bottom:1px solid #EEF3F5"><a href="Run.dc.html" style="font-family:'IBM Plex Mono',monospace;font-size:14px">7be310</a><div style="font-size:13px;color:#4A5E6A">today 09:12</div></td>
+<td style="padding:12px 8px;border-bottom:1px solid #EEF3F5">Security scan</td>
+<td style="padding:12px 8px;border-bottom:1px solid #EEF3F5"><span style="background:#DCF2E4;color:#1F7A45;border-radius:999px;padding:4px 10px;font-size:13px;font-weight:600">succeeded</span></td>
+<td style="padding:12px 8px;border-bottom:1px solid #EEF3F5">6.4 s</td>
+<td style="padding:12px 8px;border-bottom:1px solid #EEF3F5">0</td>
+<td style="padding:12px 8px;border-bottom:1px solid #EEF3F5">0</td>
+</tr>
+<tr>
+<td style="padding:12px 8px;border-bottom:1px solid #EEF3F5"><a href="Run.dc.html" style="font-family:'IBM Plex Mono',monospace;font-size:14px">51d8a0</a><div style="font-size:13px;color:#4A5E6A">yesterday 23:00</div></td>
+<td style="padding:12px 8px;border-bottom:1px solid #EEF3F5">Nightly finance check</td>
+<td style="padding:12px 8px;border-bottom:1px solid #EEF3F5"><span style="background:#DCF2E4;color:#1F7A45;border-radius:999px;padding:4px 10px;font-size:13px;font-weight:600">succeeded</span></td>
+<td style="padding:12px 8px;border-bottom:1px solid #EEF3F5">9.2 s</td>
+<td style="padding:12px 8px;border-bottom:1px solid #EEF3F5">4</td>
+<td style="padding:12px 8px;border-bottom:1px solid #EEF3F5">3,880</td>
+</tr>
+<tr>
+<td style="padding:12px 8px"><a href="Run.dc.html" style="font-family:'IBM Plex Mono',monospace;font-size:14px">30c7f5</a><div style="font-size:13px;color:#4A5E6A">yesterday 14:18</div></td>
+<td style="padding:12px 8px">Swap Razorpay to Stripe</td>
+<td style="padding:12px 8px"><span style="background:#FBE4DF;color:#B93C2B;border-radius:999px;padding:4px 10px;font-size:13px;font-weight:600">failed</span></td>
+<td style="padding:12px 8px">5.6 s</td>
+<td style="padding:12px 8px">3</td>
+<td style="padding:12px 8px">0</td>
+</tr>
+</table>
+</section>
+
+<section style="background:#FBE4DF;border-radius:16px;padding:16px 20px;display:flex;flex-direction:column;gap:4px">
+<b style="color:#B93C2B">Why run 30c7f5 failed</b>
+<span style="color:#0F1D26">Step "Fetch Stripe lifecycle" could not start its MCP server after 3 tries. The three steps after it were skipped.</span>
+<span style="font-size:14px;color:#4A5E6A">Failures show the real reason in plain words, and skip only the steps that depended on it.</span>
+</section>
+<p style="margin:0;font-size:13px;color:#4A5E6A">Example data. Every run is stored with its redacted events, so nothing here contains a key.</p>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

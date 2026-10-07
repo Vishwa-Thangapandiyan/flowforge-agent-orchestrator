@@ -17,17 +17,63 @@ What makes it different: **it knows which chain of steps is the bottleneck and s
 
 > FlowForge started as a Design and Analysis of Algorithms course project. That version is frozen on the [`DAA`](../../tree/DAA) branch. `main` is the product.
 
-## Quickstart (3 commands)
+## Quick start
+
+You need **[uv](https://docs.astral.sh/uv/)** (it installs Python for you) and **[Node.js](https://nodejs.org/) 20 or newer** for the dashboard.
 
 ```bash
-uv sync                                     # Python ≥ 3.12, installs into .venv
-uv run pytest                               # optional: the full suite, offline, no key needed
-uv run uvicorn flowforge.main:app --reload  # open http://localhost:8000
+git clone https://github.com/Vishwa-Thangapandiyan/flowforge-agent-orchestrator.git
+cd flowforge-agent-orchestrator
+uv sync                                   # Python ≥ 3.12 and dependencies, into .venv
+cd frontend && npm ci && npm run build && cd ..
+uv run flowforge --example                # opens http://127.0.0.1:8000 with example data, no keys needed
 ```
 
-On the page, pick `diamond_mock` (runs with no key), choose a policy and hit **Run**. Steps colour live as they run (Server-Sent Events), the critical path is highlighted, and clicking a step shows its output.
+`uv run flowforge` (without `--example`) runs on your own data. Example data lives in its own database, so the two never mix.
 
-To use real LLM steps, `cp .env.example .env` and add a free `NVIDIA_API_KEY` from [build.nvidia.com](https://build.nvidia.com). MCP steps use `mcp-server-fetch`, which `uvx` downloads on first use.
+### On Windows (PowerShell)
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"   # uv, once
+winget install OpenJS.NodeJS.LTS                                                      # Node, once
+git clone https://github.com/Vishwa-Thangapandiyan/flowforge-agent-orchestrator.git
+cd flowforge-agent-orchestrator
+uv sync
+cd frontend; npm ci; npm run build; cd ..
+uv run flowforge --example
+```
+
+- **Inside OneDrive** (Desktop or Documents is often synced), OneDrive can lock files while uv installs. Set `$env:UV_LINK_MODE = "copy"` first, and simply re-run `uv sync` if it reports "Access is denied".
+- **Behind antivirus or a company proxy** that inspects HTTPS, uv may report `invalid peer certificate`. Use `uv sync --native-tls`.
+- **Keep the folder path short** (for example `C:\code\flowforge`). Some dependency files have long names, and Windows refuses paths over 260 characters unless [long paths are enabled](https://learn.microsoft.com/windows/win32/fileio/maximum-file-path-limitation). The symptom is a `ModuleNotFoundError` from inside `.venv` when FlowForge starts.
+
+### Developing the dashboard
+
+```bash
+cd frontend
+npm run dev        # API with example data on :8000 + the dashboard on http://localhost:5173, both reload on change
+npm test           # dashboard tests (offline)
+```
+
+```bash
+uv run pytest      # backend tests, offline: no key, no network
+uv run ruff check  # lint
+```
+
+The API works on its own too, for scripts and CI: `uv run uvicorn flowforge.main:app --reload`, then `POST /runs` with workflow JSON (see below). The original status page is still at `/classic`.
+
+To use real LLM steps, `cp .env.example .env` and add a free `NVIDIA_API_KEY` from [build.nvidia.com](https://build.nvidia.com); [api-connect.md](api-connect.md) lists every key and where it goes. MCP steps use `mcp-server-fetch`, which `uvx` downloads on first use.
+
+## The dashboard
+
+| Page | What it shows |
+|---|---|
+| **Overview** | Your connected apps around the project (links light up while a run uses them), tool health, money and time saved, and what needs you |
+| **Connectors** | Each app's connection (keys shown only as *configured*, *missing* or *example*), what it has done, and its recent activity |
+| **Add an app** | LLM, MCP server, HTTP API or local command; colour and logo; a live preview; and exactly what gets saved, with no secrets |
+| **Live run** | Status, time, calls and tokens; "who ran when" bars with the slowest chain outlined; each step's output; events in plain words |
+| **Run history** | Every run with its status, time, calls skipped by cache and tokens, and why a failed run failed |
+| Plan review, Approvals, Security | Placeholders until the Planner and approval gates (Phase 4) and the vault (Phase 3) arrive |
 
 ## Connect any provider
 
@@ -64,12 +110,12 @@ Ready-made presets: NVIDIA NIM, Gemini, Claude, Ollama, Razorpay, Stripe and the
 |---|---|---|
 | — | Scheduler core: five policies, caches, retries, SSE run stream, status page, benchmarks | **Done** |
 | 1 | Any LLM (OpenAI-compatible + Anthropic), any MCP server with tool discovery, `local` command steps, connector registry, ruff + CI | **Done** |
-| 2 | Dashboard v1: hub map, live run, tool health, money and time; persisted run history | Planned |
+| 2 | Dashboard v1: hub map, live run, tool health, money and time, run history, add/edit apps, example data | **Done** |
 | 3 | Connectors with forms, secrets vault, redaction, security tab | Planned |
-| 4 | Human approval gates; swap one app for another (e.g. Razorpay → Stripe) on a git branch | Planned |
-| 4b | AI-suggested tasks and workflow rewiring (the LLM proposes, a human approves) | Planned |
-| 5 | Control plane on a home server, workers on a laptop, over Tailscale ([plan](FlowForge_Server_Orchestrator_Plan.md)) | Planned, after Phase 3 |
-| 6 | Visual builder for non-developers | Later |
+| 4 | Auto-plan + approval gates: FlowForge plans the steps from what you connected, you confirm one "Here's what will happen" list, risky steps always wait for approval | Planned |
+| 5 | Swap one app for another (e.g. Razorpay → Stripe) on a git branch, as an auto-planned workflow | Planned |
+| 6 | Control plane on a home server, workers on a laptop, over Tailscale ([plan](FlowForge_Server_Orchestrator_Plan.md)) | Planned, after Phase 3 |
+| 7 | Visual builder for non-developers | Later |
 
 The full roadmap with acceptance criteria is in [CLAUDE.md](CLAUDE.md) §5.
 
@@ -83,13 +129,19 @@ The promise, once Phase 3 ships: API keys and other recognised secrets are never
 |---|---|
 | `POST /validate` | Workflow JSON → run order, levels, predicted critical path, warnings. Returns 422 with the cycle, schema error, unknown connector or wrong MCP call |
 | `POST /runs?policy=critical_path&use_cache=true` | Starts a run in the background → `{"run_id", "warnings"}` |
-| `GET /runs/{id}` | Status and the full result |
-| `GET /runs/{id}/events` | Live event stream (SSE) |
-| `GET /connectors` | Every connector (secret references only, never values) |
-| `GET /connectors/{id}/tools` | An MCP connector's tools and their input schemas |
+| `GET /runs?status=&limit=&before=` | Run history, newest first |
+| `GET /runs/{id}` | Status, the full result and the plan outline (kept after a restart) |
+| `GET /runs/{id}/events` | Event stream (SSE): live while running, replayed from storage afterwards |
+| `POST /runs/{id}/stop` | Stops a running run |
+| `GET /connectors`, `GET /connectors/{id}` | Connectors, with key status `set` / `missing` / `example`, never values |
+| `POST /connectors`, `PUT /connectors/{id}`, `DELETE /connectors/{id}` | Add, edit, remove (apps from `connectors.json` are read-only) |
+| `POST /connectors/{id}/logo`, `GET /connectors/{id}/logo` | PNG, JPEG or WebP logo, up to 1 MB |
+| `POST /connectors/{id}/test` | One harmless check (MCP and local apps) |
+| `GET /connectors/{id}/activity`, `GET /connectors/{id}/tools` | What an app has done; an MCP server's tools |
+| `GET /health/tools`, `GET /stats/savings`, `GET /meta`, `GET /presets` | Tool health, money and time, app info, ready-made apps |
 | `GET /workflows`, `GET /workflows/{name}` | The example workflows |
 
-Runs are currently kept in memory, so a server restart forgets them (persisted in Phase 2).
+Runs, step results and events are stored in SQLite after known key formats and your configured keys are replaced with `[REDACTED]`. A browser asking for HTML on a path like `/runs/abc` gets the dashboard; everything else gets JSON.
 
 ## Workflow format
 
@@ -145,7 +197,10 @@ Both tracks run every policy with the cache off and on, and write CSV plus a mar
 | `backend/flowforge/nodes/` | `llm` (any provider), `http`, `mcp`, `local`, `mock` step types |
 | `backend/flowforge/connectors/` | Connector models, secret references, presets, registry |
 | `backend/flowforge/schema.py`, `templating.py`, `storage.py` | Validation, `{{steps.x.output}}` templates, SQLite |
-| `backend/flowforge/main.py`, `frontend/index.html` | API + live status page |
+| `backend/flowforge/main.py`, `api/` | The API: start-up wiring, runs, connectors, health and savings |
+| `backend/flowforge/security/logfilter.py` | Redaction of keys before anything is stored, streamed or logged |
+| `backend/flowforge/example_data.py`, `cli.py` | Example-data mode and the `flowforge` command |
+| `frontend/` | The dashboard (Vite + React + TypeScript); the old status page is `frontend/classic.html` |
 | `backend/workflows/` | Example workflows |
 | `benchmarks/` | Random DAG generator + benchmark runner |
 
@@ -153,11 +208,11 @@ Tests are in `backend/tests/` and never touch the network. They include property
 
 ## Docs
 
-- [DECISIONS.md](DECISIONS.md): every design decision and its reason (D1–D9, new ones continue from D10)
+- [DECISIONS.md](DECISIONS.md): every design decision and its reason (D1–D9 for the scheduler core, D10–D16 for connectors, gates, MCP, local commands, planning, the dashboard and run history)
 - [CLAUDE.md](CLAUDE.md): roadmap, security spec, data model and working rules
 - [AGENTS.md](AGENTS.md): the build workflow for coding agents, and the processes deployed at runtime
 - [FlowForge_V1_Plan.md](FlowForge_V1_Plan.md): the original course-project plan (complete)
-- [FlowForge_Server_Orchestrator_Plan.md](FlowForge_Server_Orchestrator_Plan.md): Phase 5, server + workers
+- [FlowForge_Server_Orchestrator_Plan.md](FlowForge_Server_Orchestrator_Plan.md): Phase 6, server + workers
 
 ## Contributing
 

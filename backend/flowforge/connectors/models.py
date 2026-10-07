@@ -10,7 +10,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_validator
 
-from flowforge.connectors.secrets import SECRET_REF_PATTERN
+from flowforge.connectors.secrets import SECRET_REF_PATTERN, check_ref
 
 CONNECTOR_ID_PATTERN = r"^[A-Za-z][A-Za-z0-9_-]{0,63}$"
 ENV_VAR_PATTERN = r"^[A-Za-z_][A-Za-z0-9_]*$"
@@ -65,6 +65,16 @@ class MCPConnection(_Model):
     env_refs: dict[Annotated[str, Field(pattern=ENV_VAR_PATTERN)],
                    Annotated[str, Field(pattern=SECRET_REF_PATTERN)]] = Field(default_factory=dict)
 
+    @model_validator(mode="after")
+    def _refs_are_names(self) -> MCPConnection:
+        _check_env_refs(self.env_refs)
+        return self
+
+
+def _check_env_refs(refs: dict[str, str]) -> None:
+    for ref in refs.values():
+        check_ref(ref)
+
 
 class HTTPConnection(_Model):
     base_url: str | None = None
@@ -79,6 +89,11 @@ class LocalConnection(_Model):
     env_refs: dict[Annotated[str, Field(pattern=ENV_VAR_PATTERN)],
                    Annotated[str, Field(pattern=SECRET_REF_PATTERN)]] = Field(default_factory=dict)
     max_output_bytes: int = Field(default=1_000_000, gt=0)
+
+    @model_validator(mode="after")
+    def _refs_are_names(self) -> LocalConnection:
+        _check_env_refs(self.env_refs)
+        return self
 
 
 # --- connectors ---------------------------------------------------------------------------------
@@ -98,6 +113,7 @@ class ConnectorBase(_Model):
 
     @model_validator(mode="after")
     def _fallback_not_self(self) -> ConnectorBase:
+        check_ref(self.secret_ref)
         if self.id in RESERVED_IDS:
             raise ValueError(f"'{self.id}' is reserved for the {self.id} type's default node; pick another id")
         if self.fallback == self.id:

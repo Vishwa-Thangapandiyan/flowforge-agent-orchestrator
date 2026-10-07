@@ -1,0 +1,401 @@
+<title>FlowForge Plan</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: one-screen-per-idea blocks, each topic has its own colour; the run example sits last so the plan ends on something you can press. */
+:root{
+  --bg:#EEF3F5; --surface:#FFFFFF; --fg:#0F1D26; --muted:#4A5E6A; --line:#D3DDE3; --idle:#9AAAB4;
+  --teal:#0B7A70;  --teal-bg:#DDF2EF;
+  --blue:#2457C5;  --blue-bg:#E1EAFB;
+  --amber:#8A5A00; --amber-bg:#FCEFD0;
+  --coral:#B93C2B; --coral-bg:#FBE4DF;
+  --green:#1F7A45; --green-bg:#DCF2E4;
+  --violet:#6B46C1;--violet-bg:#ECE6FA;
+  --display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --body:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0B1418; --surface:#122128; --fg:#E8F0F3; --muted:#93A8B3; --line:#25363F; --idle:#5C7280;
+    --teal:#4FD1C0;  --teal-bg:#12332F;
+    --blue:#7FA8FF;  --blue-bg:#16284A;
+    --amber:#F2B84B; --amber-bg:#3A2D0E;
+    --coral:#FF8C7A; --coral-bg:#40201B;
+    --green:#66D18F; --green-bg:#133423;
+    --violet:#B79CFF;--violet-bg:#2A2147;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0B1418; --surface:#122128; --fg:#E8F0F3; --muted:#93A8B3; --line:#25363F; --idle:#5C7280;
+  --teal:#4FD1C0;  --teal-bg:#12332F;
+  --blue:#7FA8FF;  --blue-bg:#16284A;
+  --amber:#F2B84B; --amber-bg:#3A2D0E;
+  --coral:#FF8C7A; --coral-bg:#40201B;
+  --green:#66D18F; --green-bg:#133423;
+  --violet:#B79CFF;--violet-bg:#2A2147;
+  color-scheme:dark;
+}
+body{background:var(--bg);color:var(--fg);font:400 17px/1.5 var(--body);padding-inline:clamp(16px,4vw,32px);padding-block:28px 72px}
+.wrap{max-width:940px;margin-inline:auto;display:flex;flex-direction:column;gap:56px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;line-height:1.1}
+h1{font-size:clamp(2.4rem,7vw,4rem);font-weight:800;letter-spacing:-.02em}
+h2{font-size:clamp(1.6rem,4.2vw,2.3rem);font-weight:800;letter-spacing:-.01em}
+h3{font-size:1.25rem;font-weight:700}
+p{margin:0}
+code,.mono{font-family:var(--mono);font-size:.82em}
+.eyebrow{font:500 .75rem/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.sec{display:flex;flex-direction:column;gap:20px}
+.lead{font-size:1.2rem;max-width:34em}
+.hero{display:flex;flex-direction:column;gap:18px}
+.hero .big{font-size:clamp(1.25rem,3.4vw,1.7rem);line-height:1.3;max-width:26em}
+.hl-t{color:var(--teal)} .hl-c{color:var(--coral)} .hl-a{color:var(--amber)}
+.pills{display:flex;flex-wrap:wrap;gap:8px}
+.pill{font:500 .78rem/1 var(--mono);padding:8px 12px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--muted)}
+
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px}
+.tile{border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.tile .tag{font:500 .72rem/1 var(--mono);letter-spacing:.1em;text-transform:uppercase}
+.tile p{font-size:1rem}
+.t-teal{background:var(--teal-bg);color:var(--fg)} .t-teal .tag,.t-teal h3{color:var(--teal)}
+.t-blue{background:var(--blue-bg)} .t-blue .tag,.t-blue h3{color:var(--blue)}
+.t-amber{background:var(--amber-bg)} .t-amber .tag,.t-amber h3{color:var(--amber)}
+.t-coral{background:var(--coral-bg)} .t-coral .tag,.t-coral h3{color:var(--coral)}
+.t-green{background:var(--green-bg)} .t-green .tag,.t-green h3{color:var(--green)}
+.t-violet{background:var(--violet-bg)} .t-violet .tag,.t-violet h3{color:var(--violet)}
+.branch{background:var(--surface);border:1px solid var(--line)}
+.bname{align-self:flex-start;font:500 .95rem/1 var(--mono);padding:8px 12px;border-radius:8px}
+.frozen .bname{background:var(--amber-bg);color:var(--amber)}
+.live .bname{background:var(--green-bg);color:var(--green)}
+.state{font-size:.85rem;color:var(--muted)}
+
+.chain{display:flex;flex-wrap:wrap;align-items:stretch;gap:10px}
+.chain .step{flex:1 1 200px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.chain .step b{font-family:var(--display);font-size:1.15rem}
+.chain .step span{color:var(--muted);font-size:.95rem}
+.chain .arr{align-self:center;font:500 1.4rem/1 var(--mono);color:var(--muted)}
+@media (max-width:640px){.chain .arr{display:none}}
+
+.rules li{margin-bottom:6px}
+.rules ul{margin:0;padding-left:1.1em}
+.rules .tile{gap:12px}
+.ladder{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.ladder li{display:flex;gap:10px;align-items:baseline;margin:0;font-size:.98rem}
+.ladder b{font:500 .8rem/1 var(--mono);background:var(--surface);border:1px solid var(--line);padding:5px 8px;border-radius:6px;white-space:nowrap}
+
+.road{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.road li{display:grid;grid-template-columns:44px 1fr auto;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.road .n{font:800 1.5rem/1 var(--display);width:44px;height:44px;display:grid;place-items:center;border-radius:12px;background:var(--bg);color:var(--muted)}
+.road .what b{display:block;font-family:var(--display);font-size:1.1rem}
+.road .what span{color:var(--muted);font-size:.92rem}
+.chip{font:500 .72rem/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:7px 10px;border-radius:999px;white-space:nowrap}
+.c-done{background:var(--green-bg);color:var(--green)}
+.c-next{background:var(--coral);color:var(--surface)}
+.c-later{background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+.road li.now{background:var(--coral-bg);border-color:var(--coral)}
+.road li.now .n{background:var(--coral);color:var(--surface)}
+@media (max-width:560px){.road li{grid-template-columns:44px 1fr}.road .chip{grid-column:2;justify-self:start}}
+
+.demo{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:clamp(14px,3vw,24px);display:flex;flex-direction:column;gap:18px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.stat{border-radius:12px;padding:14px 16px;background:var(--bg);display:flex;flex-direction:column;gap:4px}
+.stat .k{font:500 .72rem/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.stat .v{font:800 2rem/1 var(--display);font-variant-numeric:tabular-nums}
+.stat.fast .v{color:var(--green)} .stat.slow .v{color:var(--muted)}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+button{font:600 1rem/1 var(--body);padding:13px 18px;border-radius:10px;border:0;cursor:pointer;color:var(--surface);background:var(--fg)}
+button.approve{background:var(--amber);}
+button:disabled{opacity:.35;cursor:not-allowed}
+button:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.say{font:500 .9rem/1.4 var(--mono);color:var(--muted);min-height:2.6em;flex:1 1 260px}
+.scroll{overflow-x:auto}
+figure{margin:0}
+figcaption{font-size:.92rem;color:var(--muted);margin-top:10px}
+svg{display:block;width:100%;min-width:640px;height:auto}
+.legend{display:flex;flex-wrap:wrap;gap:8px}
+.lg{font:500 .74rem/1 var(--mono);padding:7px 10px;border-radius:999px}
+.l-mcp{background:var(--teal-bg);color:var(--teal)} .l-http{background:var(--blue-bg);color:var(--blue)}
+.l-llm{background:var(--violet-bg);color:var(--violet)} .l-gate{background:var(--amber-bg);color:var(--amber)}
+.l-out{background:var(--green-bg);color:var(--green)} .l-crit{background:var(--coral-bg);color:var(--coral)}
+
+/* svg parts */
+.edge{fill:none;stroke:var(--idle);stroke-width:1.6;marker-end:url(#arr)}
+.edge.crit{stroke:var(--coral);stroke-width:2.8;marker-end:url(#arrc)}
+.ah{fill:var(--idle)} .ahc{fill:var(--coral)}
+.node .box{fill:var(--surface);stroke:var(--tc);stroke-width:1.6}
+.node .nm{fill:var(--fg);font:600 13px var(--body)}
+.node .meta{fill:var(--muted);font:500 11px var(--mono)}
+.node .dot{fill:var(--idle)}
+.t-mcp{--tc:var(--teal);--tb:var(--teal-bg)} .t-http{--tc:var(--blue);--tb:var(--blue-bg)}
+.t-llm{--tc:var(--violet);--tb:var(--violet-bg)} .t-gate{--tc:var(--amber);--tb:var(--amber-bg)}
+.t-out{--tc:var(--green);--tb:var(--green-bg)}
+.node.t-gate .box{stroke-dasharray:5 4}
+.node[data-state="running"] .box{fill:var(--tb)}
+.node[data-state="running"] .dot{fill:var(--tc);animation:pulse 0.9s ease-in-out infinite}
+.node[data-state="done"] .box{fill:var(--tb)}
+.node[data-state="done"] .dot{fill:var(--green)}
+.node[data-state="wait"] .box{fill:var(--tb);stroke-width:2.6}
+.node[data-state="wait"] .dot{fill:var(--amber);animation:pulse 0.9s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.node .dot{animation:none!important}}
+
+.take{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.take div{background:var(--bg);border-radius:12px;padding:14px 16px;font-size:.98rem}
+.take b{display:block;font-family:var(--display);margin-bottom:4px}
+.next{border-radius:16px;padding:22px;background:var(--coral-bg);display:flex;flex-direction:column;gap:8px}
+.next h2{color:var(--coral)}
+</style>
+
+<div class="wrap">
+
+<header class="hero">
+  <span class="eyebrow">Plan · October 2026</span>
+  <h1>FlowForge</h1>
+  <p class="big">A <span class="hl-t">smart scheduler</span> for AI-agent workflows, plus a <span class="hl-c">dashboard</span> to watch and control it.</p>
+  <div class="pills"><span class="pill">open source</span><span class="pill">devs first</span><span class="pill">no deadline</span><span class="pill">free by default</span></div>
+</header>
+
+<section class="sec">
+  <span class="eyebrow">Where the code lives</span>
+  <h2>Two branches, two jobs</h2>
+  <div class="grid2">
+    <div class="tile branch frozen">
+      <span class="bname">DAA</span>
+      <h3>The course project</h3>
+      <p>Scheduler, benchmarks, report. Kept as it is, for the submission.</p>
+      <span class="state">Frozen. Do not change.</span>
+    </div>
+    <div class="tile branch live">
+      <span class="bname">main</span>
+      <h3>The product</h3>
+      <p>The app people install and use to run and monitor an orchestrator. We rebuild it around a dashboard.</p>
+      <span class="state">Where all new work happens.</span>
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <span class="eyebrow">The dashboard</span>
+  <h2>Four things it shows</h2>
+  <div class="grid4">
+    <div class="tile t-teal"><span class="tag">Live run</span><h3>What is running now</h3><p>The workflow as a graph. Steps light up as they run. Slowest chain highlighted. Click a step to see its output.</p></div>
+    <div class="tile t-blue"><span class="tag">Tool health</span><h3>Is everything up</h3><p>One card per tool: up or down, last success, rate limit left.</p></div>
+    <div class="tile t-amber"><span class="tag">Money and time</span><h3>What it saved</h3><p>Calls made vs skipped, tokens used, time saved vs one-by-one.</p></div>
+    <div class="tile t-coral"><span class="tag">Controls</span><h3>You stay in charge</h3><p>Run, retry, approve or reject risky steps. Run history.</p></div>
+  </div>
+</section>
+
+<section class="sec">
+  <span class="eyebrow">Your "dashboard of dashboards"</span>
+  <h2>Widgets, boards, projects</h2>
+  <div class="chain">
+    <div class="step"><b>Widget</b><span>One thing on screen: a chart, a status card, the workflow graph.</span></div>
+    <span class="arr">→</span>
+    <div class="step"><b>Board</b><span>A saved layout of widgets. "Finance Ops". "Security".</span></div>
+    <span class="arr">→</span>
+    <div class="step"><b>Project</b><span>Workflows and boards for one app.</span></div>
+  </div>
+  <p class="state">A board is a small JSON file, like a workflow. Ship a few ready-made boards so it looks good on first launch.</p>
+</section>
+
+<section class="sec rules">
+  <span class="eyebrow">Three rules</span>
+  <h2>Storage, keys, LLMs</h2>
+  <div class="grid2">
+    <div class="tile t-blue">
+      <span class="tag">Storage</span>
+      <h3>Grow only when needed</h3>
+      <ul class="ladder">
+        <li><b>SQLite</b> solo or self-hosted (today)</li>
+        <li><b>Postgres</b> teams, many users</li>
+        <li><b>Redis</b> only for live traffic between machines</li>
+      </ul>
+      <p>No cloud needed to start.</p>
+    </div>
+    <div class="tile t-coral">
+      <span class="tag">API keys</span>
+      <h3>Never on screen</h3>
+      <ul>
+        <li>Keys live in env vars, not workflow JSON.</li>
+        <li>Redact outputs before saving or streaming.</li>
+        <li>Dashboard shows "configured" or "missing".</li>
+        <li>Scan code for leaked keys with regex + entropy + AST. No LLM.</li>
+      </ul>
+      <p class="state">Say "catches known formats", never "catches everything".</p>
+    </div>
+    <div class="tile t-violet">
+      <span class="tag">LLMs</span>
+      <h3>NVIDIA NIM is the free default</h3>
+      <ul>
+        <li>Same interface for OpenAI, Anthropic, Gemini, Ollama.</li>
+        <li>Ollama keeps sensitive data on your machine.</li>
+        <li>Free tier has rate limits. Check NVIDIA's terms before heavy use.</li>
+      </ul>
+    </div>
+    <div class="tile t-amber">
+      <span class="tag">Approval gates</span>
+      <h3>Risky steps wait for you</h3>
+      <p>Anything that touches payments or changes code pauses until you click Approve. This is the feature that makes it an orchestrator and not only a monitor.</p>
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <span class="eyebrow">Order of work</span>
+  <h2>Roadmap</h2>
+  <ol class="road">
+    <li><span class="n">0</span><div class="what"><b>Install and explain</b><span>LICENSE and README exist. Left: CONTRIBUTING.md, easy install.</span></div><span class="chip c-done">Mostly done</span></li>
+    <li class="now"><span class="n">1</span><div class="what"><b>Any LLM, any MCP server</b><span>Today it only does NIM and one fetch server. This is the unlock.</span></div><span class="chip c-next">Next</span></li>
+    <li><span class="n">2</span><div class="what"><b>Dashboard v1</b><span>Live run, tool health, money and time.</span></div><span class="chip c-later">Later</span></li>
+    <li><span class="n">3</span><div class="what"><b>Boards, widgets, approval gates</b><span>Save layouts. Pause risky steps.</span></div><span class="chip c-later">Later</span></li>
+    <li><span class="n">4</span><div class="what"><b>Server + ROG workers</b><span>Redis queue, real two-machine run.</span></div><span class="chip c-later">Later</span></li>
+    <li><span class="n">5</span><div class="what"><b>Visual builder</b><span>Drag-and-drop for non-developers.</span></div><span class="chip c-later">Later</span></li>
+  </ol>
+</section>
+
+<section class="sec">
+  <span class="eyebrow">One example, start to finish</span>
+  <h2>A nightly finance run</h2>
+  <p class="lead">Press run. Watch what starts together and what waits. The durations are example numbers.</p>
+
+  <div class="demo">
+    <div class="stats">
+      <div class="stat fast"><span class="k">FlowForge (parallel)</span><span class="v" id="elapsed">13s</span></div>
+      <div class="stat slow"><span class="k">One step at a time</span><span class="v">22s</span></div>
+    </div>
+
+    <div class="controls">
+      <button id="run" type="button">▶ Run example</button>
+      <button id="approve" class="approve" type="button" disabled>Approve</button>
+      <p class="say" id="say" aria-live="polite">Ready. Seven steps, one approval gate.</p>
+    </div>
+
+    <figure>
+      <div class="scroll">
+      <svg viewBox="0 0 800 330" role="img" aria-label="Workflow graph: Sirius scan and Razorpay feed Gemini risk summary, which waits for your approval before the report; stock model and Razorpay feed the chart, which also goes to the report. The slowest chain is Sirius, Gemini, approval, report.">
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><polygon class="ah" points="0,0 10,5 0,10"/></marker>
+          <marker id="arrc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><polygon class="ahc" points="0,0 10,5 0,10"/></marker>
+        </defs>
+
+        <path class="edge crit" d="M160 45 C195 45,195 70,230 70"/>
+        <path class="edge" d="M160 165 C195 165,195 90,230 90"/>
+        <path class="edge" d="M160 165 C195 165,195 230,230 230"/>
+        <path class="edge" d="M160 285 C195 285,195 250,230 250"/>
+        <path class="edge crit" d="M380 80 L440 80"/>
+        <path class="edge crit" d="M590 80 C615 80,615 150,640 150"/>
+        <path class="edge" d="M380 240 C510 240,510 170,640 170"/>
+
+        <g class="node t-mcp" data-id="sirius" data-state="idle">
+          <rect class="box" x="10" y="20" width="150" height="50" rx="10"/>
+          <text class="nm" x="22" y="41">Sirius scan</text><text class="meta" x="22" y="58">mcp · 8s</text>
+          <circle class="dot" cx="146" cy="34" r="5"/>
+        </g>
+        <g class="node t-http" data-id="razor" data-state="idle">
+          <rect class="box" x="10" y="140" width="150" height="50" rx="10"/>
+          <text class="nm" x="22" y="161">Razorpay payments</text><text class="meta" x="22" y="178">http · 3s</text>
+          <circle class="dot" cx="146" cy="154" r="5"/>
+        </g>
+        <g class="node t-http" data-id="stock" data-state="idle">
+          <rect class="box" x="10" y="260" width="150" height="50" rx="10"/>
+          <text class="nm" x="22" y="281">Stock model update</text><text class="meta" x="22" y="298">http · 4s</text>
+          <circle class="dot" cx="146" cy="274" r="5"/>
+        </g>
+        <g class="node t-llm" data-id="gemini" data-state="idle">
+          <rect class="box" x="230" y="55" width="150" height="50" rx="10"/>
+          <text class="nm" x="242" y="76">Gemini risk summary</text><text class="meta" x="242" y="93">llm · 5s</text>
+          <circle class="dot" cx="366" cy="69" r="5"/>
+        </g>
+        <g class="node t-http" data-id="chart" data-state="idle">
+          <rect class="box" x="230" y="215" width="150" height="50" rx="10"/>
+          <text class="nm" x="242" y="236">Build charts</text><text class="meta" x="242" y="253">http · 2s</text>
+          <circle class="dot" cx="366" cy="229" r="5"/>
+        </g>
+        <g class="node t-gate" data-id="gate" data-state="idle">
+          <rect class="box" x="440" y="55" width="150" height="50" rx="10"/>
+          <text class="nm" x="452" y="76">You approve</text><text class="meta" x="452" y="93">gate · human</text>
+          <circle class="dot" cx="576" cy="69" r="5"/>
+        </g>
+        <g class="node t-out" data-id="report" data-state="idle">
+          <rect class="box" x="640" y="135" width="150" height="50" rx="10"/>
+          <text class="nm" x="652" y="156">Dashboard report</text><text class="meta" x="652" y="173">output · 1s</text>
+          <circle class="dot" cx="776" cy="149" r="5"/>
+        </g>
+      </svg>
+      </div>
+      <figcaption>Three steps have no dependencies, so they start together. The red path is the slowest chain: it sets the total time.</figcaption>
+    </figure>
+
+    <div class="legend" aria-label="Legend">
+      <span class="lg l-mcp">mcp tool</span><span class="lg l-http">http call</span><span class="lg l-llm">llm call</span>
+      <span class="lg l-gate">waits for a human</span><span class="lg l-out">output</span><span class="lg l-crit">slowest chain</span>
+    </div>
+
+    <div class="take">
+      <div><b>Starts together</b>Sirius, Razorpay and the stock model have no dependencies.</div>
+      <div><b>Waits only for its inputs</b>Charts need stock and payments. Not the scan.</div>
+      <div><b>Safe by design</b>Nothing is reported until you approve the Gemini summary.</div>
+    </div>
+  </div>
+</section>
+
+<section class="next">
+  <span class="eyebrow">Next move</span>
+  <h2>Phase 1 on <code>main</code></h2>
+  <p>Open <code>llm_node.py</code> and <code>mcp_node.py</code> and make them work with any provider and any MCP server.</p>
+</section>
+
+</div>
+
+<script>
+(function(){
+  var SCALE = 420; // ms of real time per simulated second
+  var ids = ['sirius','razor','stock','gemini','chart','gate','report'];
+  var n = {};
+  ids.forEach(function(id){ n[id] = document.querySelector('[data-id="'+id+'"]'); });
+  var runBtn = document.getElementById('run'), apBtn = document.getElementById('approve');
+  var say = document.getElementById('say'), elapsed = document.getElementById('elapsed');
+  var timers = [], tick = null, start = 0;
+
+  function set(id, s){ n[id].setAttribute('data-state', s); }
+  function at(t, fn){ timers.push(setTimeout(fn, t * SCALE)); }
+  function clearAll(){ timers.forEach(clearTimeout); timers = []; clearInterval(tick); }
+
+  runBtn.addEventListener('click', function(){
+    clearAll();
+    ids.forEach(function(id){ set(id, 'idle'); });
+    runBtn.disabled = true; apBtn.disabled = true;
+    start = Date.now();
+    tick = setInterval(function(){
+      elapsed.textContent = Math.min(13, (Date.now() - start) / SCALE).toFixed(1) + 's';
+    }, 80);
+
+    at(0, function(){ set('sirius','running'); set('razor','running'); set('stock','running');
+      say.textContent = 'Sirius, Razorpay and the stock model start together.'; });
+    at(3, function(){ set('razor','done'); });
+    at(4, function(){ set('stock','done'); set('chart','running');
+      say.textContent = 'Charts start. They only needed stock and payments.'; });
+    at(6, function(){ set('chart','done'); });
+    at(8, function(){ set('sirius','done'); set('gemini','running');
+      say.textContent = 'Gemini starts. It needed the scan and the payments.'; });
+    at(13, function(){
+      set('gemini','done'); set('gate','wait');
+      clearInterval(tick); elapsed.textContent = '13.0s';
+      say.textContent = 'Paused. Nothing is reported until you approve.';
+      apBtn.disabled = false; apBtn.focus();
+    });
+  });
+
+  apBtn.addEventListener('click', function(){
+    apBtn.disabled = true;
+    set('gate','done'); set('report','running');
+    say.textContent = 'Approved. Building the report.';
+    setTimeout(function(){
+      set('report','done');
+      say.textContent = 'Done. 13s of waiting instead of 22s.';
+      runBtn.disabled = false; runBtn.textContent = '▶ Run again';
+    }, SCALE);
+  });
+})();
+</script>

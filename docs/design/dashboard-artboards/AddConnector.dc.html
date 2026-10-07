@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Add an app</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;color:#0F1D26;background:#EEF3F5}
+a{color:#2457C5}a:hover{color:#0B7A70}
+button,input{font-family:inherit}
+</style>
+</helmet>
+<div style="display:flex;flex-wrap:wrap;min-height:1180px;background:#EEF3F5">
+<nav style="flex:1 1 220px;box-sizing:border-box;padding:24px 16px;background:#0F1D26;display:flex;flex-direction:column;gap:6px;align-self:stretch">
+<div style="font-family:'Bricolage Grotesque','Segoe UI',sans-serif;font-size:24px;font-weight:700;color:#fff;padding:0 12px 18px">FlowForge</div>
+<a href="Main.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Overview</a>
+<a href="Connector.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Connectors</a>
+<a href="PlanReview.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Plan review</a>
+<a href="Run.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Live run</a>
+<a href="Approvals.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px"><span>Approvals</span><span style="background:#F2B84B;color:#3A2D0E;border-radius:10px;padding:1px 8px;font-size:12px;font-weight:600">2</span></a>
+<a href="History.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Run history</a>
+<a href="Security.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Security</a>
+<a href="AddConnector.dc.html" style="margin-top:14px;padding:11px 12px;border-radius:8px;border:1px solid #4FD1C0;background:#1D3340;color:#fff;text-decoration:none;font-size:15px;text-align:center">+ Add app</a>
+</nav>
+
+<main style="flex:999 1 560px;min-width:0;box-sizing:border-box;padding:32px;display:flex;flex-direction:column;gap:24px">
+<header style="display:flex;flex-direction:column;gap:6px">
+<span style="font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#4A5E6A">Add an app</span>
+<h1 style="margin:0;font-family:'Bricolage Grotesque','Segoe UI',sans-serif;font-size:36px;line-height:1.1">Connect it, colour it, name it</h1>
+<span style="color:#4A5E6A">Four ways to connect cover every app, MCP server and model.</span>
+</header>
+
+<section style="background:#fff;border:1px solid #D3DDE3;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px">
+<span style="font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#4A5E6A">1 · How does it connect?</span>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:12px">
+<sc-for list="{{types}}" as="t" hint-placeholder-count="4">
+<button type="button" onClick="{{ t.pick }}" aria-pressed="{{ t.pressed }}" style="text-align:left;display:flex;flex-direction:column;gap:4px;padding:14px;border-radius:12px;cursor:pointer;color:#0F1D26;font-size:14px;line-height:1.4;border:2px solid {{ t.border }};background:{{ t.bg }}"><b style="font-family:'Bricolage Grotesque','Segoe UI',sans-serif;font-size:18px">{{ t.label }}</b><span style="color:#4A5E6A">{{ t.desc }}</span></button>
+</sc-for>
+</div>
+</section>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(440px,100%),1fr));gap:16px;align-items:start">
+<div style="display:flex;flex-direction:column;gap:16px">
+<section style="background:#fff;border:1px solid #D3DDE3;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px">
+<span style="font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#4A5E6A">2 · Name it</span>
+<label style="display:flex;flex-direction:column;gap:6px;font-size:14px;color:#4A5E6A">Name<input type="text" placeholder="Image studio" style="min-height:44px;box-sizing:border-box;padding:0 12px;border:1px solid #9AAAB4;border-radius:8px;font-size:16px;color:#0F1D26;background:#fff"></label>
+<label style="display:flex;flex-direction:column;gap:6px;font-size:14px;color:#4A5E6A">What it does<input type="text" placeholder="makes product photos" style="min-height:44px;box-sizing:border-box;padding:0 12px;border:1px solid #9AAAB4;border-radius:8px;font-size:16px;color:#0F1D26;background:#fff"></label>
+</section>
+<section style="background:#fff;border:1px solid #D3DDE3;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px">
+<span style="font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#4A5E6A">3 · Connect it · {{typeLabel}}</span>
+<sc-for list="{{fields}}" as="f" hint-placeholder-count="2">
+<label style="display:flex;flex-direction:column;gap:6px;font-size:14px;color:#4A5E6A">{{ f.label }}<input type="text" placeholder="{{ f.hint }}" style="min-height:44px;box-sizing:border-box;padding:0 12px;border:1px solid #9AAAB4;border-radius:8px;font-size:16px;color:#0F1D26;background:#fff"></label>
+</sc-for>
+<sc-if value="{{ needsKey }}" hint-placeholder-val="{{ true }}">
+<label style="display:flex;flex-direction:column;gap:6px;font-size:14px;color:#4A5E6A">API key (saved to the vault, never shown again)<input type="password" autocomplete="off" placeholder="paste once" style="min-height:44px;box-sizing:border-box;padding:0 12px;border:1px solid #9AAAB4;border-radius:8px;font-size:16px;color:#0F1D26;background:#fff"></label>
+</sc-if>
+<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center">
+<button type="button" style="min-height:44px;padding:0 18px;border-radius:10px;border:0;background:#0B7A70;color:#fff;font-weight:600;font-size:15px">Test connection</button>
+<span style="font-size:14px;color:#4A5E6A">Makes one harmless call. The dot turns green if it works.</span>
+</div>
+</section>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:16px">
+<section style="background:#fff;border:1px solid #D3DDE3;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px">
+<span style="font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#4A5E6A">4 · Style it</span>
+<span style="font-size:14px;color:#4A5E6A">Colour</span>
+<div style="display:flex;flex-wrap:wrap;gap:10px">
+<sc-for list="{{colors}}" as="c" hint-placeholder-count="8">
+<button type="button" onClick="{{ c.pick }}" aria-label="{{ c.label }}" aria-pressed="{{ c.pressed }}" style="width:44px;height:44px;border-radius:50%;padding:0;cursor:pointer;border:3px solid #fff;box-shadow:0 0 0 2px {{ c.ring }};background:{{ c.hex }}"></button>
+</sc-for>
+</div>
+<span style="font-size:14px;color:#4A5E6A">Logo</span>
+<div style="display:flex;flex-wrap:wrap;gap:8px">
+<span style="padding:8px 14px;border-radius:999px;background:#DDF2EF;color:#0B7A70;font-weight:600;font-size:14px">Letters</span>
+<span style="padding:8px 14px;border-radius:999px;background:#EEF3F5;color:#4A5E6A;font-size:14px">Upload image (PNG, JPEG, WebP, under 1 MB)</span>
+<span style="padding:8px 14px;border-radius:999px;background:#EEF3F5;color:#4A5E6A;font-size:14px">Colour only</span>
+</div>
+</section>
+
+<section style="background:#fff;border:1px solid #D3DDE3;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px">
+<span style="font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#4A5E6A">Preview · on the map</span>
+<div style="display:flex;align-items:center;gap:10px;background:#EEF3F5;border:1px solid #D3DDE3;border-radius:12px;padding:12px">
+<span style="flex:0 0 44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font:500 16px 'IBM Plex Mono',monospace;background:{{color}};color:{{ink}}">Is</span>
+<span style="line-height:20px;color:#4A5E6A;font-size:14px"><b style="font-size:16px;color:#0F1D26">Image studio</b><br>makes product photos · {{typeLabel}}</span>
+<span style="margin-left:auto;width:10px;height:10px;border-radius:50%;background:#9AAAB4"></span>
+</div>
+<span style="font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#4A5E6A">What gets saved (no secrets)</span>
+<pre style="margin:0;font:500 13px/1.5 'IBM Plex Mono',monospace;background:#EEF3F5;border-radius:10px;padding:12px 14px;overflow-x:auto">{{ json }}</pre>
+</section>
+</div>
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:12px">
+<button type="button" style="min-height:48px;padding:0 22px;border-radius:10px;border:0;background:#0B7A70;color:#fff;font-weight:600;font-size:16px">Add to project</button>
+<a href="Main.dc.html" style="display:inline-flex;align-items:center;min-height:48px;box-sizing:border-box;padding:0 22px;border-radius:10px;border:1px solid #D3DDE3;background:#fff;color:#0F1D26;text-decoration:none;font-weight:600;font-size:16px">Cancel</a>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1180}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { type: 'mcp', color: '#E4572E' };
+}
+renderVals() {
+const TYPES = [
+{ id: 'llm', label: 'LLM', desc: 'OpenAI-style APIs, Claude, Ollama on your own machine', key: true, fields: [['Base URL', 'https://api.example.com/v1'], ['Model', 'model-name']] },
+{ id: 'mcp', label: 'MCP server', desc: 'Any server. Its tools appear on their own.', key: false, fields: [['Command', 'npx'], ['Arguments', 'my-image-mcp']] },
+{ id: 'http', label: 'HTTP API', desc: 'Razorpay, Stripe, any REST API', key: true, fields: [['Base URL', 'https://api.example.com'], ['Auth header name', 'Authorization']] },
+{ id: 'local', label: 'Local command', desc: 'Scripts, Sirius, models on your computer', key: false, fields: [['Command', './scan.sh'], ['Run in folder', 'project/tools']] }
+];
+const COLORS = ['#E4572E', '#F2A900', '#2E9E5B', '#0B7A70', '#2F6FD6', '#635BFF', '#C2398D', '#3A4756'];
+const cur = TYPES.find((t) => t.id === this.state.type);
+const hex = this.state.color;
+const n = parseInt(hex.slice(1), 16);
+const lum = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+const conn = {};
+cur.fields.forEach((f) => { conn[f[0]] = f[1]; });
+const saved = { id: 'image-studio', type: cur.id, name: 'Image studio', style: { color: hex, logo: { type: 'letters', text: 'Is' } }, connection: conn };
+if (cur.key) saved.secret_ref = 'vault:IMAGE_STUDIO_API_KEY';
+return {
+types: TYPES.map((t) => ({ id: t.id, label: t.label, desc: t.desc, pressed: t.id === this.state.type ? 'true' : 'false', border: t.id === this.state.type ? '#0B7A70' : '#D3DDE3', bg: t.id === this.state.type ? '#DDF2EF' : '#fff', pick: () => this.setState({ type: t.id }) })),
+colors: COLORS.map((c) => ({ hex: c, label: 'Colour ' + c, pressed: c === hex ? 'true' : 'false', ring: c === hex ? '#0F1D26' : '#D3DDE3', pick: () => this.setState({ color: c }) })),
+typeLabel: cur.label,
+fields: cur.fields.map((f) => ({ label: f[0], hint: f[1] })),
+needsKey: cur.key,
+color: hex,
+ink: lum > 0.6 ? '#0F1D26' : '#FFFFFF',
+json: JSON.stringify(saved, null, 2)
+};
+}
+}
+</script>
+</body>
+</html>

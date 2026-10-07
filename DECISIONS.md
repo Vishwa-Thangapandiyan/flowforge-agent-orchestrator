@@ -1,6 +1,6 @@
 # FlowForge — Design Decisions
 
-Every design decision, with the choice, the reason, and where it lives in the code. D1–D9 were made for V1 ([FlowForge_V1_Plan.md](FlowForge_V1_Plan.md)) and still hold on `main`. New decisions take the next number (D10, D11, …) and are written before the code. A decision is never edited to mean something new: it is superseded by a later entry that says so.
+Every design decision, with the choice, the reason, and where it lives in the code. D1–D9 were made for V1 ([FlowForge_V1_Plan.md](FlowForge_V1_Plan.md)) and still hold on `main`. D10–D16 cover the product (connectors, approval gates, MCP, local commands, planning, the frontend, run history and redaction); new decisions take the next free number and are written before the code. A decision is never edited to mean something new: it is superseded by a later entry that says so.
 
 **Hard constraint: zero cost by default.** No paid API or service in the default install, the tests or CI. The default LLM provider is NVIDIA NIM's free tier (see D8).
 
@@ -186,7 +186,7 @@ The accurate wording, in docs and the UI: *FlowForge runs independent, I/O-bound
 
 ## D11. Reserved: approval gates (Phase 4)
 
-Reserved for the gate step described in CLAUDE.md §8. Written before Phase 4's code.
+Reserved for the gate step described in CLAUDE.md §8. Written before Phase 4's code, together with D14: gates ship in the same phase as the Planner, because a plan can include side effects. D14 fixes the policy of *which* steps are always gated; D11 will define *how* a gate works (step type, slots, events, persistence).
 
 ## D12. MCP connectors: any server, discovered tools (Phase 1)
 
@@ -222,6 +222,128 @@ New step type `local`: runs a command configured on a connector, with arguments 
 **Why:** local tools are where the most damage is possible, so the rules close off shell injection, path escape and environment leaks by construction rather than by care.
 
 **Code:** `nodes/local_node.py`, `schema.py`, `scheduler/durations.py`.
+
+## D14. Plan from connectors: the user never edits a graph (Phase 4)
+
+**Choice:** the user connects apps; a **Planner LLM** proposes the tasks and their order from what is connected; FlowForge compiles that plan into a DAG, validates it, and shows the user a plain list to confirm once. The scheduler then runs it. **The LLM decides WHAT. The scheduler decides WHEN. The LLM proposes; the user approves.** The DAG stays under the hood.
+
+**Input: the fact sheet.** It is built by plain code with no LLM, then passed through `redact` (CLAUDE.md §6.4) before any prompt:
+- each connector's `describe()` output: id, type and role, plus MCP tools with JSON input schemas, HTTP endpoints from OpenAPI/docs when given, LLM provider and model, and a local command's accepted arguments. Secret *references* only, never values;
+- for a linked repo: the file tree, dependency files, route and webhook handlers with `file:line`, and env var *names* (never values);
+- the user's goal, in plain language.
+
+The fact sheet is hashed, so every plan version records exactly which facts it was made from.
+
+**Output: a typed plan** (Pydantic, `extra="forbid"`; anything else is rejected):
+
+```json
+{
+  "goal": "verify captured payments and notify the shop",
+  "tasks": [
+    {
+      "id": "fetch_order",
+      "title": "Fetch the order for the payment",
+      "type": "http",
+      "connector": "razorpay",
+      "params": { "method": "GET", "url": "orders/{{steps.webhook.output.order_id}}" },
+      "depends_on": ["webhook"],
+      "evidence": [{ "kind": "route", "ref": "GET /orders/{id}" }],
+      "why": "the risk check needs the order amount"
+    }
+  ]
+}
+```
+
+`evidence.kind` is `tool` (an MCP tool name), `endpoint` (an HTTP route from `describe()`), `route` or `file` (a `path:line` from the repo facts). The plan carries no code, no shell commands and no secrets.
+
+**Evidence rule (anti-hallucination):** every evidence `ref` must match an entry in the fact sheet exactly. A task with no valid evidence is **dropped**, and so is every task that depends on it. The plan review lists what was dropped and why. FlowForge never invents a replacement.
+
+**Validation.** The surviving plan compiles to ordinary workflow JSON and passes the same checks as hand-written workflows:
+- schema (`schema.py`) and template references (D2);
+- cycles (`graph.py`, D7);
+- unknown connector or type mismatch (D10);
+- unknown MCP tool or arguments that fail its schema (D12).
+
+On failure, FlowForge makes **at most 2 automatic repair calls**, each including the exact validation errors. After that the user sees the error; there is no silent failure and no partial run.
+
+Validation catches structural errors, not wrong ideas. That is why the confirmation and the gates below are not optional.
+
+**Plan review and confirmation.** The user sees **"Here's what will happen"**, a list rather than a graph:
+- the steps in order, with the ones that run together grouped;
+- the estimated time (critical path, D1/D5);
+- each step's connector and the secret *names* it touches;
+- which steps need approval;
+- what was dropped and why.
+
+One confirmation ("Looks good, run it") starts the run.
+
+**Gating policy (always, no exceptions).** A gate (D11) precedes every payment step, every code change and every side-effecting step. *Code* decides what counts as side-effecting, never the Planner:
+- non-GET HTTP;
+- connectors in a payments slot or with a `mode`;
+- MCP tools not annotated read-only;
+- every `local` step;
+- anything that writes to a repo.
+
+The Planner can add gates but never remove them. No setting turns this policy off.
+
+**Plan versioning.** A confirmed plan is stored as a version: `plan_versions(plan_id, version, fact_sheet_hash, planner_connector, plan_json, workflow_json, dropped_json, created_by, confirmed_at)`. Re-planning, or a changed fact sheet or connector set, creates version N+1, which must be confirmed again. A run always references the exact version it ran, and older versions stay runnable for rollback.
+
+**Planner calls** use any LLM connector, chosen in settings as the "Planner model". They run at temperature 0, are cached like any LLM call (D3), and count toward money and time.
+
+**Untrusted input.** Repo text, API docs and tool descriptions are data, not instructions. Text inside them that tries to steer the Planner must not change the plan's gating. A plan that adds a connector, widens access or turns on a side effect is flagged in the review. Planner output is parsed and validated, never executed, `eval`'d or shelled out; only the scheduler runs steps, and only after confirmation.
+
+**Advanced path.** Hand-written workflow JSON, `POST /validate` and `POST /runs` keep working unchanged for developers and CI. A graph view may exist under Advanced only.
+
+**Why the user never edits a graph:**
+- The graph is how the scheduler sees the work, not how people think about it. People think "when a payment is captured, check the risk, then mark the order verified".
+- Hand-editing edges is where structural mistakes come from (missing dependencies, cycles, a step wired to the wrong app). Code is better at those checks, and a person is better at judging whether the list of steps makes sense.
+- Moving the person's job from drawing to reviewing makes the review the one moment where human judgement matters most. The gates then cover the cases where being wrong costs money or code.
+
+**Supersedes:** the earlier Phase 4b idea (suggested tasks with Accept/Edit/Dismiss, drag-to-rewire, graph before/after previews). It was never implemented and had no D-number.
+
+**Code:** `planner/` (Phase 4), plus the existing checks in `schema.py`, `scheduler/graph.py`, `scheduler/executor.check_nodes` and `nodes/mcp_node.check_call`. Connectors gain `describe()`.
+
+## D15. Frontend stack (Phase 2)
+
+**Choice:** Vite + React + TypeScript in `frontend/`, with `react-router-dom` for pages.
+- **Styling:** plain CSS using the design tokens copied from `docs/design/system-map.html`, light and dark. No UI kit and no animation library: motion is CSS plus the Web Animations API, and all of it switches off under `prefers-reduced-motion`.
+- **Fonts:** Bricolage Grotesque, IBM Plex Sans and IBM Plex Mono, self-hosted through `@fontsource`. Nothing is fetched from a font CDN at runtime.
+- **Brand marks:** preset brands use the CC0 SVGs from the `simple-icons` package, as nominative use to identify an integration. Anything not in the package, plus custom apps, gets a monogram tile or the user's uploaded image.
+- **Tests:** Vitest + Testing Library on jsdom, plus `tsc` type checks.
+- **Dev:** `npm run dev` (in `frontend/`) runs the API in example mode and Vite together; Vite proxies API calls.
+- **Production:** `npm run build` writes `frontend/dist`, and `uv run flowforge` serves it from FastAPI and opens the browser.
+- **Old page:** the V1 `frontend/index.html` stays at `/classic` until the new UI reaches parity.
+- **Routing:** page routes and API paths overlap (`/runs/:id`, `/connectors/:id`). A `GET` whose `Accept` header prefers `text/html` gets the app; anything else gets JSON, so curl, CI and the existing API keep working unchanged.
+
+**Why:** a component model suits pages that share live state (SSE runs, connector health). TypeScript catches API-shape drift. Keeping plain CSS and a few dependencies keeps the zero-cost, local-first install small. Backend-only contributors can still use `uv run uvicorn` without Node.
+
+**Code:** `frontend/`, `backend/flowforge/spa.py`, `backend/flowforge/cli.py`.
+
+## D16. Run history, redaction before storage, example mode, editable connectors (Phase 2)
+
+**Choice:**
+- **Runs persist.** A run row is written when the run starts (`running`) and updated when it ends (`succeeded` | `failed` | `stopped`). Every event goes to a `run_events` table as it is emitted. Totals (calls, cache hits, tokens, credits, step time) are stored per run, so history and savings need no re-parsing. Runs still marked `running` when the server starts become `interrupted`. The in-memory buffer remains only for the live SSE stream.
+- **Redact before storing (pulled forward from CLAUDE.md §6.5).** `security/logfilter.py` masks two things as `[REDACTED]`:
+  - strings matching known key shapes (`sk_live_`/`sk_test_`, `rzp_live_`/`rzp_test_`, `AIza…`, `nvapi-…`, `sk-ant-…`, JWT-shaped tokens, PEM blocks);
+  - the current values of every env var a connector's `secret_ref`/`env_refs` names, plus `NVIDIA_API_KEY`, including their Basic-auth base64 form. Values shorter than 8 characters are never masked, to avoid mangling ordinary text.
+
+  It runs on every event before it is stored or streamed, on run results before storage and API responses, and as a `logging.Filter` on the root and uvicorn loggers. The promise stays honest: it *catches known key formats and configured keys*, not everything. Phase 3 replaces it with the full vault and redact/verify/scan/restore.
+- **Stop, not pause.** `POST /runs/{id}/stop` cancels the run; the executor cancels its running steps. Pausing would need a scheduler change, so it is out of scope.
+- **Events carry what a live view needs (additive; scheduling unchanged).**
+  - The `run started` event also carries `predicted_critical_path_ms` and each step's estimate (`estimates`).
+  - A step's `succeeded` event carries its `output`, so the dashboard can show outputs and token counts before the run ends.
+  - Each run stores its plan outline: step id, title, type, connector and dependencies, never params.
+  - `StepResult.answered_by` is now set on every attempt, so a failure is attributed to the connector that was tried.
+- **Editable connectors.** `POST/PUT/DELETE /connectors` save to the registry and rebuild that connector's node and rate-limit bucket in place. Runs already in flight keep the node they started with.
+  - Keys are entered as an env var *name* only (`secret_ref: env:NAME`). Responses say `set` or `missing`, never the value.
+  - Connectors defined in `FLOWFORGE_HOME/connectors.json` are upserted at every start-up (D10), so they are marked `managed_by: "file"` and are read-only through the API and UI; that way a UI edit can't be silently overwritten.
+  - `nim` and `fetch` cannot be deleted.
+- **Logos.** Uploaded logos follow CLAUDE.md §6.5: PNG/JPEG/WebP only, at most 1 MB, checked by magic bytes, stored at `FLOWFORGE_HOME/logos/<id>.<ext>` and served with a fixed `Content-Type` and `nosniff`.
+- **Example mode.** `flowforge --example` (or `FLOWFORGE_EXAMPLE=1`) uses its own database, `FLOWFORGE_HOME/example.db`, so real history is never mixed with demo data. It seeds example connectors with no keys, and offline fake nodes stand in for them. The seeded runs and any demo run started from the UI go through the real executor, so events, timings, history and savings are genuine; the UI labels everything "Example data".
+
+**Why:** a dashboard that forgets runs on restart can't show history or savings. Storing only redacted data means a leak in the UI or a copied database file doesn't leak keys. Example mode lets someone see the whole product without signing up anywhere.
+
+**Code:** `storage.py`, `security/logfilter.py`, `api/`, `example_data.py`, `main.py`.
 
 ---
 

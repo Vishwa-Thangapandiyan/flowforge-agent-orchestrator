@@ -14,7 +14,11 @@ dependencies = [
     "python-dotenv>=1.0",
     "anthropic>=1.11.0",
     "jsonschema>=4.26.0",
+    "python-multipart>=0.0.32",
 ]
+
+[project.scripts]
+flowforge = "flowforge.cli:main"
 
 [dependency-groups]
 dev = [

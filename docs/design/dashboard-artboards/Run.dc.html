@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Live run</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;color:#0F1D26;background:#EEF3F5}
+a{color:#2457C5}a:hover{color:#0B7A70}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="display:flex;flex-wrap:wrap;min-height:1060px;background:#EEF3F5">
+<nav style="flex:1 1 220px;box-sizing:border-box;padding:24px 16px;background:#0F1D26;display:flex;flex-direction:column;gap:6px;align-self:stretch">
+<div style="font-family:'Bricolage Grotesque','Segoe UI',sans-serif;font-size:24px;font-weight:700;color:#fff;padding:0 12px 18px">FlowForge</div>
+<a href="Main.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Overview</a>
+<a href="Connector.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Connectors</a>
+<a href="PlanReview.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Plan review</a>
+<a href="Run.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;background:#1D3340;color:#fff;font-weight:600;text-decoration:none;font-size:15px">Live run</a>
+<a href="Approvals.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px"><span>Approvals</span><span style="background:#F2B84B;color:#3A2D0E;border-radius:10px;padding:1px 8px;font-size:12px;font-weight:600">2</span></a>
+<a href="History.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Run history</a>
+<a href="Security.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Security</a>
+<a href="AddConnector.dc.html" style="margin-top:14px;padding:11px 12px;border-radius:8px;border:1px dashed #4A5E6A;color:#E8F0F3;text-decoration:none;font-size:15px;text-align:center">+ Add app</a>
+</nav>
+
+<main style="flex:999 1 560px;min-width:0;box-sizing:border-box;padding:32px;display:flex;flex-direction:column;gap:24px">
+<header style="display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:flex-end">
+<div style="display:flex;flex-direction:column;gap:6px">
+<span style="font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#4A5E6A">Run · nightly finance check</span>
+<h1 style="margin:0;font-family:'Bricolage Grotesque','Segoe UI',sans-serif;font-size:36px;line-height:1.1">Running now</h1>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px">
+<button type="button" style="min-height:44px;padding:0 16px;border-radius:10px;border:1px solid #D3DDE3;background:#fff;color:#0F1D26;font-weight:600;font-size:15px">Pause</button>
+<button type="button" style="min-height:44px;padding:0 16px;border-radius:10px;border:1px solid #B93C2B;background:#fff;color:#B93C2B;font-weight:600;font-size:15px">Stop run</button>
+</div>
+</header>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:12px">
+<div style="background:#E1EAFB;border-radius:12px;padding:14px"><div style="font:700 28px/1.1 'Bricolage Grotesque',sans-serif;color:#2457C5">running</div><div style="font-size:13px;color:#4A5E6A">status</div></div>
+<div style="background:#fff;border:1px solid #D3DDE3;border-radius:12px;padding:14px"><div style="font:700 28px/1.1 'Bricolage Grotesque',sans-serif">7.0 s</div><div style="font-size:13px;color:#4A5E6A">elapsed · about 9 s expected</div></div>
+<div style="background:#fff;border:1px solid #D3DDE3;border-radius:12px;padding:14px"><div style="font:700 28px/1.1 'Bricolage Grotesque',sans-serif">3</div><div style="font-size:13px;color:#4A5E6A">API calls · 1 skipped by cache</div></div>
+<div style="background:#fff;border:1px solid #D3DDE3;border-radius:12px;padding:14px"><div style="font:700 28px/1.1 'Bricolage Grotesque',sans-serif">1,040</div><div style="font-size:13px;color:#4A5E6A">tokens so far</div></div>
+</div>
+
+<section style="background:#fff;border:1px solid #D3DDE3;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:space-between;align-items:baseline">
+<h2 style="margin:0;font-family:'Bricolage Grotesque','Segoe UI',sans-serif;font-size:22px">Who ran when</h2>
+<span style="font-size:14px;color:#4A5E6A">The outlined chain is the slowest, so it sets the total time.</span>
+</div>
+<div style="overflow-x:auto">
+<div style="min-width:560px;display:flex;flex-direction:column;gap:8px">
+<div style="display:grid;grid-template-columns:160px 1fr;gap:12px;align-items:center">
+<span style="font-size:14px">1 Scan code</span>
+<div style="position:relative;height:28px;background:#EEF3F5;border-radius:6px"><div style="position:absolute;left:0;width:60%;top:0;bottom:0;border-radius:6px;background:#1F7A45;outline:3px solid #0F1D26;outline-offset:1px"></div></div>
+</div>
+<div style="display:grid;grid-template-columns:160px 1fr;gap:12px;align-items:center">
+<span style="font-size:14px">2 Fetch payments</span>
+<div style="position:relative;height:28px;background:#EEF3F5;border-radius:6px"><div style="position:absolute;left:0;width:10%;top:0;bottom:0;border-radius:6px;background:#1F7A45"></div></div>
+</div>
+<div style="display:grid;grid-template-columns:160px 1fr;gap:12px;align-items:center">
+<span style="font-size:14px">3 Stock prices</span>
+<div style="position:relative;height:28px;background:#EEF3F5;border-radius:6px"><div style="position:absolute;left:0;width:30%;top:0;bottom:0;border-radius:6px;background:#1F7A45"></div></div>
+</div>
+<div style="display:grid;grid-template-columns:160px 1fr;gap:12px;align-items:center">
+<span style="font-size:14px">4 Draw charts</span>
+<div style="position:relative;height:28px;background:#EEF3F5;border-radius:6px"><div style="position:absolute;left:30%;width:20%;top:0;bottom:0;border-radius:6px;background:#1F7A45"></div></div>
+</div>
+<div style="display:grid;grid-template-columns:160px 1fr;gap:12px;align-items:center">
+<span style="font-size:14px">5 Write summary</span>
+<div style="position:relative;height:28px;background:#EEF3F5;border-radius:6px"><div style="position:absolute;left:60%;width:10%;top:0;bottom:0;border-radius:6px 0 0 6px;background:#2457C5;outline:3px solid #0F1D26;outline-offset:1px"></div><div style="position:absolute;left:70%;width:20%;top:0;bottom:0;border-radius:0 6px 6px 0;border:2px dashed #9AAAB4;box-sizing:border-box"></div></div>
+</div>
+<div style="display:grid;grid-template-columns:160px 1fr;gap:12px;align-items:center">
+<span style="font-size:14px">6 You approve</span>
+<div style="position:relative;height:28px;background:#EEF3F5;border-radius:6px"><div style="position:absolute;left:90%;width:10%;top:0;bottom:0;border-radius:6px;border:2px dashed #8A5A00;box-sizing:border-box;background:#FCEFD0"></div></div>
+</div>
+<div style="display:grid;grid-template-columns:160px 1fr;gap:12px;font-size:12px;color:#4A5E6A;font-family:'IBM Plex Mono',monospace"><span></span><div style="display:flex;justify-content:space-between"><span>0 s</span><span>2.5</span><span>5</span><span>7.5</span><span>10 s</span></div></div>
+</div>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px 16px;font-size:13px;color:#4A5E6A">
+<span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#1F7A45;vertical-align:-1px"></span> done</span>
+<span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#2457C5;vertical-align:-1px"></span> running</span>
+<span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;border:2px dashed #9AAAB4;box-sizing:border-box;vertical-align:-1px"></span> waiting</span>
+<span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;border:2px dashed #8A5A00;background:#FCEFD0;box-sizing:border-box;vertical-align:-1px"></span> waits for you</span>
+</div>
+</section>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(420px,100%),1fr));gap:16px;align-items:start">
+<section style="background:#fff;border:1px solid #D3DDE3;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center">
+<span style="font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#4A5E6A">Output · 2 Fetch payments</span>
+<div style="display:flex;gap:6px">
+<span style="padding:6px 12px;border-radius:999px;background:#DDF2EF;color:#0B7A70;font-weight:600;font-size:13px">Table</span>
+<span style="padding:6px 12px;border-radius:999px;background:#EEF3F5;color:#4A5E6A;font-size:13px">JSON</span>
+</div>
+</div>
+<div style="overflow-x:auto">
+<table style="width:100%;border-collapse:collapse;font-size:14px;min-width:380px">
+<tr style="text-align:left;color:#4A5E6A"><th style="padding:8px;border-bottom:1px solid #D3DDE3">payment</th><th style="padding:8px;border-bottom:1px solid #D3DDE3">amount</th><th style="padding:8px;border-bottom:1px solid #D3DDE3">status</th></tr>
+<tr><td style="padding:8px;border-bottom:1px solid #EEF3F5;font-family:'IBM Plex Mono',monospace">pay_••••1a</td><td style="padding:8px;border-bottom:1px solid #EEF3F5">₹1,299</td><td style="padding:8px;border-bottom:1px solid #EEF3F5;color:#1F7A45;font-weight:600">captured</td></tr>
+<tr><td style="padding:8px;border-bottom:1px solid #EEF3F5;font-family:'IBM Plex Mono',monospace">pay_••••2c</td><td style="padding:8px;border-bottom:1px solid #EEF3F5">₹849</td><td style="padding:8px;border-bottom:1px solid #EEF3F5;color:#1F7A45;font-weight:600">captured</td></tr>
+<tr><td style="padding:8px;font-family:'IBM Plex Mono',monospace">pay_••••3e</td><td style="padding:8px">₹2,150</td><td style="padding:8px;color:#B93C2B;font-weight:600">failed</td></tr>
+</table>
+</div>
+<span style="font-size:13px;color:#4A5E6A">The viewer matches the output: text, table, chart, image, video or diff.</span>
+</section>
+<section style="background:#fff;border:1px solid #D3DDE3;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:6px">
+<span style="font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#4A5E6A">Events</span>
+<div style="font:500 13px/1.7 'IBM Plex Mono',monospace;overflow-x:auto;white-space:nowrap">
+<div>0.0s &nbsp;1, 2, 3 started together</div>
+<div>1.0s &nbsp;2 done · 1 call</div>
+<div>3.0s &nbsp;3 done · 4 started</div>
+<div>5.0s &nbsp;4 done</div>
+<div>6.0s &nbsp;1 done · 5 started (cache miss)</div>
+<div style="color:#2457C5">7.0s &nbsp;5 running · placeholders returned intact 3 of 3</div>
+</div>
+</section>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1060}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

@@ -7,12 +7,25 @@ Phase 3 vault and refused until then. Errors name the reference, never a value.
 from __future__ import annotations
 
 import os
+import re
 
 SECRET_REF_PATTERN = r"^(env|vault):[A-Z_][A-Z0-9_]*$"
 
 
 class SecretRefError(ValueError):
     pass
+
+
+# A key pasted (and upper-cased) into a "variable name" field still has its key shape (D16).
+_KEY_SHAPED_NAME = re.compile(
+    r"^(?:(?:SK|RK)_(?:LIVE|TEST)_|RZP_(?:LIVE|TEST)_|AIZA[0-9A-Z_]{16,}|SK_ANT_)", re.IGNORECASE)
+
+
+def check_ref(ref: str | None) -> str | None:
+    """Pydantic-friendly: refuse a reference whose variable name is really a key."""
+    if ref is not None and _KEY_SHAPED_NAME.match(ref.split(":", 1)[-1]):
+        raise ValueError("that variable name looks like a key; put the key in .env and reference it by name")
+    return ref
 
 
 def resolve_secret(ref: str | None) -> str | None:

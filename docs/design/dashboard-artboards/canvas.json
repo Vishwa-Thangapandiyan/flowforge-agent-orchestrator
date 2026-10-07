@@ -1,0 +1,33 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-10-07T14:35:00Z" },
+  "title": "FlowForge Dashboard Pages",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 1280, "h": 1060, "title": "1 Overview (hub map)", "expand": "fill", "is_interactive": true },
+    "Connector.dc.html": { "x": 1360, "y": 0, "w": 1280, "h": 1100, "title": "2 Connector, zoomed in", "expand": "fill", "is_interactive": true },
+    "AddConnector.dc.html": { "x": 2720, "y": 0, "w": 1280, "h": 1180, "title": "3 Add an app", "expand": "fill", "is_interactive": true },
+    "PlanReview.dc.html": { "x": 0, "y": 1300, "w": 1280, "h": 1060, "title": "4 Plan review", "expand": "fill", "is_interactive": true },
+    "Run.dc.html": { "x": 1360, "y": 1300, "w": 1280, "h": 1060, "title": "5 Live run", "expand": "fill", "is_interactive": true },
+    "Approvals.dc.html": { "x": 2720, "y": 1300, "w": 1280, "h": 900, "title": "6 Approvals", "expand": "fill", "is_interactive": true },
+    "History.dc.html": { "x": 0, "y": 2480, "w": 1280, "h": 900, "title": "7 Run history", "expand": "fill", "is_interactive": true },
+    "Security.dc.html": { "x": 1360, "y": 2480, "w": 1280, "h": 1180, "title": "8 Security", "expand": "fill", "is_interactive": true }
+  },
+  "order": [
+    "Main.dc.html",
+    "Connector.dc.html",
+    "AddConnector.dc.html",
+    "PlanReview.dc.html",
+    "Run.dc.html",
+    "Approvals.dc.html",
+    "History.dc.html",
+    "Security.dc.html"
+  ],
+  "notes": {
+    "t1": { "x": 0, "y": -300, "text": "FlowForge dashboard: every page", "kind": "title1", "maxW": 4000 },
+    "s1": { "x": 2720, "y": 2480, "w": 420, "text": "Not drawn yet: the Swap wizard (Phase 5, reuses Plan review) and Settings (planner model, vault status, data folder).", "fill": "orange" },
+    "s2": { "x": 3200, "y": 2480, "w": 420, "text": "Colour key: teal = connected and safe, violet = LLM, amber = waits for you, coral = failed, blue = plain script. All numbers are example data.", "fill": "teal" }
+  },
+  "designSystems": []
+}

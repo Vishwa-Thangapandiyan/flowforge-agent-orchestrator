@@ -3,9 +3,15 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from contextvars import ContextVar
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from typing import Any
+
+
+# The run a node call belongs to, for naming artifact folders (D12). Set by the API before
+# run_workflow; step tasks inherit it. None outside a run.
+current_run_id: ContextVar[str | None] = ContextVar("current_run_id", default=None)
 
 
 class NodeError(Exception):

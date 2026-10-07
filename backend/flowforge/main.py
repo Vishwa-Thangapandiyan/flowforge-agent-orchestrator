@@ -4,6 +4,7 @@ POST /validate               workflow JSON → {"ok", "order", "levels", "critic
 POST /runs?policy=&use_cache= workflow JSON → {"run_id"}; the run executes in the background
 GET  /runs/{run_id}          → {"status", "result"}
 GET  /runs/{run_id}/events   → Server-Sent Events: every executor event, replayed from the start
+GET  /connectors/{id}/tools   → an MCP connector's discovered tools (D12)
 GET  /workflows              → names of the example workflows
 GET  /workflows/{name}       → one example workflow's JSON
 GET  /                       → the status page (frontend/index.html)
@@ -27,23 +28,25 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import FileResponse
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 
-from flowforge.nodes.base import Node
+from flowforge.nodes.base import Node, NodeError, TransientNodeError, current_run_id
 from flowforge.nodes.http_node import HTTPNode
 from flowforge.nodes.llm_node import LLMNode
-from flowforge.nodes.mcp_node import MCPNode
+from flowforge.nodes.mcp_node import MCPNode, check_call
 from flowforge.nodes.mock_node import MockNode
 from flowforge.schema import Workflow
 from flowforge.scheduler import graph
 from flowforge.scheduler.critical_path import critical_path
 from flowforge.scheduler.durations import estimate_weights
-from flowforge.scheduler.executor import POLICIES, Event, Policy, RunResult, run_workflow
+from flowforge.scheduler.executor import POLICIES, Event, Policy, RunResult, check_nodes, run_workflow
 from flowforge.scheduler.rate_limit import TokenBucket
 from flowforge.storage import Storage
+from flowforge.templating import referenced_steps
 
 load_dotenv()
 
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOWS_DIR = ROOT / "backend" / "workflows"
+MCP_CHECK_TIMEOUT_S = 5  # pre-run tool discovery; slower servers get a warning instead (D12)
 FRONTEND = ROOT / "frontend" / "index.html"
 
 
@@ -98,14 +101,49 @@ def app_state() -> AppState:
 
 def check_graph(workflow: Workflow) -> graph.DAG:
     try:
-        return graph.build_dag(workflow)
-    except graph.CycleError as exc:
+        dag = graph.build_dag(workflow)
+        check_nodes(workflow, app_state().nodes)  # unknown connector, type mismatch, bad fallback (D10)
+    except (graph.CycleError, ValueError) as exc:
         raise HTTPException(422, str(exc)) from exc
+    return dag
+
+
+async def check_mcp_calls(workflow: Workflow) -> list[str]:
+    """Check each MCP step's tool and literal arguments against its server before a run (D12).
+
+    A wrong call → 422 with the reason. An unreachable server → a warning; the step is
+    still checked when it runs. Templated arguments are checked at run time only.
+    """
+    nodes = app_state().nodes
+    errors: list[str] = []
+    warnings: list[str] = []
+    for step in workflow.steps:
+        node = nodes.get(step.connector or step.type)
+        tool = step.params.get("tool")
+        if step.type != "mcp" or not isinstance(node, MCPNode) or not isinstance(tool, str) or referenced_steps(tool):
+            continue
+        arguments = step.params.get("arguments", {})
+        try:
+            tools = await asyncio.wait_for(node.list_tools(step.params.get("server")), MCP_CHECK_TIMEOUT_S)
+        except (TransientNodeError, TimeoutError) as exc:
+            warnings.append(f"step '{step.id}': could not reach the MCP server to check tool '{tool}' "
+                            f"({str(exc) or type(exc).__name__}); it will be checked when the step runs")
+            continue
+        except NodeError as exc:
+            errors.append(f"step '{step.id}': {exc}")
+            continue
+        problem = check_call(tools, tool, None if referenced_steps(arguments) else arguments)
+        if problem:
+            errors.append(f"step '{step.id}': {problem}")
+    if errors:
+        raise HTTPException(422, "; ".join(errors))
+    return warnings
 
 
 @app.post("/validate")
 async def validate(workflow: Workflow) -> dict[str, Any]:
     dag = check_graph(workflow)
+    warnings = await check_mcp_calls(workflow)
     s = app_state()
     weights = estimate_weights(workflow, s.storage.duration_history(workflow.id))
     cp = critical_path(dag, weights)
@@ -116,19 +154,22 @@ async def validate(workflow: Workflow) -> dict[str, Any]:
         "weights": weights,
         "critical_path": cp.path,
         "critical_path_ms": cp.length_ms,
+        "warnings": warnings,
     }
 
 
 @app.post("/runs")
-async def create_run(workflow: Workflow, policy: Policy = "critical_path", use_cache: bool = True) -> dict[str, str]:
+async def create_run(workflow: Workflow, policy: Policy = "critical_path", use_cache: bool = True) -> dict[str, Any]:
     if policy not in POLICIES:
         raise HTTPException(422, f"policy must be one of {POLICIES}")
     check_graph(workflow)
+    warnings = await check_mcp_calls(workflow)
     s = app_state()
     run_id = uuid.uuid4().hex[:12]
     run = s.runs[run_id] = Run(workflow)
 
     async def execute() -> None:
+        current_run_id.set(run_id)  # artifact folder for this run's large outputs (D12)
         try:
             run.result = await run_workflow(
                 workflow, s.nodes, policy=policy, use_cache=use_cache,
@@ -145,7 +186,7 @@ async def create_run(workflow: Workflow, policy: Policy = "critical_path", use_c
     task = asyncio.create_task(execute())
     s.tasks.add(task)
     task.add_done_callback(s.tasks.discard)
-    return {"run_id": run_id}
+    return {"run_id": run_id, "warnings": warnings}
 
 
 def get_run(run_id: str) -> Run:
@@ -179,6 +220,19 @@ async def run_events(run_id: str) -> AsyncIterator[ServerSentEvent]:
             yield ServerSentEvent(data={"type": "end"}, event="end")
             return
         await run.changed.wait()
+
+
+@app.get("/connectors/{connector_id}/tools")
+async def connector_tools(connector_id: str) -> list[dict[str, Any]]:
+    node = app_state().nodes.get(connector_id)
+    if node is None:
+        raise HTTPException(404, "unknown connector")
+    if not isinstance(node, MCPNode):
+        raise HTTPException(422, f"'{connector_id}' is not an MCP connector")
+    try:
+        return await asyncio.wait_for(node.list_tools(), MCP_CHECK_TIMEOUT_S * 3)
+    except (NodeError, TimeoutError) as exc:
+        raise HTTPException(502, f"could not list tools: {str(exc) or type(exc).__name__}") from exc
 
 
 @app.get("/workflows")

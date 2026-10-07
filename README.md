@@ -29,12 +29,41 @@ On the page, pick `diamond_mock` (runs with no key), choose a policy and hit **R
 
 To use real LLM steps, `cp .env.example .env` and add a free `NVIDIA_API_KEY` from [build.nvidia.com](https://build.nvidia.com). MCP steps use `mcp-server-fetch`, which `uvx` downloads on first use.
 
+## Connect any provider
+
+Each app you connect is a **connector**: an LLM, an MCP server, an HTTP API or a local command. Two are ready on first start: `nim` (the default LLM) and `fetch` (the default MCP server). Add more in `~/.flowforge/connectors.json` (or `$FLOWFORGE_HOME/connectors.json`); it's checked and loaded at start-up:
+
+```json
+[
+  { "id": "gemini", "type": "llm", "name": "Gemini", "rate_limit_rpm": 15,
+    "secret_ref": "env:GEMINI_API_KEY",
+    "connection": { "provider": "openai_compatible",
+                    "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
+                    "model": "gemini-3.8-flash" } },
+  { "id": "claude", "type": "llm", "name": "Claude", "fallback": "gemini",
+    "secret_ref": "env:ANTHROPIC_API_KEY",
+    "connection": { "provider": "anthropic", "model": "claude-opus-5-5" } },
+  { "id": "scripts", "type": "local", "name": "My scripts",
+    "connection": { "command": ["python", "tools/report.py"], "cwd": "/home/me/project" } }
+]
+```
+
+Then point a step at it with `"connector": "gemini"`. Steps without a `connector` use their type's default, so existing workflows run unchanged.
+
+- **Keys stay out of the file.** A connector holds a reference such as `env:GEMINI_API_KEY`, and the key lives in `.env`. Connectors and API responses show only the reference; HTTP connectors send the key only to their own `base_url` and redact it from error messages. (Full secret handling, the vault and redaction, is Phase 3.)
+- **Each connector gets its own rate limit and cache**, so two providers never share a budget or an answer.
+- **`fallback`** names another connector of the same type, tried only after every retry failed with a transient error (rate limit, 5xx, timeout).
+- **MCP servers** have their tools discovered (`GET /connectors/{id}/tools`), and every call is checked against the tool's schema before it is sent.
+- **Local commands** never run through a shell, stay inside their folder and see only the environment you give them (plus the few variables the OS needs to start a program).
+
+Ready-made presets: NVIDIA NIM, Gemini, Claude, Ollama, Razorpay, Stripe and the fetch MCP server (`backend/flowforge/connectors/presets.py`). The rules are in [DECISIONS.md](DECISIONS.md) D10, D12 and D13.
+
 ## Status and roadmap
 
 | Phase | What | Status |
 |---|---|---|
 | — | Scheduler core: five policies, caches, retries, SSE run stream, status page, benchmarks | **Done** |
-| 1 | Any LLM (OpenAI-compatible + Anthropic), any MCP server with tool discovery, `local` command steps, connector registry, ruff + CI | **In progress** |
+| 1 | Any LLM (OpenAI-compatible + Anthropic), any MCP server with tool discovery, `local` command steps, connector registry, ruff + CI | **Done** |
 | 2 | Dashboard v1: hub map, live run, tool health, money and time; persisted run history | Planned |
 | 3 | Connectors with forms, secrets vault, redaction, security tab | Planned |
 | 4 | Human approval gates; swap one app for another (e.g. Razorpay → Stripe) on a git branch | Planned |
@@ -52,10 +81,12 @@ The promise, once Phase 3 ships: API keys and other recognised secrets are never
 
 | Endpoint | Purpose |
 |---|---|
-| `POST /validate` | Workflow JSON → run order, levels, predicted critical path. Returns 422 with the cycle or schema error |
-| `POST /runs?policy=critical_path&use_cache=true` | Starts a run in the background → `{"run_id"}` |
+| `POST /validate` | Workflow JSON → run order, levels, predicted critical path, warnings. Returns 422 with the cycle, schema error, unknown connector or wrong MCP call |
+| `POST /runs?policy=critical_path&use_cache=true` | Starts a run in the background → `{"run_id", "warnings"}` |
 | `GET /runs/{id}` | Status and the full result |
 | `GET /runs/{id}/events` | Live event stream (SSE) |
+| `GET /connectors` | Every connector (secret references only, never values) |
+| `GET /connectors/{id}/tools` | An MCP connector's tools and their input schemas |
 | `GET /workflows`, `GET /workflows/{name}` | The example workflows |
 
 Runs are currently kept in memory, so a server restart forgets them (persisted in Phase 2).
@@ -75,7 +106,7 @@ Runs are currently kept in memory, so a server restart forgets them (persisted i
 }
 ```
 
-Step types today are `llm`, `http`, `mcp` and `mock`. Optional fields per step are `estimated_ms`, `timeout_s`, `retries` (default 2), `cache` (`true`/`false`) and `description`. A step may only reference outputs of steps in its own `depends_on`. The full rules are in [DECISIONS.md](DECISIONS.md).
+Step types are `llm`, `http`, `mcp`, `local` and `mock`. Optional fields per step are `connector`, `estimated_ms`, `timeout_s`, `retries` (default 2), `cache` (`true`/`false`) and `description`. A step may only reference outputs of steps in its own `depends_on`. The full rules are in [DECISIONS.md](DECISIONS.md).
 
 ## Scheduling policies and benchmarks
 
@@ -111,7 +142,8 @@ Both tracks run every policy with the cache off and on, and write CSV plus a mar
 | `backend/flowforge/scheduler/executor.py` | The list scheduler: slots, priority heap, retries, timeouts, failure handling, the five policies |
 | `backend/flowforge/scheduler/rate_limit.py` | Async token bucket |
 | `backend/flowforge/scheduler/cache.py` | Single-flight memo + persistent cache |
-| `backend/flowforge/nodes/` | `llm` (NIM), `http`, `mcp`, `mock` step types |
+| `backend/flowforge/nodes/` | `llm` (any provider), `http`, `mcp`, `local`, `mock` step types |
+| `backend/flowforge/connectors/` | Connector models, secret references, presets, registry |
 | `backend/flowforge/schema.py`, `templating.py`, `storage.py` | Validation, `{{steps.x.output}}` templates, SQLite |
 | `backend/flowforge/main.py`, `frontend/index.html` | API + live status page |
 | `backend/workflows/` | Example workflows |
@@ -129,7 +161,7 @@ Tests are in `backend/tests/` and never touch the network. They include property
 
 ## Contributing
 
-Issues and PRs are welcome. Work happens on a branch per phase (`feat/phase-N-<name>`) with a PR into `main`; never against `DAA`. Before opening a PR: `uv run pytest` is green offline, new behaviour has tests including a failure case, and design changes get a new D-numbered entry in `DECISIONS.md` first. Never put a real API key in code, tests, fixtures or docs. A fuller `CONTRIBUTING.md` arrives with Phase 1.
+Issues and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) has the setup, the checks a pull request must pass (offline tests and ruff, on Linux and Windows in CI) and the rules that keep FlowForge safe and free.
 
 ## Licence
 

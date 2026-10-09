@@ -6,7 +6,7 @@ Masks two things as "[REDACTED]":
     NVIDIA_API_KEY, and their Basic-auth base64 form. Values under 8 characters are skipped.
 
 It is applied to run events and results before they are stored or served, and to every log
-record. It catches known key formats and configured keys, not everything; Phase 3 replaces
+record. It catches known key formats and configured keys, not everything; Phase 4 replaces
 it with the vault and redact/verify/scan/restore.
 """
 

@@ -52,3 +52,5 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "backend/tests/*" = ["E501", "B905"]  # long assertion/data lines read better whole
+"backend/flowforge/flowmap/fixture.py" = ["E501"]  # example data: one block or line per row
+"backend/flowforge/connectors/presets.py" = ["E501"]  # catalog rows read better whole

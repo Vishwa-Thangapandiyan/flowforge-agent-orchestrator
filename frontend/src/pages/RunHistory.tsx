@@ -7,6 +7,7 @@ import { count, seconds, shortId, when } from "../components/format";
 import { Icons } from "../components/icons";
 import { useMeta } from "../components/Shell";
 import { runTone } from "../components/status";
+import { RunsSummary } from "../components/RunsSummary";
 import { CardSkeleton, Chip, EmptyState, ErrorBox } from "../components/ui";
 import type { Connector } from "../api/types";
 
@@ -15,7 +16,7 @@ const FILTERS: { id: Filter; label: string; soon?: string }[] = [
   { id: "all", label: "All" },
   { id: "succeeded", label: "Succeeded" },
   { id: "failed", label: "Failed" },
-  { id: "waiting", label: "Waiting for you", soon: "Approval gates arrive in Phase 4" },
+  { id: "waiting", label: "Waiting for you", soon: "Approval gates arrive in Phase 5" },
 ];
 const PAGE = 25;
 
@@ -55,8 +56,15 @@ export function RunHistory() {
       <header className="page-head">
         <div className="titles">
           <span className="eyebrow">{meta.project}</span>
-          <h1>Run history</h1>
+          <h1>Runs</h1>
         </div>
+        <Link to="/live" className="btn primary">{Icons.play(18)} Start a run</Link>
+      </header>
+
+      <RunsSummary />
+
+      <header className="page-head">
+        <h2>History</h2>
         <div className="actions" role="group" aria-label="Show runs">
           {FILTERS.map((f) => (
             <button key={f.id} type="button" className="filter" aria-pressed={filter === f.id} disabled={!!f.soon}

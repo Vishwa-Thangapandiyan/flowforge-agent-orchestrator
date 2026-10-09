@@ -11,3 +11,17 @@ graphify-out/
 frontend/node_modules/
 frontend/dist/
 frontend/*.tsbuildinfo
+.ruff_cache/
+*.db-wal
+*.db-shm
+*.db-journal
+.env.*
+!.env.example
+*.pem
+*.key
+*.log
+*.zip
+claude-resume.md
+desktop.ini
+.vscode/
+.idea/

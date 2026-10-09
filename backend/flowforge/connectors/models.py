@@ -107,7 +107,7 @@ class ConnectorBase(_Model):
     secret_ref: str | None = Field(default=None, pattern=SECRET_REF_PATTERN)
     mode: Literal["test", "live"] | None = None
     rate_limit_rpm: float | None = Field(default=None, gt=0)
-    data_sent: Literal["all", "redacted_only"] = "all"  # behaviour arrives in Phase 3
+    data_sent: Literal["all", "redacted_only"] = "all"  # behaviour arrives in Phase 4
     fallback: str | None = Field(default=None, pattern=CONNECTOR_ID_PATTERN)
     created_at: str | None = None
 

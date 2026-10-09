@@ -8,12 +8,12 @@ test("the nav lists every page, with later phases marked", async () => {
   mockApi({ "/meta": META });
   renderAt("/security");
   const nav = screen.getByRole("navigation", { name: "Main" });
-  for (const name of ["Overview", "Connectors", "Plan review", "Live run", "Approvals", "Run history", "Security"]) {
+  for (const name of ["Flow map", "Runs", "Connectors", "Approvals", "Security"]) {
     expect(nav).toHaveTextContent(name);
   }
   expect(screen.getByRole("link", { name: /Security/ })).toHaveAttribute("aria-current", "page");
-  expect(nav).toHaveTextContent("Phase 3");
   expect(nav).toHaveTextContent("Phase 4");
+  expect(nav).toHaveTextContent("Phase 5");
 });
 
 test("example data is labelled as such", async () => {

@@ -48,6 +48,74 @@ PRESETS: dict[str, Connector] = {c.id: c for c in map(parse_connector, [
      "connection": {"command": "uvx", "args": ["mcp-server-fetch"]}},
 ])}
 
+# The connector catalog (D17): many apps, each with a mock test run. `live` means FlowForge can call it
+# today with the user's own key or on their machine; the rest are "Demo only" until their integration lands.
+# Fields: id, name, category, connector type, live, one-line description, meta line.
+CATEGORIES = {"llm": "LLMs", "pay": "Payments", "dev": "Dev tools", "data": "Data and apps",
+              "media": "Media and AI services", "custom": "Your own"}
+_CATALOG_ROWS: list[tuple[str, str, str, str, bool, str, str]] = [
+    ("nim", "NVIDIA NIM", "llm", "llm", True, "Fast open models on a free tier.", "openai-compatible · 40 rpm free"),
+    ("gemini", "Google Gemini", "llm", "llm", True, "Quick general model with a generous free tier.", "openai-compatible · 15 rpm free"),
+    ("claude", "Claude", "llm", "llm", True, "Careful writing, code and long documents.", "anthropic · your key"),
+    ("openai", "OpenAI", "llm", "llm", True, "GPT models through the standard API.", "openai-compatible · your key"),
+    ("ollama", "Ollama", "llm", "llm", True, "Models on your own machine. Nothing leaves it.", "local · port 11434"),
+    ("mistral", "Mistral", "llm", "llm", True, "European models, from small to large.", "openai-compatible · your key"),
+    ("groq", "Groq", "llm", "llm", True, "Very fast answers from open models.", "openai-compatible · free tier"),
+    ("openrouter", "OpenRouter", "llm", "llm", True, "One key for hundreds of models.", "openai-compatible · your key"),
+    ("deepseek", "DeepSeek", "llm", "llm", True, "Strong reasoning at a low price.", "openai-compatible · your key"),
+    ("perplexity", "Perplexity", "llm", "http", False, "Answers with web sources attached.", "HTTP · search"),
+    ("huggingface", "Hugging Face", "llm", "http", False, "Inference for thousands of open models.", "HTTP · inference"),
+    ("together", "Together AI", "llm", "llm", False, "Hosted open models and fine-tunes.", "openai-compatible"),
+    ("cohere", "Cohere", "llm", "http", False, "Embeddings and reranking for search.", "HTTP · embed, rerank"),
+    ("razorpay", "Razorpay", "pay", "http", False, "Payments in India. Starts in test mode.", "HTTP · money moves only behind a gate"),
+    ("stripe", "Stripe", "pay", "http", False, "Global payments. Starts in test mode.", "HTTP · money moves only behind a gate"),
+    ("paypal", "PayPal", "pay", "http", False, "PayPal wallets and cards.", "HTTP · money moves only behind a gate"),
+    ("square", "Square", "pay", "http", False, "In-person and online payments.", "HTTP · money moves only behind a gate"),
+    ("adyen", "Adyen", "pay", "http", False, "Payments for large shops.", "HTTP · money moves only behind a gate"),
+    ("github", "GitHub", "dev", "mcp", True, "Issues, pull requests and code search.", "MCP · 26 tools"),
+    ("sirius", "Sirius", "dev", "local", True, "Your security scanner, run on this machine.", "local · no shell · one folder"),
+    ("playwright", "Playwright", "dev", "mcp", True, "Drives a real browser to test pages.", "MCP · 21 tools"),
+    ("filesystem", "Filesystem", "dev", "mcp", True, "Reads and writes files in one folder.", "MCP · 11 tools"),
+    ("gitlab", "GitLab", "dev", "mcp", False, "Merge requests, pipelines and issues.", "MCP · demo"),
+    ("docker", "Docker", "dev", "mcp", False, "Start, stop and inspect containers.", "MCP · demo"),
+    ("sentry", "Sentry", "dev", "mcp", False, "Errors and traces from production.", "MCP · demo"),
+    ("vercel", "Vercel", "dev", "mcp", False, "Deploys, domains and logs.", "MCP · demo"),
+    ("linear", "Linear", "dev", "mcp", False, "Issues and projects.", "MCP · demo"),
+    ("jira", "Jira", "dev", "http", False, "Tickets and sprints.", "HTTP · demo"),
+    ("fetch", "Fetch", "data", "mcp", True, "Fetches any web page as clean text.", "MCP · uvx mcp-server-fetch"),
+    ("postgres", "PostgreSQL", "data", "mcp", True, "Asks your database questions, read-only.", "MCP · 3 tools · read-only"),
+    ("supabase", "Supabase", "data", "mcp", False, "Postgres, auth and storage in one.", "MCP · demo"),
+    ("mongodb", "MongoDB", "data", "mcp", False, "Document database queries.", "MCP · demo"),
+    ("redis", "Redis", "data", "http", False, "Fast key-value cache.", "HTTP · demo"),
+    ("notion", "Notion", "data", "mcp", False, "Pages and databases in your workspace.", "MCP · demo"),
+    ("slack", "Slack", "data", "mcp", False, "Post and read messages in channels.", "MCP · demo · sending waits for you"),
+    ("gmail", "Gmail", "data", "mcp", False, "Send and read email.", "MCP · demo · sending waits for you"),
+    ("gdrive", "Google Drive", "data", "mcp", False, "Find and read files in Drive.", "MCP · demo"),
+    ("gsheets", "Google Sheets", "data", "http", False, "Read and append rows.", "HTTP · demo"),
+    ("airtable", "Airtable", "data", "http", False, "Tables your team already uses.", "HTTP · demo"),
+    ("discord", "Discord", "data", "http", False, "Messages and webhooks.", "HTTP · demo"),
+    ("telegram", "Telegram", "data", "http", False, "Bots and chat messages.", "HTTP · demo"),
+    ("whatsapp", "WhatsApp", "data", "http", False, "Business messages to customers.", "HTTP · demo · sending waits for you"),
+    ("twilio", "Twilio", "data", "http", False, "SMS and voice calls.", "HTTP · demo · sending waits for you"),
+    ("resend", "Resend", "data", "http", False, "Email from your app.", "HTTP · demo"),
+    ("shopify", "Shopify", "data", "http", False, "Products, orders and customers.", "HTTP · demo"),
+    ("firebase", "Firebase", "data", "http", False, "App data and auth.", "HTTP · demo"),
+    ("higgsfield", "Higgsfield", "media", "http", False, "Images and video from a prompt.", "HTTP · demo"),
+    ("elevenlabs", "ElevenLabs", "media", "http", False, "Natural voices and speech.", "HTTP · demo"),
+    ("replicate", "Replicate", "media", "http", False, "Run open models by API.", "HTTP · demo"),
+    ("stability", "Stability AI", "media", "http", False, "Image generation and editing.", "HTTP · demo"),
+    ("runway", "Runway", "media", "http", False, "Video generation and editing.", "HTTP · demo"),
+    ("deepgram", "Deepgram", "media", "http", False, "Speech to text, fast.", "HTTP · demo"),
+    ("assemblyai", "AssemblyAI", "media", "http", False, "Speech to text and audio insights.", "HTTP · demo"),
+    ("custom_mcp", "Any MCP server", "custom", "mcp", True, "A command and its arguments. Tools are found for you.", "MCP · your colour and logo"),
+    ("custom_http", "Any HTTP API", "custom", "http", True, "A base URL and the name of its key.", "HTTP · OpenAPI optional"),
+    ("custom_local", "Local command", "custom", "local", True, "Any script on your machine. No shell, one folder.", "local · your colour and logo"),
+]
+CATALOG: list[dict] = [
+    {"id": r[0], "name": r[1], "category": r[2], "type": r[3], "live": r[4], "description": r[5], "meta": r[6]}
+    for r in _CATALOG_ROWS
+]
+
 # Starting points for the "Custom" choice of each type; the user fills in id, name and connection.
 CUSTOM: dict[str, dict] = {
     "llm": {"type": "llm", "connection": {"provider": "openai_compatible", "base_url": "", "model": ""}},

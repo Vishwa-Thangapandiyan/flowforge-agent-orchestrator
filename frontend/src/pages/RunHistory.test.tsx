@@ -40,5 +40,5 @@ test("an empty history offers a first run", async () => {
   mockApi({ "/meta": META, "/runs": [], "/connectors": CONNECTORS });
   renderAt("/runs");
   expect(await screen.findByText("No runs yet")).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: /Start a run/ })).toHaveAttribute("href", "/live");
+  for (const link of screen.getAllByRole("link", { name: /Start a run/ })) expect(link).toHaveAttribute("href", "/live");
 });

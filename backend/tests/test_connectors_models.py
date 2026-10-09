@@ -100,7 +100,7 @@ def test_missing_env_ref_names_the_variable_not_a_value(monkeypatch):
 
 
 def test_vault_ref_is_reserved_for_phase_3():
-    with pytest.raises(SecretRefError, match="Phase 3"):
+    with pytest.raises(SecretRefError, match="Phase 4"):
         resolve_secret("vault:GEMINI_API_KEY")
 
 

@@ -1,9 +1,6 @@
-import "@fontsource/bricolage-grotesque/600.css";
-import "@fontsource/bricolage-grotesque/700.css";
-import "@fontsource/ibm-plex-sans/400.css";
-import "@fontsource/ibm-plex-sans/500.css";
-import "@fontsource/ibm-plex-sans/600.css";
-import "@fontsource/ibm-plex-mono/500.css";
+import "@fontsource-variable/geist";
+import "@fontsource-variable/geist-mono";
+import "@xyflow/react/dist/base.css";
 import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/motion.css";

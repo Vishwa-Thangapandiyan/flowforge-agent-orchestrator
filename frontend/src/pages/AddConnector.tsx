@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, useApi } from "../api/client";
 import type { Connector, ConnectorType, Preset } from "../api/types";
 import { BrandTile } from "../brand/BrandTile";
@@ -39,6 +39,27 @@ export function AddConnector() {
   useEffect(() => {
     if (existing.data) setForm(fromConnector(existing.data));
   }, [existing.data]);
+
+  // from the catalog: ?preset=<id> starts from a ready-made app; ?type=&name= pre-fills a custom one (D17)
+  const [params] = useSearchParams();
+  const prefilled = useRef(false);
+  useEffect(() => {
+    if (editing || prefilled.current) return;
+    const preset = params.get("preset");
+    if (preset) {
+      if (!presets.data || !all.data) return;
+      prefilled.current = true;
+      const p = presets.data.find((x) => x.preset === preset);
+      if (p) usePreset(p);
+      return;
+    }
+    const t = params.get("type") as ConnectorType | null;
+    const name = params.get("name");
+    if (!t && !name) return;
+    prefilled.current = true;
+    setForm((f) => ({ ...f, ...(t && TYPES.some((x) => x.id === t) ? { type: t } : {}), ...(name ? { name, id: slug(name) } : {}) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params, presets.data, all.data, editing]);
   useEffect(() => {
     if (!logoFile) return setLogoPreview(undefined);
     const url = URL.createObjectURL(logoFile);
@@ -225,7 +246,7 @@ export function AddConnector() {
             )}
             <Field label={type.needsKey ? "Key: the name of the variable in your .env file" : "Key variable passed to the program (optional)"}
               error={show("keyVar")}
-              hint={<>Put <code>{form.keyVar || "NAME"}=your-key</code> in <code>.env</code>. FlowForge saves only the name, never the key. The vault arrives in Phase 3.</>}>
+              hint={<>Put <code>{form.keyVar || "NAME"}=your-key</code> in <code>.env</code>. FlowForge saves only the name, never the key. The vault arrives in Phase 4.</>}>
               <input value={form.keyVar} onChange={(e) => set("keyVar", e.target.value.toUpperCase())} placeholder="GEMINI_API_KEY"
                 className="mono" spellCheck={false} autoComplete="off" />
             </Field>

@@ -1,8 +1,10 @@
 # FlowForge
 
-**The scheduler layer for agent workflows, plus a dashboard to connect, watch and control them.**
+**An LLMOps tool for apps that already use AI: a map of how your app's LLM, MCP and API calls fit together, and a scheduler that runs them.**
 
-You connect apps (LLMs, MCP servers, HTTP APIs, local commands) to one project. FlowForge runs them as a DAG: it orders the steps, runs independent ones together under rate limits, caches repeat calls, and (on the roadmap) holds the secrets and pauses risky steps for a human to approve.
+You connect the apps your project uses (LLMs, MCP servers, HTTP APIs, local commands). The **Planner** reads your repo and runs the app in test mode, then draws the flow on the home page: the calls, the decisions, what runs together, the retries and fallbacks, and a gate in front of anything that moves money or sends a message. Only apps your code actually calls go on the map, and every block cites its evidence (a `file:line` or a traced call). You read the map, edit it if you want (your edits never touch your code), and re-check it when the code changes.
+
+Underneath, FlowForge runs workflows as a DAG: it orders the steps, runs independent ones together under rate limits, caches repeat calls, and (on the roadmap) holds the secrets and pauses risky steps for a human to approve.
 
 What makes it different: **it knows which chain of steps is the bottleneck and schedules around it.**
 
@@ -26,7 +28,7 @@ git clone https://github.com/Vishwa-Thangapandiyan/flowforge-agent-orchestrator.
 cd flowforge-agent-orchestrator
 uv sync                                   # Python ≥ 3.12 and dependencies, into .venv
 cd frontend && npm ci && npm run build && cd ..
-uv run flowforge --example                # opens http://127.0.0.1:8000 with example data, no keys needed
+uv run flowforge --example                # opens http://127.0.0.1:8000: an example app's flow map, no keys needed
 ```
 
 `uv run flowforge` (without `--example`) runs on your own data. Example data lives in its own database, so the two never mix.
@@ -68,12 +70,16 @@ To use real LLM steps, `cp .env.example .env` and add a free `NVIDIA_API_KEY` fr
 
 | Page | What it shows |
 |---|---|
-| **Overview** | Your connected apps around the project (links light up while a run uses them), tool health, money and time saved, and what needs you |
-| **Connectors** | Each app's connection (keys shown only as *configured*, *missing* or *example*), what it has done, and its recent activity |
+| **Flow map** (home) | The Planner's map of your app's AI flow on a canvas: pan, zoom, drag, search, minimap. Click a block for what it does, its evidence (`file:line` with the code), its last runs and the Planner's tips. **Test run** replays a traced test order: lines light up, a fallback answers, the run waits at a gate until you approve. "Planner's map / With my edits" switches between the Planner's version and yours |
+| **How the Planner drew it** | The analysis replayed: read the repo, run the app in test mode, trace the calls, draft, check. What it read, what it dropped and why |
+| **Re-check** | What changed in your repo since the last map: added, changed, removed, and conflicts with your edits. You pick what to take; the old version stays listed |
+| **Connectors** | A catalog of 56 apps with search and categories, honest **Live** / **Demo only** badges, and a mock test run for every one. Apps you connected but your code doesn't call wait here, off the map |
+| **Connector page** | One app's connection (keys shown only as *configured*, *missing* or *example*), what it has done, and its recent activity |
 | **Add an app** | LLM, MCP server, HTTP API or local command; colour and logo; a live preview; and exactly what gets saved, with no secrets |
-| **Live run** | Status, time, calls and tokens; "who ran when" bars with the slowest chain outlined; each step's output; events in plain words |
-| **Run history** | Every run with its status, time, calls skipped by cache and tokens, and why a failed run failed |
-| Plan review, Approvals, Security | Placeholders until the Planner and approval gates (Phase 4) and the vault (Phase 3) arrive |
+| **Runs** | Money and time saved, app health, and every scheduled run: live bars with the slowest chain outlined, outputs, and why a failed run failed |
+| Approvals, Security | Placeholders until approval gates (Phase 5) and the vault (Phase 4) arrive |
+
+The Planner is a background LLM; the UI doesn't name the model behind it or offer to change it. In this release it is an example-mode fixture (the "Baby-care shop" app): reading your own repo arrives in Phase 5, after the security work in Phase 4. Without `--example` the map says so. Edits on the map change how FlowForge maps and tests the flow, never your code.
 
 ## Connect any provider
 
@@ -96,7 +102,7 @@ Each app you connect is a **connector**: an LLM, an MCP server, an HTTP API or a
 
 Then point a step at it with `"connector": "gemini"`. Steps without a `connector` use their type's default, so existing workflows run unchanged.
 
-- **Keys stay out of the file.** A connector holds a reference such as `env:GEMINI_API_KEY`, and the key lives in `.env`. Connectors and API responses show only the reference; HTTP connectors send the key only to their own `base_url` and redact it from error messages. (Full secret handling, the vault and redaction, is Phase 3.)
+- **Keys stay out of the file.** A connector holds a reference such as `env:GEMINI_API_KEY`, and the key lives in `.env`. Connectors and API responses show only the reference; HTTP connectors send the key only to their own `base_url` and redact it from error messages. (Full secret handling, the vault and redaction, is Phase 4.)
 - **Each connector gets its own rate limit and cache**, so two providers never share a budget or an answer.
 - **`fallback`** names another connector of the same type, tried only after every retry failed with a transient error (rate limit, 5xx, timeout).
 - **MCP servers** have their tools discovered (`GET /connectors/{id}/tools`), and every call is checked against the tool's schema before it is sent.
@@ -110,18 +116,19 @@ Ready-made presets: NVIDIA NIM, Gemini, Claude, Ollama, Razorpay, Stripe and the
 |---|---|---|
 | — | Scheduler core: five policies, caches, retries, SSE run stream, status page, benchmarks | **Done** |
 | 1 | Any LLM (OpenAI-compatible + Anthropic), any MCP server with tool discovery, `local` command steps, connector registry, ruff + CI | **Done** |
-| 2 | Dashboard v1: hub map, live run, tool health, money and time, run history, add/edit apps, example data | **Done** |
-| 3 | Connectors with forms, secrets vault, redaction, security tab | Planned |
-| 4 | Auto-plan + approval gates: FlowForge plans the steps from what you connected, you confirm one "Here's what will happen" list, risky steps always wait for approval | Planned |
-| 5 | Swap one app for another (e.g. Razorpay → Stripe) on a git branch, as an auto-planned workflow | Planned |
-| 6 | Control plane on a home server, workers on a laptop, over Tailscale ([plan](FlowForge_Server_Orchestrator_Plan.md)) | Planned, after Phase 3 |
-| 7 | Visual builder for non-developers | Later |
+| 2 | Dashboard v1: live run, tool health, money and time, run history, add/edit apps, example data | **Done** |
+| 3 | The flow map: the Planner-drawn home page, step panel and edits, test-run replay, re-check diff, connector catalog (on example data) | **Done**, in review |
+| 4 | Secrets vault, full redaction, connector forms, security tab | Planned |
+| 5 | The real Planner (reads your repo, runs the app in test mode) and approval gates in scheduled runs | Planned |
+| 6 | Swap one app for another (e.g. Razorpay → Stripe) on a git branch; later, add a new app to your code the same way | Planned |
+| 7 | Control plane on a home server, workers on a laptop, over Tailscale ([plan](FlowForge_Server_Orchestrator_Plan.md)) | Planned, after Phase 4 |
+| 8 | Visual builder for non-developers | Later |
 
 The full roadmap with acceptance criteria is in [CLAUDE.md](CLAUDE.md) §5.
 
-### Security (Phase 3, not built yet)
+### Security (Phase 4, not built yet)
 
-The promise, once Phase 3 ships: API keys and other recognised secrets are never sent to an LLM, never written to logs, run history, cache, workflow JSON or the dashboard, and never committed to git. Detection catches **known key formats** plus high-entropy values in key-like names, not everything. The rest of your code and data still goes to whichever LLM you choose; for private code, use a local model. **Until then, keys live only in your `.env`** (git-ignored).
+The promise, once Phase 4 ships: API keys and other recognised secrets are never sent to an LLM, never written to logs, run history, cache, workflow JSON or the dashboard, and never committed to git. Detection catches **known key formats** plus high-entropy values in key-like names, not everything. The rest of your code and data still goes to whichever LLM you choose; for private code, use a local model. **Until then, keys live only in your `.env`** (git-ignored).
 
 ## API
 
@@ -140,6 +147,12 @@ The promise, once Phase 3 ships: API keys and other recognised secrets are never
 | `GET /connectors/{id}/activity`, `GET /connectors/{id}/tools` | What an app has done; an MCP server's tools |
 | `GET /health/tools`, `GET /stats/savings`, `GET /meta`, `GET /presets` | Tool health, money and time, app info, ready-made apps |
 | `GET /workflows`, `GET /workflows/{name}` | The example workflows |
+| `GET /flow?layer=mine\|planner` | The flow map: blocks, lines, positions, critical path, your edits |
+| `PUT /flow/positions` | Save where blocks sit |
+| `POST /flow/overrides`, `DELETE /flow/overrides/{id}`, `DELETE /flow/nodes/{id}/overrides` | Edit the map (swap an app, rename, hide, confirm, add a step or line), undo one edit, reset a block. Gates can't be hidden |
+| `GET /flow/trace`, `GET /flow/analysis` | The traced test order the map replays; how the Planner drew the map |
+| `POST /flow/recheck`, `GET /flow/versions`, `GET /flow/versions/{n}`, `POST /flow/versions/{n}/accept\|discard` | Re-check: a new version and its diff; take what you pick |
+| `GET /catalog`, `POST /catalog/{id}/test` | The connector catalog with each app's status; a mock test run (offline) |
 
 Runs, step results and events are stored in SQLite after known key formats and your configured keys are replaced with `[REDACTED]`. A browser asking for HTML on a path like `/runs/abc` gets the dashboard; everything else gets JSON.
 
@@ -195,12 +208,13 @@ Both tracks run every policy with the cache off and on, and write CSV plus a mar
 | `backend/flowforge/scheduler/rate_limit.py` | Async token bucket |
 | `backend/flowforge/scheduler/cache.py` | Single-flight memo + persistent cache |
 | `backend/flowforge/nodes/` | `llm` (any provider), `http`, `mcp`, `local`, `mock` step types |
-| `backend/flowforge/connectors/` | Connector models, secret references, presets, registry |
+| `backend/flowforge/connectors/` | Connector models, secret references, presets and the catalog, registry |
+| `backend/flowforge/flowmap/` | The flow map: Flow JSON models, validation and code-inserted gates, the Planner interface and its example fixture, re-check diff |
 | `backend/flowforge/schema.py`, `templating.py`, `storage.py` | Validation, `{{steps.x.output}}` templates, SQLite |
 | `backend/flowforge/main.py`, `api/` | The API: start-up wiring, runs, connectors, health and savings |
 | `backend/flowforge/security/logfilter.py` | Redaction of keys before anything is stored, streamed or logged |
 | `backend/flowforge/example_data.py`, `cli.py` | Example-data mode and the `flowforge` command |
-| `frontend/` | The dashboard (Vite + React + TypeScript); the old status page is `frontend/classic.html` |
+| `frontend/` | The dashboard (Vite + React + TypeScript; the map uses React Flow and dagre); the old status page is `frontend/classic.html` |
 | `backend/workflows/` | Example workflows |
 | `benchmarks/` | Random DAG generator + benchmark runner |
 
@@ -208,11 +222,12 @@ Tests are in `backend/tests/` and never touch the network. They include property
 
 ## Docs
 
-- [DECISIONS.md](DECISIONS.md): every design decision and its reason (D1–D9 for the scheduler core, D10–D16 for connectors, gates, MCP, local commands, planning, the dashboard and run history)
+- [DECISIONS.md](DECISIONS.md): every design decision and its reason (D1–D9 for the scheduler core, D10–D18 for connectors, gates, MCP, local commands, planning, the dashboard, run history and the flow map)
 - [CLAUDE.md](CLAUDE.md): roadmap, security spec, data model and working rules
+- [docs/design/](docs/design/README.md): the design artboards; `flow-map-artboards/` is the current spec for the flow map
 - [AGENTS.md](AGENTS.md): the build workflow for coding agents, and the processes deployed at runtime
 - [FlowForge_V1_Plan.md](FlowForge_V1_Plan.md): the original course-project plan (complete)
-- [FlowForge_Server_Orchestrator_Plan.md](FlowForge_Server_Orchestrator_Plan.md): Phase 6, server + workers
+- [FlowForge_Server_Orchestrator_Plan.md](FlowForge_Server_Orchestrator_Plan.md): Phase 7, server + workers
 
 ## Contributing
 

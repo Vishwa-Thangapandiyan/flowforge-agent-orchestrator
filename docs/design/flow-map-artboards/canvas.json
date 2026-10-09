@@ -1,0 +1,22 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-10-09T10:30:00Z" },
+  "title": "FlowForge Flow Map",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 1440, "h": 900, "title": "1 Flow map: home, drawn by the Planner", "expand": "fill", "is_interactive": true },
+    "Planner.dc.html": { "x": 1520, "y": 0, "w": 1440, "h": 900, "title": "2 How the Planner draws the map", "expand": "fill", "is_interactive": true },
+    "Recheck.dc.html": { "x": 0, "y": 1020, "w": 1440, "h": 1260, "title": "3 Re-check the repo: the diff", "expand": "fill", "is_interactive": true },
+    "Catalog.dc.html": { "x": 3040, "y": 0, "w": 1440, "h": 3900, "title": "4 Connector catalog", "expand": "fill", "is_interactive": true },
+    "Kinds.dc.html": { "x": 1520, "y": 1020, "w": 1440, "h": 2500, "title": "5 Building blocks, Flow JSON and type", "expand": "fill" }
+  },
+  "order": ["Main.dc.html", "Planner.dc.html", "Recheck.dc.html", "Catalog.dc.html", "Kinds.dc.html"],
+  "notes": {
+    "t1": { "x": 0, "y": -300, "text": "FlowForge: the AI-drawn flow map (rev 2, approved)", "kind": "title1", "maxW": 4480 },
+    "s1": { "x": 4560, "y": 0, "w": 420, "text": "Order of control: the Planner (a background LLM the user never picks or sees) reads the repo and runs the app in test mode, then proposes the map. Only apps the code already calls go on it. FlowForge validates it, then you can edit. Edits sit on top of the Planner's version and never touch your code. The Planner decides WHAT runs; the scheduler decides WHEN.", "fill": "purple" },
+    "s2": { "x": 4560, "y": 640, "w": 420, "text": "Colour key: teal = done / safe, blue = running, amber = waits for you, coral = failed or fallback, violet = the Planner and AI. All data here is example data from a fixture repo (Baby-care shop).", "fill": "teal" },
+    "s3": { "x": 4560, "y": 1280, "w": 420, "text": "Try it: drag steps, drag the background to pan, scroll to zoom, click any step for its evidence. Press Test run, then approve the gate when it turns amber.", "fill": "orange" }
+  },
+  "designSystems": []
+}

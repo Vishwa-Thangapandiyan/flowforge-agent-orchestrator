@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation, useMatches } from "react-router-dom";
 import { useApi } from "../api/client";
 import type { Meta } from "../api/types";
 import { Icons } from "./icons";
@@ -32,11 +32,12 @@ function ThemeToggle() {
   }, [theme]);
   const next: Record<Theme, Theme> = { system: "light", light: "dark", dark: "system" };
   const label = { system: "Theme: system", light: "Theme: light", dark: "Theme: dark" }[theme];
-  const icon = { system: Icons.monitor(18), light: Icons.sun(18), dark: Icons.moon(18) }[theme];
+  const icon = { system: Icons.monitor(20), light: Icons.sun(20), dark: Icons.moon(20) }[theme];
   return (
-    <button type="button" className="theme-toggle" onClick={() => setTheme(next[theme])} aria-label={`${label}. Change theme`}>
+    <button type="button" className="rail-item rail-theme" onClick={() => setTheme(next[theme])} aria-label={`${label}. Change theme`}
+      title={label}>
       {icon}
-      <span>{label}</span>
+      <span>Theme</span>
     </button>
   );
 }
@@ -45,74 +46,61 @@ interface Item {
   to: string;
   label: string;
   icon: ReactNode;
+  /** highlighted on these paths */
+  active: RegExp;
   soon?: string;
-  end?: boolean;
-  /** also highlighted on these paths (a run's page belongs to Live run) */
-  activeFor?: RegExp;
 }
 
 const ITEMS: Item[] = [
-  { to: "/", label: "Overview", icon: Icons.hub(18), end: true },
-  { to: "/connectors", label: "Connectors", icon: Icons.plug(18) },
-  { to: "/plans", label: "Plan review", icon: Icons.list(18), soon: "Phase 4" },
-  { to: "/live", label: "Live run", icon: Icons.play(18), activeFor: /^\/(live|runs\/[^/]+)/ },
-  { to: "/approvals", label: "Approvals", icon: Icons.check(18), soon: "Phase 4" },
-  { to: "/runs", label: "Run history", icon: Icons.history(18), end: true },
-  { to: "/security", label: "Security", icon: Icons.shield(18), soon: "Phase 3" },
+  { to: "/", label: "Flow map", icon: Icons.map(20), active: /^\/($|map(\/|$))/ },
+  { to: "/runs", label: "Runs", icon: Icons.activity(20), active: /^\/(runs|live)(\/|$)/ },
+  { to: "/connectors", label: "Connectors", icon: Icons.plug(20), active: /^\/connectors(\/|$)/ },
+  { to: "/approvals", label: "Approvals", icon: Icons.check(20), active: /^\/approvals/, soon: "Phase 5" },
+  { to: "/security", label: "Security", icon: Icons.shield(20), active: /^\/security/, soon: "Phase 4" },
 ];
+
+/** A route with `handle: { bleed: true }` (the flow map) fills the page edge to edge. */
+function useBleed(): boolean {
+  return useMatches().some((m) => (m.handle as { bleed?: boolean } | undefined)?.bleed);
+}
 
 export function Shell() {
   const meta = useApi<Meta>("/meta");
-  const [open, setOpen] = useState(false);
   const location = useLocation();
-  useEffect(() => setOpen(false), [location.pathname]);
+  const bleed = useBleed();
   const value = meta.data ?? { project: "My project", example: false, version: "" };
 
   return (
     <MetaContext.Provider value={value}>
       <a className="skip-link" href="#main">Skip to content</a>
-      <div className="shell">
-        <nav className={`nav${open ? " open" : ""}`} aria-label="Main">
-          <NavLink to="/" className="brand" aria-label="FlowForge, overview">
-            <img src="/favicon.svg" width={30} height={30} alt="" />
-            <span>FlowForge</span>
-          </NavLink>
-          <button type="button" className="menu-button" aria-expanded={open} aria-controls="nav-links"
-            onClick={() => setOpen((o) => !o)}>
-            {Icons.menu(22)}
-            <span className="visually-hidden">Menu</span>
-          </button>
-          <div className="nav-links" id="nav-links">
-            {ITEMS.map((item) => {
-              const body = (
-                <>
-                  <span style={{ display: "flex", alignItems: "center", gap: 10 }}>{item.icon}{item.label}</span>
-                  {item.soon && <span className="soon">{item.soon}</span>}
-                </>
-              );
-              // NavLink only marks its own route; a run's page also belongs to "Live run"
-              return item.activeFor ? (
-                <Link key={item.to} to={item.to} className="nav-link"
-                  aria-current={item.activeFor.test(location.pathname) ? "page" : undefined}>{body}</Link>
-              ) : (
-                <NavLink key={item.to} to={item.to} end={item.end} className="nav-link">{body}</NavLink>
-              );
-            })}
-            <NavLink to="/connectors/new" className="nav-add">{Icons.plus(18)} Add app</NavLink>
-          </div>
-          <div className="nav-foot">
-            <ThemeToggle />
-            <span>FlowForge {value.version} · runs on your machine</span>
-          </div>
+      <div className={`shell${bleed ? " bleed" : ""}`}>
+        <nav className="rail" aria-label="Main">
+          <Link to="/" className="rail-brand" aria-label="FlowForge, flow map">
+            <img src="/favicon.svg" width={34} height={34} alt="" />
+          </Link>
+          {ITEMS.map((item) => (
+            <Link key={item.to} to={item.to} className="rail-item" title={item.soon ? `${item.label}: arrives in ${item.soon}` : item.label}
+              aria-current={item.active.test(location.pathname) ? "page" : undefined}>
+              {item.icon}
+              <span>{item.label}</span>
+              {item.soon && <span className="visually-hidden">(arrives in {item.soon})</span>}
+            </Link>
+          ))}
+          <span className="rail-gap" />
+          <Link to="/connectors/new" className="rail-item rail-add" title="Add an app">
+            {Icons.plus(20)}
+            <span>Add app</span>
+          </Link>
+          <ThemeToggle />
         </nav>
         <main className="main" id="main" tabIndex={-1}>
-          {value.example && (
+          {value.example && !bleed && (
             <div className="example-banner" role="note">
               {Icons.spark(18)}
               <span><b>Example data.</b> Nothing here touches a real account. Real numbers come from your own runs.</span>
             </div>
           )}
-          <div key={location.pathname} className="page page-enter">
+          <div key={location.pathname} className={`page${bleed ? "" : " page-enter"}`}>
             <Outlet />
           </div>
         </main>

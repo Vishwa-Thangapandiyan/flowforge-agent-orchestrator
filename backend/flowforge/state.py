@@ -61,6 +61,7 @@ class AppState:
     tasks: set[asyncio.Task[Any]] = field(default_factory=set)
     shutting_down: bool = False
     example: bool = False  # example-data mode (D16): the UI labels everything as example data
+    flows: Any = None  # flowmap.service.FlowService (D17); Any avoids an import cycle
 
 
 current: AppState | None = None

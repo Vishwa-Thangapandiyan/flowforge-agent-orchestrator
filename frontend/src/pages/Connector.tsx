@@ -31,53 +31,6 @@ function keyText(c: Connector): { text: string; tone: string } {
   return { text: "missing", tone: "var(--amber)" };
 }
 
-export function ConnectorsList() {
-  const connectors = useApi<Connector[]>("/connectors", 8000);
-  const health = useApi<Health[]>("/health/tools", 5000);
-  const byId = Object.fromEntries((health.data ?? []).map((h) => [h.id, h]));
-  return (
-    <>
-      <header className="page-head">
-        <div className="titles">
-          <span className="eyebrow">Connectors</span>
-          <h1>Your apps</h1>
-          <span className="lede">Everything FlowForge can call. Each one keeps its own rate limit and cache.</span>
-        </div>
-        <Link to="/connectors/new" className="btn primary">{Icons.plus(18)} Add app</Link>
-      </header>
-      {connectors.error ? <ErrorBox error={connectors.error} what="your apps" /> : !connectors.data ? <CardSkeleton lines={4} /> : (
-        <ul className="grid" style={{ "--min": "260px", listStyle: "none", padding: 0, margin: 0 } as CSSProperties}>
-          {connectors.data.map((c, i) => {
-            const h = byId[c.id];
-            const tag = TYPE_TAG[c.type];
-            return (
-              <li key={c.id} className={`rise rise-${Math.min(4, i + 1)}`}>
-                <Link to={`/connectors/${c.id}`} className="card app-card">
-                  <span style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                    <BrandTile c={c} size={44} />
-                    <span style={{ minWidth: 0 }}>
-                      <b style={{ display: "block", fontSize: 17 }}>{c.name}</b>
-                      <span className="card-note">{c.role || TYPE_NAME[c.type]}</span>
-                    </span>
-                  </span>
-                  <span style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                    <span className={`tag tone-${tag.tone}`}>{tag.label}</span>
-                    {c.mode && <span className="tag tone-amber">{c.mode} mode</span>}
-                    {c.is_default && <span className="tag tone-slate">default</span>}
-                    <span style={{ marginLeft: "auto", color: `var(--${h ? healthTone(h.status) : "muted"})`, fontWeight: 600, fontSize: 14 }}>
-                      {h?.label ?? "…"}
-                    </span>
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </>
-  );
-}
-
 export function ConnectorPage() {
   const { id = "" } = useParams();
   const meta = useMeta();
@@ -153,10 +106,10 @@ export function ConnectorPage() {
         <div className="actions">
           {statusChip}
           <button type="button" className="btn" onClick={runTest} disabled={!canTest || testing}
-            title={canTest ? "Makes one harmless check" : "Testing LLM and HTTP apps arrives in Phase 3"}>
+            title={canTest ? "Makes one harmless check" : "Testing LLM and HTTP apps arrives in Phase 4"}>
             {testing ? "Testing…" : "Test connection"}
           </button>
-          <button type="button" className="btn violet" disabled title="Swapping an app arrives in Phase 5">Swap app</button>
+          <button type="button" className="btn violet" disabled title="Swapping an app arrives in Phase 6">Swap app</button>
         </div>
       </header>
       {test && (
@@ -164,7 +117,7 @@ export function ConnectorPage() {
           <b>{test.ok ? "It works. " : "It didn't work. "}</b>{test.message}
         </div>
       )}
-      {!canTest && <p className="card-note">Testing {TYPE_NAME[c.type]} apps from here arrives in Phase 3; a run will tell you straight away if the key or address is wrong.</p>}
+      {!canTest && <p className="card-note">Testing {TYPE_NAME[c.type]} apps from here arrives in Phase 4; a run will tell you straight away if the key or address is wrong.</p>}
       {actionError && <div className="error-box" role="alert"><b>Couldn't do that.</b> {actionError}</div>}
 
       <div className="grid" style={{ "--min": "400px" } as CSSProperties}>
@@ -229,7 +182,7 @@ export function ConnectorPage() {
       <section className="card" style={{ background: "var(--violet-bg)", borderColor: "transparent" }} aria-labelledby="planner-title">
         <div className="card-head">
           <span className="eyebrow" id="planner-title" style={{ color: "var(--violet)" }}>Suggested by the Planner</span>
-          <Chip tone="violet">Arrives in Phase 4</Chip>
+          <Chip tone="violet">Arrives in Phase 5</Chip>
         </div>
         <p>The Planner will read this app's tools, API and your code, and propose tasks you confirm once in Plan review. A suggestion with no real tool, route or file behind it is dropped before you see it.</p>
       </section>

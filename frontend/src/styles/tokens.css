@@ -1,4 +1,4 @@
-/* Design tokens, copied from docs/design/system-map.html (D15). Colour meanings are fixed:
+/* Design tokens, from docs/design/system-map.html (D15) and docs/design/flow-map-artboards (D18). Colour meanings are fixed:
    teal = success / primary, blue = running, amber = waiting on you, coral = failed, violet = AI / Planner. */
 :root {
   --bg: #EEF3F5; --surface: #FFFFFF; --surface-2: #F6F9FA; --fg: #0F1D26; --muted: #4A5E6A; --line: #D3DDE3; --idle: #9AAAB4;
@@ -15,9 +15,13 @@
 
   --nav-bg: #0F1D26; --nav-fg: #C9D6DC; --nav-active: #1D3340; --nav-strong: #FFFFFF; --nav-line: #4A5E6A;
 
-  --display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
-  --body: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
-  --mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+  /* D18: Geist for text and headings, Geist Mono for files, ids and numbers (self-hosted) */
+  --display: 'Geist Variable', 'Geist', ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
+  --body: 'Geist Variable', 'Geist', ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
+  --mono: 'Geist Mono Variable', 'Geist Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* the flow map canvas (D17, docs/design/flow-map-artboards) */
+  --canvas: #F2F6F7; --dot: rgb(15 29 38 / 12%); --raised: #FFFFFF; --line-2: #BFCCD3; --edge: #93A5AF; --faint: #8A9BA5;
 
   --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-pill: 999px;
   --shadow-1: 0 1px 2px rgb(15 29 38 / 6%), 0 1px 1px rgb(15 29 38 / 4%);
@@ -43,6 +47,7 @@
     --violet: #B79CFF;--violet-bg: #2A2147;
     --slate: #B6C3CC; --slate-bg: #1E2C34;
     --on-teal: #062320; --on-violet: #1A1033;
+    --canvas: #081014; --dot: rgb(147 168 179 / 12%); --raised: #132229; --line-2: #2C424D; --edge: #46606D; --faint: #5E7482;
     --nav-bg: #070E11; --nav-active: #16262E; --nav-line: #2B3C45;
     --shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
     --shadow-2: 0 2px 8px rgb(0 0 0 / 35%), 0 12px 28px -14px rgb(0 0 0 / 60%);
@@ -62,6 +67,7 @@
   --violet: #B79CFF;--violet-bg: #2A2147;
   --slate: #B6C3CC; --slate-bg: #1E2C34;
   --on-teal: #062320; --on-violet: #1A1033;
+  --canvas: #081014; --dot: rgb(147 168 179 / 12%); --raised: #132229; --line-2: #2C424D; --edge: #46606D; --faint: #5E7482;
   --nav-bg: #070E11; --nav-active: #16262E; --nav-line: #2B3C45;
   --shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
   --shadow-2: 0 2px 8px rgb(0 0 0 / 35%), 0 12px 28px -14px rgb(0 0 0 / 60%);

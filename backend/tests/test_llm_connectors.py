@@ -173,7 +173,7 @@ async def test_missing_secret_is_a_clear_permanent_error(monkeypatch):
 
 
 async def test_vault_ref_fails_until_phase_3():
-    with pytest.raises(NodeError, match="Phase 3"):
+    with pytest.raises(NodeError, match="Phase 4"):
         await LLMNode.from_connector(connector(secret_ref="vault:TEST_LLM_KEY")).run({"prompt": "q"})
 
 

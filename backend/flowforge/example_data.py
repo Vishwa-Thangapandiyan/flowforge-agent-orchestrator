@@ -46,6 +46,24 @@ CONNECTORS: list[Connector] = [_c(d) for d in (
     {"id": "charts", "type": "local", "name": "Chart script", "role": "draws charts",
      "style": {"color": "#C2398D", "logo": {"type": "letters", "text": "Ch"}},
      "connection": {"command": ["python", "scripts/charts.py"], "cwd": "."}},
+    # the apps the example flow map uses (D17)
+    {"id": "ollama", "type": "llm", "name": "Ollama", "role": "models on this machine",
+     "style": {"color": "#1F2328", "logo": {"type": "letters", "text": "Ol"}},
+     "connection": {"provider": "openai_compatible", "base_url": "http://localhost:11434/v1", "model": "llama3.2"}},
+    {"id": "inventory", "type": "http", "name": "Inventory API", "role": "stock levels",
+     "style": {"color": "#2F6FD6", "logo": {"type": "letters", "text": "IA"}}, "secret_ref": "env:INVENTORY_TOKEN",
+     "connection": {"base_url": "https://inventory.example.test", "auth_header": "Authorization",
+                    "auth_scheme": "bearer"}},
+    {"id": "higgsfield", "type": "http", "name": "Higgsfield", "role": "order pictures",
+     "style": {"color": "#2A2A30", "logo": {"type": "letters", "text": "Hf"}}, "secret_ref": "env:HIGGSFIELD_API_KEY",
+     "connection": {"base_url": "https://higgsfield.example.test", "auth_header": "Authorization",
+                    "auth_scheme": "bearer"}},
+    {"id": "gmail", "type": "mcp", "name": "Gmail", "role": "sends email",
+     "style": {"color": "#EA4335", "logo": {"type": "letters", "text": "Gm"}},
+     "connection": {"command": "npx", "args": ["gmail-mcp"]}},
+    {"id": "slack", "type": "mcp", "name": "Slack", "role": "team messages",
+     "style": {"color": "#4A154B", "logo": {"type": "letters", "text": "Sl"}},
+     "connection": {"command": "npx", "args": ["slack-mcp"]}},
 )]
 
 
@@ -161,6 +179,17 @@ def install(state: AppState) -> None:
         if bucket is not None and node.rate_limit_key:
             state.rate_limits[node.rate_limit_key] = bucket
     example_nodes(state)
+
+
+def seed_flow(state: AppState) -> None:
+    """The example flow map (D17): the Planner's first map, the project's own edits and the designed layout."""
+    from flowforge.flowmap import fixture
+    from flowforge.flowmap.service import example_edits
+
+    if state.flows is None:
+        return
+    if state.flows.first_map() is not None:
+        example_edits(state.flows, fixture.EXAMPLE_OVERRIDES, fixture.POSITIONS)
 
 
 async def seed(state: AppState) -> list[str]:

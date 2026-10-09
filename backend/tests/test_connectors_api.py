@@ -88,7 +88,7 @@ def test_invalid_bodies_are_rejected_without_echoing_values(client):
     assert r.status_code == 422 and "sk_test_FAKE" not in r.text and "api_key" in r.text
     assert client.post("/connectors", json=llm(id="llm")).status_code == 422  # reserved id
     r = client.post("/connectors", json=llm(secret_ref="vault:GEMINI_API_KEY"))
-    assert r.status_code == 422 and "Phase 3" in r.text
+    assert r.status_code == 422 and "Phase 4" in r.text
     assert client.post("/connectors", json=llm(fallback="ghost")).status_code == 422
 
 
@@ -179,7 +179,7 @@ def test_test_connection(client, tmp_path):
     assert body["ok"] is False and "not found" in body["message"]
     client.post("/connectors", json=llm())
     r = client.post("/connectors/gemini/test")
-    assert r.status_code == 501 and "Phase 3" in r.json()["detail"]
+    assert r.status_code == 501 and "Phase 4" in r.json()["detail"]
 
 
 def test_activity_lists_this_connectors_steps(client, tmp_path):

@@ -79,7 +79,7 @@ def parse_body(body: Any) -> Connector:
     except ValidationError as exc:
         raise HTTPException(422, _describe(exc)) from None  # field paths and messages only, no values
     if connector.secret_ref and connector.secret_ref.startswith("vault:"):
-        raise HTTPException(422, "vault: references need the vault, which arrives in Phase 3; use env:NAME")
+        raise HTTPException(422, "vault: references need the vault, which arrives in Phase 4; use env:NAME")
     return connector
 
 
@@ -211,7 +211,7 @@ async def test_connector(connector_id: str) -> dict[str, Any]:
     connector = get_connector(connector_id)
     node = s.nodes.get(connector_id)
     if connector.type in ("llm", "http"):
-        raise HTTPException(501, f"Testing {connector.type} connectors arrives in Phase 3")
+        raise HTTPException(501, f"Testing {connector.type} connectors arrives in Phase 4")
     try:
         if isinstance(node, MCPNode):
             tools = await asyncio.wait_for(node.list_tools(), MCP_TIMEOUT_S)

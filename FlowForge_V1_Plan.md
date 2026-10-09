@@ -125,7 +125,7 @@ V1 is the foundation of the product, not something to replace. On `main` the rul
 | Step outputs have no `kind` hint for viewers | Phase 1 onward (CLAUDE.md §7.4) |
 | Runs are kept in memory only | Phase 2: SQLite-backed run history |
 | One plain HTML status page | Phase 2: dashboard built to the design in `docs/design/system-map.html` |
-| No secrets handling beyond `.env` | Phase 3: vault, redaction, guards (CLAUDE.md §6) |
+| No secrets handling beyond `.env` | Phase 4: vault, redaction, guards (CLAUDE.md §6) |
 | No linter, no CI | Phase 1: `ruff` + GitHub Actions, offline |
 
 ### How V1 maps onto the roadmap
@@ -133,7 +133,7 @@ V1 is the foundation of the product, not something to replace. On `main` the rul
 | V1 piece | Where it goes next |
 |---|---|
 | Scheduler core (`graph`, `critical_path`, `durations`, `executor`, `rate_limit`, `cache`) | Unchanged. Connectors build `Node` instances; the executor keeps calling `node.run(params)` |
-| `nodes/` | Configured by connectors (Phase 1), placed on workers via `RemoteNode` (Phase 6) |
+| `nodes/` | Configured by connectors (Phase 1), placed on workers via `RemoteNode` (Phase 7) |
 | `frontend/index.html` | Kept until the Phase 2 dashboard reaches parity, then removed in its own commit |
-| `benchmarks/` | Must keep running unchanged; Phase 6 adds a worker-dropout track |
-| Two-machine idea | [FlowForge_Server_Orchestrator_Plan.md](FlowForge_Server_Orchestrator_Plan.md) (Phase 6, after Phase 3) |
+| `benchmarks/` | Must keep running unchanged; Phase 7 adds a worker-dropout track |
+| Two-machine idea | [FlowForge_Server_Orchestrator_Plan.md](FlowForge_Server_Orchestrator_Plan.md) (Phase 7, after Phase 4) |

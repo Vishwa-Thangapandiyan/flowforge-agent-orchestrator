@@ -1,5 +1,5 @@
 """SQLite persistence: runs and their events (D16), duration history (D1), persistent cache (D3),
-connectors (D10).
+connectors (D10), the flow map's versions, edits and positions (D17).
 
 Every write of run data, events and cache rows goes through `self.redact` (D16), so the file
 never holds a configured key or a known key shape.
@@ -7,8 +7,10 @@ never holds a configured key or a known key shape.
 
 from __future__ import annotations
 
+import functools
 import json
 import sqlite3
+import threading
 from collections.abc import Callable
 from dataclasses import asdict
 from datetime import UTC, datetime
@@ -35,7 +37,19 @@ CREATE TABLE IF NOT EXISTS connectors (
 CREATE TABLE IF NOT EXISTS run_events (
     run_id TEXT NOT NULL, seq INTEGER NOT NULL, json TEXT NOT NULL, PRIMARY KEY (run_id, seq)
 );
+CREATE TABLE IF NOT EXISTS flow_versions (
+    version INTEGER PRIMARY KEY, status TEXT NOT NULL, created_at TEXT, decided_at TEXT, fact_sheet_hash TEXT,
+    flow_json TEXT NOT NULL, trace_json TEXT, analysis_json TEXT, changes_json TEXT
+);
+CREATE TABLE IF NOT EXISTS flow_overrides (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, json TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS flow_positions (
+    node_id TEXT PRIMARY KEY, x REAL NOT NULL, y REAL NOT NULL
+);
 """
+FLOW_VERSION_FIELDS = ("version", "status", "created_at", "decided_at", "fact_sheet_hash", "flow_json", "trace_json",
+                       "analysis_json", "changes_json")
 
 # Columns added to `runs` after V1; added in place so existing databases keep working (D16).
 RUN_COLUMNS = {
@@ -56,8 +70,26 @@ def _identity(value: Any) -> Any:
     return value
 
 
+def _serialised(cls: type) -> type:
+    """Every public method holds the storage lock. One sqlite3 connection is shared by the event loop and
+    FastAPI's worker threads (sync routes), and a connection must never be used by two threads at once."""
+    def wrap(fn: Callable[..., Any]) -> Callable[..., Any]:
+        @functools.wraps(fn)
+        def locked(self: Storage, *args: Any, **kwargs: Any) -> Any:
+            with self._lock:
+                return fn(self, *args, **kwargs)
+        return locked
+
+    for name, value in list(vars(cls).items()):
+        if callable(value) and not name.startswith("_"):
+            setattr(cls, name, wrap(value))
+    return cls
+
+
+@_serialised
 class Storage:
     def __init__(self, path: str | Path = "flowforge.db", redact: Callable[[Any], Any] | None = None):
+        self._lock = threading.RLock()
         self.conn = sqlite3.connect(path, check_same_thread=False)
         self.conn.executescript(SCHEMA)
         self.redact: Callable[[Any], Any] = redact or _identity
@@ -206,4 +238,80 @@ class Storage:
 
     def delete_connector(self, connector_id: str) -> None:
         self.conn.execute("DELETE FROM connectors WHERE id = ?", (connector_id,))
+        self.conn.commit()
+
+    # --- flow map (D17): Planner versions, the user's edits on top, block positions -------------
+
+    def add_flow_version(self, status: str, flow: Any, trace: Any, analysis: Any, fact_sheet_hash: str,
+                         changes: Any = None) -> int:
+        cur = self.conn.execute(
+            "INSERT INTO flow_versions (status, created_at, fact_sheet_hash, flow_json, trace_json, analysis_json,"
+            " changes_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (status, now_iso(), fact_sheet_hash, self._dump(flow), self._dump(trace), self._dump(analysis),
+             self._dump(changes) if changes is not None else None))
+        self.conn.commit()
+        return int(cur.lastrowid)
+
+    def _flow_row(self, row: tuple[Any, ...] | None) -> dict[str, Any] | None:
+        if row is None:
+            return None
+        out = dict(zip(FLOW_VERSION_FIELDS, row, strict=True))
+        for key in ("flow_json", "trace_json", "analysis_json", "changes_json"):
+            out[key.removesuffix("_json")] = json.loads(out.pop(key)) if out[key] else None
+        return out
+
+    def flow_version(self, version: int) -> dict[str, Any] | None:
+        row = self.conn.execute(f"SELECT {', '.join(FLOW_VERSION_FIELDS)} FROM flow_versions WHERE version = ?",
+                                (version,)).fetchone()
+        return self._flow_row(row)
+
+    def latest_flow_version(self, status: str = "accepted") -> dict[str, Any] | None:
+        row = self.conn.execute(f"SELECT {', '.join(FLOW_VERSION_FIELDS)} FROM flow_versions WHERE status = ?"
+                                " ORDER BY version DESC LIMIT 1", (status,)).fetchone()
+        return self._flow_row(row)
+
+    def flow_versions(self) -> list[dict[str, Any]]:
+        rows = self.conn.execute("SELECT version, status, created_at, decided_at, fact_sheet_hash FROM flow_versions"
+                                 " ORDER BY version DESC")
+        return [dict(zip(("version", "status", "created_at", "decided_at", "fact_sheet_hash"), r, strict=True))
+                for r in rows]
+
+    def count_flow_versions(self) -> int:
+        return int(self.conn.execute("SELECT COUNT(*) FROM flow_versions").fetchone()[0])
+
+    def update_flow_version(self, version: int, status: str, flow: Any = None) -> None:
+        if flow is None:
+            self.conn.execute("UPDATE flow_versions SET status = ?, decided_at = ? WHERE version = ?",
+                              (status, now_iso(), version))
+        else:
+            self.conn.execute("UPDATE flow_versions SET status = ?, decided_at = ?, flow_json = ? WHERE version = ?",
+                              (status, now_iso(), self._dump(flow), version))
+        self.conn.commit()
+
+    def flow_overrides(self) -> list[tuple[int, dict[str, Any]]]:
+        rows = self.conn.execute("SELECT id, json FROM flow_overrides ORDER BY id")
+        return [(r[0], json.loads(r[1])) for r in rows]
+
+    def add_flow_override(self, override: Any) -> int:
+        cur = self.conn.execute("INSERT INTO flow_overrides (json) VALUES (?)", (self._dump(override),))
+        self.conn.commit()
+        return int(cur.lastrowid)
+
+    def delete_flow_overrides(self, ids: list[int]) -> int:
+        if not ids:
+            return 0
+        cur = self.conn.execute(f"DELETE FROM flow_overrides WHERE id IN ({', '.join('?' * len(ids))})", ids)
+        self.conn.commit()
+        return cur.rowcount
+
+    def flow_positions(self) -> dict[str, tuple[float, float]]:
+        return {r[0]: (r[1], r[2]) for r in self.conn.execute("SELECT node_id, x, y FROM flow_positions")}
+
+    def put_flow_positions(self, positions: dict[str, tuple[float, float]], replace: bool = False) -> None:
+        if replace:
+            self.conn.execute("DELETE FROM flow_positions")
+        self.conn.executemany(
+            "INSERT INTO flow_positions (node_id, x, y) VALUES (?, ?, ?)"
+            " ON CONFLICT(node_id) DO UPDATE SET x = excluded.x, y = excluded.y",
+            [(node_id, float(x), float(y)) for node_id, (x, y) in positions.items()])
         self.conn.commit()

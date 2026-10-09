@@ -21,10 +21,13 @@ from fastapi import FastAPI, HTTPException
 from flowforge import example_data, spa
 from flowforge import state as app_state_module
 from flowforge.api import connectors as connectors_api
+from flowforge.api import flowmap as flowmap_api
 from flowforge.api import runs as runs_api
 from flowforge.api import stats as stats_api
 from flowforge.connectors.registry import Registry, check_references, load_connectors_file
 from flowforge.connectors.runtime import build_nodes  # noqa: F401 (re-exported for callers)
+from flowforge.flowmap.planner import FixturePlanner
+from flowforge.flowmap.service import FlowService
 from flowforge.home import flowforge_home
 from flowforge.security.logfilter import Redactor, install_log_redaction, secret_values_for
 from flowforge.state import AppState, app_state
@@ -66,8 +69,11 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     s = app_state_module.current = AppState(
         nodes=nodes, rate_limits=buckets, storage=storage, registry=registry, redactor=redactor,
         file_managed={c.id for c in from_file}, example=example)
+    # the flow map (D17): only example mode has a Planner until Phase 5
+    s.flows = FlowService(storage, lambda: {c.id: c for c in registry.all()}, FixturePlanner() if example else None)
     if example:  # offline nodes and a seeded history, never mixed with real data (D16)
         example_data.install(s)
+        example_data.seed_flow(s)
         seeding = asyncio.create_task(example_data.seed(s))
         s.tasks.add(seeding)
         seeding.add_done_callback(s.tasks.discard)
@@ -88,6 +94,7 @@ app = FastAPI(title="FlowForge", lifespan=lifespan)
 app.include_router(runs_api.router)
 app.include_router(connectors_api.router)
 app.include_router(stats_api.router)
+app.include_router(flowmap_api.router)
 
 
 @app.get("/workflows")

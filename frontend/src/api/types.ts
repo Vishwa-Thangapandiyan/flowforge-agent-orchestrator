@@ -168,3 +168,155 @@ export interface Tool {
   description: string;
   input_schema: Record<string, unknown>;
 }
+
+// --- the flow map (D17) -------------------------------------------------------------------------------
+
+export type NodeKind = "start" | "end" | "llm" | "api" | "mcp" | "local" | "code" | "decision" | "fork" | "join" | "gate";
+export type EdgeKind = "flow" | "branch" | "fallback" | "retry" | "unconfirmed";
+
+export interface Evidence {
+  type: "code" | "trace" | "policy" | "env_name" | "user" | "missing";
+  ref: string | null;
+  text: string | null;
+  first_line: number | null;
+  lines: string[];
+  highlight: number | null;
+}
+
+export interface NodeStats {
+  p50_ms: number | null;
+  summary: string;
+  history: { ms: number; ok: boolean }[];
+}
+
+export interface FlowNode {
+  id: string;
+  kind: NodeKind;
+  title: string;
+  what: string;
+  connector: string | null;
+  op: { model?: string | null; method?: string | null; path?: string | null; tool?: string | null; read_only?: boolean | null } | null;
+  condition: string | null;
+  estimate_ms: number | null;
+  status: "confirmed" | "unconfirmed";
+  added_by: "planner" | "policy" | "user";
+  side_effect: boolean;
+  evidence: Evidence[];
+  // added by GET /flow
+  yours: { id: number; op: string }[];
+  on_critical_path: boolean;
+  stats: NodeStats | null;
+  tip: { connector: string; text: string } | null;
+  planner_connector: string | null;
+}
+
+export interface FlowEdge {
+  id: string;
+  source: string;
+  target: string;
+  kind: EdgeKind;
+  when: string | null;
+  max: number | null;
+  on: string | null;
+  label: string | null;
+  on_critical_path?: boolean;
+}
+
+export interface FlowView {
+  available: true;
+  version: number;
+  created_at: string;
+  layer: "mine" | "planner";
+  fact_sheet_hash: string;
+  nodes: FlowNode[];
+  edges: FlowEdge[];
+  hidden: { id: string; title: string; override: number }[];
+  critical_path: { path: string[]; length_ms: number; bottleneck: string | null };
+  positions: Record<string, [number, number]>;
+  apps: Record<string, { name: string; type: ConnectorType; model: string | null }>;
+  counts: { steps: number; unconfirmed: number; gates: number; edits: number };
+  pending: number | null;
+}
+
+export type FlowResponse = FlowView | { available: false; message: string };
+
+export interface TraceStep {
+  node: string;
+  start_ms: number;
+  duration_ms: number;
+  outcome: "ok" | "failed" | "cached" | "waiting";
+  answered_by: string | null;
+  note: string | null;
+  attempts: number;
+  tokens: number;
+}
+
+export interface Trace {
+  label: string;
+  steps: TraceStep[];
+  branches: Record<string, string>;
+  calls: number;
+  cached: number;
+}
+
+export interface Analysis {
+  stages: { title: string; done: string; doing: string; duration_ms: number }[];
+  log: [number, string, string][];
+  files: string[];
+  calls: { app: string; count: number; meta: string; none?: boolean }[];
+  dropped: { title: string; reason: string }[];
+  notes: Record<string, string>;
+  version: number;
+  fact_sheet_hash: string;
+}
+
+export interface Change {
+  id: string;
+  type: "add" | "change" | "remove" | "conflict" | "kept";
+  title: string;
+  detail: string;
+  nodes: string[];
+  evidence: string;
+  choices?: [string, string][];
+}
+
+export interface PendingVersion {
+  version: number;
+  base_version: number | null;
+  created_at: string;
+  fact_sheet_hash: string;
+  changes: Change[];
+  default_take: Record<string, boolean | string>;
+  nodes: FlowNode[];
+  edges: FlowEdge[];
+}
+
+export interface CatalogItem {
+  id: string;
+  name: string;
+  category: string;
+  type: ConnectorType;
+  kind: string;
+  live: boolean;
+  description: string;
+  meta: string;
+  status: "on_map" | "connected" | "none";
+  color?: string | null;
+}
+
+export interface Catalog {
+  categories: Record<string, string>;
+  items: CatalogItem[];
+  own: CatalogItem[];
+}
+
+export interface MockTest {
+  id: string;
+  name: string;
+  mock: boolean;
+  mode: string;
+  steps: { title: string; text: string }[];
+  result: string;
+  stats: string;
+  learns: string[];
+}

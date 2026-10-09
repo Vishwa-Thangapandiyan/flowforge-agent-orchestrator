@@ -25,5 +25,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     css: false,
+    // jsdom + React Flow on a busy Windows/OneDrive machine can take seconds per test; nothing asserts on time
+    testTimeout: 30_000,
   },
 });

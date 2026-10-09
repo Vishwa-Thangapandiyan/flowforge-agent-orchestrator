@@ -205,7 +205,7 @@ export function LiveRunLatest() {
           </div>
         ) : <CardSkeleton lines={2} />}
         <p className="card-note">
-          Soon the Planner will propose plans from your connected apps (Phase 4). For now these are ready-made
+          Soon the Planner will propose plans from your connected apps (Phase 5). For now these are ready-made
           plans; developers can also send their own workflow JSON to <code>POST /runs</code>.
         </p>
       </section>

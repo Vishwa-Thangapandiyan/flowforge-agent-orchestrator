@@ -1,6 +1,6 @@
 # FlowForge — Design Decisions
 
-Every design decision, with the choice, the reason, and where it lives in the code. D1–D9 were made for V1 ([FlowForge_V1_Plan.md](FlowForge_V1_Plan.md)) and still hold on `main`. D10–D16 cover the product (connectors, approval gates, MCP, local commands, planning, the frontend, run history and redaction); new decisions take the next free number and are written before the code. A decision is never edited to mean something new: it is superseded by a later entry that says so.
+Every design decision, with the choice, the reason, and where it lives in the code. D1–D9 were made for V1 ([FlowForge_V1_Plan.md](FlowForge_V1_Plan.md)) and still hold on `main`. D10–D18 cover the product (connectors, approval gates, MCP, local commands, planning, the frontend, run history and redaction, the flow map); new decisions take the next free number and are written before the code. A decision is never edited to mean something new: it is superseded by a later entry that says so.
 
 **Hard constraint: zero cost by default.** No paid API or service in the default install, the tests or CI. The default LLM provider is NVIDIA NIM's free tier (see D8).
 
@@ -225,6 +225,8 @@ New step type `local`: runs a command configured on a connector, with arguments 
 
 ## D14. Plan from connectors: the user never edits a graph (Phase 4)
 
+> Partly superseded by **D17**. The home page is now a Planner-drawn flow map the user can edit through overrides. The engine is hidden, and the View 7 list is gone. The fact sheet, evidence rule, validation, gating policy, versioning and untrusted-input rules below still hold.
+
 **Choice:** the user connects apps; a **Planner LLM** proposes the tasks and their order from what is connected; FlowForge compiles that plan into a DAG, validates it, and shows the user a plain list to confirm once. The scheduler then runs it. **The LLM decides WHAT. The scheduler decides WHEN. The LLM proposes; the user approves.** The DAG stays under the hood.
 
 **Input: the fact sheet.** It is built by plain code with no LLM, then passed through `redact` (CLAUDE.md §6.4) before any prompt:
@@ -307,7 +309,7 @@ The Planner can add gates but never remove them. No setting turns this policy of
 
 **Choice:** Vite + React + TypeScript in `frontend/`, with `react-router-dom` for pages.
 - **Styling:** plain CSS using the design tokens copied from `docs/design/system-map.html`, light and dark. No UI kit and no animation library: motion is CSS plus the Web Animations API, and all of it switches off under `prefers-reduced-motion`.
-- **Fonts:** Bricolage Grotesque, IBM Plex Sans and IBM Plex Mono, self-hosted through `@fontsource`. Nothing is fetched from a font CDN at runtime.
+- **Fonts:** Bricolage Grotesque, IBM Plex Sans and IBM Plex Mono, self-hosted through `@fontsource`. Nothing is fetched from a font CDN at runtime. *(Superseded by D18: Geist and Geist Mono.)*
 - **Brand marks:** preset brands use the CC0 SVGs from the `simple-icons` package, as nominative use to identify an integration. Anything not in the package, plus custom apps, gets a monogram tile or the user's uploaded image.
 - **Tests:** Vitest + Testing Library on jsdom, plus `tsc` type checks.
 - **Dev:** `npm run dev` (in `frontend/`) runs the API in example mode and Vite together; Vite proxies API calls.
@@ -344,6 +346,77 @@ The Planner can add gates but never remove them. No setting turns this policy of
 **Why:** a dashboard that forgets runs on restart can't show history or savings. Storing only redacted data means a leak in the UI or a copied database file doesn't leak keys. Example mode lets someone see the whole product without signing up anywhere.
 
 **Code:** `storage.py`, `security/logfilter.py`, `api/`, `example_data.py`, `main.py`.
+
+## D17. The flow map: a Planner-drawn map of the app's AI flow (Phase 3)
+
+**Supersedes parts of D14:**
+- "the user never edits a graph";
+- "a graph view may exist under Advanced only";
+- the View 7 plan-review list;
+- "the Planner model is chosen in settings".
+
+Everything else in D14 still holds:
+- the fact sheet, and redaction before any prompt;
+- the evidence rule;
+- validation and the repair limit;
+- the gating policy;
+- versioning;
+- untrusted input.
+
+**What FlowForge is:** an LLMOps tool for apps that already use AI. It is not an app builder.
+
+**Choice:**
+- **The home page is the flow map.** The Planner reads the repo and runs the app in test mode. It then draws how the app's LLM, MCP and API calls fit together. Block kinds:
+  - `start`, `end`;
+  - app calls (`llm`, `api`, `mcp`, `local`) and plain `code`;
+  - `decision`, `fork`, `join`, `gate`.
+
+  Line kinds: `flow`, `branch` (with `when`), `fallback`, `retry`, `unconfirmed`. The user can pan, zoom and drag. Positions are saved.
+- **The engine is hidden.** The UI says "the Planner". It never names the model behind it, and the user cannot pick it. A user-selectable engine may come later as its own decision.
+- **Only apps the code calls go on the map.** A connected app that no code calls stays in the catalog as "connected, not in your code".
+- **Evidence or nothing.** Every block carries evidence: a `file:line`, a traced call, or a policy rule. A block with only a hint (for example an env var *name*) is drawn as `unconfirmed` and never runs. A task whose evidence is not in the fact sheet is dropped (D14).
+- **Gates are added by code.** Validation puts a gate (`added_by: "policy"`) before every side-effecting block, using the D14 list:
+  - non-GET HTTP;
+  - payment connectors;
+  - MCP tools not marked read-only;
+  - `local`;
+  - code writes.
+
+  Gates the Planner adds are kept, and no edit can hide or remove a gate.
+
+  **This supersedes one item of D14's list.** "Connectors in a payments slot or with a mode" becomes "calls to them that move money". A GET to a payment API only reads (for example fetching an order), so it isn't gated; every non-GET call to it is, by the non-GET rule. An HTTP call with no method given counts as a write. Unconfirmed blocks never run, so their gate is inserted the moment the user confirms them.
+- **Edits are overrides.** The user can swap a block's connector, rename, hide, confirm an unconfirmed block, add a step and wire it after another. Each edit is stored as an override on top of the Planner's version, never instead of it. "Planner's map / With my edits" switches between them. **Map edits never change the user's code.** Writing code for a new connector (a "coding connector") is later work, after the Phase 6 swap flow: it needs a new branch, tests and a gate.
+- **Re-check makes a new version, never an overwrite.** It produces pending version N+1 and a diff: added, changed, removed, and conflicts where a change touches a block the user edited. The user picks what to take. Accepting makes N+1 current; older versions stay listed.
+- **Test run (V1) replays a recorded trace.** The Planner's output includes the trace of one test order: the path taken, timings, fallback, retries, cache hits and gate stops. The map replays it. A real scheduled run of the flow needs conditional branches and gates in the executor (D11) and is later work.
+- **V1 Planner.** A `Planner` interface with one implementation, the example-mode fixture. Real repo analysis comes after the security phase. Outside example mode the map shows an empty state saying so.
+
+**Roadmap renumbered:**
+- Phase 3 is now this flow map;
+- the security phase (vault, redact/verify/scan/restore) is Phase 4;
+- the real Planner with approval gates is Phase 5;
+- swap (and later the coding connector) is Phase 6;
+- server and workers is Phase 7;
+- the visual builder is Phase 8.
+
+D10–D16 were written before the renumbering, so their phase numbers are the old ones: their "Phase 3" means today's Phase 4, their "Phase 4" means Phase 5, and so on.
+
+**Why:** the map shows how the app works, which is what an LLMOps tool is for. Users read the map; they don't draw it. Keeping edits as overrides, and re-checks as diffs, means the Planner's picture and the user's choices never overwrite each other. Code-decided gates keep the Planner from turning off a safeguard.
+
+**Code:** `flowmap/` (models, validation, fixture planner, diff, service), `api/flowmap.py`, `storage.py` (`flow_versions`, `flow_overrides`, `flow_positions`), `frontend/src/flowmap/`.
+
+## D18. Frontend additions for the flow map (Phase 3)
+
+**Supersedes the fonts bullet of D15.** The rest of D15 stands.
+
+**Choice:**
+- **Fonts:** Geist (text and headings) and Geist Mono (files, ids, numbers), self-hosted through `@fontsource-variable/geist` and `@fontsource-variable/geist-mono` (OFL). Nothing is fetched from a font CDN.
+- **Canvas:** `@xyflow/react` (MIT) for pan, zoom, drag, the minimap and keyboard support. Blocks and lines are our own components drawn with the design tokens.
+- **Auto-layout:** `@dagrejs/dagre` (MIT), left to right. It is used for the first layout and for "Re-tidy". elkjs was not chosen: it is EPL/GPL and much larger.
+- **Design source:** the approved artboards in `docs/design/flow-map-artboards/`. The colour meanings stay as they were: teal done, blue running, amber waiting for you, coral failed or fallback, violet the Planner and AI.
+
+**Why:** a pannable, draggable canvas with a minimap and keyboard support is a lot to build by hand. React Flow is the standard MIT library for it, and dagre handles left-to-right layered layouts at this size.
+
+**Code:** `frontend/package.json`, `frontend/src/styles/tokens.css`, `frontend/src/flowmap/`.
 
 ---
 

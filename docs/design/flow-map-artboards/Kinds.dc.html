@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Flow map building blocks</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#EEF3F5}
+.kk{--app:#EEF3F5;--canvas:#F2F6F7;--dot:rgba(15,29,38,.12);--surface:#FFFFFF;--surface-2:#F5F8F9;--raised:#FFFFFF;--fg:#0F1D26;--muted:#4A5E6A;--line:#D6DFE4;--line-2:#BFCCD3;--edge:#93A5AF;
+--teal:#0B7A70;--teal-bg:#DDF2EF;--blue:#2457C5;--blue-bg:#E1EAFB;--amber:#8A5A00;--amber-bg:#FCEFD0;--amber-strong:#E3A535;--coral:#B93C2B;--coral-bg:#FBE4DF;--violet:#6B46C1;--violet-bg:#EEE8FB;--slate:#3A4756;--slate-bg:#E6EBEF;
+--shadow:0 1px 2px rgb(15 29 38 / 6%),0 8px 22px -12px rgb(15 29 38 / 22%);
+--sans:'Geist',ui-sans-serif,system-ui,'Segoe UI',sans-serif;--mono:'Geist Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+min-height:100vh;background:var(--app);color:var(--fg);font-family:var(--sans);font-size:14px;-webkit-font-smoothing:antialiased}
+.kk *{box-sizing:border-box}
+.kk-wrap{max-width:1360px;margin:0 auto;padding:40px 32px 56px;display:flex;flex-direction:column;gap:34px}
+.kk h1{margin:0;font:650 34px/1.1 var(--sans);letter-spacing:-.028em}
+.kk-lede{margin:8px 0 0;font:450 16px/1.5 var(--sans);color:var(--muted);max-width:760px}
+.kk h2{margin:0 0 14px;font:650 19px/1.2 var(--sans);letter-spacing:-.015em}
+.kk-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:14px}
+.kk-card{display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:16px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow)}
+.kk-stage{position:relative;height:118px;display:grid;place-items:center;border-radius:12px;background-color:var(--canvas);background-image:radial-gradient(var(--dot) 1.1px,transparent 1.4px);background-size:18px 18px;overflow:hidden}
+.kk-card b{font:650 15px/1.25 var(--sans)}
+.kk-card p{margin:0;font:450 13.5px/1.45 var(--sans)}
+.kk-ev{font:500 11.5px/1.3 var(--mono);color:var(--muted)}
+.n{position:relative;display:flex;align-items:center;gap:10px;height:60px;width:200px;padding:0 12px 0 9px;border-radius:14px;background:var(--raised);border:1px solid var(--line-2);box-shadow:var(--shadow);font:600 14.5px/1.1 var(--sans);white-space:nowrap}
+.n small{display:block;margin-top:4px;font:500 11px/1 var(--mono);color:var(--muted)}
+.n .t{flex:0 0 auto;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font:700 12.5px/1 var(--sans);box-shadow:inset 0 0 0 1px rgb(255 255 255 / 12%)}
+.n .t img{width:18px;height:18px;display:block}
+.n .t svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.tag{position:absolute;top:-9px;left:12px;padding:2px 6px;border-radius:6px;background:var(--surface-2);border:1px solid var(--line);color:var(--muted);font:600 9.5px/1.25 var(--mono);letter-spacing:.07em;text-transform:uppercase}
+.tag.llm{background:var(--violet-bg);border-color:color-mix(in srgb,var(--violet) 35%,transparent);color:var(--violet)}
+.tag.gate{background:var(--amber-strong);border-color:var(--amber-strong);color:#2A1E05}
+.pill{border-radius:999px;width:180px;height:46px}
+.pill .t{border-radius:999px;width:32px;height:32px}
+.gate{background:var(--amber-bg);border:1.5px dashed var(--amber-strong)}
+.unc{background:transparent;border:1.5px dashed var(--line-2);box-shadow:none;color:var(--muted)}
+.dia{position:relative;width:140px;height:86px;display:grid;place-items:center;padding:0 26px;text-align:center;font:600 12.5px/1.2 var(--sans)}
+.dia::before{content:"";position:absolute;inset:0;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:var(--line-2)}
+.dia::after{content:"";position:absolute;inset:2px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:var(--raised)}
+.dia span{position:relative;z-index:1}
+.bars{display:flex;align-items:center;gap:14px}
+.bar{width:10px;height:86px;border-radius:5px;background:var(--fg)}
+.mini{display:flex;flex-direction:column;gap:8px}
+.mini span{display:block;width:70px;height:16px;border-radius:5px;background:var(--raised);border:1px solid var(--line-2)}
+.flag{position:absolute;top:-11px;right:14px;display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font:600 10px/1.4 var(--sans);white-space:nowrap}
+.flag.yours{background:var(--fg);color:var(--app);font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase;font-size:9.5px}
+.flag.tip{background:var(--violet);color:#fff}
+.lines{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:12px}
+.ln{display:flex;align-items:center;gap:16px;padding:14px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--line)}
+.ln svg{flex:0 0 auto;overflow:visible}
+.ln b{display:block;font:650 14px/1.25 var(--sans)}
+.ln span{display:block;margin-top:3px;font:450 12.5px/1.4 var(--sans);color:var(--muted)}
+.lbl{display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;background:var(--surface);border:1px solid var(--line-2);font:600 10px/1.2 var(--mono)}
+.sw{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:12px}
+.swc{display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:14px;background:var(--surface);border:1px solid var(--line)}
+.swc .chip{height:44px;border-radius:10px;display:flex;align-items:center;padding:0 12px;font:600 13px/1 var(--sans)}
+.swc b{font:650 14px/1.2 var(--sans)}
+.swc span{font:500 11.5px/1.35 var(--mono);color:var(--muted)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(520px,100%),1fr));gap:16px;align-items:start}
+.code{margin:0;padding:18px 20px;border-radius:16px;background:#0C161B;color:#D7E3E8;font:500 12.5px/1.65 var(--mono);white-space:pre;overflow-x:auto;border:1px solid #1F3039}
+.code-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.code-h span{font:500 12px/1 var(--mono);color:var(--muted)}
+.type{display:flex;flex-direction:column;gap:16px;padding:20px;border-radius:16px;background:var(--surface);border:1px solid var(--line)}
+.type .row{display:grid;grid-template-columns:110px minmax(0,1fr);gap:14px;align-items:baseline;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.type .row:last-child{border-bottom:0;padding-bottom:0}
+.type .k{font:500 11.5px/1.3 var(--mono);color:var(--muted)}
+.order{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(230px,100%),1fr));gap:12px}
+.st{display:flex;flex-direction:column;gap:8px;padding:16px;border-radius:14px;background:var(--surface);border:1px solid var(--line)}
+.st .num{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font:650 13px/1 var(--mono)}
+.st b{font:650 15px/1.25 var(--sans)}
+.st p{margin:0;font:450 13px/1.45 var(--sans);color:var(--muted)}
+.motto{display:flex;flex-wrap:wrap;gap:10px 28px;padding:16px 20px;border-radius:14px;background:var(--fg);color:var(--app);font:600 16px/1.3 var(--sans);letter-spacing:-.01em}
+.motto span{opacity:.7;font-weight:500}
+</style>
+</helmet>
+<div class="kk">
+<div class="kk-wrap">
+<header>
+<h1>Flow map: the building blocks</h1>
+<p class="kk-lede">Every map the Planner draws is made from these blocks, and it only shows apps your code already calls. Each block carries evidence from the repo or from the test run; a block without evidence is dropped or shown as unconfirmed.</p>
+</header>
+
+<section>
+<h2>Order of control</h2>
+<div class="order">
+<div class="st"><span class="num" style="background: var(--violet-bg); color: var(--violet)">1</span><b>The Planner reads and runs</b><p>Reads the repo, runs the app in test mode, traces every outside call, then proposes the map.</p></div>
+<div class="st"><span class="num" style="background: var(--slate-bg); color: var(--fg)">2</span><b>FlowForge checks</b><p>Loops, missing apps, unknown tools, blocks with no evidence. Gates are added by code, not by the Planner.</p></div>
+<div class="st"><span class="num" style="background: var(--teal-bg); color: var(--teal)">3</span><b>You edit</b><p>Move, rewire, swap an app, add or hide a step. Saved on top of the Planner's map. Your code isn't touched.</p></div>
+<div class="st"><span class="num" style="background: var(--amber-bg); color: var(--amber)">4</span><b>Re-check shows a diff</b><p>The Planner never overwrites. You pick what to take; the old version stays runnable.</p></div>
+</div>
+</section>
+<div class="motto">The Planner decides what runs. <span>The scheduler decides when.</span> You approve anything that moves money or sends a message.</div>
+
+<section>
+<h2>Blocks</h2>
+<div class="kk-grid">
+<div class="kk-card">
+<div class="kk-stage"><div class="n pill"><span class="t" style="background: #3395FF"><img src="/_blob/ade37c3be8a35758432154560e7cae43" alt=""></span><span>Payment captured<small>Razorpay webhook</small></span></div></div>
+<b>Start and end</b><p>Where a flow begins (a route, webhook or schedule) and where it stops.</p><span class="kk-ev">evidence: api/webhooks.py:41</span>
+</div>
+<div class="kk-card">
+<div class="kk-stage"><div class="n"><span class="tag llm">LLM</span><span class="t" style="background: #4285F4"><img src="/_blob/0f82863cf3a140d98683f584542db625" alt=""></span><span>Score fraud risk<small>gemini-2.0-flash</small></span></div></div>
+<b>App call: LLM, API or MCP</b><p>One call to a connected app. Its logo and colour tell you which one; the tag tells you the kind.</p><span class="kk-ev">evidence: services/risk.py:44 + 40 traced calls</span>
+</div>
+<div class="kk-card">
+<div class="kk-stage"><div class="n"><span class="tag">Code</span><span class="t" style="background: var(--slate-bg); color: var(--slate)"><svg viewBox="0 0 24 24"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4"></path></svg></span><span>Mark order refunded<small>services/refunds.py</small></span></div></div>
+<b>Your code</b><p>Plain code in your app with no outside call. Shown so the flow makes sense end to end.</p><span class="kk-ev">evidence: services/refunds.py:14</span>
+</div>
+<div class="kk-card">
+<div class="kk-stage"><div class="dia"><span>Risk ≥ 0.7?</span></div></div>
+<b>Decision</b><p>A fork where only one path is taken. Its lines are labelled yes and no; the condition comes from the code.</p><span class="kk-ev">evidence: services/risk.py:57</span>
+</div>
+<div class="kk-card">
+<div class="kk-stage"><div class="bars"><span class="bar"></span><span class="mini"><span></span><span></span><span></span></span><span class="bar"></span></div></div>
+<b>Run together, wait for all</b><p>Steps that don't depend on each other run at the same time. The join waits for all of them.</p><span class="kk-ev">evidence: services/fulfil.py:12 asyncio.gather</span>
+</div>
+<div class="kk-card">
+<div class="kk-stage"><div class="n gate"><span class="tag gate">Gate</span><span class="t" style="background: var(--amber-strong); color: #2A1E05"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg></span><span>Hold the payment<small>you approve · always</small></span></div></div>
+<b>You approve</b><p>Payments, messages and code changes always stop here. The Planner can add gates; it can never remove one.</p><span class="kk-ev">evidence: policy D11, added by code</span>
+</div>
+<div class="kk-card">
+<div class="kk-stage"><div class="n unc"><span class="t" style="background: #F22F46; color: #0F1D26; opacity: .55">Tw</span><span>SMS receipt<small>no call found</small></span></div></div>
+<b>Unconfirmed</b><p>The Planner saw a hint (a key name, a doc) but no code that calls it. It never runs until you confirm it.</p><span class="kk-ev">evidence: .env.example:7, name only</span>
+</div>
+<div class="kk-card">
+<div class="kk-stage" style="gap: 18px; display: flex; justify-content: center; align-items: center"><div class="n" style="width: 170px"><span class="flag yours">Yours</span><span class="t" style="background: #4A154B; color: #fff">Sl</span><span>Post to #orders</span></div><div class="n" style="width: 170px"><span class="flag tip">Tip</span><span class="t" style="background: #4285F4"><img src="/_blob/0f82863cf3a140d98683f584542db625" alt=""></span><span>Score fraud…</span></div></div>
+<b>Your edits and tips</b><p>Black marks your own changes. Violet marks a better fit found while running the app.</p><span class="kk-ev">The Planner's version is always kept underneath</span>
+</div>
+</div>
+</section>
+
+<section>
+<h2>Lines</h2>
+<div class="lines">
+<div class="ln"><svg width="96" height="20" viewBox="0 0 96 20"><path d="M2 16 C 40 16, 52 4, 88 4" style="fill: none; stroke: var(--edge); stroke-width: 2"></path><path d="M86 0.5 L94 4 L86 7.5 Z" style="fill: var(--edge)"></path></svg><div><b>Data flows this way</b><span>Curved, never boxy. Drag a block and its lines follow.</span></div></div>
+<div class="ln"><svg width="96" height="24" viewBox="0 0 96 24"><path d="M2 12 H 88" style="fill: none; stroke: var(--edge); stroke-width: 2"></path><path d="M86 8.5 L94 12 L86 15.5 Z" style="fill: var(--edge)"></path></svg><div><b><span class="lbl">yes</span> <span class="lbl">no</span></b><span>Branches out of a decision carry their answer.</span></div></div>
+<div class="ln"><svg width="96" height="20" viewBox="0 0 96 20"><path d="M2 10 H 88" style="fill: none; stroke: var(--coral); stroke-width: 2; stroke-dasharray: 7 6"></path><path d="M86 6.5 L94 10 L86 13.5 Z" style="fill: var(--coral)"></path></svg><div><b>Fallback</b><span>Taken only when a call fails, e.g. Gemini to NIM.</span></div></div>
+<div class="ln"><svg width="96" height="34" viewBox="0 0 96 34"><rect x="18" y="20" width="60" height="12" rx="4" style="fill: var(--raised); stroke: var(--line-2)"></rect><path d="M64 20 C 64 2, 32 2, 32 19" style="fill: none; stroke: var(--muted); stroke-width: 2; stroke-dasharray: 4 4"></path></svg><div><b>Retry loop</b><span>Tries again on a server error, up to the limit in your code.</span></div></div>
+<div class="ln"><svg width="96" height="20" viewBox="0 0 96 20"><path d="M2 10 H 88" style="fill: none; stroke: var(--edge); stroke-width: 2; stroke-dasharray: 2 6; stroke-linecap: round"></path></svg><div><b>Unconfirmed</b><span>Leads to a block with no evidence. Never runs.</span></div></div>
+<div class="ln"><svg width="96" height="24" viewBox="0 0 96 24"><path d="M2 12 H 94" style="fill: none; stroke: var(--edge); stroke-width: 2"></path><circle cx="48" cy="12" r="11" style="fill: var(--surface); stroke: var(--teal)"></circle><path d="M48 5.5l5 2v3.5c0 3-2.2 5-5 5.6-2.8-.6-5-2.6-5-5.6V7.5z" style="fill: none; stroke: var(--teal); stroke-width: 1.6"></path></svg><div><b>Keys and PII removed first</b><span>On every line into an LLM.</span></div></div>
+<div class="ln"><svg width="96" height="20" viewBox="0 0 96 20"><path d="M2 10 H 88" style="fill: none; stroke: var(--blue); stroke-width: 2.6"></path><circle cx="30" cy="10" r="3.6" style="fill: var(--blue)"></circle><circle cx="58" cy="10" r="3" style="fill: var(--blue)"></circle><path d="M86 6 L95 10 L86 14 Z" style="fill: var(--blue)"></path></svg><div><b>Running</b><span>Dots travel the way the data goes.</span></div></div>
+<div class="ln"><svg width="96" height="20" viewBox="0 0 96 20"><path d="M2 10 H 88" style="fill: none; stroke: var(--teal); stroke-width: 2.4"></path><path d="M86 6 L95 10 L86 14 Z" style="fill: var(--teal)"></path></svg><div><b>Done</b><span>The path this run actually took.</span></div></div>
+</div>
+</section>
+
+<section>
+<h2>Colour means one thing</h2>
+<div class="sw">
+<div class="swc"><span class="chip" style="background: var(--teal); color: #fff">Teal</span><b>Done, safe, connected</b><span>#0B7A70 · dark #4FD1C0</span></div>
+<div class="swc"><span class="chip" style="background: var(--blue); color: #fff">Blue</span><b>Running now</b><span>#2457C5 · dark #7FA8FF</span></div>
+<div class="swc"><span class="chip" style="background: var(--amber-strong); color: #2A1E05">Amber</span><b>Waits for you</b><span>#E3A535 · dark #F2B84B</span></div>
+<div class="swc"><span class="chip" style="background: var(--coral); color: #fff">Coral</span><b>Failed or fallback</b><span>#B93C2B · dark #FF8C7A</span></div>
+<div class="swc"><span class="chip" style="background: var(--violet); color: #fff">Violet</span><b>The Planner and AI</b><span>#6B46C1 · dark #B79CFF</span></div>
+</div>
+</section>
+
+<section class="two">
+<div>
+<div class="code-h"><h2 style="margin: 0">Flow JSON (what the Planner returns)</h2><span>flow.v1 · trimmed</span></div>
+<pre class="code">{
+  "flow": "baby-care-shop",
+  "version": 4,
+  "drawn_by": {
+    "planner": "flowforge",
+    "fact_sheet": "sha256:9f2c…e41",
+    "repo": "main@a1b2c3f"
+  },
+  "nodes": [
+    { "id": "score", "kind": "llm", "title": "Score fraud risk",
+      "connector": "gemini", "op": { "model": "gemini-2.0-flash", "temperature": 0 },
+      "evidence": [ { "type": "code", "file": "services/risk.py", "line": 44 },
+                    { "type": "trace", "calls": 40, "p50_ms": 2100 } ],
+      "status": "confirmed" },
+    { "id": "risky", "kind": "decision", "title": "New customer or ₹5,000+?",
+      "condition": "order.is_first or order.amount >= 500_000",
+      "evidence": [ { "type": "code", "file": "services/risk.py", "line": 27 } ] },
+    { "id": "gate_hold", "kind": "gate", "title": "Hold the payment",
+      "added_by": "policy", "removable": false },
+    { "id": "sms", "kind": "api", "connector": "twilio",
+      "evidence": [ { "type": "env_name", "file": ".env.example", "line": 7 } ],
+      "status": "unconfirmed" }
+  ],
+  "edges": [
+    { "from": "risky", "to": "score", "kind": "branch", "when": "yes" },
+    { "from": "score", "to": "score_nim", "kind": "fallback", "on": "failure" },
+    { "from": "stock", "to": "stock", "kind": "retry", "max": 3, "on": "5xx" }
+  ],
+  "overrides": [
+    { "op": "set_connector", "node": "note", "to": "ollama", "by": "you" },
+    { "op": "add_node", "node": "slack", "by": "you" }
+  ]
+}</pre>
+<p class="kk-ev" style="margin-top: 10px">kind: start · end · llm · api · mcp · local · code · decision · fork · join · gate &#160;|&#160; edge: flow · branch · fallback · retry · unconfirmed</p>
+</div>
+<div class="type">
+<h2 style="margin: 0">Type</h2>
+<div class="row"><span class="k">Geist 650 · 30</span><span style="font: 650 30px/1.1 var(--sans); letter-spacing: -.025em">Score fraud risk</span></div>
+<div class="row"><span class="k">Geist 650 · 19</span><span style="font: 650 19px/1.2 var(--sans); letter-spacing: -.015em">The Planner re-checked your repo</span></div>
+<div class="row"><span class="k">Geist 450 · 15</span><span style="font: 450 15px/1.45 var(--sans)">Asks an LLM how likely this order is to be fraud, from 0 to 1.</span></div>
+<div class="row"><span class="k">Geist 600 · 13</span><span style="font: 600 13px/1.3 var(--sans)">Test run · Re-check the repo · Approve</span></div>
+<div class="row"><span class="k">Geist Mono 500 · 12</span><span style="font: 500 12px/1.4 var(--mono)">services/risk.py:44 · p50 2.1 s · 40 calls · sha256:9f2c</span></div>
+<div class="row"><span class="k">Geist Mono 600 · 10</span><span style="font: 600 10px/1.3 var(--mono); letter-spacing: .08em; text-transform: uppercase">LLM · MCP · GATE · YOURS</span></div>
+</div>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1300}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

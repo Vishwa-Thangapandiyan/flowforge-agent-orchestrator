@@ -1,7 +1,7 @@
 """Secret references (D10). A connector holds `env:NAME` or `vault:NAME`, never a value.
 
 Phase 1 resolves `env:` from the process environment. `vault:` is reserved for the
-Phase 3 vault and refused until then. Errors name the reference, never a value.
+Phase 4 vault and refused until then. Errors name the reference, never a value.
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ def resolve_secret(ref: str | None) -> str | None:
         return None
     scheme, _, name = ref.partition(":")
     if scheme == "vault":
-        raise SecretRefError(f"secret '{ref}' needs the vault, which arrives in Phase 3; use env:{name} for now")
+        raise SecretRefError(f"secret '{ref}' needs the vault, which arrives in Phase 4; use env:{name} for now")
     if scheme != "env" or not name:
         raise SecretRefError(f"unsupported secret reference '{ref}'")
     value = os.environ.get(name)

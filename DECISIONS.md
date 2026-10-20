@@ -1,6 +1,6 @@
 # FlowForge — Design Decisions
 
-Every design decision, with the choice, the reason, and where it lives in the code. D1–D9 were made for V1 ([FlowForge_V1_Plan.md](FlowForge_V1_Plan.md)) and still hold on `main`. D10–D18 cover the product (connectors, approval gates, MCP, local commands, planning, the frontend, run history and redaction, the flow map). D19–D20 set the current direction: repo → dependency map → health, security and tests, with a scan that sends nothing to an LLM; new decisions take the next free number and are written before the code. A decision is never edited to mean something new: it is superseded by a later entry that says so.
+Every design decision, with the choice, the reason, and where it lives in the code. D1–D9 were made for V1 ([FlowForge_V1_Plan.md](FlowForge_V1_Plan.md)) and still hold on `main`. D10–D18 cover the product (connectors, approval gates, MCP, local commands, planning, the frontend, run history and redaction, the flow map). D19–D20 set the current direction: repo → dependency map → health, security and tests, with a scan that sends nothing to an LLM. D21 is the scanner contract; new decisions take the next free number and are written before the code. A decision is never edited to mean something new: it is superseded by a later entry that says so.
 
 **Hard constraint: zero cost by default.** No paid API or service in the default install, the tests or CI. The default LLM provider is NVIDIA NIM's free tier (see D8).
 
@@ -495,6 +495,128 @@ None offers a free, local repo → map → checks loop that needs no change to t
 **Why:** the user's code and keys are private, and an LLMOps tool that leaked them to its own model would defeat its purpose. Doing the scan in plain code also makes it free, fast, repeatable and backed by evidence.
 
 **Code:** `scan/`, `security/`.
+
+## D21. The scanner contract: what a dependency is, its evidence, the output, and how it becomes the map (Phase 4)
+
+**Supersedes, for dependency maps only:**
+- D17's "gates are added by code" before side-effecting blocks;
+- D17's rule that every call block names a connected app.
+
+Both still apply to flow maps (the Baby-care fixture now, flow order in Phase 8).
+
+**What the scanner reads.** Read-only: it never runs, imports or installs anything from the repo, and makes no network call (D20).
+- **Which files:** in a git repo, the files git tracks or doesn't ignore (`git ls-files`, run locally). Otherwise a walk that skips `.git`, `node_modules`, `.venv`/`venv`, `build`, `dist`, `.dart_tool`, `__pycache__` and `vendor`.
+  - Symlinks are not followed out of the root.
+  - Binary files and files over 1 MB are skipped.
+  - Test folders (`tests/`, `test/`, `__tests__/`) are skipped, because their URLs are fixtures.
+  - Docs (`*.md`, `*.txt`) are skipped, because their links are not calls.
+- **How:** Python through the stdlib `ast`. JS/TS and Dart through patterns. JSON, TOML and YAML config through their parsers or patterns.
+
+**What counts as a dependency.** One entry per service:
+
+| Kind | Found from | One entry per |
+|---|---|---|
+| `llm` | an LLM SDK import (OpenAI, Anthropic, Google GenAI, Mistral, Cohere, Groq, Ollama, LiteLLM, LangChain providers; JS/Dart equivalents), resolved to a provider by its base URL or model names (`localhost:11434` → Ollama, `integrate.api.nvidia.com` → NIM, `generativelanguage.googleapis.com` → Gemini, no base URL → the SDK's own provider) | provider |
+| `api` | a URL literal (or an f-string / template / `Uri.parse` whose text *starts with* `http://` or `https://`), or an SDK that stands for a hosted service (`supabase_flutter`, `stripe`, `razorpay`, `firebase_*` …) | host |
+| `mcp` | MCP config files (`.mcp.json`, `mcp.json`, `.vscode/mcp.json`, `.cursor/mcp.json`, `claude_desktop_config.json`); `StdioServerParameters(...)` or a JS `StdioClientTransport({...})` with literal command and args | server name |
+| `local` | `subprocess.*`, `os.system`, `asyncio.create_subprocess_exec`; Dart `Process.run`; JS `child_process` | program (the script, when it is run by an interpreter) |
+
+The table that maps SDK packages to services lives with the catalog in `connectors/presets.py`, the only place brands are named (D10).
+
+**Not dependencies:**
+- the client libraries themselves (`httpx`, `openai`, `mcp`);
+- URLs that only appear *inside* a longer string, such as a User-Agent;
+- localhost and private addresses, unless the LLM rule claims them (Ollama);
+- `example.com`/`.org`/`.net`;
+- XML and JSON-schema namespace URLs;
+- the commands that start MCP servers (`npx`, `uvx`, `python`).
+
+**Confirmed or unconfirmed (D17's rule, kept).** Unconfirmed entries are drawn dashed. The user can confirm or hide them (an override), and they are never checked until confirmed. An entry is *confirmed* when one of these holds:
+- its SDK is imported and used;
+- its host matches a catalog app;
+- the URL is used in a call the scanner recognises: the first argument or `url=` of an HTTP client call, a `url` key in a dict, or a `Uri.parse` / `fetch` argument, directly or through a module-level constant;
+- the URL has an API shape: the host starts with `api.`, or the path has `/api/` or `/v<n>/`;
+- it comes from an MCP config or a subprocess call.
+
+Anything else is unconfirmed. Examples: a `www.` page link, or an env var name that hints at a service nobody imports.
+
+**MCP servers your coding tools use.** `.mcp.json` and the other config files often set up the developer's agent (Claude Code, Cursor), not the app.
+- If code in the repo names the config file, or a server in it, its servers are the app's dependencies.
+- Otherwise they go in a separate group, "Your coding tools". They are still mapped and checked.
+
+**Merging.** One entry per id:
+- `llm-<provider>`;
+- `api-<host with dots as dashes>`;
+- `mcp-<server>`;
+- `local-<program>`.
+
+Every place that found the same entry adds its evidence to that one entry. A host only ever reached through an MCP server (a URL passed to an MCP `fetch` call) records `via: "mcp-<server>"`. Hosts of the same site (`thumb.` and `commons.wikimedia.org`) stay separate entries, and the map groups them by site. The ids are stable, so re-scans diff by id and saved positions survive.
+
+**Evidence.** Each entry carries one or more `Evidence(type="code", ref="path:line")`, plus:
+- a short excerpt (at most 5 lines), **passed through the redactor before it is stored**;
+- the env var *names* on the same statement.
+
+The scanner keeps only a URL's scheme, host and path. Query strings are dropped, because they can hold keys. It never stores any other string literal value, except model names and MCP command arguments, and those are redacted too.
+
+**Output (`ScanResult`, Pydantic, `extra="forbid"`):**
+
+```json
+{
+  "root": "trip-planner",
+  "files_scanned": 14,
+  "skipped": {"too_big": 0, "binary": 0, "ignored": 3},
+  "languages": {"python": 9, "json": 1},
+  "dependencies": [
+    {"id": "llm-ollama", "kind": "llm", "name": "Ollama", "catalog": "ollama",
+     "target": "localhost:11434", "model": "llama3.1:8b",
+     "status": "confirmed", "scope": "app", "via": null,
+     "evidence": [{"type": "code", "ref": "services/llm.py:5", "text": "imports the OpenAI SDK"}],
+     "env_names": ["OLLAMA_BASE_URL", "PLANNER_MODEL"]}
+  ],
+  "env_names": [{"name": "CURRENCY_API_URL", "ref": "mcp_servers/currency.py:9"}],
+  "findings": []
+}
+```
+
+`findings` is filled by the security phase (Phase 6). Paths are relative to `root`.
+
+**How it becomes the map.** `ScanPlanner(path)` implements the D17 `Planner` interface and returns the same `Draft`, so versions, re-scan → diff, overrides and saved positions all work unchanged.
+- `Flow` gains `kind: "flow" | "dependencies"` (default `"flow"`, so existing maps and tests are unaffected).
+- A dependency map has:
+  - one `start` block for the app;
+  - one `start` block for "Your coding tools" when there are any;
+  - one block per dependency (`llm`/`api`/`mcp`/`local`);
+  - a line from its root to each dependency, or from the MCP server for `via` entries.
+- On a dependency map, validation:
+  - does not insert gates;
+  - allows a call block with no connector (if one is set, its type must still match);
+  - computes no critical path.
+- The full `ScanResult` is kept with the version (`Analysis.scan`), so later phases can check each dependency's `target`.
+- **One repo per database in V1.**
+  - `flowforge scan <path>` prints the `ScanResult` JSON and stores nothing.
+  - "Scan a folder" in the dashboard (or `flowforge --repo <path>`) saves the path and draws version 1. Re-scan makes version N+1 with a diff.
+  - Pointing at a different folder starts a fresh map, after the user confirms.
+- **Example mode shows two maps, switchable (Vishwa, 2026-10-20).**
+  - The default is the trip planner's dependency map, scanned live from `examples/trip-planner`.
+  - A switch in the map's header shows the Baby-care flow map (gates, test-run replay). It is styled like the existing "Planner's map / With my edits" switch.
+  - The flow tables (`flow_versions`, `flow_overrides`, `flow_positions`) gain a `map_id` column (`deps` | `flow`), so the two maps keep separate versions, edits and positions. The flow routes take `?map=`, defaulting to the dependency map.
+  - This is also the first step toward more than one repo per database (later).
+
+**Tests (offline):**
+- Scanning `examples/trip-planner` yields exactly the dependencies and env names listed in its README, with those `file:line` refs.
+- A run with sockets blocked proves no network call (D20).
+- The fake key appears in no excerpt, stored row, API response or log.
+- Golden snippets per language.
+- Excluded folders and URL-in-a-longer-string are ignored.
+- Ids are stable across two scans.
+
+**Why:**
+- A dependency map is about *what* the app uses, not the order it runs in. Gates and critical paths belong to flow maps.
+- Keeping the `Planner` interface means the map, versions and diff built in Phase 3 work for real repos with no new UI plumbing.
+- The confirmed/unconfirmed split lets the scan stay generous without presenting a link in a README-like string as a service.
+- Separating coding-tool MCP servers stops a developer's own agent setup from being mistaken for the app's architecture.
+
+**Code:** `scan/` (new), `flowmap/models.py` (`Flow.kind`, `Analysis.scan`), `flowmap/validate.py`, `flowmap/planner.py` (`ScanPlanner`), `connectors/presets.py` (SDK → service table), `cli.py`, `api/flowmap.py`.
 
 ---
 

@@ -42,7 +42,7 @@ asyncio_mode = "auto"
 [tool.ruff]
 line-length = 120
 target-version = "py312"
-src = ["backend", "benchmarks"]
+src = ["backend", "benchmarks", "examples/trip-planner"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]

@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "time": {
+      "command": "uvx",
+      "args": ["mcp-server-time@2026.10.19"]
+    },
+    "fetch": {
+      "command": "uvx",
+      "args": ["mcp-server-fetch"]
+    },
+    "files": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem@2.0.0", "trips"]
+    },
+    "currency": {
+      "command": "python",
+      "args": ["mcp_servers/currency.py"]
+    }
+  }
+}

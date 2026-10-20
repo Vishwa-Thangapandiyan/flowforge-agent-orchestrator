@@ -116,6 +116,39 @@ CATALOG: list[dict] = [
     for r in _CATALOG_ROWS
 ]
 
+# What the repo scanner recognises (D21). One row per service: id (the catalog id where there is one), name,
+# kind, hosts it answers on (a leading "." matches any subdomain; "host:port" for local servers) and its SDK
+# packages (Python import or dist names, npm names, Dart packages; compared case-insensitively with - _ . alike).
+_SERVICE_ROWS: list[tuple[str, str, str, tuple[str, ...], tuple[str, ...]]] = [
+    ("ollama", "Ollama", "llm", ("localhost:11434", "127.0.0.1:11434"), ("ollama", "langchain_ollama", "ollama-ai-provider")),
+    ("nim", "NVIDIA NIM", "llm", ("integrate.api.nvidia.com",), ("langchain_nvidia_ai_endpoints",)),
+    ("openai", "OpenAI", "llm", ("api.openai.com",), ("openai", "langchain_openai", "@ai-sdk/openai", "dart_openai")),
+    ("claude", "Claude", "llm", ("api.anthropic.com",), ("anthropic", "@anthropic-ai/sdk", "langchain_anthropic", "@ai-sdk/anthropic")),
+    ("gemini", "Google Gemini", "llm", ("generativelanguage.googleapis.com",),
+     ("google.generativeai", "google.genai", "google-generativeai", "google-genai", "@google/generative-ai", "@google/genai",
+      "langchain_google_genai", "google_generative_ai", "@ai-sdk/google")),
+    ("mistral", "Mistral", "llm", ("api.mistral.ai",), ("mistralai", "@mistralai/mistralai", "langchain_mistralai")),
+    ("cohere", "Cohere", "llm", ("api.cohere.com", "api.cohere.ai"), ("cohere", "cohere-ai", "langchain_cohere")),
+    ("groq", "Groq", "llm", ("api.groq.com",), ("groq", "groq-sdk", "langchain_groq")),
+    ("openrouter", "OpenRouter", "llm", ("openrouter.ai",), ("@openrouter/ai-sdk-provider",)),
+    ("deepseek", "DeepSeek", "llm", ("api.deepseek.com",), ()),
+    ("supabase", "Supabase", "api", (".supabase.co",), ("supabase", "@supabase/supabase-js", "supabase_flutter")),
+    ("stripe", "Stripe", "api", ("api.stripe.com",), ("stripe", "flutter_stripe", "@stripe/stripe-js")),
+    ("razorpay", "Razorpay", "api", ("api.razorpay.com",), ("razorpay", "razorpay_flutter")),
+    ("firebase", "Firebase", "api", (".firebaseio.com", "firestore.googleapis.com", ".firebaseapp.com"),
+     ("firebase_admin", "firebase", "firebase-admin", "firebase_core", "cloud_firestore", "firebase_auth")),
+    ("google_maps", "Google Maps", "api", ("maps.googleapis.com",), ("googlemaps", "google_maps_flutter", "@googlemaps/js-api-loader")),
+    ("osm_tiles", "OpenStreetMap tiles", "api", ("tile.openstreetmap.org",), ()),
+    ("nominatim", "Nominatim", "api", ("nominatim.openstreetmap.org",), ()),
+    ("overpass", "Overpass API", "api", ("overpass-api.de",), ()),
+    ("osrm", "OSRM", "api", ("router.project-osrm.org",), ()),
+    ("open_meteo", "Open-Meteo", "api", ("api.open-meteo.com",), ()),
+    ("wikipedia", "Wikipedia", "api", (".wikipedia.org",), ()),
+    ("wikimedia", "Wikimedia", "api", (".wikimedia.org",), ()),
+]
+SERVICES: list[dict] = [{"id": r[0], "name": r[1], "kind": r[2], "hosts": list(r[3]), "sdks": list(r[4])}
+                        for r in _SERVICE_ROWS]
+
 # Starting points for the "Custom" choice of each type; the user fills in id, name and connection.
 CUSTOM: dict[str, dict] = {
     "llm": {"type": "llm", "connection": {"provider": "openai_compatible", "base_url": "", "model": ""}},

@@ -616,6 +616,13 @@ The scanner keeps only a URL's scheme, host and path. Query strings are dropped,
 - The confirmed/unconfirmed split lets the scan stay generous without presenting a link in a README-like string as a service.
 - Separating coding-tool MCP servers stops a developer's own agent setup from being mistaken for the app's architecture.
 
+**Amended 2026-10-20, before any of D21 shipped.** Scanning a real Flutter repo (`smart-travel-assistant`) showed five gaps, fixed here openly rather than by rewording the rules above:
+- **Merging (replaces "hosts of the same site stay separate").** Hosts of one known service merge into one entry, `api-<service id>`: Wikimedia's `thumb.`, `commons.` and `upload.` hosts are one Wikimedia. Unknown hosts stay one entry each.
+- **Hidden folders are tooling, not the app.** In `.claude`, `.cursor`, `.github` and other dot-folders, only MCP config files are read. The real repo carried a 107-file Claude Code skill that otherwise showed up as fake dependencies.
+- **A `www.` page stays unconfirmed even when the code opens it** (`launchUrl(Uri.parse(...))`), unless it looks like an API or is a known service. It's a link, not a call.
+- **At most 10 evidence entries per dependency, plus a `places` count of all of them.** A fake-data file had produced 764.
+- **Targets stop before template parts** (`/driving/$path`, `/{z}/{x}/{y}.png`), so a check gets an address it can actually call.
+
 **Code:** `scan/` (new), `flowmap/models.py` (`Flow.kind`, `Analysis.scan`), `flowmap/validate.py`, `flowmap/planner.py` (`ScanPlanner`), `connectors/presets.py` (SDK → service table), `cli.py`, `api/flowmap.py`.
 
 ---

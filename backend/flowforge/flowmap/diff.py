@@ -141,4 +141,5 @@ def apply_choices(old: Flow, new: Flow, changes: list[dict[str, Any]],
 
     kept_edges = [e for e in edges if e.source in nodes and e.target in nodes]
     suggestions = [s for s in new.suggestions if s.node in nodes]
-    return Flow(nodes=[nodes[i] for i in order if i in nodes], edges=kept_edges, suggestions=suggestions), drop_edits
+    return Flow(kind=new.kind, nodes=[nodes[i] for i in order if i in nodes], edges=kept_edges,
+                suggestions=suggestions), drop_edits

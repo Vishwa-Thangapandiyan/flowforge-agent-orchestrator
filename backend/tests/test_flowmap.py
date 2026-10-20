@@ -193,7 +193,7 @@ def api(tmp_path, monkeypatch):
 
 
 def test_the_example_map(api):
-    f = api.get("/flow").json()
+    f = api.get("/flow?map=flow").json()
     assert f["available"] and f["version"] == 1
     by_id = {n["id"]: n for n in f["nodes"]}
     assert by_id["note"]["connector"] == "ollama" and by_id["note"]["yours"][0]["op"] == "set_connector"
@@ -203,77 +203,77 @@ def test_the_example_map(api):
     assert by_id["score"]["tip"]["connector"] == "nim"
     assert f["critical_path"]["path"][-2:] == ["send", "end"] and f["critical_path"]["bottleneck"] == "score"
     assert f["positions"]["score"] == [660, 158]
-    planner = api.get("/flow?layer=planner").json()
+    planner = api.get("/flow?layer=planner&map=flow").json()
     assert "slack" not in {n["id"] for n in planner["nodes"]}
     assert {n["id"]: n for n in planner["nodes"]}["note"]["connector"] == "claude"
 
 
 def test_trace_and_analysis(api):
-    trace = api.get("/flow/trace").json()
+    trace = api.get("/flow/trace?map=flow").json()
     assert trace["branches"] == {"risky": "yes", "high": "no"}
     assert {s["node"]: s["outcome"] for s in trace["steps"]}["gate_send"] == "waiting"
-    analysis = api.get("/flow/analysis").json()
+    analysis = api.get("/flow/analysis?map=flow").json()
     assert len(analysis["stages"]) == 6 and analysis["dropped"][0]["title"] == "Send WhatsApp update"
 
 
 def test_edits_through_the_api(api):
-    assert api.post("/flow/overrides", json={"op": "hide", "node": "gate_hold"}).status_code == 422
-    r = api.post("/flow/overrides", json={"op": "set_connector", "node": "score", "connector": "gmail"})
+    assert api.post("/flow/overrides?map=flow", json={"op": "hide", "node": "gate_hold"}).status_code == 422
+    r = api.post("/flow/overrides?map=flow", json={"op": "set_connector", "node": "score", "connector": "gmail"})
     assert r.status_code == 422 and "llm" in r.json()["detail"]
-    assert api.post("/flow/overrides", json={"op": "set_connector", "node": "score", "connector": "ghost"}).status_code == 422
-    assert api.post("/flow/overrides", json={"op": "rename"}).status_code == 422
-    rid = api.post("/flow/overrides", json={"op": "rename", "node": "fetch", "title": "Load the order"}).json()["id"]
-    assert {n["id"]: n for n in api.get("/flow").json()["nodes"]}["fetch"]["title"] == "Load the order"
-    assert api.delete(f"/flow/overrides/{rid}").status_code == 204
-    assert api.delete(f"/flow/overrides/{rid}").status_code == 404
+    assert api.post("/flow/overrides?map=flow", json={"op": "set_connector", "node": "score", "connector": "ghost"}).status_code == 422
+    assert api.post("/flow/overrides?map=flow", json={"op": "rename"}).status_code == 422
+    rid = api.post("/flow/overrides?map=flow", json={"op": "rename", "node": "fetch", "title": "Load the order"}).json()["id"]
+    assert {n["id"]: n for n in api.get("/flow?map=flow").json()["nodes"]}["fetch"]["title"] == "Load the order"
+    assert api.delete(f"/flow/overrides/{rid}?map=flow").status_code == 204
+    assert api.delete(f"/flow/overrides/{rid}?map=flow").status_code == 404
     # confirming the SMS step needs its app connected, and then brings its gate with it (code decides, D14)
-    r = api.post("/flow/overrides", json={"op": "confirm", "node": "sms"})
+    r = api.post("/flow/overrides?map=flow", json={"op": "confirm", "node": "sms"})
     assert r.status_code == 422 and "not connected" in r.json()["detail"]
     twilio = {"id": "twilio", "type": "http", "name": "Twilio", "connection": {"base_url": "https://sms.example.test"}}
     assert api.post("/connectors", json=twilio).status_code == 201
-    assert api.post("/flow/overrides", json={"op": "confirm", "node": "sms"}).status_code == 201
-    nodes = {n["id"]: n for n in api.get("/flow").json()["nodes"]}
+    assert api.post("/flow/overrides?map=flow", json={"op": "confirm", "node": "sms"}).status_code == 201
+    nodes = {n["id"]: n for n in api.get("/flow?map=flow").json()["nodes"]}
     assert nodes["sms"]["status"] == "confirmed" and nodes["gate_sms"]["added_by"] == "policy"
-    assert api.delete("/flow/nodes/sms/overrides").json() == {"removed": 1}
+    assert api.delete("/flow/nodes/sms/overrides?map=flow").json() == {"removed": 1}
     # a side-effecting step you add after a non-gate also gets a gate
     new = {"id": "ping", "kind": "mcp", "title": "Ping the team", "connector": "slack", "op": {"tool": "post"}}
-    assert api.post("/flow/overrides", json={"op": "add_node", "new_node": new}).status_code == 201
-    assert api.post("/flow/overrides", json={"op": "add_edge", "node": "ping", "source": "fetch"}).status_code == 201
-    nodes = {n["id"]: n for n in api.get("/flow").json()["nodes"]}
+    assert api.post("/flow/overrides?map=flow", json={"op": "add_node", "new_node": new}).status_code == 201
+    assert api.post("/flow/overrides?map=flow", json={"op": "add_edge", "node": "ping", "source": "fetch"}).status_code == 201
+    nodes = {n["id"]: n for n in api.get("/flow?map=flow").json()["nodes"]}
     assert nodes["gate_ping"]["kind"] == "gate"
     # a line that closes a loop is refused
-    r = api.post("/flow/overrides", json={"op": "add_edge", "node": "start", "source": "ping"})
+    r = api.post("/flow/overrides?map=flow", json={"op": "add_edge", "node": "start", "source": "ping"})
     assert r.status_code == 422 and "loop" in r.json()["detail"]
 
 
 def test_positions(api):
-    assert api.put("/flow/positions", json={"positions": {"score": [1, 2]}}).json() == {"saved": 1}
-    assert api.get("/flow").json()["positions"]["score"] == [1, 2]
-    api.put("/flow/positions", json={"positions": {"fetch": [5, 6]}, "replace": True})
-    positions = api.get("/flow").json()["positions"]
+    assert api.put("/flow/positions?map=flow", json={"positions": {"score": [1, 2]}}).json() == {"saved": 1}
+    assert api.get("/flow?map=flow").json()["positions"]["score"] == [1, 2]
+    api.put("/flow/positions?map=flow", json={"positions": {"fetch": [5, 6]}, "replace": True})
+    positions = api.get("/flow?map=flow").json()["positions"]
     assert positions["fetch"] == [5, 6] and positions["score"] == [660, 158]  # back to the designed layout
 
 
 def test_recheck_then_accept_keeps_the_old_version(api):
-    pending = api.post("/flow/recheck").json()
-    assert pending["version"] == 2 and api.get("/flow").json()["pending"] == 2
+    pending = api.post("/flow/recheck?map=flow").json()
+    assert pending["version"] == 2 and api.get("/flow?map=flow").json()["pending"] == 2
     by_type = {c["type"]: c for c in pending["changes"]}
     assert set(by_type) == {"add", "change", "conflict", "remove", "kept"}
-    assert api.get("/flow/versions/2").json()["changes"] == pending["changes"]
+    assert api.get("/flow/versions/2?map=flow").json()["changes"] == pending["changes"]
     take = {by_type["conflict"]["id"]: "planner", by_type["add"]["id"]: False}
-    after = api.post("/flow/versions/2/accept", json={"take": take}).json()
+    after = api.post("/flow/versions/2/accept?map=flow", json={"take": take}).json()
     nodes = {n["id"]: n for n in after["nodes"]}
     assert after["version"] == 2 and "r_start" not in nodes and "sms" not in nodes
     assert nodes["note"]["connector"] == "claude"   # your Ollama swap dropped, as chosen
-    assert [v["version"] for v in api.get("/flow/versions").json()] == [2, 1]
-    assert api.post("/flow/versions/2/accept", json={"take": {}}).status_code == 409
+    assert [v["version"] for v in api.get("/flow/versions?map=flow").json()] == [2, 1]
+    assert api.post("/flow/versions/2/accept?map=flow", json={"take": {}}).status_code == 409
 
 
 def test_discard_and_bad_choices(api):
-    v = api.post("/flow/recheck").json()["version"]
-    assert api.post(f"/flow/versions/{v}/accept", json={"take": {"c99": True}}).status_code == 409
-    assert api.post(f"/flow/versions/{v}/discard").status_code == 204
-    assert api.get("/flow").json()["version"] == 1 and api.get("/flow").json()["pending"] is None
+    v = api.post("/flow/recheck?map=flow").json()["version"]
+    assert api.post(f"/flow/versions/{v}/accept?map=flow", json={"take": {"c99": True}}).status_code == 409
+    assert api.post(f"/flow/versions/{v}/discard?map=flow").status_code == 204
+    assert api.get("/flow?map=flow").json()["version"] == 1 and api.get("/flow?map=flow").json()["pending"] is None
 
 
 def test_catalog_statuses_and_mock_tests(api):
@@ -290,9 +290,9 @@ def test_catalog_statuses_and_mock_tests(api):
 
 
 def test_no_flow_or_catalog_route_returns_a_key(api):
-    bodies = [api.get(p).text for p in ("/flow", "/flow?layer=planner", "/flow/trace", "/flow/analysis",
-                                        "/flow/versions", "/catalog")]
-    bodies.append(json.dumps(api.post("/flow/recheck").json()))
+    bodies = [api.get(p).text for p in ("/flow?map=flow", "/flow?layer=planner&map=flow", "/flow/trace?map=flow", "/flow/analysis?map=flow",
+                                        "/flow/versions?map=flow", "/catalog")]
+    bodies.append(json.dumps(api.post("/flow/recheck?map=flow").json()))
     bodies.append(json.dumps(api.post("/catalog/inventory/test").json()))
     assert all(FAKE_KEY not in b for b in bodies)
 
@@ -302,7 +302,7 @@ def test_without_a_planner_the_map_says_so(tmp_path, monkeypatch):
     monkeypatch.setenv("FLOWFORGE_DB", str(tmp_path / "real.db"))
     with TestClient(main.app) as c:
         f = c.get("/flow").json()
-        assert f["available"] is False and "Phase 5" in f["message"]
+        assert f["available"] is False and "Scan a folder" in f["message"]
         assert c.post("/flow/recheck").status_code == 409
         assert c.get("/flow/trace").status_code == 404
         assert {i["id"]: i["status"] for i in c.get("/catalog").json()["items"]}["nim"] == "connected"

@@ -69,15 +69,15 @@ def check(flow: Flow, connectors: Mapping[str, Connector], strict: bool = True) 
         if node.kind in NEEDS_EVIDENCE and node.status == "confirmed" and node.added_by != "user" \
                 and not any(ev.confirms for ev in node.evidence):
             node.status = "unconfirmed"
-        if node.kind in CALL_KINDS:
+        if node.kind in CALL_KINDS and (flow.kind == "flow" or node.connector):
             try:
-                _check_connector(node, connectors)
+                _check_connector(node, connectors)   # a dependency needs no connected app (D21)
             except FlowError as err:
                 if strict:
                     raise
                 node.status = "unconfirmed"
                 node.evidence = [*node.evidence, Evidence(type="missing", text=str(err).capitalize() + ".")]
-        node.side_effect = side_effecting(node)
+        node.side_effect = flow.kind == "flow" and side_effecting(node)   # gates belong to flow maps (D21)
         if node.kind == "decision":
             whens = [e.when for e in flow.edges if e.source == node.id and e.kind == "branch"]
             if len(set(whens)) < 2:
@@ -155,6 +155,8 @@ def critical(flow: Flow) -> Critical:
     """The longest expected chain (D1, D5) through the app's own flow: normal and branch lines only.
     Fallbacks, retries, unconfirmed blocks and steps the user added are not the expected path.
     Gates weigh 0, as people are not a resource."""
+    if flow.kind == "dependencies":
+        return Critical()   # what the app uses has no order to be critical along (D21)
     keep = {n.id for n in flow.nodes if n.status == "confirmed" and n.added_by != "user"}
     lines = [e for e in flow.edges if e.kind in ("flow", "branch") and e.source in keep and e.target in keep]
     # only blocks reachable from a start along normal lines (a fallback-only block is not the expected path)

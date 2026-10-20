@@ -24,9 +24,10 @@ from flowforge.api import connectors as connectors_api
 from flowforge.api import flowmap as flowmap_api
 from flowforge.api import runs as runs_api
 from flowforge.api import stats as stats_api
+from flowforge.connectors.models import Connector
 from flowforge.connectors.registry import Registry, check_references, load_connectors_file
 from flowforge.connectors.runtime import build_nodes  # noqa: F401 (re-exported for callers)
-from flowforge.flowmap.planner import FixturePlanner
+from flowforge.flowmap.planner import FixturePlanner, ScanPlanner
 from flowforge.flowmap.service import FlowService
 from flowforge.home import flowforge_home
 from flowforge.security.logfilter import Redactor, install_log_redaction, secret_values_for
@@ -37,6 +38,8 @@ load_dotenv()
 
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOWS_DIR = ROOT / "backend" / "workflows"
+EXAMPLE_REPO = ROOT / "examples" / "trip-planner"   # example mode's dependency map: scanned live (D21)
+REPO_SETTING = "repo_path"
 MCP_CHECK_TIMEOUT_S = runs_api.MCP_CHECK_TIMEOUT_S
 
 
@@ -69,8 +72,13 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     s = app_state_module.current = AppState(
         nodes=nodes, rate_limits=buckets, storage=storage, registry=registry, redactor=redactor,
         file_managed={c.id for c in from_file}, example=example)
-    # the flow map (D17): only example mode has a Planner until Phase 5
-    s.flows = FlowService(storage, lambda: {c.id: c for c in registry.all()}, FixturePlanner() if example else None)
+    # the maps (D17, D21): the dependency map of the scanned repo, and the flow map (example mode only for now)
+    def connected() -> dict[str, Connector]:
+        return {c.id: c for c in registry.all()}
+
+    repo = EXAMPLE_REPO if example else storage.setting(REPO_SETTING)
+    s.flows = {"deps": FlowService(storage.flows("deps"), connected, ScanPlanner(repo) if repo else None),
+               "flow": FlowService(storage.flows("flow"), connected, FixturePlanner() if example else None)}
     if example:  # offline nodes and a seeded history, never mixed with real data (D16)
         example_data.install(s)
         example_data.seed_flow(s)

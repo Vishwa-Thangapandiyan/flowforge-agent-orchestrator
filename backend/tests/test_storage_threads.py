@@ -12,11 +12,11 @@ def test_many_threads_share_one_storage_safely(tmp_path):
 
     def work(i: int) -> int:
         if i % 3 == 0:
-            storage.add_flow_override({"op": "rename", "node": f"n{i}", "title": "x"})
+            storage.flows("flow").add_flow_override({"op": "rename", "node": f"n{i}", "title": "x"})
         rows = storage.connector_rows()
         assert rows == [("a", '{"id": "a"}')]   # never a half-read row
-        return len(storage.flow_overrides())
+        return len(storage.flows("flow").flow_overrides())
 
     with ThreadPoolExecutor(max_workers=16) as pool:
         counts = list(pool.map(work, range(600)))
-    assert max(counts) == 200 and len(storage.flow_overrides()) == 200
+    assert max(counts) == 200 and len(storage.flows("flow").flow_overrides()) == 200

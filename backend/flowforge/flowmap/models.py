@@ -10,11 +10,15 @@ Blocks (`FlowNode.kind`):
 
 Lines (`FlowEdge.kind`): flow, branch (with `when`), fallback (taken when the source fails),
 retry (a self-loop: the call is tried again), unconfirmed (leads to a block with no evidence).
+
+A map is a `flow` (the order the app runs in, D17) or `dependencies` (what the app uses, from a scan, D21).
+On a dependency map an app-call block is a dependency: it needs no connected app, gets no gate and no
+critical path, and `catalog` names a known service for its tile.
 """
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -69,6 +73,7 @@ class FlowNode(_Model):
     status: Literal["confirmed", "unconfirmed"] = "confirmed"
     added_by: Literal["planner", "policy", "user"] = "planner"
     side_effect: bool = False   # set by validation, never trusted from input
+    catalog: str | None = None  # dependency maps: a known service's id, for its tile (D21)
     evidence: list[Evidence] = Field(default_factory=list)
 
 
@@ -92,6 +97,7 @@ class Suggestion(_Model):
 
 
 class Flow(_Model):
+    kind: Literal["flow", "dependencies"] = "flow"
     nodes: list[FlowNode]
     edges: list[FlowEdge] = Field(default_factory=list)
     suggestions: list[Suggestion] = Field(default_factory=list)
@@ -173,6 +179,7 @@ class Analysis(_Model):
     stats: dict[str, NodeStats] = Field(default_factory=dict)
     notes: dict[str, str] = Field(default_factory=dict)               # block id -> why it changed (re-check)
     positions: dict[str, tuple[float, float]] = Field(default_factory=dict)  # optional starting layout
+    scan: dict[str, Any] | None = None   # dependency maps: the full ScanResult, for checks later (D21)
 
 
 class Override(_Model):

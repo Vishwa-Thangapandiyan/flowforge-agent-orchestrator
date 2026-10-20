@@ -12,10 +12,9 @@ from flowforge.flowmap.diff import apply_choices, default_take, diff
 from flowforge.flowmap.models import CALL_KINDS, CONNECTOR_TYPE, Analysis, Evidence, Flow, FlowEdge, Override, Trace
 from flowforge.flowmap.planner import Planner
 from flowforge.flowmap.validate import FlowError, check, critical
-from flowforge.storage import Storage
+from flowforge.storage import FlowStore
 
-NOT_AVAILABLE = ("The Planner maps your repo from Phase 5. Until then, run `flowforge --example` "
-                 "to see the map on an example app.")
+NOT_AVAILABLE = "No map yet. Scan a folder to draw what your app depends on."
 FIXED_KINDS = ("gate", "start", "end")
 
 
@@ -104,15 +103,15 @@ def _edge_id(flow: Flow, base: str) -> str:
 
 
 class FlowService:
-    def __init__(self, storage: Storage, connectors: Callable[[], dict[str, Connector]], planner: Planner | None):
-        self.storage = storage
+    def __init__(self, store: FlowStore, connectors: Callable[[], dict[str, Connector]], planner: Planner | None):
+        self.store = store   # one map's versions, edits and positions (D21)
         self.connectors = connectors
         self.planner = planner
 
     # --- reading ---------------------------------------------------------------------------------
 
     def _base(self) -> tuple[dict[str, Any], Flow] | None:
-        row = self.storage.latest_flow_version("accepted")
+        row = self.store.latest_flow_version("accepted")
         if row is None:
             return None
         return row, Flow.model_validate(row["flow"])
@@ -123,7 +122,7 @@ class FlowService:
         return base[1] if base else None
 
     def overrides(self) -> list[tuple[int, Override]]:
-        return [(oid, Override.model_validate(data)) for oid, data in self.storage.flow_overrides()]
+        return [(oid, Override.model_validate(data)) for oid, data in self.store.flow_overrides()]
 
     def current(self, layer: str = "mine") -> dict[str, Any]:
         base = self._base()
@@ -161,18 +160,18 @@ class FlowService:
         edges = [{**e.model_dump(mode="json"), "on_critical_path": (e.source, e.target) in cp_edges}
                  for e in flow.edges]
         positions = {k: list(v) for k, v in analysis.positions.items()}
-        positions.update({k: list(v) for k, v in self.storage.flow_positions().items()})
+        positions.update({k: list(v) for k, v in self.store.flow_positions().items()})
         used = {n.connector for n in flow.nodes if n.connector}
         apps = {cid: {"name": c.name, "type": c.type, "model": getattr(c.connection, "model", None)}
                 for cid, c in connectors.items() if cid in used}
-        pending = self.storage.latest_flow_version("pending")
+        pending = self.store.latest_flow_version("pending")
         return {
             "available": True, "version": row["version"], "created_at": row["created_at"], "layer": layer,
             "fact_sheet_hash": row["fact_sheet_hash"], "nodes": nodes, "edges": edges, "hidden": hidden,
             "critical_path": {"path": cp.path, "length_ms": cp.length_ms, "bottleneck": cp.bottleneck},
             "positions": positions, "apps": apps,
             "counts": {"steps": len(flow.nodes), "unconfirmed": sum(n.status == "unconfirmed" for n in flow.nodes),
-                       "gates": sum(n.kind == "gate" for n in flow.nodes), "edits": len(self.storage.flow_overrides())},
+                       "gates": sum(n.kind == "gate" for n in flow.nodes), "edits": len(self.store.flow_overrides())},
             "pending": pending["version"] if pending else None,
         }
 
@@ -192,17 +191,17 @@ class FlowService:
         return {**data, "version": base[0]["version"], "fact_sheet_hash": base[0]["fact_sheet_hash"]}
 
     def versions(self) -> list[dict[str, Any]]:
-        return self.storage.flow_versions()
+        return self.store.flow_versions()
 
     # --- the first map ---------------------------------------------------------------------------
 
     def first_map(self) -> int | None:
         """Draw the first map if there is none. Returns its version, or None without a Planner."""
-        if self.planner is None or self.storage.count_flow_versions():
+        if self.planner is None or self.store.count_flow_versions():
             return None
         draft = self.planner.analyze(0)
         check(draft.flow, self.connectors())   # the Planner's output must be a valid map
-        return self.storage.add_flow_version("accepted", draft.flow.model_dump(mode="json"),
+        return self.store.add_flow_version("accepted", draft.flow.model_dump(mode="json"),
                                              draft.trace.model_dump(mode="json") if draft.trace else None,
                                              draft.analysis.model_dump(mode="json"), draft.fact_sheet_hash)
 
@@ -232,8 +231,8 @@ class FlowService:
                 raise OverrideError(f"there is already a block called '{new.id}'")
             if new.kind not in CALL_KINDS | {"code"}:
                 raise OverrideError("you can add app calls and code steps; the Planner draws the rest")
-            if new.kind in CALL_KINDS:
-                _need_connector(new.connector, new.kind, connectors)
+            if new.kind in CALL_KINDS and (flow.kind == "flow" or new.connector):
+                _need_connector(new.connector, new.kind, connectors)   # a dependency needs no connected app (D21)
             override = override.model_copy(update={"new_node": new.model_copy(update={
                 "added_by": "user", "status": "confirmed",
                 "evidence": new.evidence or [Evidence(type="user", text="Added by you.")]})})
@@ -244,11 +243,11 @@ class FlowService:
             check(trial, connectors)
         except FlowError as err:
             raise OverrideError(str(err)) from None
-        oid = self.storage.add_flow_override(override.model_dump(mode="json", exclude_none=True))
+        oid = self.store.add_flow_override(override.model_dump(mode="json", exclude_none=True))
         return {"id": oid, **override.model_dump(mode="json", exclude_none=True)}
 
     def delete_override(self, oid: int) -> bool:
-        return self.storage.delete_flow_overrides([oid]) > 0
+        return self.store.delete_flow_overrides([oid]) > 0
 
     def reset_node(self, node_id: str) -> int:
         """Back to the Planner's version: drop every edit on this block (and a block you added, with its lines)."""
@@ -257,14 +256,14 @@ class FlowService:
             if o.node == node_id or (o.op == "add_node" and o.new_node is not None and o.new_node.id == node_id) \
                     or (o.op == "add_edge" and o.source == node_id and self._user_added(node_id)):
                 ids.append(oid)
-        return self.storage.delete_flow_overrides(ids)
+        return self.store.delete_flow_overrides(ids)
 
     def _user_added(self, node_id: str) -> bool:
         return any(o.op == "add_node" and o.new_node is not None and o.new_node.id == node_id
                    for _, o in self.overrides())
 
     def set_positions(self, positions: dict[str, tuple[float, float]], replace: bool = False) -> None:
-        self.storage.put_flow_positions(positions, replace=replace)
+        self.store.put_flow_positions(positions, replace=replace)
 
     # --- re-check --------------------------------------------------------------------------------
 
@@ -275,22 +274,22 @@ class FlowService:
         if base is None:
             raise VersionError("there is no map to re-check yet")
         row, old = base
-        draft = self.planner.analyze(self.storage.count_flow_versions())
+        draft = self.planner.analyze(self.store.count_flow_versions())
         try:
             check(draft.flow, self.connectors())
         except FlowError as err:
             raise VersionError(f"the Planner's new map isn't valid: {err}") from None
-        pending = self.storage.latest_flow_version("pending")
+        pending = self.store.latest_flow_version("pending")
         if pending is not None:
-            self.storage.update_flow_version(pending["version"], "discarded")
+            self.store.update_flow_version(pending["version"], "discarded")
         changes = diff(old, draft.flow, self.overrides(), draft.analysis.notes)
-        version = self.storage.add_flow_version(
+        version = self.store.add_flow_version(
             "pending", draft.flow.model_dump(mode="json"), draft.trace.model_dump(mode="json") if draft.trace else None,
             draft.analysis.model_dump(mode="json"), draft.fact_sheet_hash, changes=changes)
         return self.pending_view(version)
 
     def pending_view(self, version: int) -> dict[str, Any]:
-        row = self.storage.flow_version(version)
+        row = self.store.flow_version(version)
         if row is None or row["status"] != "pending":
             raise VersionError(f"version {version} is not waiting for a decision")
         base = self._base()
@@ -302,7 +301,7 @@ class FlowService:
                 "edges": [e.model_dump(mode="json") for e in new.edges]}
 
     def accept(self, version: int, take: dict[str, bool | str]) -> dict[str, Any]:
-        row = self.storage.flow_version(version)
+        row = self.store.flow_version(version)
         if row is None or row["status"] != "pending":
             raise VersionError(f"version {version} is not waiting for a decision")
         base = self._base()
@@ -318,16 +317,16 @@ class FlowService:
             check(flow, self.connectors())
         except FlowError as err:
             raise VersionError(f"that mix of changes isn't a valid map: {err}") from None
-        self.storage.update_flow_version(version, "accepted", flow.model_dump(mode="json"))
+        self.store.update_flow_version(version, "accepted", flow.model_dump(mode="json"))
         stale = [oid for oid, o in self.overrides() if o.node in drop_edits]
-        self.storage.delete_flow_overrides(stale)
+        self.store.delete_flow_overrides(stale)
         return self.current()
 
     def discard(self, version: int) -> None:
-        row = self.storage.flow_version(version)
+        row = self.store.flow_version(version)
         if row is None or row["status"] != "pending":
             raise VersionError(f"version {version} is not waiting for a decision")
-        self.storage.update_flow_version(version, "discarded")
+        self.store.update_flow_version(version, "discarded")
 
 
 def _need_connector(connector_id: str | None, kind: str, connectors: dict[str, Connector]) -> None:
@@ -341,9 +340,9 @@ def _need_connector(connector_id: str | None, kind: str, connectors: dict[str, C
 def example_edits(service: FlowService, overrides: list[dict[str, Any]],
                   positions: dict[str, tuple[float, float]]) -> None:
     """Example mode: seed the project's own edits and the designed layout once (D16, D17)."""
-    if service.storage.flow_overrides():
+    if service.store.flow_overrides():
         return
     for data in overrides:
         service.add_override(Override.model_validate(data))
-    if not service.storage.flow_positions():
+    if not service.store.flow_positions():
         service.set_positions(positions)

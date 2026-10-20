@@ -1,5 +1,5 @@
 """SQLite persistence: runs and their events (D16), duration history (D1), persistent cache (D3),
-connectors (D10), the flow map's versions, edits and positions (D17).
+connectors (D10), each map's versions, edits and positions (D17, D21), and a few settings.
 
 Every write of run data, events and cache rows goes through `self.redact` (D16), so the file
 never holds a configured key or a known key shape.
@@ -38,16 +38,23 @@ CREATE TABLE IF NOT EXISTS run_events (
     run_id TEXT NOT NULL, seq INTEGER NOT NULL, json TEXT NOT NULL, PRIMARY KEY (run_id, seq)
 );
 CREATE TABLE IF NOT EXISTS flow_versions (
-    version INTEGER PRIMARY KEY, status TEXT NOT NULL, created_at TEXT, decided_at TEXT, fact_sheet_hash TEXT,
-    flow_json TEXT NOT NULL, trace_json TEXT, analysis_json TEXT, changes_json TEXT
+    map_id TEXT NOT NULL DEFAULT 'flow', version INTEGER NOT NULL, status TEXT NOT NULL, created_at TEXT,
+    decided_at TEXT, fact_sheet_hash TEXT, flow_json TEXT NOT NULL, trace_json TEXT, analysis_json TEXT,
+    changes_json TEXT, PRIMARY KEY (map_id, version)
 );
 CREATE TABLE IF NOT EXISTS flow_overrides (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, json TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    id INTEGER PRIMARY KEY AUTOINCREMENT, json TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    map_id TEXT NOT NULL DEFAULT 'flow'
 );
 CREATE TABLE IF NOT EXISTS flow_positions (
-    node_id TEXT PRIMARY KEY, x REAL NOT NULL, y REAL NOT NULL
+    map_id TEXT NOT NULL DEFAULT 'flow', node_id TEXT NOT NULL, x REAL NOT NULL, y REAL NOT NULL,
+    PRIMARY KEY (map_id, node_id)
+);
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY, value TEXT NOT NULL
 );
 """
+MAP_IDS = ("deps", "flow")   # the dependency map and the flow map (D21)
 FLOW_VERSION_FIELDS = ("version", "status", "created_at", "decided_at", "fact_sheet_hash", "flow_json", "trace_json",
                        "analysis_json", "changes_json")
 
@@ -97,7 +104,36 @@ class Storage:
         for column, kind in RUN_COLUMNS.items():
             if column not in existing:
                 self.conn.execute(f"ALTER TABLE runs ADD COLUMN {column} {kind}")
+        self._migrate_maps()
         self.conn.commit()
+
+    def _migrate_maps(self) -> None:
+        """Databases from before D21 held one map: it becomes the flow map. Versions are numbered per map and
+        positions are keyed per map, so both tables are rebuilt; edits only gain the column."""
+        def has_map_id(table: str) -> bool:
+            return "map_id" in {row[1] for row in self.conn.execute(f"PRAGMA table_info({table})")}
+
+        if not has_map_id("flow_overrides"):
+            self.conn.execute("ALTER TABLE flow_overrides ADD COLUMN map_id TEXT NOT NULL DEFAULT 'flow'")
+        if not has_map_id("flow_versions"):
+            self.conn.executescript("""
+                ALTER TABLE flow_versions RENAME TO flow_versions_v1;
+                CREATE TABLE flow_versions (map_id TEXT NOT NULL DEFAULT 'flow', version INTEGER NOT NULL,
+                    status TEXT NOT NULL, created_at TEXT, decided_at TEXT, fact_sheet_hash TEXT,
+                    flow_json TEXT NOT NULL, trace_json TEXT, analysis_json TEXT, changes_json TEXT,
+                    PRIMARY KEY (map_id, version));
+                INSERT INTO flow_versions SELECT 'flow', version, status, created_at, decided_at, fact_sheet_hash,
+                    flow_json, trace_json, analysis_json, changes_json FROM flow_versions_v1;
+                DROP TABLE flow_versions_v1;
+            """)
+        if not has_map_id("flow_positions"):
+            self.conn.executescript("""
+                ALTER TABLE flow_positions RENAME TO flow_positions_v1;
+                CREATE TABLE flow_positions (map_id TEXT NOT NULL DEFAULT 'flow', node_id TEXT NOT NULL,
+                    x REAL NOT NULL, y REAL NOT NULL, PRIMARY KEY (map_id, node_id));
+                INSERT INTO flow_positions (map_id, node_id, x, y) SELECT 'flow', node_id, x, y FROM flow_positions_v1;
+                DROP TABLE flow_positions_v1;
+            """)
 
     def _dump(self, value: Any) -> str:
         return json.dumps(self.redact(value), default=str)
@@ -240,17 +276,25 @@ class Storage:
         self.conn.execute("DELETE FROM connectors WHERE id = ?", (connector_id,))
         self.conn.commit()
 
-    # --- flow map (D17): Planner versions, the user's edits on top, block positions -------------
+    # --- maps (D17, D21): Planner versions, the user's edits on top, block positions; one set per map ------
 
-    def add_flow_version(self, status: str, flow: Any, trace: Any, analysis: Any, fact_sheet_hash: str,
-                         changes: Any = None) -> int:
-        cur = self.conn.execute(
-            "INSERT INTO flow_versions (status, created_at, fact_sheet_hash, flow_json, trace_json, analysis_json,"
-            " changes_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (status, now_iso(), fact_sheet_hash, self._dump(flow), self._dump(trace), self._dump(analysis),
-             self._dump(changes) if changes is not None else None))
+    def flows(self, map_id: str) -> FlowStore:
+        """The flow-map methods for one map ("deps" or "flow"), so a FlowService never names its map."""
+        if map_id not in MAP_IDS:
+            raise ValueError(f"unknown map '{map_id}'")
+        return FlowStore(self, map_id)
+
+    def add_flow_version(self, map_id: str, status: str, flow: Any, trace: Any, analysis: Any,
+                         fact_sheet_hash: str, changes: Any = None) -> int:
+        version = 1 + int(self.conn.execute("SELECT COALESCE(MAX(version), 0) FROM flow_versions WHERE map_id = ?",
+                                            (map_id,)).fetchone()[0])   # numbered per map, under the lock
+        self.conn.execute(
+            "INSERT INTO flow_versions (map_id, version, status, created_at, fact_sheet_hash, flow_json, trace_json,"
+            " analysis_json, changes_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (map_id, version, status, now_iso(), fact_sheet_hash, self._dump(flow), self._dump(trace),
+             self._dump(analysis), self._dump(changes) if changes is not None else None))
         self.conn.commit()
-        return int(cur.lastrowid)
+        return version
 
     def _flow_row(self, row: tuple[Any, ...] | None) -> dict[str, Any] | None:
         if row is None:
@@ -260,58 +304,126 @@ class Storage:
             out[key.removesuffix("_json")] = json.loads(out.pop(key)) if out[key] else None
         return out
 
-    def flow_version(self, version: int) -> dict[str, Any] | None:
-        row = self.conn.execute(f"SELECT {', '.join(FLOW_VERSION_FIELDS)} FROM flow_versions WHERE version = ?",
-                                (version,)).fetchone()
+    def flow_version(self, map_id: str, version: int) -> dict[str, Any] | None:
+        row = self.conn.execute(f"SELECT {', '.join(FLOW_VERSION_FIELDS)} FROM flow_versions"
+                                " WHERE map_id = ? AND version = ?", (map_id, version)).fetchone()
         return self._flow_row(row)
 
-    def latest_flow_version(self, status: str = "accepted") -> dict[str, Any] | None:
-        row = self.conn.execute(f"SELECT {', '.join(FLOW_VERSION_FIELDS)} FROM flow_versions WHERE status = ?"
-                                " ORDER BY version DESC LIMIT 1", (status,)).fetchone()
+    def latest_flow_version(self, map_id: str, status: str = "accepted") -> dict[str, Any] | None:
+        row = self.conn.execute(f"SELECT {', '.join(FLOW_VERSION_FIELDS)} FROM flow_versions"
+                                " WHERE map_id = ? AND status = ? ORDER BY version DESC LIMIT 1",
+                                (map_id, status)).fetchone()
         return self._flow_row(row)
 
-    def flow_versions(self) -> list[dict[str, Any]]:
+    def flow_versions(self, map_id: str) -> list[dict[str, Any]]:
         rows = self.conn.execute("SELECT version, status, created_at, decided_at, fact_sheet_hash FROM flow_versions"
-                                 " ORDER BY version DESC")
+                                 " WHERE map_id = ? ORDER BY version DESC", (map_id,))
         return [dict(zip(("version", "status", "created_at", "decided_at", "fact_sheet_hash"), r, strict=True))
                 for r in rows]
 
-    def count_flow_versions(self) -> int:
-        return int(self.conn.execute("SELECT COUNT(*) FROM flow_versions").fetchone()[0])
+    def count_flow_versions(self, map_id: str) -> int:
+        return int(self.conn.execute("SELECT COUNT(*) FROM flow_versions WHERE map_id = ?", (map_id,)).fetchone()[0])
 
-    def update_flow_version(self, version: int, status: str, flow: Any = None) -> None:
+    def update_flow_version(self, map_id: str, version: int, status: str, flow: Any = None) -> None:
         if flow is None:
-            self.conn.execute("UPDATE flow_versions SET status = ?, decided_at = ? WHERE version = ?",
-                              (status, now_iso(), version))
+            self.conn.execute("UPDATE flow_versions SET status = ?, decided_at = ? WHERE map_id = ? AND version = ?",
+                              (status, now_iso(), map_id, version))
         else:
-            self.conn.execute("UPDATE flow_versions SET status = ?, decided_at = ?, flow_json = ? WHERE version = ?",
-                              (status, now_iso(), self._dump(flow), version))
+            self.conn.execute("UPDATE flow_versions SET status = ?, decided_at = ?, flow_json = ?"
+                              " WHERE map_id = ? AND version = ?",
+                              (status, now_iso(), self._dump(flow), map_id, version))
         self.conn.commit()
 
-    def flow_overrides(self) -> list[tuple[int, dict[str, Any]]]:
-        rows = self.conn.execute("SELECT id, json FROM flow_overrides ORDER BY id")
+    def flow_overrides(self, map_id: str) -> list[tuple[int, dict[str, Any]]]:
+        rows = self.conn.execute("SELECT id, json FROM flow_overrides WHERE map_id = ? ORDER BY id", (map_id,))
         return [(r[0], json.loads(r[1])) for r in rows]
 
-    def add_flow_override(self, override: Any) -> int:
-        cur = self.conn.execute("INSERT INTO flow_overrides (json) VALUES (?)", (self._dump(override),))
+    def add_flow_override(self, map_id: str, override: Any) -> int:
+        cur = self.conn.execute("INSERT INTO flow_overrides (map_id, json) VALUES (?, ?)",
+                                (map_id, self._dump(override)))
         self.conn.commit()
         return int(cur.lastrowid)
 
-    def delete_flow_overrides(self, ids: list[int]) -> int:
+    def delete_flow_overrides(self, map_id: str, ids: list[int]) -> int:
         if not ids:
             return 0
-        cur = self.conn.execute(f"DELETE FROM flow_overrides WHERE id IN ({', '.join('?' * len(ids))})", ids)
+        cur = self.conn.execute(f"DELETE FROM flow_overrides WHERE map_id = ? AND id IN ({', '.join('?' * len(ids))})",
+                                [map_id, *ids])
         self.conn.commit()
         return cur.rowcount
 
+    def flow_positions(self, map_id: str) -> dict[str, tuple[float, float]]:
+        return {r[0]: (r[1], r[2]) for r in
+                self.conn.execute("SELECT node_id, x, y FROM flow_positions WHERE map_id = ?", (map_id,))}
+
+    def put_flow_positions(self, map_id: str, positions: dict[str, tuple[float, float]], replace: bool = False) -> None:
+        if replace:
+            self.conn.execute("DELETE FROM flow_positions WHERE map_id = ?", (map_id,))
+        self.conn.executemany(
+            "INSERT INTO flow_positions (map_id, node_id, x, y) VALUES (?, ?, ?, ?)"
+            " ON CONFLICT(map_id, node_id) DO UPDATE SET x = excluded.x, y = excluded.y",
+            [(map_id, node_id, float(x), float(y)) for node_id, (x, y) in positions.items()])
+        self.conn.commit()
+
+    def clear_map(self, map_id: str) -> None:
+        """Forget one map entirely: a different repo starts fresh (D21)."""
+        for table in ("flow_versions", "flow_overrides", "flow_positions"):
+            self.conn.execute(f"DELETE FROM {table} WHERE map_id = ?", (map_id,))
+        self.conn.commit()
+
+    # --- settings ---------------------------------------------------------------------------------
+
+    def setting(self, key: str) -> str | None:
+        row = self.conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+        return row[0] if row else None
+
+    def set_setting(self, key: str, value: str) -> None:
+        self.conn.execute("INSERT INTO settings (key, value) VALUES (?, ?)"
+                          " ON CONFLICT(key) DO UPDATE SET value = excluded.value", (key, value))
+        self.conn.commit()
+
+
+class FlowStore:
+    """One map's slice of Storage (D21): the same flow-map methods with the map fixed, so a FlowService never
+    names its map. Every call goes through Storage's locked methods."""
+
+    def __init__(self, storage: Storage, map_id: str):
+        self.storage = storage
+        self.map_id = map_id
+
+    def add_flow_version(self, status: str, flow: Any, trace: Any, analysis: Any, fact_sheet_hash: str,
+                         changes: Any = None) -> int:
+        return self.storage.add_flow_version(self.map_id, status, flow, trace, analysis, fact_sheet_hash, changes)
+
+    def flow_version(self, version: int) -> dict[str, Any] | None:
+        return self.storage.flow_version(self.map_id, version)
+
+    def latest_flow_version(self, status: str = "accepted") -> dict[str, Any] | None:
+        return self.storage.latest_flow_version(self.map_id, status)
+
+    def flow_versions(self) -> list[dict[str, Any]]:
+        return self.storage.flow_versions(self.map_id)
+
+    def count_flow_versions(self) -> int:
+        return self.storage.count_flow_versions(self.map_id)
+
+    def update_flow_version(self, version: int, status: str, flow: Any = None) -> None:
+        self.storage.update_flow_version(self.map_id, version, status, flow)
+
+    def flow_overrides(self) -> list[tuple[int, dict[str, Any]]]:
+        return self.storage.flow_overrides(self.map_id)
+
+    def add_flow_override(self, override: Any) -> int:
+        return self.storage.add_flow_override(self.map_id, override)
+
+    def delete_flow_overrides(self, ids: list[int]) -> int:
+        return self.storage.delete_flow_overrides(self.map_id, ids)
+
     def flow_positions(self) -> dict[str, tuple[float, float]]:
-        return {r[0]: (r[1], r[2]) for r in self.conn.execute("SELECT node_id, x, y FROM flow_positions")}
+        return self.storage.flow_positions(self.map_id)
 
     def put_flow_positions(self, positions: dict[str, tuple[float, float]], replace: bool = False) -> None:
-        if replace:
-            self.conn.execute("DELETE FROM flow_positions")
-        self.conn.executemany(
-            "INSERT INTO flow_positions (node_id, x, y) VALUES (?, ?, ?)"
-            " ON CONFLICT(node_id) DO UPDATE SET x = excluded.x, y = excluded.y",
-            [(node_id, float(x), float(y)) for node_id, (x, y) in positions.items()])
-        self.conn.commit()
+        self.storage.put_flow_positions(self.map_id, positions, replace)
+
+    def clear(self) -> None:
+        self.storage.clear_map(self.map_id)

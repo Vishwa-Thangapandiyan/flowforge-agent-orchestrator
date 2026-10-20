@@ -1,4 +1,6 @@
-"""The flow map and the connector catalog (D17).
+"""The maps and the connector catalog (D17, D21).
+
+Every /flow route takes ?map=deps|flow: the dependency map from a scan (the default) or the flow map.
 
 GET    /flow?layer=mine|planner          the map: blocks, lines, positions, critical path, counts
 PUT    /flow/positions                   save block positions (drag end; Re-tidy sends replace=true)
@@ -32,10 +34,13 @@ from flowforge.state import app_state
 router = APIRouter()
 
 
-def flows() -> FlowService:
-    service = app_state().flows
+MapId = Annotated[str, Query(alias="map", pattern="^(deps|flow)$")]
+
+
+def flows(map_id: str = "deps") -> FlowService:
+    service = (app_state().flows or {}).get(map_id)
     if service is None:
-        raise HTTPException(503, "the flow map is not set up")
+        raise HTTPException(503, "the map is not set up")
     return service
 
 
@@ -51,88 +56,88 @@ class Choices(BaseModel):
 
 
 @router.get("/flow")
-def get_flow(layer: str = Query("mine", pattern="^(mine|planner)$")) -> dict[str, Any]:
-    return flows().current(layer)
+def get_flow(layer: str = Query("mine", pattern="^(mine|planner)$"), map_id: MapId = "deps") -> dict[str, Any]:
+    return flows(map_id).current(layer)
 
 
 @router.put("/flow/positions")
-def put_positions(body: Positions) -> dict[str, int]:
-    flows().set_positions(body.positions, replace=body.replace)
+def put_positions(body: Positions, map_id: MapId = "deps") -> dict[str, int]:
+    flows(map_id).set_positions(body.positions, replace=body.replace)
     return {"saved": len(body.positions)}
 
 
 @router.post("/flow/overrides", status_code=201)
-def add_override(body: Annotated[Any, Body()]) -> dict[str, Any]:
+def add_override(body: Annotated[Any, Body()], map_id: MapId = "deps") -> dict[str, Any]:
     try:
         override = Override.model_validate(body)
     except ValidationError as exc:
         raise HTTPException(422, _describe(exc)) from None
     try:
-        return flows().add_override(override)
+        return flows(map_id).add_override(override)
     except OverrideError as err:
         raise HTTPException(422, str(err)) from None
 
 
 @router.delete("/flow/overrides/{override_id}", status_code=204)
-def delete_override(override_id: int) -> None:
-    if not flows().delete_override(override_id):
+def delete_override(override_id: int, map_id: MapId = "deps") -> None:
+    if not flows(map_id).delete_override(override_id):
         raise HTTPException(404, "unknown edit")
 
 
 @router.delete("/flow/nodes/{node_id}/overrides")
-def reset_node(node_id: str) -> dict[str, int]:
-    return {"removed": flows().reset_node(node_id)}
+def reset_node(node_id: str, map_id: MapId = "deps") -> dict[str, int]:
+    return {"removed": flows(map_id).reset_node(node_id)}
 
 
 @router.get("/flow/trace")
-def get_trace() -> dict[str, Any]:
-    trace = flows().trace()
+def get_trace(map_id: MapId = "deps") -> dict[str, Any]:
+    trace = flows(map_id).trace()
     if trace is None:
         raise HTTPException(404, "there is no traced test run yet")
     return trace
 
 
 @router.get("/flow/analysis")
-def get_analysis() -> dict[str, Any]:
-    analysis = flows().analysis()
+def get_analysis(map_id: MapId = "deps") -> dict[str, Any]:
+    analysis = flows(map_id).analysis()
     if analysis is None:
         raise HTTPException(404, "the Planner hasn't drawn a map yet")
     return analysis
 
 
 @router.get("/flow/versions")
-def list_versions() -> list[dict[str, Any]]:
-    return flows().versions()
+def list_versions(map_id: MapId = "deps") -> list[dict[str, Any]]:
+    return flows(map_id).versions()
 
 
 @router.post("/flow/recheck")
-def recheck() -> dict[str, Any]:
+def recheck(map_id: MapId = "deps") -> dict[str, Any]:
     try:
-        return flows().recheck()
+        return flows(map_id).recheck()
     except VersionError as err:
         raise HTTPException(409, str(err)) from None
 
 
 @router.get("/flow/versions/{version}")
-def pending_version(version: int) -> dict[str, Any]:
+def pending_version(version: int, map_id: MapId = "deps") -> dict[str, Any]:
     try:
-        return flows().pending_view(version)
+        return flows(map_id).pending_view(version)
     except VersionError as err:
         raise HTTPException(404, str(err)) from None
 
 
 @router.post("/flow/versions/{version}/accept")
-def accept_version(version: int, body: Choices) -> dict[str, Any]:
+def accept_version(version: int, body: Choices, map_id: MapId = "deps") -> dict[str, Any]:
     try:
-        return flows().accept(version, body.take)
+        return flows(map_id).accept(version, body.take)
     except VersionError as err:
         raise HTTPException(409, str(err)) from None
 
 
 @router.post("/flow/versions/{version}/discard", status_code=204)
-def discard_version(version: int) -> None:
+def discard_version(version: int, map_id: MapId = "deps") -> None:
     try:
-        flows().discard(version)
+        flows(map_id).discard(version)
     except VersionError as err:
         raise HTTPException(409, str(err)) from None
 
@@ -144,13 +149,16 @@ def _connectors() -> dict[str, Any]:
 
 
 def _on_map() -> set[str]:
-    """Apps the code calls: confirmed app-call blocks on the Planner's own version (D17)."""
-    service = app_state().flows
-    flow = service.planner_flow() if service is not None else None
-    if flow is None:
-        return set()
-    return {n.connector for n in flow.nodes if n.connector and n.status == "confirmed"
-            and any(ev.confirms for ev in n.evidence)}
+    """Apps the code calls: confirmed blocks with evidence on either map's Planner version (D17, D21). A block
+    counts by its connected app or, on the dependency map, by the known service it was recognised as."""
+    found: set[str] = set()
+    for service in (app_state().flows or {}).values():
+        flow = service.planner_flow()
+        if flow is None:
+            continue
+        found |= {app for n in flow.nodes if n.status == "confirmed" and any(ev.confirms for ev in n.evidence)
+                  for app in (n.connector, n.catalog) if app}
+    return found
 
 
 @router.get("/catalog")

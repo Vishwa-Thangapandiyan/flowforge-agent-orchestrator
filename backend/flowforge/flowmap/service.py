@@ -196,6 +196,17 @@ class FlowService:
 
     # --- the first map ---------------------------------------------------------------------------
 
+    def has_map(self) -> bool:
+        return self.store.count_flow_versions() > 0
+
+    def map_folder(self, planner: Planner, fresh: bool) -> int | None:
+        """Point this map at a Planner (a scanned folder, D21) and draw its first map if there is none.
+        `fresh` forgets the old map first: its versions, edits and positions belong to another folder."""
+        if fresh:
+            self.store.clear()
+        self.planner = planner
+        return self.first_map()
+
     def first_map(self) -> int | None:
         """Draw the first map if there is none. Returns its version, or None without a Planner."""
         if self.planner is None or self.store.count_flow_versions():

@@ -9,6 +9,9 @@ from flowforge.scan.urls import clean_url
 
 HTTP_CALLS = frozenset({"get", "post", "put", "patch", "delete", "head", "options", "request", "stream", "urlopen",
                         "Request", "fetch"})
+# verbs that dicts and caches have too: an HTTP call only on something that looks like an HTTP client
+AMBIGUOUS_CALLS = frozenset({"get", "delete", "head", "options"})
+HTTP_RECEIVERS = ("client", "session", "http", "requests", "httpx", "aiohttp", "api", "urllib")
 BASE_URL_KEYS = frozenset({"base_url", "api_base", "endpoint", "host"})
 URL_KEYS = frozenset({"url", "uri", "base_url", "api_base", "api_url", "endpoint"})
 MAX_STRING = 120
@@ -31,6 +34,22 @@ def _call_strings(call: ast.AST | None) -> tuple[str, ...]:
     return tuple(a.value for a in call.args if isinstance(a, ast.Constant) and isinstance(a.value, str))
 
 
+def _receiver(call: ast.Call) -> str:
+    """The lower-cased name the method is called on: `self.client.get` → "client", `requests.get` → "requests"."""
+    f = call.func
+    owner = f.value if isinstance(f, ast.Attribute) else None
+    if isinstance(owner, ast.Attribute):
+        return owner.attr.lower()
+    return owner.id.lower() if isinstance(owner, ast.Name) else ""
+
+
+def _is_http_call(call: ast.Call) -> bool:
+    name = _callee(call)
+    if name not in HTTP_CALLS:
+        return False
+    return name not in AMBIGUOUS_CALLS or any(hint in _receiver(call) for hint in HTTP_RECEIVERS)
+
+
 def _context(node: ast.AST, parents: dict[ast.AST, ast.AST]) -> tuple[bool, tuple[str, ...]]:
     """(is it where a URL goes, the enclosing call's string arguments).
 
@@ -39,8 +58,7 @@ def _context(node: ast.AST, parents: dict[ast.AST, ast.AST]) -> tuple[bool, tupl
     """
     parent = parents.get(node)
     if isinstance(parent, ast.Call):
-        return (bool(parent.args) and parent.args[0] is node and _callee(parent) in HTTP_CALLS,
-                _call_strings(parent))
+        return bool(parent.args) and parent.args[0] is node and _is_http_call(parent), _call_strings(parent)
     if isinstance(parent, ast.keyword):
         return parent.arg in URL_KEYS, _call_strings(parents.get(parent))
     if isinstance(parent, ast.Dict) and node in parent.values:
@@ -126,10 +144,20 @@ def extract(path: str, text: str) -> FileFacts:
         elif isinstance(node, ast.Subscript) and isinstance(node.value, ast.Attribute) \
                 and node.value.attr == "environ" and isinstance(node.slice, ast.Constant) \
                 and isinstance(node.slice.value, str):
-            facts.env.append((node.slice.value, node.lineno))
+            _env(facts, node.slice.value, node, parents)
         elif isinstance(node, ast.Call):
-            _call(node, aliases, facts)
+            _call(node, aliases, facts, parents)
     return facts
+
+
+def _env(facts: FileFacts, name: str, node: ast.AST, parents: dict[ast.AST, ast.AST]) -> None:
+    """An env var name belongs to every line of its statement, so a call split over lines keeps it (D21)."""
+    stmt = node
+    while stmt in parents and not isinstance(stmt, ast.stmt):
+        stmt = parents[stmt]
+    first = getattr(stmt, "lineno", getattr(node, "lineno", 1))
+    last = getattr(stmt, "end_lineno", None) or first
+    facts.env.extend((name, line) for line in range(first, last + 1))
 
 
 def _strings_in_order(node: ast.AST) -> list[str]:
@@ -175,11 +203,28 @@ def _subprocess(node: ast.Call, aliases: dict[str, str]) -> list[str] | None:
     return None
 
 
-def _call(node: ast.Call, aliases: dict[str, str], facts: FileFacts) -> None:
+def _stdio_server(node: ast.Call) -> list[str] | None:
+    """StdioServerParameters(command="uvx", args=["mcp-server-git", …]) with literal values: the argv."""
+    if _callee(node) != "StdioServerParameters":
+        return None
+    kw = {k.arg: k.value for k in node.keywords}
+    command, args = kw.get("command"), kw.get("args")
+    if not (isinstance(command, ast.Constant) and isinstance(command.value, str)):
+        return None
+    rest = [a.value for a in args.elts if isinstance(a, ast.Constant) and isinstance(a.value, str)] \
+        if isinstance(args, (ast.List, ast.Tuple)) else []
+    return [command.value, *rest]
+
+
+def _call(node: ast.Call, aliases: dict[str, str], facts: FileFacts, parents: dict[ast.AST, ast.AST]) -> None:
     facts.call_strings.update(_call_strings(node))
     name, _ = _env_read(node)
     if name:
-        facts.env.append((name, node.lineno))
+        _env(facts, name, node, parents)
+        return
+    server = _stdio_server(node)
+    if server:
+        facts.stdio.append((server, node.lineno))
         return
     command = _subprocess(node, aliases)
     if command:

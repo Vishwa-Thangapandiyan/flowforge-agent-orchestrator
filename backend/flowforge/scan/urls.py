@@ -48,7 +48,8 @@ def is_local(host: str) -> bool:
     return ip.is_private or ip.is_loopback or ip.is_link_local
 
 
-def is_ignored(host: str) -> bool:
+def is_not_a_service(host: str) -> bool:
+    """Documentation and namespace hosts: example.com, w3.org, json-schema.org."""
     name = host.split(":")[0]
     return any(name == h or name.endswith("." + h) for h in _NOT_SERVICES)
 

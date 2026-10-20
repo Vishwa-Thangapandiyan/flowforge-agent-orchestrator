@@ -75,9 +75,11 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     def connected() -> dict[str, Connector]:
         return {c.id: c for c in registry.all()}
 
-    repo = scan_api.startup_repo(storage, example)
-    s.flows = {"deps": FlowService(storage.flows("deps"), connected, ScanPlanner(repo) if repo else None),
+    sample = ScanPlanner(scan_api.EXAMPLE_REPO) if example else None
+    s.flows = {"deps": FlowService(storage.flows("deps"), connected, sample),
                "flow": FlowService(storage.flows("flow"), connected, FixturePlanner() if example else None)}
+    if not example:   # your folder: from --repo or the last one chosen, mapped now if it has no map yet
+        scan_api.startup_repo(storage, s.flows["deps"])
     if example:  # offline nodes and a seeded history, never mixed with real data (D16)
         example_data.install(s)
         example_data.seed_flow(s)

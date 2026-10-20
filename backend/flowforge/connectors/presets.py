@@ -148,6 +148,14 @@ _SERVICE_ROWS: list[tuple[str, str, str, tuple[str, ...], tuple[str, ...]]] = [
 ]
 SERVICES: list[dict] = [{"id": r[0], "name": r[1], "kind": r[2], "hosts": list(r[3]), "sdks": list(r[4])}
                         for r in _SERVICE_ROWS]
+# SDKs that route to many providers (D21): the provider comes from the model name, by these prefixes
+ROUTER_SDKS = ("litellm",)
+MODEL_PREFIXES: dict[str, tuple[str, ...]] = {
+    "claude": ("anthropic/", "claude-"), "openai": ("openai/", "gpt-", "o1", "o3", "o4"),
+    "gemini": ("gemini/", "gemini-", "vertex_ai/gemini"), "ollama": ("ollama/", "ollama_chat/"), "groq": ("groq/",),
+    "mistral": ("mistral/", "mistral-", "codestral"), "openrouter": ("openrouter/",), "nim": ("nvidia_nim/",),
+    "deepseek": ("deepseek/",), "cohere": ("cohere/", "command-"),
+}
 
 # Starting points for the "Custom" choice of each type; the user fills in id, name and connection.
 CUSTOM: dict[str, dict] = {

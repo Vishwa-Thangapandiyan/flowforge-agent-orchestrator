@@ -115,3 +115,27 @@ def test_the_cli_asks_for_a_folder_when_none_is_given(capsys):
     with pytest.raises(SystemExit) as exit_:
         cli.main(["scan"])
     assert exit_.value.code == 2 and "name the folder" in capsys.readouterr().err
+
+
+def test_repo_from_the_cli_is_mapped_at_start_and_a_switch_needs_replace(real, repo, tmp_path, monkeypatch):
+    other = write(tmp_path / "blog", {"feed.py": 'FEED = "https://api.feeds.test/v1"\n'})
+    monkeypatch.setenv("FLOWFORGE_REPO", str(repo))
+    with real() as c:
+        assert "api-stripe" in {n["id"] for n in c.get("/flow").json()["nodes"]}   # drawn at start-up
+    monkeypatch.setenv("FLOWFORGE_REPO", str(other))
+    with pytest.raises(RuntimeError, match="--replace"):
+        with real():
+            pass
+    monkeypatch.setenv("FLOWFORGE_REPO_REPLACE", "1")
+    with real() as c:
+        assert {n["id"] for n in c.get("/flow").json()["nodes"]} == {"app", "api-api-feeds-test"}
+
+
+def test_a_key_in_the_repo_reaches_no_byte_of_the_database_and_no_log(real, repo, tmp_path, caplog):
+    caplog.set_level("DEBUG")
+    with real() as c:
+        c.post("/scan", json={"path": str(repo)})
+        c.get("/flow")
+        c.post("/flow/recheck")
+    assert FAKE_KEY.encode() not in (tmp_path / "real.db").read_bytes()
+    assert FAKE_KEY not in caplog.text

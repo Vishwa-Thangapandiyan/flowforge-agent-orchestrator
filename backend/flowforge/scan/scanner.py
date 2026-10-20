@@ -1,4 +1,4 @@
-"""`scan(root)`: a repo's dependencies with evidence, from plain code (D20, D21).
+"""`scan(root)`: a repo's dependencies with evidence, from plain code (D20, D21, D22).
 
 Read-only: nothing in the repo is imported, run or installed, and nothing is sent anywhere. Per-language
 readers produce `FileFacts`; this module merges them into one `Dependency` per stable id.
@@ -14,8 +14,8 @@ from flowforge.scan import manifests, mcp_config, patterns, python_ast, services
 from flowforge.scan.facts import FileFacts, Ref
 from flowforge.scan.files import language, list_files
 from flowforge.scan.models import Dependency, EnvName, ScanEvidence, ScanResult
-from flowforge.scan.urls import api_shaped, clean_url, host_of, is_ignored, is_local
-from flowforge.security.logfilter import Redactor
+from flowforge.scan.urls import api_shaped, clean_url, host_of, is_local, is_not_a_service
+from flowforge.security.logfilter import Redactor, redact_code
 
 EXCERPT_RADIUS = 2
 MAX_LINE = 160
@@ -39,7 +39,8 @@ class _Dep:
     model: str | None = None
     command: list[str] | None = None
     scope: str = "app"
-    via: str | None = None
+    vias: set[str] = field(default_factory=set)   # MCP servers this host was reached through
+    direct: bool = False                           # …and whether the code also reaches it itself
     env_names: list[str] = field(default_factory=list)
     confirmed: bool = False
     places: list[tuple[str, int, str]] = field(default_factory=list)   # (path, line, what it shows)
@@ -64,16 +65,20 @@ class _Merge:
             return value, (path, line)
         return None, None
 
+    def service_dep(self, service: dict) -> _Dep:
+        """The one dependency of a known service (D22: all its hosts and SDKs merge into it)."""
+        return self.deps.setdefault(f"{service['kind']}-{_slug(service['id'])}",
+                                    _Dep(kind=service["kind"], name=service["name"], catalog=service["id"]))
+
     def api(self, url: str, path: str, line: int, confirmed: bool, text: str, via: str | None = None) -> None:
         host = host_of(url)
-        if is_local(host) or is_ignored(host):
+        if is_local(host) or is_not_a_service(host):
             return
         service = services.by_host(host)
         if service is not None and service["kind"] == "llm":
             return   # an LLM's address belongs to the LLM rule
-        if service is not None:   # a known service: all its hosts are one dependency
-            dep = self.deps.setdefault(f"api-{_slug(service['id'])}",
-                                       _Dep(kind="api", name=service["name"], catalog=service["id"]))
+        if service is not None:
+            dep = self.service_dep(service)
         else:
             dep = self.deps.setdefault(f"api-{_slug(host)}", _Dep(kind="api", name=host))
         if url not in dep.targets:
@@ -82,7 +87,10 @@ class _Merge:
         # a www. page the app opens (a link, an attribution) is not a call, even through Uri.parse (D21)
         page = host.startswith("www.") and service is None and not api_shaped(url)
         dep.confirmed = dep.confirmed or (confirmed and not page) or service is not None or api_shaped(url)
-        dep.via = dep.via or via
+        if via:
+            dep.vias.add(via)
+        else:
+            dep.direct = True
         dep.add(path, line, text)
 
     def service_sdks(self, f: FileFacts) -> None:
@@ -91,8 +99,7 @@ class _Merge:
             service = services.by_sdk(pkg)
             if service is None or service["kind"] != "api":
                 continue
-            dep = self.deps.setdefault(f"api-{_slug(service['id'])}",
-                                       _Dep(kind="api", name=service["name"], catalog=service["id"]))
+            dep = self.service_dep(service)
             dep.confirmed = True
             dep.add(f.path, line, f"imports {pkg.split('.')[0]}")
 
@@ -103,9 +110,7 @@ class _Merge:
             service = services.by_sdk(pkg)
             if service is None or service["id"] in used:
                 continue
-            dep = self.deps.setdefault(f"{service['kind']}-{_slug(service['id'])}",
-                                       _Dep(kind=service["kind"], name=service["name"], catalog=service["id"]))
-            dep.add(path, line, f"lists {pkg}")
+            self.service_dep(service).add(path, line, f"lists {pkg}")
 
     def local(self, command: list[str], path: str, line: int) -> None:
         name = command[-1]
@@ -116,19 +121,31 @@ class _Merge:
         dep.confirmed = True
         dep.add(path, line, "runs it")
 
-    def mcp(self, server: mcp_config.Server, path: str, scope: str) -> None:
-        dep = self.deps.setdefault(f"mcp-{_slug(server.name)}", _Dep(kind="mcp", name=server.name))
-        dep.command = dep.command or server.command
-        dep.target = dep.target or " ".join(server.command) or None
-        dep.scope = "app" if "app" in (dep.scope, scope) and dep.places else scope
-        dep.env_names = sorted({*dep.env_names, *server.env_names})
+    def mcp(self, name: str, command: list[str], env_names: list[str], path: str, line: int, scope: str,
+            text: str) -> None:
+        dep = self.deps.get(f"mcp-{_slug(name)}")
+        if dep is None:
+            dep = self.deps[f"mcp-{_slug(name)}"] = _Dep(kind="mcp", name=name, scope=scope)
+        elif scope == "app":
+            dep.scope = "app"   # one place shows the app uses it: it is the app's
+        dep.command = dep.command or command
+        dep.target = dep.target or " ".join(command) or None
+        dep.env_names = sorted({*dep.env_names, *env_names})
         dep.confirmed = True
-        dep.add(path, server.line, "configured here")
+        dep.add(path, line, text)
+
+    def stdio(self, f: FileFacts) -> None:
+        """An MCP server the code starts itself, named by its package: StdioServerParameters, StdioClientTransport."""
+        for command, line in f.stdio:
+            name = next((a for a in command[1:] if not a.startswith("-") and a != "."), command[0])
+            self.mcp(name.split("@", 2)[1] if name.startswith("@") and name.count("@") > 1 else name, command, [],
+                     f.path, line, "app", "starts it")
 
     def llms(self, f: FileFacts) -> None:
         """One LLM per provider: the client's base URL decides it, else the SDK's own service."""
         sdks = [(pkg, line, s) for pkg, line in f.imports if (s := services.by_sdk(pkg)) and s["kind"] == "llm"]
         if not sdks:
+            self.routed_llms(f)
             return
         found: list[_Dep] = []
         clients = [c for c in f.clients if (s := services.by_sdk(c.sdk)) and s["kind"] == "llm"]
@@ -148,9 +165,7 @@ class _Merge:
                 dep.add(*defined, "its address")
             found.append(dep)
         if not found:   # imported, no client seen: the SDK's own provider
-            pkg, line, service = sdks[0]
-            found.append(self.deps.setdefault(f"llm-{_slug(service['id'])}",
-                                              _Dep(kind="llm", name=service["name"], catalog=service["id"])))
+            found.append(self.service_dep(sdks[0][2]))
         for dep in found:
             dep.confirmed = True
             for pkg, line, _ in sdks:
@@ -161,11 +176,27 @@ class _Merge:
                     dep.model = dep.model or value
                     dep.add(*(defined or (f.path, line)), "the model")
 
+    def routed_llms(self, f: FileFacts) -> None:
+        """An SDK that routes to many providers (litellm): each model name says which provider it is (D22)."""
+        routers = [(pkg, line) for pkg, line in f.imports if services.is_router(pkg)]
+        if not routers:
+            return
+        for ref, line in f.models:
+            value, defined = self.resolve(ref)
+            service = services.by_model(value) if value else None
+            dep = self.service_dep(service) if service else self.deps.setdefault(
+                "llm-litellm", _Dep(kind="llm", name="LiteLLM"))
+            dep.model = dep.model or value
+            dep.confirmed = True
+            dep.add(*(defined or (f.path, line)), "the model")
+            for pkg, at in routers:
+                dep.add(f.path, at, f"imports {pkg.split('.')[0]}")
+
     def evidence(self, path: str, line: int, text: str) -> ScanEvidence:
         lines = self.texts.get(path, [])
         first = max(1, line - EXCERPT_RADIUS)
         last = min(len(lines), line + EXCERPT_RADIUS)
-        excerpt = [_redactor.redact_text(raw)[:MAX_LINE] for raw in lines[first - 1:last]]
+        excerpt = [redact_code(raw, _redactor)[:MAX_LINE] for raw in lines[first - 1:last]]
         return ScanEvidence(ref=f"{path}:{line}", text=text, first_line=first, lines=excerpt, highlight=line)
 
     def result(self, env: dict[tuple[str, int], list[str]]) -> list[Dependency]:
@@ -175,21 +206,24 @@ class _Merge:
             names = list(dict.fromkeys([*d.env_names, *(n for p, line, _ in places for n in env.get((p, line), []))]))
             out.append(Dependency(
                 id=dep_id, kind=d.kind, name=d.name, catalog=d.catalog, target=d.target, targets=d.targets,
-                model=d.model, command=d.command, scope=d.scope, via=d.via,
+                model=d.model, command=d.command, scope=d.scope,
+                via=next(iter(d.vias)) if len(d.vias) == 1 and not d.direct else None,   # only ever through it
                 status="confirmed" if d.confirmed else "unconfirmed",
                 evidence=[self.evidence(p, n, t) for p, n, t in places[:MAX_EVIDENCE]], places=len(places),
                 env_names=names))
         return sorted(out, key=lambda d: (d.kind, d.name.lower()))
 
 
-def _mcp_scopes(rel: str, servers: list[mcp_config.Server], facts: list[FileFacts]) -> dict[str, str]:
-    """D21: a config's servers are the app's when its code names the config file; otherwise a server is the
-    app's only when code that imports `mcp` passes its name to a call. The rest serve your coding tools."""
+def _config_scope(rel: str, servers: list[mcp_config.Server], facts: list[FileFacts]) -> str:
+    """D21: a config's servers are the app's when its code names the config file or a server in it; else they
+    serve your coding tools. A server name only counts when code that imports `mcp` passes it to a call, so a
+    common word such as "time" elsewhere doesn't make a config the app's (D22)."""
     config_name = rel.rsplit("/", 1)[-1]
     if any(config_name in f.strings or rel in f.strings for f in facts):
-        return {s.name: "app" for s in servers}
+        return "app"
     mcp_code = [f for f in facts if any(pkg == "mcp" or pkg.startswith("mcp.") for pkg, _ in f.imports)]
-    return {s.name: "app" if any(s.name in f.call_strings for f in mcp_code) else "dev_tool" for s in servers}
+    named = any(s.name in f.call_strings for s in servers for f in mcp_code)
+    return "app" if named else "dev_tool"
 
 
 def scan(root: str | Path) -> ScanResult:
@@ -205,6 +239,7 @@ def scan(root: str | Path) -> ScanResult:
         lang = language(rel)
         if mcp_config.is_config(rel):
             configs.append((rel, mcp_config.parse(text)))
+            languages["json"] = languages.get("json", 0) + 1
         elif manifests.is_manifest(rel):
             installed += [(pkg, rel, line) for pkg, line in manifests.parse(rel, text)]
         elif lang == "python":
@@ -223,14 +258,15 @@ def scan(root: str | Path) -> ScanResult:
     merge = _Merge(texts, constants)
     app_servers: set[str] = set()
     for rel, servers in configs:
-        scope_of = _mcp_scopes(rel, servers, facts)
+        scope = _config_scope(rel, servers, facts)
         for server in servers:
-            merge.mcp(server, rel, scope_of[server.name])
-            if scope_of[server.name] == "app":
-                app_servers.add(server.name)
+            merge.mcp(server.name, server.command, server.env_names, rel, server.line, scope, "configured here")
+        if scope == "app":
+            app_servers |= {server.name for server in servers}
     for f in facts:
         merge.llms(f)
         merge.service_sdks(f)
+        merge.stdio(f)
         for command, line in f.commands:
             merge.local(command, f.path, line)
         for hit in f.urls:
@@ -242,7 +278,8 @@ def scan(root: str | Path) -> ScanResult:
                 url = clean_url(value)
                 if url:
                     merge.api(url, where, at, hit.confirmed, "the address", via)
-                    merge.api(url, f.path, hit.line, hit.confirmed, "calls it", via)
+                    merge.api(url, f.path, hit.line, hit.confirmed, "calls it" if hit.confirmed else "uses the address",
+                              via)
 
     merge.installed(installed, facts)
 

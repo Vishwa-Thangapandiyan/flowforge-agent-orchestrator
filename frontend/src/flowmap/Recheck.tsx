@@ -10,7 +10,7 @@ import { Icons } from "../components/icons";
 import { CardSkeleton, EmptyState, ErrorBox } from "../components/ui";
 import { edgeTypes, Markers, type LineEdge } from "./FlowEdge";
 import { handlesFor, placeAll, sizeOf } from "./layout";
-import { mapQuery, useMapId } from "./FlowMapPage";
+import { mapQuery, useMapId } from "./mapId";
 import { nodeTypes, typeFor, type BlockData, type BlockNode } from "./nodes";
 import "./flowmap.css";
 import "./how.css";

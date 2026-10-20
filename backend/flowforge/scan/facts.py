@@ -41,6 +41,7 @@ class FileFacts:
     models: list[tuple[Ref, int]] = field(default_factory=list)           # model= values
     env: list[tuple[str, int]] = field(default_factory=list)              # env var names read, never values
     commands: list[tuple[list[str], int]] = field(default_factory=list)   # [program] or [interpreter, script]
+    stdio: list[tuple[list[str], int]] = field(default_factory=list)      # MCP servers started from code: argv
     constants: dict[str, tuple[str, int]] = field(default_factory=dict)   # NAME -> (string value, line)
     strings: set[str] = field(default_factory=set)       # short string literals: does the code name ".mcp.json"?
     call_strings: set[str] = field(default_factory=set)  # string arguments of calls: does it name an MCP server?

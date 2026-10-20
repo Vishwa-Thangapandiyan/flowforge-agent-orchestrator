@@ -34,6 +34,26 @@ KEY_PATTERNS = [re.compile(p) for p in (
 )]
 
 
+# Names whose values are secrets (CLAUDE.md §6.4 b): `--api-key X`, `TOKEN=X`, `password = "..."`
+SECRET_WORDS = "key|token|secret|password|passwd|credential"
+SECRET_NAME = re.compile(SECRET_WORDS, re.IGNORECASE)
+# In code shown back to the user (scan evidence, D21/D22): what a key of an unknown shape could hide in
+_SECRET_VALUE = re.compile(rf"""(\b\w*(?:{SECRET_WORDS})\w*\b["']?\s*(?::\s*[\w\[\], |]+\s*)?"""
+                           r"""[:=]\s*)(['"`])[^'"`\n]*\2""", re.IGNORECASE)
+_URL_CREDENTIALS = re.compile(r"""(\b[a-z][a-z0-9+.-]*://)[^/\s:@'"`]+:[^@\s'"`/]+@""", re.IGNORECASE)
+_URL_QUERY = re.compile(r"""(\bhttps?://[^\s'"`?#]+)\?[^\s'"`#]+""", re.IGNORECASE)
+
+
+def redact_code(line: str, redactor: Redactor | None = None) -> str:
+    """A line of the user's code, safe to store and show: known key shapes, URL credentials and query strings,
+    and string values given to key/token/secret/password names are masked. Pattern-based: it catches known
+    key formats and these shapes, not everything."""
+    line = (redactor or Redactor()).redact_text(line)
+    line = _URL_CREDENTIALS.sub(rf"\1{REDACTED}@", line)
+    line = _URL_QUERY.sub(rf"\1?{REDACTED}", line)
+    return _SECRET_VALUE.sub(rf"\1\2{REDACTED}\2", line)
+
+
 class Redactor:
     def __init__(self, values: Iterable[str] = ()) -> None:
         self._values: list[str] = []

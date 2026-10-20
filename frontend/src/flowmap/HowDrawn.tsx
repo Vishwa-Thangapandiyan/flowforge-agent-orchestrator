@@ -8,7 +8,7 @@ import type { Analysis, Connector, FlowNode, FlowResponse } from "../api/types";
 import { BrandTile } from "../brand/BrandTile";
 import { Icons } from "../components/icons";
 import { CardSkeleton, EmptyState, ErrorBox, prefersReducedMotion } from "../components/ui";
-import { mapQuery, useMapId } from "./FlowMapPage";
+import { mapQuery, useMapId } from "./mapId";
 import "./how.css";
 
 export function HowDrawn() {
@@ -186,7 +186,7 @@ function ScanHow({ a, nodes }: { a: Analysis; nodes: FlowNode[] }) {
               {deps.filter((n) => n.status === "unconfirmed").map((n) => (
                 <li key={n.id} className="unc"><i>?</i>“{n.title}” is mentioned, but no call to it was found</li>
               ))}
-              <li className="ok"><i>✓</i>Keys in the code were masked before anything was saved</li>
+              <li className="ok"><i>✓</i>Known key formats in the code were masked before anything was saved</li>
             </ul>
           </div>
         </section>

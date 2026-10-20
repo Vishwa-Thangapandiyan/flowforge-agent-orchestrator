@@ -26,8 +26,14 @@ _ENV = re.compile(r"""process\.env\.([A-Za-z_][A-Za-z0-9_]*)|process\.env\[\s*['
                   r"""|String\.fromEnvironment\(\s*['"]([A-Za-z_][A-Za-z0-9_]*)['"]"""
                   r"""|Platform\.environment\[\s*['"]([A-Za-z_][A-Za-z0-9_]*)['"]"""
                   r"""|dotenv\.(?:env\[|get\()\s*['"]([A-Za-z_][A-Za-z0-9_]*)['"]""")
-_COMMAND = re.compile(r"""\b(?:spawn|spawnSync|execFile|execFileSync|exec|execSync)\(\s*['"]([^'"\s]+)"""
+# child_process calls, bare or on child_process/cp, but never a method like regex.exec("…")
+_COMMAND = re.compile(r"""(?:(?<![\w.$])|(?<=child_process\.)|(?<=\bcp\.))"""
+                      r"""(?:spawn|spawnSync|execFile|execFileSync|exec|execSync)\(\s*['"]([^'"\s]+)"""
                       r"""|Process\.(?:run|start|runSync)\(\s*['"]([^'"\s]+)['"]""")
+_STDIO = re.compile(r"""StdioClientTransport\(\s*\{([^}]*)\}""")
+_STDIO_COMMAND = re.compile(r"""command:\s*['"]([^'"]+)['"]""")
+_STDIO_ARGS = re.compile(r"""args:\s*\[([^\]]*)\]""")
+_QUOTED = re.compile(r"""['"]([^'"]*)['"]""")
 _STRING = re.compile(r"""['"]([^'"\n]{1,120})['"]""")
 
 
@@ -69,6 +75,10 @@ def extract(path: str, text: str, language: str) -> FileFacts:
             facts.env.append((next(g for g in m.groups() if g), n))
         for m in _COMMAND.finditer(line):
             facts.commands.append(([next(g for g in m.groups() if g)], n))
+        for m in _STDIO.finditer(line):   # an MCP server started from code, on one line
+            if command := _STDIO_COMMAND.search(m.group(1)):
+                args = _STDIO_ARGS.search(m.group(1))
+                facts.stdio.append(([command.group(1), *(_QUOTED.findall(args.group(1)) if args else [])], n))
         facts.strings.update(_STRING.findall(line))
     # a base URL line is an LLM client only in a file that imports an LLM SDK; it belongs to that SDK
     llm_sdk = next((pkg for pkg, _ in facts.imports if (s := services.by_sdk(pkg)) and s["kind"] == "llm"), None)

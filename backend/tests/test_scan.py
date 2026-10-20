@@ -309,3 +309,105 @@ def test_the_planted_fake_key_is_never_in_the_result(no_network):
     dump = scan(TRIP_PLANNER).model_dump_json()
     assert "AIzaFAKE" not in dump
     assert "[REDACTED]" in dump   # its line is inside the Google Maps excerpt, masked
+
+
+# --- found in review --------------------------------------------------------------------------------------
+
+def test_a_remote_mcp_server_keeps_no_credentials_or_query(tmp_path):
+    write(tmp_path, {".mcp.json": '{"mcpServers": {"crm": {"url": "https://bot:s3cretpass@mcp.crm.test/sse?token=abc"}}}',
+                     "app.py": "print('hi')\n"})
+    dump = scan(tmp_path).model_dump_json()
+    assert "s3cretpass" not in dump and "bot:" not in dump and "token=abc" not in dump
+    assert by_id(scan(tmp_path))["mcp-crm"].target == "https://mcp.crm.test/sse"
+
+
+def test_only_a_real_call_is_labelled_as_one(tmp_path):
+    write(tmp_path, {"app.py": (
+        'MAP = "https://maps.tiles.test/api/static"\n'
+        'def link(c):\n'
+        '    return f"{MAP}?center={c}"\n'
+    )})
+    texts = {e.ref: e.text for e in by_id(scan(tmp_path))["api-maps-tiles-test"].evidence}
+    assert texts["app.py:3"] == "uses the address" and texts["app.py:1"] == "the address"
+
+
+def test_via_only_when_a_host_is_reached_only_through_an_mcp_server(tmp_path):
+    write(tmp_path, {".mcp.json": MCP_CONFIG, "tools.py": (
+        "from mcp import ClientSession\n"
+        'SERVERS = ".mcp.json"\n'
+        'async def a(): return await call("fetch", "fetch", {"url": "https://en.wikipedia.org/wiki/X"})\n'
+        'def b(client): return client.post("https://en.wikipedia.org/w/api.php")\n'
+    )})
+    assert by_id(scan(tmp_path))["api-wikipedia"].via is None   # also called directly
+
+
+def test_naming_one_server_makes_the_whole_config_the_apps(tmp_path):
+    write(tmp_path, {".mcp.json": MCP_CONFIG, "tools.py": (
+        "from mcp import ClientSession\n"
+        'async def t(): return await call("time", "get_current_time", {})\n'
+    )})
+    deps = by_id(scan(tmp_path))
+    assert deps["mcp-time"].scope == deps["mcp-fetch"].scope == "app"
+
+
+def test_env_names_belong_to_the_whole_statement(tmp_path):
+    write(tmp_path, {"llm.py": (
+        "import os\n"
+        "from openai import OpenAI\n"
+        "client = OpenAI(\n"
+        '    base_url="https://api.openai.com/v1",\n'
+        '    api_key=os.environ["OPENAI_API_KEY"],\n'
+        ")\n"
+    )})
+    assert by_id(scan(tmp_path))["llm-openai"].env_names == ["OPENAI_API_KEY"]
+
+
+def test_a_dict_get_and_a_regex_exec_are_not_calls(tmp_path):
+    write(tmp_path, {
+        "app.py": 'CACHE = {}\nURL = "https://data.store.test/items"\ndef f(): return CACHE.get(URL)\n',
+        "lib/x.js": "const m = /a(b)/.exec('abc');\nconst n = pattern.exec(\"zzz\");\n",
+    })
+    deps = by_id(scan(tmp_path))
+    assert set(deps) == {"api-data-store-test"} and deps["api-data-store-test"].status == "unconfirmed"
+
+
+def test_mcp_servers_started_from_code(tmp_path):
+    write(tmp_path, {
+        "agent.py": (
+            "from mcp import StdioServerParameters\n"
+            'params = StdioServerParameters(command="uvx", args=["mcp-server-git", "--repository", "."])\n'
+        ),
+        "src/agent.ts": 'const t = new StdioClientTransport({ command: "npx", args: ["-y", "@acme/notes-mcp"] });\n',
+    })
+    deps = by_id(scan(tmp_path))
+    assert deps["mcp-mcp-server-git"].command == ["uvx", "mcp-server-git", "--repository", "."]
+    assert refs(deps["mcp-mcp-server-git"]) == {"agent.py:2"} and deps["mcp-mcp-server-git"].scope == "app"
+    assert refs(deps["mcp-acme-notes-mcp"]) == {"src/agent.ts:1"}
+
+
+def test_litellm_is_resolved_by_its_model_prefix(tmp_path):
+    write(tmp_path, {"bot.py": 'import litellm\nlitellm.completion(model="anthropic/claude-sonnet", messages=[])\n'})
+    dep = by_id(scan(tmp_path))["llm-claude"]
+    assert dep.model == "anthropic/claude-sonnet" and {"bot.py:1", "bot.py:2"} <= refs(dep)
+
+
+def test_binary_and_ignored_files_are_counted_not_read(tmp_path):
+    write(tmp_path, {"app.py": 'URL = "https://api.real.test/v1"\n', "README.md": "x\n", "tests/t.py": "x\n"})
+    (tmp_path / "blob.py").write_bytes(b"\x00\x01binary https://api.binary.test/v1")
+    result = scan(tmp_path)
+    assert set(by_id(result)) == {"api-api-real-test"}
+    assert result.skipped["binary"] == 1 and result.skipped["ignored"] == 2
+
+
+def test_evidence_excerpts_mask_credentials_queries_and_secret_named_values(tmp_path):
+    write(tmp_path, {"app.py": (
+        'CRM_TOKEN = "plainsecretvalue99"\n'
+        'db_password: str = "hunter2hunter2"\n'
+        'URL = "https://admin:pw12345678@api.crm.test/v1/items?api_key=zzzunknownshape"\n'
+        "import httpx\n"
+        "httpx.get(URL)\n"
+    )})
+    dump = scan(tmp_path).model_dump_json()
+    for secret in ("plainsecretvalue99", "hunter2hunter2", "pw12345678", "zzzunknownshape"):
+        assert secret not in dump, secret
+    assert "api.crm.test" in dump   # the dependency itself is still found

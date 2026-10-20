@@ -15,25 +15,14 @@ import { useMeta } from "../components/Shell";
 import { EmptyState, ErrorBox } from "../components/ui";
 import { edgeTypes, Markers, type LineEdge } from "./FlowEdge";
 import { autoLayout, handlesFor, placeAll, sizeOf } from "./layout";
+import { mapQuery, useMapId, type MapId } from "./mapId";
 import { nodeTypes, typeFor, type BlockData, type BlockNode, type TileSource } from "./nodes";
 import { buildReplay, frameAt, type Frame } from "./replay";
 import { StepPanel } from "./StepPanel";
 import "./flowmap.css";
 
 const TIPS_KEY = "flowforge.tips.dismissed";
-type MapId = "deps" | "flow";
 const TILE_TYPE: Partial<Record<NodeKind, ConnectorType>> = { llm: "llm", api: "http", mcp: "mcp", local: "local" };
-
-/** `?map=flow` picks the flow map; no parameter means the dependency map (D21). */
-export function useMapId(): MapId {
-  const [params] = useSearchParams();
-  return params.get("map") === "flow" ? "flow" : "deps";
-}
-
-/** The query part that names a map in URLs: empty for the default dependency map. */
-export function mapQuery(map: MapId, joiner = "?"): string {
-  return map === "flow" ? `${joiner}map=flow` : "";
-}
 
 /** A design token's current value (SVG attributes such as the minimap's fill can't read CSS variables). */
 function token(name: string, fallback: string): string {

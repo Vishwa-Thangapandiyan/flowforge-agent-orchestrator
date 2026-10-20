@@ -9,45 +9,51 @@ Guidance for Claude Code when working in this repository. Read this whole file a
 | | |
 |---|---|
 | Branch rules | `DAA` = frozen course project. **Never commit to it, never merge into it.** `main` = the product. |
-| Current phase | **Phase 3: flow map V1 (D17, D18), implemented on `feat/phase-1-connectors`, uncommitted, awaiting Vishwa's review (Vishwa commits).** Phases 1 and 2 are committed there. Next: Phase 4. Roadmap (renumbered in D17): 4 = security (vault, redact/verify/scan/restore), 5 = real Planner + approval gates, 6 = swap + coding connector, 7 = server + workers, 8 = visual builder |
-| Direction | The Planner (a background LLM; its engine is never shown or user-selectable) reads the repo, runs the app in test mode and draws the app's AI flow as the home-page map. Only apps the code calls go on it. The user reads it, edits through overrides that never touch code, and re-checks to get a diff (section 1, D17). Workflow JSON and the API stay as the Advanced path |
-| Done | Scheduler core, five policies, caches, SSE run stream, plain-HTML status page. Phase 1: D10 connectors (provider-agnostic `LLMNode`: openai_compatible + anthropic; per-connector buckets, cache namespaces, fallback), D12 MCP (tool discovery, schema-checked calls, non-text blocks, artifacts), D13 `local` step, connector registry + presets + `connectors.json`, HTTP connectors, ruff, CI (Linux + Windows), CONTRIBUTING. Phase 2 (D15, D16): dashboard (Vite + React + TS), persisted runs and events, minimal redaction (`security/logfilter.py`), connector create/edit/delete + logos, tool health, savings, example-data mode, `flowforge` command. Phase 3 (D17, D18): `flowmap/` (Flow JSON models, validation, code-inserted policy gates, critical path, overrides merge, version diff, `Planner` protocol + `FixturePlanner`), storage tables `flow_versions`/`flow_overrides`/`flow_positions`, `/flow*` and `/catalog` routes, 56-app catalog with mock test runs; dashboard: icon rail, flow map at `/` (React Flow + dagre, saved positions, search, legend, minimap, step panel with evidence and edits, test-run replay that holds at the gate), `/map/how`, `/map/recheck`, catalog at `/connectors`, money/time + app health on Runs, Geist fonts; Overview and HubMap removed; `Storage` calls serialised by a lock. 314 backend (+1 skipped) + 54 dashboard tests pass offline |
-| Not started | The real Planner (repo reading, test-mode run, tracing), connector `describe()` (partly met by MCP `list_tools()`), vault, full redact/verify/scan/restore, Security page, testing llm/http connectors, gate steps in scheduled runs (D11), swap flow, coding connector, distributed workers |
-| Next decision needed | Section 12 (open questions; 12.1 and 12.5 are settled by D15 and `docs/design/`). Whether to code-split the dashboard bundle (709 kB, Vite warns over 500 kB). Whether to delete `frontend/classic.html`. Whether a user-chosen background engine for the Planner comes back later (D17 hides it for now). Ask Vishwa, don't guess. |
+| Current phase | **Phase 4: repo scan V1 (D19, D20), branch `feat/repo-scan` (made from `feat/phase-1-connectors`).** Step 0, rewriting the vision and roadmap, is done and awaits Vishwa's review. Next: the sample project `examples/trip-planner/`, then D21 (the scanner contract), then the scanner. Phases 1–3 are committed and pushed on `feat/phase-1-connectors` (Phase 3 is `57b22e0`); none is merged into `main` yet. The repo moved from Windows to Linux on 2026-10-20 (fresh clone, all checks green). Roadmap (section 5): 4 = repo scan, 5 = health checks + test results, 6 = security findings, 7 = launch, 8 = flow order, 9 = CLI agent + Tauri, 10 = V2 coding agents |
+| Direction | Point FlowForge at a repo. It finds every dependency (LLM, MCP server, HTTP API, local command) with `file:line` evidence and draws the map. It checks each one's health and security on demand and shows the test results. The scan is plain code and never sends code or keys to an LLM (D20). V2: a local coding agent adds a dependency on a branch for the user to approve (section 1, D19). Workflow JSON and the run API stay as the Advanced path |
+| Done | Scheduler core, five policies, caches, SSE run stream, plain-HTML status page. Phase 1: D10 connectors (provider-agnostic `LLMNode`: openai_compatible + anthropic; per-connector buckets, cache namespaces, fallback), D12 MCP (tool discovery, schema-checked calls, non-text blocks, artifacts), D13 `local` step, connector registry + presets + `connectors.json`, HTTP connectors, ruff, CI (Linux + Windows), CONTRIBUTING. Phase 2 (D15, D16): dashboard (Vite + React + TS), persisted runs and events, minimal redaction (`security/logfilter.py`), connector create/edit/delete + logos, tool health, savings, example-data mode, `flowforge` command. Phase 3 (D17, D18): `flowmap/` (Flow JSON models, validation, code-inserted policy gates, critical path, overrides merge, version diff, `Planner` protocol + `FixturePlanner`), storage tables `flow_versions`/`flow_overrides`/`flow_positions`, `/flow*` and `/catalog` routes, 56-app catalog with mock test runs; dashboard: icon rail, flow map at `/` (React Flow + dagre, saved positions, search, legend, minimap, step panel with evidence and edits, test-run replay that holds at the gate), `/map/how`, `/map/recheck`, catalog at `/connectors`, money/time + app health on Runs, Geist fonts; Overview and HubMap removed; `Storage` calls serialised by a lock. 315 backend (on Linux; one test skips on Windows) + 54 dashboard tests pass offline |
+| Not started | The scanner and the dependency map from a real repo, health checks for llm/http and the Checks page, security findings and the Security page, the launch README, flow order, Tauri, V2 (coding agents, vault, redact/verify/scan/restore, gates) |
+| Next decision needed | Section 12. Ask Vishwa, don't guess. |
 
 ---
 
 ## 1. What we are building
 
-**FlowForge is the scheduler layer for agent workflows, plus a dashboard to connect, watch and control them.**
+**FlowForge maps what your app depends on, and tells you whether those dependencies are healthy and safe (D19).**
 
-You connect apps (LLMs, MCP servers, HTTP APIs, local commands) to one project. FlowForge runs them as a DAG: it orders steps, runs independent ones together under rate limits, caches repeat calls, holds the secrets, and pauses risky steps for a human to approve.
+Point it at a repo. It finds every **dependency** the code uses and draws them as a map, each with the `file:line` it came from. A dependency is an LLM, an MCP server, an HTTP API or a local command. Then it checks each one:
+- is the MCP server up and fast?
+- is the API reachable, and is it on https?
+- is a key hard-coded in the code?
 
-Positioning: not LangGraph (code-first agent graphs), not Airflow (data pipelines), not n8n (no scheduler, no cost model). The pitch is *"it knows which chain of steps is the bottleneck and schedules around it, and it never lets a key reach an LLM."*
+The user runs the checks and tests whenever they want and sees the results on the map.
 
-- **Audience:** developers first. Non-technical users later (a visual builder is Phase 8, not now).
-- **Open source.** MIT licence is already in the repo. Keep the README and CONTRIBUTING friendly to strangers.
+**Positioning.** Package scanners (Dependabot, Snyk, OSV) look at libraries, not the services an app calls. LLM tracing tools (Langfuse, LangSmith, Helicone) need code changes in the app. Service maps (Datadog) are enterprise products that need instrumentation. FlowForge is free and local, needs no change to the app, and its scan never sends code or keys to an LLM. Re-check this landscape before claiming it in the README.
+
+- **Audience:** developers shipping apps that use LLMs and MCP servers, and anyone reviewing such a repo.
+- **Open source.** MIT licence is already in the repo. This is Vishwa's long-term project, so first impressions matter as much as features: a one-command demo, the map, clear docs. Keep the README and CONTRIBUTING friendly to strangers.
 - **No fixed deadline.** Prefer correct and tested over fast.
 - **Hard constraint: zero cost by default.** No paid APIs or services in the default install, tests or CI. Free tiers (NVIDIA NIM) and local models (Ollama) only. Optional paid providers (Claude, Gemini, Stripe, Razorpay) work if the user brings their own key, and are never needed to run tests.
-- **Local first.** SQLite, files on disk, one process. No cloud account, no Docker requirement, no Redis until Phase 7.
+- **Local first.** SQLite, files on disk, one process. No cloud account, no Docker requirement, no Redis.
+- **Privacy first (D20).** The scan is plain code and sends nothing to any LLM. FlowForge's own LLM is optional, off by default and chosen by the user, and it only sees masked findings, never file contents.
 
-### The core user experience (D14, revised by D17)
-FlowForge is an **LLMOps tool for apps that already use AI**, not an app builder. **The Planner draws the map; the user reads it and edits only when needed.**
+### The core user experience (D19)
+FlowForge is an **LLMOps tool for apps that already use AI**, not an app builder.
 
-1. **Connect.** The user picks apps from the catalog (Razorpay, Gemini, an MCP server, a script…). Each app has a mock "Test run".
-2. **Map.** The Planner reads the repo and runs the app in test mode. It then draws the app's AI flow:
-   - start/end, app calls, plain code;
-   - decisions, run-together/wait-for-all, retries and fallbacks.
+1. **Scan.** `flowforge scan <folder>`, or "Scan a folder" in the dashboard. A GitHub URL comes later. Plain code finds the dependencies from:
+   - SDK imports;
+   - MCP config files;
+   - dependency files;
+   - URLs;
+   - env var *names* (never values).
+2. **Map.** The home page draws the repo and its dependencies, grouped by kind, each with its evidence. Pan, zoom, drag and search. A scan can miss things (a URL built at runtime, say), so the user can add, correct or hide a dependency. Each edit is an override and **never changes the user's code**.
+3. **Check.** "Check now" runs a health check on each dependency, concurrently, under each one's rate limit (the checks per kind are in D19). The dots on the map turn green, amber or red. An optional timer comes later.
+4. **See the results.** The Checks page shows every check and test result over time: status, latency, errors.
+5. **Security.** The Security page lists findings per dependency: hard-coded keys, `http://` APIs, risky MCP configs. Key values are never shown.
+6. **Re-scan.** When the code changes, re-scan. FlowForge shows a diff, and the old version stays (D17).
+7. **V2 (later).** The user adds a dependency on the map, and a local coding agent writes the code on a branch for them to approve.
 
-   Plain code gathers the facts first (routes, outside calls, env var *names*, never values) and redacts them; only then does the Planner see them. **Only apps the code already calls go on the map.**
-3. **Validate.** Code checks the map: cycles, missing connectors, unknown tools, evidence.
-   - A block with no evidence is dropped or marked *unconfirmed*.
-   - Code puts a gate before every payment, message, code change and other side effect. No edit can remove it.
-4. **Look and adjust.** The map is a canvas: pan, zoom, drag, click a block for its evidence. Edits (swap an app, rename, hide, add a step) are overrides on the Planner's version and **never change the user's code**.
-5. **Re-check.** The Planner looks again and shows a diff. The user picks what to take; the old version stays.
-6. **Run and watch.** In V1 a test run replays a traced order on the map. Scheduled runs of the flow, with gates, come with the real Planner (Phase 5).
-
-**The LLM decides WHAT. The scheduler decides WHEN. The LLM proposes; the user approves.** Validation catches structural errors, not wrong ideas, which is why the gates stay. Hand-written workflow JSON and the existing API remain the **Advanced** path for developers and CI.
+Under the hood, the DAG scheduler runs the checks: critical path, five policies, rate limits, caches. Hand-written workflow JSON and the run API stay as the **Advanced** path for developers and CI.
 
 ### UI principle (applies to every screen)
 The dashboard must be **scannable**: colour-coded, short labels, diagrams before paragraphs, one idea per card. If a screen needs a paragraph to explain itself, redesign the screen. Everything the user reads should be at most one short sentence per element.
@@ -64,6 +70,14 @@ The dashboard must be **scannable**: colour-coded, short labels, diagrams before
 - building blocks + Flow JSON + type.
 
 It replaces View 1 (hub map) and View 7 (plan-review list) below, and the fonts (now Geist + Geist Mono). The older pages stay the reference for the connector zoom, add-an-app, run detail, swap and security views. Change the look only through new artboards that Vishwa approves.
+
+**Page changes from D19:**
+- **Map** stays home. It draws the scanned dependency map in the same visual language.
+- **Runs** becomes **Checks**: health and test results per dependency.
+- **Security** shows the scan's findings instead of a vault demo.
+- **Approvals** is hidden until V2 (Phase 10).
+
+The new Checks and Security layouts need artboards Vishwa approves before they are built.
 
 The original UI was designed as three interactive pages. They are the visual spec. **Do not invent a new look.**
 
@@ -91,16 +105,9 @@ The six designed views, plus the one still to design, and what they become:
 | 4 | Sequence: webhook → verify signature → fetch order → redact → LLM → update order → stream to dashboard | Run detail / log | `/runs/:id` |
 | 5 | Add your own: pick type, name, connect, style (colour + logo), live preview, JSON that gets saved | "Add app" screen | `/connectors/new` |
 | 6 | Security: redact demo, seven guards, six privacy rules, honest limits | Security tab | `/security` |
-| 7 | *Not designed yet.* Plan review: "Here's what will happen", one confirmation | Plan review before every planned run | `/plans/:id` |
+| 7 | *Dropped (D17).* Plan review: "Here's what will happen", one confirmation | Nothing | none |
 
-**Not designed yet: View 7, Plan review** (Phase 5, D14). It's the "Here's what will happen" list from section 1, not a graph:
-- the steps in order, with steps that run together grouped on one row;
-- the estimated total time (from the critical path);
-- for each step, the connector it uses and the secrets it touches (names only);
-- a gate badge on every step that needs approval, plus what was dropped and why (evidence not found);
-- one primary button, **"Looks good, run it"**, and a way to ask for a new plan.
-
-Before building it, ask Vishwa to add it to `system-map.html` as **View 7** in the same style, so the UI isn't invented on the fly. Graph views exist only under **Advanced** and are not part of View 7.
+View 7 (plan review) was dropped by D17: the map is the plan. Under D19 there is no plan to review in V1.
 
 Logos (D15): preset brands use the **CC0 SVG marks from the `simple-icons` package**, inside a brand-colour tile, only to identify the integration (nominative use; never altered, never implying endorsement). A brand that isn't in the package, and Sirius, gets a two-letter monogram tile. Custom apps use letters + colour or the user's uploaded image (rules in section 6.5). Never hand-draw a company logo or copy one from a brand site.
 
@@ -108,25 +115,25 @@ Logos (D15): preset brands use the **CC0 SVG marks from the `simple-icons` packa
 
 ## 3. Architecture (target)
 
-**Hub and spoke. Nothing talks to anything else directly. Every call goes through FlowForge core.**
+**Scan the repo, then check what it found (D19). Every call to a dependency goes through FlowForge core.**
 
 ```
-                         ┌─────────────── dashboard (browser) ───────────────┐
-                         │  hub map · zoom panel · swap · run log · add app  │
-                         └──────────────▲──────────────────────────┬─────────┘
-                                 SSE events                  REST (write-only secrets)
-┌──────────── FlowForge core (FastAPI, one process) ───────────────┴─────────┐
-│  scheduler (Kahn, critical path, HLFET, rate limits)   ← already built     │
-│  caches (in-run single-flight + persistent SQLite)     ← already built     │
-│  connector registry  → builds Node instances           ← Phase 1/3         │
-│  vault + redaction + guards                            ← Phase 4           │
-│  approval gates + planner (plan → DAG → plan review)   ← Phase 5           │
-│  storage: runs, durations, cache, connectors, boards   ← SQLite            │
-└──▲───────────▲───────────────▲──────────────────▲─────────────────────────┘
-   │ llm       │ mcp           │ http             │ local command
- NIM/Gemini/   any MCP server  Razorpay/Stripe/   Sirius, scripts,
- Claude/Ollama (tools auto-    any REST API       models on your machine
-               discovered)
+                ┌──────────── dashboard (browser; Tauri in Phase 9) ────────────┐
+                │        Map · Dependencies · Checks · Security                 │
+                └──────────────▲─────────────────────────────┬─────────────────┘
+                         SSE events                         REST
+┌──────────── FlowForge core (FastAPI, one process) ─────────┴──────────────────┐
+│  scan/      repo → dependencies + evidence + findings, no LLM (D20) ← Phase 4 │
+│  flowmap/   map versions, overrides, re-scan diff                   ← built   │
+│  checks     health + tests per dependency, run by the scheduler     ← Phase 5 │
+│  scheduler  Kahn, critical path, HLFET, rate limits, caches         ← built   │
+│  connectors + nodes (llm, mcp, http, local)                         ← built   │
+│  security/  key finders, redaction, log filter                      ← 2 + 6   │
+│  storage    SQLite                                                            │
+└──▲─────────────────▲──────────────────▲──────────────────▲───────────────────┘
+   │ reads           │ llm              │ mcp              │ http / local
+ your repo        LLMs it uses     MCP servers it uses   APIs, scripts it uses
+ (read-only)
 ```
 
 Key idea: a **connector** is configuration (who, how to connect, how it looks, which secret). A **Node** is the runtime code that executes one call. The existing `Node` classes stay; connectors build and configure them. Do not rewrite the scheduler to know about connectors. The executor keeps seeing `node.run(params)`.
@@ -169,20 +176,20 @@ Fixed in Phase 1: `LLMNode` is no longer NIM-only (D10); `MCPNode` has tool disc
 - `kind` hints exist only on MCP non-text blocks and `local` output; the dashboard's output viewer picks a view from the output's shape instead (table / text / image / JSON).
 - `usage.credits` is always 0: no provider reports credits yet, and FlowForge does not invent prices.
 - Bare `LLMNode()` (tests and the real benchmark track) keeps the V1 output without `usage.credits`; connector-built nodes include it.
-- Secrets resolve from `env:` refs only; `vault:` refs are refused until Phase 4. Since Phase 2 a minimal redactor (D16) masks known key shapes and configured key values in stored runs, events, cache rows, API results and logs; it is pattern-based, not the full Phase 4 pipeline.
-- Connectors can be added and edited from the dashboard (D16); those from `connectors.json` are read-only there. "Test connection" works for MCP and local apps only; llm/http arrive in Phase 4.
+- Secrets resolve from `env:` refs only; `vault:` refs are refused until the vault lands (V2, Phase 10). Since Phase 2 a minimal redactor (D16) masks known key shapes and configured key values in stored runs, events, cache rows, API results and logs; it is pattern-based, not the full V2 pipeline (6.4).
+- Connectors can be added and edited from the dashboard (D16); those from `connectors.json` are read-only there. "Test connection" works for MCP and local apps only; llm/http arrive with the health checks (Phase 5).
 - The default `mcp` node is still the V1 node (it accepts `params.server`); the `fetch` connector is separate, so `mcp` and `fetch` may each spawn their own fetch server.
 - On Windows, killing a timed-out `local` process does not kill its children.
 - Runs that were running when the server stopped are marked `interrupted`; they are not resumed.
 - Live run has Stop but no Pause (a pause would change the scheduler).
-- The flow map runs on example data only: the one Planner is `FixturePlanner` (the "Baby-care shop" app), and outside example mode the map shows an empty state until Phase 5. Its Test run replays a recorded trace and makes no calls; catalog test runs are canned mocks.
-- Map gates are inserted by code (D17), but scheduled runs have no gate step yet (D11, Phase 5). A GET to a payment API isn't gated; any other method is, and an HTTP block with no method counts as a write (D17).
-- `Storage` shares one SQLite connection across the threadpool, so every public method takes one `RLock` (a race existed since sync connector routes; `test_storage_threads.py`). Fine for one local user; revisit with Postgres in Phase 7.
+- The flow map runs on example data only: the one Planner is `FixturePlanner` (the "Baby-care shop" app), and outside example mode the map shows an empty state until the scanner draws it (Phase 4). Its Test run replays a recorded trace and makes no calls; catalog test runs are canned mocks.
+- Map gates are inserted by code (D17), but scheduled runs have no gate step yet (D11, V2). A GET to a payment API isn't gated; any other method is, and an HTTP block with no method counts as a write (D17).
+- `Storage` shares one SQLite connection across the threadpool, so every public method takes one `RLock` (a race existed since sync connector routes; `test_storage_threads.py`). Fine for one local user; revisit if a server version comes (section 5, "Later, maybe").
 - The dashboard bundle is about 709 kB (React Flow + dagre); Vite warns over 500 kB. No code splitting yet.
 - Timing-sensitive tests: tests assert scheduling decisions, not wall-clock windows. Exception: `actual_critical_path` in `test_diamond_meets_lower_bound` still depends on measured durations; it held in 500 stress runs.
 
 ### Rules that already exist and must not break
-- `DECISIONS.md` is the spec: D1–D9 (V1), D10 connectors, D11 approval gates (reserved, written with Phase 5), D12 MCP connectors, D13 local command step, D14 plan from connectors, D15 frontend stack, D16 run history + redaction + example mode + editable connectors, D17 the flow map (also renumbers the roadmap), D18 frontend additions (Geist, React Flow, dagre). Cited in code as `(D7)` etc. Keep code and doc in agreement. **New decisions get the next free number (D19, …) in the same format**, written *before* the code.
+- `DECISIONS.md` is the spec: D1–D9 (V1), D10 connectors, D11 approval gates (reserved for V2), D12 MCP connectors, D13 local command step, D14 plan from connectors, D15 frontend stack, D16 run history + redaction + example mode + editable connectors, D17 the flow map, D18 frontend additions (Geist, React Flow, dagre), D19 the product direction (repo → dependency map → health, security and tests; also renumbers the roadmap), D20 a scan with no LLM and an optional, user-chosen LLM that sees only masked findings. Cited in code as `(D7)` etc. Keep code and doc in agreement. **New decisions get the next free number (D21, …) in the same format**, written *before* the code.
 - Say "concurrent on one event loop (I/O-bound)", never "parallel on CPUs" (D4).
 - Benchmarks must keep running unchanged (`benchmarks/`). Don't change the five policies' behaviour to make a new feature easier.
 
@@ -190,7 +197,7 @@ Fixed in Phase 1: `LLMNode` is no longer NIM-only (D10); `MCPNode` has tool disc
 
 ## 5. Roadmap and acceptance criteria
 
-Work in this order. Each phase = one branch `feat/phase-N-<name>`, one PR into `main`, tests green, `DECISIONS.md` updated, status block (section 0) updated. **Start every phase in plan mode** and show Vishwa the plan before editing.
+Work in this order. Each phase = one branch `feat/<name>`, one PR into `main`, tests green, `DECISIONS.md` updated, status block (section 0) updated. **Start every phase in plan mode** and show Vishwa the plan before editing. Phases 1–3 were planned under the old direction and are kept here as history; D19 renumbered everything from Phase 4 on.
 
 ### Phase 1: Any LLM, any MCP server  *(done, on `feat/phase-1-connectors`)*
 Goal: stop being NIM-only.
@@ -240,7 +247,7 @@ Goal: the hub map + live run + tool health + money and time, read-only first.
 
 **Acceptance:** with only mock steps and no keys, `uv run flowforge` (add a console script) opens a dashboard that shows a project, runs `diamond_mock.json`, and updates live. Component tests for the map and the step-state colours.
 
-### Phase 3: Flow map V1  *(D17, D18; artboards in `docs/design/flow-map-artboards/`; implemented on `feat/phase-1-connectors`, in review)*
+### Phase 3: Flow map V1  *(D17, D18; artboards in `docs/design/flow-map-artboards/`; done, committed on `feat/phase-1-connectors`)*
 Goal: the approved artboards for real, end to end on example data. The Planner is a swappable interface with one implementation, the example-mode fixture. Real repo analysis waits for Phase 4's redaction.
 
 1. **Backend `flowmap/`:**
@@ -271,83 +278,109 @@ Goal: the approved artboards for real, end to end on example data. The Planner i
 - Outside example mode the map shows an empty state.
 - No test needs a network or a key; the scheduler and benchmarks are untouched.
 
-### Phase 4: Connectors, forms, secrets, security
-Goal: View 2 + View 5 + View 6 for real. **This is the security-critical phase; section 6 is binding.**
+### Phase 4: Repo scan V1  *(D19, D20; branch `feat/repo-scan`)*
+Goal: point FlowForge at a folder and get a real dependency map, with evidence, without any LLM.
 
-1. Vault + redaction + guards (section 6), fully tested before any UI uses them.
-2. `POST/PUT/DELETE /connectors`, `PUT /connectors/{id}/secret` (write-only), `POST /connectors/{id}/test` (one harmless call per type), `GET /connectors/{id}/tools`.
-3. **Add-app screen** (View 5): type cards → name → connect fields (change with type) → style (colour swatches + custom colour, logo = letters | upload | none) → live preview of the map node and side-panel header → "Test connection" turns the dot green.
-4. **Zoom panel** (View 2): Connection (secrets show `configured ••••••` only), The form you filled in, Tasks inside this box, Recent activity.
-5. Presets (section 7.3), brand tiles, logo upload rules (6.5).
-6. **Security tab** (View 6): the redact demo against fake keys running on the real redaction module through `POST /security/redact-demo` (accepts text, returns only redacted text and masked mapping), the seven guards, six privacy rules, honest limits.
+1. **Sample project `examples/trip-planner/`** (Python), "plan a day in a city". It is the scanner's test case, the demo and the new example map, replacing the Baby-care fixture. It uses only free, keyless pieces:
+   - Ollama (`llama3.1:8b`), through the OpenAI-compatible SDK;
+   - 3–4 keyless MCP servers in `.mcp.json`: `server-everything`, `server-filesystem`, `server-memory` (npx); `mcp-server-time`, `mcp-server-fetch` (uvx);
+   - Open-Meteo (weather), Nominatim (place → coordinates), OSRM (routes);
+   - one local script.
 
-### Phase 5: Approval gates + auto-plan
-> **Revised by D17:**
-> - The plan *is* the flow map (Phase 3), so View 7's list is gone.
-> - The Planner's engine is hidden and is not picked in settings.
-> - "Run the app in test mode and trace its calls" belongs to this phase.
-> - The Planner fills the same Flow JSON and trace the Phase 3 fixture produces.
-> - Scheduled runs of a flow need conditional branches and gates in the executor (D11).
+   It also plants three things for the checks to find: one **fake** hard-coded key, one plain `http://` URL, and one deliberately broken MCP server. It runs for real when Ollama and the network are there, but no test needs either.
+2. **D21, the scanner contract, before any code:**
+   - what counts as a dependency;
+   - how dependencies are named and merged;
+   - the evidence format;
+   - the output JSON;
+   - how the output becomes the map (reusing the Flow JSON and versions from D17 where they fit).
+3. **`scan/`:**
+   - Python through the stdlib `ast`;
+   - JS/TS and Dart through patterns;
+   - dependency files (`pyproject.toml`, `requirements.txt`, `package.json`, `pubspec.yaml`);
+   - MCP configs (`.mcp.json`, `mcp.json`, `.vscode/mcp.json`, `claude_desktop_config.json`);
+   - URL hosts and env var names.
 
-Goal: the core flow in section 1. The user connects apps; FlowForge plans, the user reviews one list, confirms once, and the scheduler runs it. **Gates ship in the same phase as the Planner, because a plan can include side effects.** The LLM proposes; a human approves; nothing is applied automatically. Contract: D14 (write it before code, together with D11).
-
-1. **Gate step** (`type: "gate"`, D11, notes in section 8). Pauses a run until `POST /runs/{id}/steps/{step}/approve|reject`.
-   - Payments, code changes and every side-effecting step are **always** gated. No setting turns this off.
-   - Code decides whether a step is side-effecting, not the LLM:
-     - non-GET HTTP;
-     - payment connectors;
-     - MCP tools not annotated read-only;
-     - `local` steps;
-     - anything that writes code.
-2. **`describe()` on every connector** (if it didn't land in Phase 1): the capability summary the Planner reads.
-3. **Fact sheet**, built by plain code with no LLM:
-   - each connector's `describe()` output, including MCP tool schemas and HTTP OpenAPI/docs if given;
-   - for a linked repo: the file tree, dependency files, route and webhook handlers with `file:line`, and env var *names* (never values).
-
-   Everything passes through `redact` (6.4) before any prompt, and the fact sheet is hashed so the plan can cite which facts it used.
-4. **Planner call.** Any LLM connector, chosen in settings as the "Planner model". Temperature 0, cached like other LLM calls, and counted in "Money and time". The output is a typed plan: tasks with connector, tool or endpoint, params, `depends_on` and `evidence`. The exact contract is in D14.
-5. **Evidence rule.** Each task's `evidence` must name a tool, route or `file:line` that exists in the fact sheet. **A task whose evidence doesn't exist is dropped**, along with tasks that depend on it, and the plan review says what was dropped and why.
-6. **Plan → DAG → validation.** The plan compiles to ordinary workflow JSON and goes through:
-   - `schema.py`;
-   - `graph.py` (cycles);
-   - connector checks (unknown connector, type mismatch);
-   - MCP `check_call` (unknown tool, bad arguments);
-   - template references.
-
-   A failure triggers at most **2 automatic repair calls** that include the exact errors. After that the user sees the error, never a silent failure.
-7. **Plan review (View 7).** The "Here's what will happen" list from section 2, then one confirmation. A confirmed plan is saved as a **plan version**. Re-planning, or a changed fact sheet or connector set, creates version N+1, which needs confirming again. Older versions stay runnable for rollback.
-8. **Advanced path stays.** Hand-written workflow JSON, `POST /validate` and `POST /runs` keep working for developers and CI. A graph view may exist under Advanced only.
-9. **Data model additions:**
-   - `plans(id, project_id, goal, created_at)`;
-   - `plan_versions(plan_id, version, fact_sheet_hash, planner_connector, plan_json, workflow_json, dropped_json, created_by: planner|user, confirmed_at)`;
-   - open gates persisted per D11.
+   Every finding has a `file:line`. Vendored, build and ignored folders are skipped.
+4. **Entry points.** `flowforge scan <path>` prints JSON and can open the map. The dashboard gets a "Scan a folder" entry. The map draws the dependency map, and re-scan → diff → versions reuses D17.
 
 **Acceptance:**
-- With a stubbed LLM, a fact sheet with 3 real MCP tools plus a plan citing 1 invented tool yields a plan without the invented task, and that drop is shown in the review.
-- A plan that creates a cycle or names a missing connector or unknown tool is repaired at most twice, then rejected with the exact reason.
-- A plan with a payment step or a non-GET HTTP step always contains a gate before it, even if the LLM output didn't ask for one.
-- Confirming creates a version; re-planning creates N+1 and the old version still runs.
-- No test needs a network or a key.
-- The security tests (6.6) are extended: a fake key placed in a scanned repo fixture never appears in any planner prompt, and instructions planted in a tool description or repo file don't change the plan's gating.
+- Scanning `examples/trip-planner` finds every dependency planted in it with the right `file:line`, and nothing else.
+- Scanning `~/Documents/smart-travel-assistant` (Flutter) finds Supabase, the OpenStreetMap tiles, OSRM, Overpass and Wikimedia.
+- A test proves the scan makes no network call and no LLM call (D20).
+- The fake key's value appears in no stored row, API response or log.
+- All tests run offline. The scheduler and benchmarks are untouched.
 
-### Phase 6: Swap an app
-A swap is just an auto-planned workflow (Phase 5) with redaction. View 3, spec in section 8.
-- The user opens a slot (e.g. Payments) and fills the swap form. The Planner builds the migration plan from the form plus the repo fact sheet, and the user reviews and confirms it like any plan.
-- Code-writing tasks run redact → LLM → verify → scan → restore, on a new git branch, with tests, behind a gate. A swap never edits the live branch.
-- Slots: a connector belongs to a slot (`payments`, `reasoning`, …). A swap replaces the connector in a slot and leaves the project and other slots untouched.
-- **Coding connector (after swap, D17):** the same branch → tests → diff → gate machinery, aimed at "add this connector to my code" instead of "replace". It never merges by itself, and the Planner re-checks afterwards so the map reflects the new code.
+### Phase 5: Health checks and test results
+- **"Check now"** works for one dependency or for all of them.
+  - Every dependency gets the generic checks for its kind (D19); catalog apps get better recipes.
+  - The scheduler runs the checks concurrently under rate limits.
+  - "Test connection" for llm and http lands here.
+- **Runs becomes Checks:** the latest status per dependency, history, latency and errors. The dots on the map show health.
+- Results are stored over time. An optional timer comes at the end of the phase if Vishwa wants it (section 12).
 
-### Phase 7: Server + ROG workers (distributed)
-Control plane on the Debian home server, workers on the ASUS ROG over Tailscale. Redis queue, idempotent steps, retries, dead-letter. The plan is in `FlowForge_Server_Orchestrator_Plan.md`. **Do not start this before Phase 4 is done.** Redis is used only for live traffic between machines; SQLite → Postgres is the storage ladder for teams.
+**Acceptance:**
+- The trip planner's broken MCP server shows as down, with the reason.
+- A slow stub dependency shows its latency.
+- Tests use stub servers and no network.
 
-### Phase 8: Visual builder for non-developers (later, not now)
+### Phase 6: Security findings
+- **Hard-coded keys,** found with the §6.4 finders:
+  - known key patterns + entropy;
+  - the Python AST;
+  - JS/TS and Dart by pattern.
+- **Other findings:**
+  - `http://` APIs;
+  - risky MCP configs: broad filesystem roots, unpinned `npx`/`uvx` packages, secrets passed as plain `env`;
+  - later, and opt-in because it sends package names to osv.dev: SDK versions with known vulnerabilities.
+- **The Security page** lists findings per dependency, each with its fix. The map marks them.
+- **Golden tests** for the finders (§6.6).
+
+**Acceptance:** the planted fake key and `http://` URL are reported with `file:line`, and the key's value appears nowhere: DB bytes, API responses, logs, the DOM.
+
+### Phase 7: Launch
+- **Docs:** rewrite the README around the one-command demo, record a demo GIF, write a short "how it works".
+- **Install:** `uvx flowforge` / `pip install` (check the PyPI name first, section 12).
+- **Release:** CI green, first tagged release, merge into `main`.
+
+### Phase 8: Flow order (optional)
+The order of calls, drawn on top of the dependency map. It comes from tracing a test-mode run and/or from the optional LLM (D20: off by default, chosen by the user, masked findings only).
+
+### Phase 9: CLI agent + Tauri desktop app
+- A richer CLI.
+- The same React frontend in Tauri, with the Python backend as a sidecar.
+- Signing for macOS and Windows.
+
+### Phase 10 (V2): Coding agents add dependencies
+The user adds a dependency on the map. A local coding agent then writes the code:
+- Claude Code (`claude -p` or the Agent SDK; it needs no VS Code), Codex (`codex exec`), or Antigravity if it can run headless (section 12);
+- on the user's own subscription;
+- on a new branch or worktree.
+
+Safety, in order:
+1. Isolate keys first: the auto-fix moves hard-coded keys into `.env`.
+2. Deny the agent read access to `.env`.
+3. Mask what FlowForge passes to it.
+4. Run the tests.
+5. The user approves the diff (D11 gates). Nothing merges by itself.
+6. FlowForge re-scans afterwards.
+
+This phase carries the old specs: the vault and redact → verify → scan → restore (§6.2–6.4), and the swap and gate design (§8).
+
+### Later, maybe
+- Server + workers (`FlowForge_Server_Orchestrator_Plan.md`) for scheduled monitoring on a home server.
+- The visual builder for non-developers is dropped: FlowForge is not an app builder (D17, D19).
 
 ---
 
 ## 6. Security and privacy spec (binding for all phases)
 
+**What applies when (D19, D20):**
+- **V1 (Phases 4–7):** the finders in 6.4 step 1 (patterns, entropy, AST) power the scan's security findings. The storage, display and logging rules in 6.5 apply everywhere.
+- **V2 (Phase 10):** the vault (6.2–6.3) and the full redact → LLM → verify → scan → restore pipeline (6.4) are needed when a coding agent edits code.
+
 ### 6.1 The promise (say exactly this, never more)
-**API keys and other recognised secrets are never sent to an LLM, never written to logs, run history, cache, workflow JSON or the dashboard, and never committed to git.** The rest of the user's code and data still goes to whichever LLM they chose; for private code or customer data they should pick a local model (Ollama). Docs and UI must say "catches known key formats", never "catches everything".
+**API keys and other recognised secrets are never sent to an LLM, never written to logs, run history, cache, workflow JSON or the dashboard, and never committed to git.** This includes FlowForge's own optional LLM, and the scan sends nothing to any LLM (D20). Code or data the user sends to an LLM through their own app is outside FlowForge; for private code or customer data, a local model (Ollama) is the safe choice. Docs and UI must say "catches known key formats", never "catches everything".
 
 ### 6.2 Two doors, one vault
 There are exactly two ways a secret enters FlowForge, and both end in the same vault and the same placeholder format:
@@ -377,13 +410,13 @@ restore(text, mapping, vault, mode="env"|"literal", language=...) -> RestoreResu
 ```
 
 Pipeline for any step that sends code or text to an LLM:
-1. **Find**: (a) provider regexes (`sk_(live|test)_…`, `rzp_(live|test)_…`, `AIza…`, `nvapi-…`, `sk-ant-…`, JWT-shaped, PEM blocks) kept in `security/patterns.py`; (b) Shannon-entropy check on string literals assigned to names matching `key|secret|token|password|passwd|credential` (catches unknown formats); (c) **AST**: parse the file and inspect string literals and assignments/arguments, so a key buried in a function call, config object or f-string is found and its exact span replaced. Python files use the stdlib `ast`. JS/TS files use `tree-sitter` + `tree-sitter-javascript`/`-typescript` (add as an optional extra `flowforge[js]`; if unavailable, fall back to regex + entropy and **say so in the run event**).
+1. **Find**: (a) provider regexes (`sk_(live|test)_…`, `rzp_(live|test)_…`, `AIza…`, `nvapi-…`, `sk-ant-…`, JWT-shaped, PEM blocks) kept in `security/patterns.py`; (b) Shannon-entropy check on string literals assigned to names matching `key|secret|token|password|passwd|credential` (catches unknown formats); (c) **AST**: parse the file and inspect string literals and assignments/arguments, so a key buried in a function call, config object or f-string is found and its exact span replaced. Python files use the stdlib `ast`. JS/TS and Dart use patterns + entropy in V1 (section 12); V2 may add `tree-sitter` as an optional extra `flowforge[js]`, falling back to patterns + entropy and **saying so** when it isn't installed.
 2. **Redact**: replace each finding with a placeholder; value → vault.
 3. **LLM edits** (sees placeholders only).
 4. **Verify**: every placeholder returned exactly once; if the LLM dropped, duplicated, edited or invented one → **the run stops** with a `PlaceholderError` event. No auto-retry that could leak.
 5. **Scan** the LLM output with the same finders: any key-shaped string present means the LLM invented or recalled one → block the result.
 6. **Restore**. Default `mode="env"`: replace the placeholder with the language's env lookup (`process.env.STRIPE_SECRET_KEY`, `os.environ["STRIPE_SECRET_KEY"]`), write `STRIPE_SECRET_KEY=<value>` to the project's `.env`, and **ensure `.env` is in `.gitignore`** (add it, and fail loudly if the repo already tracks `.env`). `mode="literal"` puts the raw value in code; only allowed with an explicit `--allow-literal` and never when the target is inside a tracked git path. Literal restore is for local-only runs.
-7. Only after restore does anything touch disk, and only on a **new git branch**, with tests, behind an approval gate (Phase 5).
+7. Only after restore does anything touch disk, and only on a **new git branch**, with tests, behind an approval gate (V2, Phase 10).
 
 ### 6.5 Other guards and rules
 - **Placeholders everywhere:** a logging filter (`security/logfilter.py`) installed on the root logger and uvicorn loggers redacts anything matching a known secret pattern or any value currently in the vault. SSE events, run results, cache rows and `flowforge.db` store the redacted form only. Test: put a fake key in a step param, run, then grep the DB file bytes, the SSE stream and captured logs for it. Zero hits.
@@ -401,7 +434,7 @@ Pipeline for any step that sends code or text to an LLM:
   - A plan that adds a connector, widens access or turns on a side-effecting step is flagged in the plan review for explicit approval.
 - **Logo uploads:** accept PNG/JPEG/WebP only (no SVG in v1, avoids script injection), max 1 MB, verified by magic bytes not extension, re-encoded or stored as-is under `~/.flowforge/logos/<connector_id>.<ext>`, served with `Content-Type` fixed and `X-Content-Type-Options: nosniff`, always rendered with `<img>`, never inlined.
 - **Local command connector:** never `shell=True`, never string-interpolate params into a command, cwd restricted to a configured folder, env passed explicitly (do not inherit the whole environment).
-- **CORS / network:** bind to `127.0.0.1` by default. Dashboard origin only. No auth system in v1 (single local user); when binding to `0.0.0.0` (Phase 7) require a token in a header. Do not add multi-user accounts yet.
+- **CORS / network:** bind to `127.0.0.1` by default. Dashboard origin only. No auth system in v1 (single local user); when binding to `0.0.0.0` (server + workers, later) require a token in a header. Do not add multi-user accounts yet.
 
 ### 6.6 Security tests (required, written first)
 Use only obviously fake keys such as `sk_test_FAKEFAKE12345678`, `rzp_test_FAKE1234567`, `AIzaFAKEFAKEFAKEFAKEFAKE1234`. **Never put a real key in code, tests, fixtures, docs, commits or this file.**
@@ -444,7 +477,7 @@ Use only obviously fake keys such as `sk_test_FAKEFAKE12345678`, `rzp_test_FAKE1
 | `http` | `base_url`, `auth_header` (name only), `auth_scheme` | API key / token |
 | `local` | `command`, `cwd` | none |
 
-Three ways to connect, to show in the UI: **log in (OAuth)**, **paste once (API key into the vault)**, **local command**. OAuth is Phase 4+ stretch: ship paste-once and local first.
+Three ways to connect, to show in the UI: **log in (OAuth)**, **paste once (API key into the vault)**, **local command**. OAuth is V2 at the earliest: ship paste-once and local first.
 
 ### 7.2 Project, slot, board, widget
 - **Project**: a name + a set of connectors + workflows + boards (the "baby-care shop" example). Table `projects`.
@@ -459,7 +492,9 @@ Every step output has a `kind` hint chosen by the node, and the UI picks a viewe
 
 ---
 
-## 8. The swap flow (Phase 6 spec) and gate design (Phase 5)
+## 8. The swap flow and gate design (V2, Phase 10)
+
+> Written under the old roadmap (old phase numbers below). It still describes how V2's coding agents must work: a new branch, redaction, tests, a gate, and no merging by itself. The "Planner" and "plan review" parts are replaced by the user adding a dependency on the map (D19).
 
 User story: a shop runs on Razorpay and wants Stripe. They open the Payments slot, press **Swap**, fill a short form, and FlowForge produces a git branch with the migration plus tests, for review. It never touches the live branch and never merges by itself.
 
@@ -497,7 +532,7 @@ User story: a shop runs on Razorpay and wants Stripe. They open the Payments slo
 ### 9.3 Never
 - Never add paid services to the default path, or tests that need a network or a key.
 - Never log, print, commit or display a secret. Never write a real key anywhere.
-- Never claim the redaction "catches everything" or that "the LLM never sees your code".
+- Never claim the redaction "catches everything" or that "the LLM never sees your code". "The scan sends nothing to an LLM" is true and allowed (D20).
 - Never edit a user's live branch or merge for them. Never skip a gate on payments or code changes.
 - Never hand-draw a company logo or take one from anywhere but the CC0 `simple-icons` package (D15).
 - Never change `DAA`. Never rewrite history on `main`.
@@ -516,19 +551,22 @@ New directories you will create: `backend/flowforge/connectors/`, `backend/flowf
 
 ---
 
-## 11. First session script (what to do on day one of Phase 1)
+## 11. Start of every session
 
-1. Read this file, `DECISIONS.md`, `backend/flowforge/nodes/*.py`, `main.py`, `schema.py`, and `docs/design/system-map.html`.
-2. Enter plan mode. Propose: the `Connector` models, the `connector` field on `Step`, how `rate_limit_key` becomes per-connector without breaking `NIM_RPM`, and the D10 entry text.
-3. After approval: write D10, then tests for the provider-agnostic `LLMNode`, then the implementation. Then MCP discovery. Then the local command node. Then the registry. Then CI + CONTRIBUTING.
-4. Open the PR with: what changed, what is still NIM-only, and the commands you ran.
+1. Read this file, section 0 first, then the `DECISIONS.md` entries for the code you will touch. D19 and D20 apply to anything product-facing.
+2. Check `git status` and the branch. Never work on `DAA`.
+3. Each phase step starts in plan mode. Show Vishwa the plan, and write any new D-number before the code.
+4. At the end: run the section 9.2 checks, update section 0, and report what ran and what didn't.
 
 ---
 
 ## 12. Open questions: ask Vishwa, do not decide alone
 
-1. **Frontend stack (next free D-number; D10 is connectors).** Default proposal: Vite + React + TypeScript, plain CSS with the design tokens, `frontend/dist` served by FastAPI, old `index.html` kept until parity. Alternative: stay buildless (htmx/Alpine). Confirm before scaffolding in Phase 2. Make sure `uv run uvicorn` still works for backend-only contributors.
-2. **Package and CLI name.** Keep `flowforge`? (A `flowforge` command is proposed in Phase 2; check for PyPI name clashes before publishing.)
-3. **JS/TS key detection depth.** Is `tree-sitter` as an optional extra acceptable, or should v1 ship regex + entropy only for JS/TS and use AST only for Python?
-4. **OAuth connectors.** Ship in Phase 4, or defer until after the first public release? (Default: defer; paste-once + local first.)
-5. **Where the design HTML lives.** Confirm the three artifacts get committed to `docs/design/`.
+Settled: the frontend stack (D15); where the design HTML lives (`docs/design/`); JS/TS key detection depth for V1 (the Python AST; JS/TS and Dart by patterns + entropy; `tree-sitter` is revisited in V2); OAuth (not needed in V1, revisit in V2).
+
+1. **Package and CLI name.** Keep `flowforge`? Check for PyPI name clashes before Phase 7.
+2. **Check timer (Phase 5).** Whether checks also run on a timer, and how often by default.
+3. **Authenticated checks (Phase 5).** Should a health check ever call an endpoint that needs the user's key from `.env`, or only check reachability without one?
+4. **GitHub URLs.** When the "scan a GitHub URL" input lands (Phase 4 or after).
+5. **Antigravity (Phase 10).** Can it run headless, without its window? Check before relying on it.
+6. **Dashboard housekeeping.** Code-split the bundle (709 kB; Vite warns over 500 kB)? Delete `frontend/classic.html`?

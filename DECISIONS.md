@@ -1,6 +1,6 @@
 # FlowForge — Design Decisions
 
-Every design decision, with the choice, the reason, and where it lives in the code. D1–D9 were made for V1 ([FlowForge_V1_Plan.md](FlowForge_V1_Plan.md)) and still hold on `main`. D10–D18 cover the product (connectors, approval gates, MCP, local commands, planning, the frontend, run history and redaction, the flow map); new decisions take the next free number and are written before the code. A decision is never edited to mean something new: it is superseded by a later entry that says so.
+Every design decision, with the choice, the reason, and where it lives in the code. D1–D9 were made for V1 ([FlowForge_V1_Plan.md](FlowForge_V1_Plan.md)) and still hold on `main`. D10–D18 cover the product (connectors, approval gates, MCP, local commands, planning, the frontend, run history and redaction, the flow map). D19–D20 set the current direction: repo → dependency map → health, security and tests, with a scan that sends nothing to an LLM; new decisions take the next free number and are written before the code. A decision is never edited to mean something new: it is superseded by a later entry that says so.
 
 **Hard constraint: zero cost by default.** No paid API or service in the default install, the tests or CI. The default LLM provider is NVIDIA NIM's free tier (see D8).
 
@@ -417,6 +417,84 @@ D10–D16 were written before the renumbering, so their phase numbers are the ol
 **Why:** a pannable, draggable canvas with a minimap and keyboard support is a lot to build by hand. React Flow is the standard MIT library for it, and dagre handles left-to-right layered layouts at this size.
 
 **Code:** `frontend/package.json`, `frontend/src/styles/tokens.css`, `frontend/src/flowmap/`.
+
+## D19. Product direction: repo → dependency map → health, security and tests (2026-10-20)
+
+**Supersedes:**
+- the pitch "the scheduler layer for agent workflows" (CLAUDE.md §1 before 2026-10-20, and the README);
+- D14's core flow (connect apps → the Planner proposes a plan → confirm → the scheduler runs it). D14's evidence rule and untrusted-input rules carry over to the scan;
+- D17's V1 source of the map ("the Planner reads the repo and runs the app in test mode"). D17's map UI, overrides, re-check diff and versions stay;
+- D17's roadmap numbering. The new roadmap is in CLAUDE.md §5.
+
+**Choice:**
+- **What FlowForge is.** The user points it at a repo. It finds every dependency the code uses and draws them as a map. It checks each one's health and security on demand, runs tests against them and shows the results.
+  - A **dependency** is an LLM, an MCP server, an HTTP API or a local command the code calls.
+  - Libraries that are not services (for example `intl`) are not dependencies here.
+- **Input.** A local folder first: `flowforge scan <path>`, or the dashboard. A public GitHub URL comes later; it is cloned into `FLOWFORGE_HOME` and then scanned the same way.
+- **The map.**
+  - V1 draws the dependency map: the repo and the dependencies it uses, each with `file:line` evidence.
+  - The order of calls is added later, from tracing or from the optional LLM (D20).
+  - The existing canvas, saved positions, overrides and re-scan → diff → versions (D17) are reused. Overrides let the user add, correct or hide a dependency.
+- **Detection doesn't depend on the catalog.** Any URL host, SDK import, MCP config entry or env var name is detected.
+  - The catalog adds only a logo and a better health check for apps it knows.
+  - An unknown dependency gets the generic checks for its kind.
+- **Health checks** run on demand ("Check now"); an optional timer comes later. Generic checks per kind:
+  - MCP: it starts, it lists its tools, how fast;
+  - HTTP API: reachable, latency, https, certificate expiry;
+  - LLM: reachable, model present;
+  - local: the program and its folder exist.
+
+  Results are stored per dependency over time. The scheduler runs the checks concurrently under each dependency's rate limit; it is now an internal engine, not the pitch.
+- **Security findings:**
+  - hard-coded keys, found with the CLAUDE.md §6.4 finders;
+  - plain `http://` APIs;
+  - risky MCP configs, such as broad filesystem access or unpinned `npx` packages;
+  - later, SDK versions with known vulnerabilities.
+
+  A finding names the file, the line and the kind of key. The key's value is never stored, shown or sent anywhere.
+- **Pages:** Map (home), Dependencies (the catalog), Checks (replaces Runs: health and test results), Security (findings). Approvals is hidden until V2.
+- **V2 (later).** The user adds a dependency on the map. A local coding agent then writes the code on a new branch: Claude Code, Codex or Antigravity, whichever is installed, on the user's own subscription.
+  - Keys are moved out of the code first; the "key isolation" auto-fix, which moves a hard-coded key into `.env`, is part of V2.
+  - Tests run, and nothing merges without the user's approval.
+  - D11 gates, the vault and redact → verify → scan → restore (CLAUDE.md §6.2–6.4) belong to V2.
+- **Kept unchanged:**
+  - the scheduler, its five policies, caches and benchmarks (D1–D9);
+  - connectors (D10, D12, D13);
+  - stored runs and redaction (D16);
+  - the frontend stack (D15, D18).
+
+  Workflow JSON and `POST /runs` stay as the Advanced path.
+
+**Why:** this is Vishwa's statement of the product (2026-10-20). Developers shipping apps that use LLMs and MCP servers can't see at a glance what their app depends on, whether those services are up, or where the keys sit. Existing tools each cover a piece:
+- package scanners look at libraries;
+- LLM tracing needs code changes in the app;
+- service maps are enterprise products that need instrumentation.
+
+None offers a free, local repo → map → checks loop that needs no change to the app.
+
+**Code:** `scan/` (new, Phase 4), `flowmap/`, `api/`, `frontend/src/`.
+
+## D20. The scan uses no LLM; FlowForge's own LLM is optional and sees only masked findings (2026-10-20)
+
+**Supersedes:**
+- D17's "the engine is hidden … the user cannot pick it";
+- D14's Planner call as a default step.
+
+**Choice:**
+- **The scan is plain code.** It finds dependencies, evidence and security findings with parsers and patterns only.
+  - It sends no file, snippet, key or env value from the scanned repo to any LLM or other network service.
+  - Health checks call the dependencies themselves, because that is their job. They send no repo content.
+- **FlowForge's own LLM is optional, off by default, and the user's choice.**
+  - It may later do what plain code can't, such as inferring the order of calls.
+  - When it is on, the UI names the model and the user picks it. A local model (Ollama) is suggested first.
+  - It receives only the scan's findings, passed through the redactor: dependency names and kinds, `file:line`, and env var *names*. It never receives file contents.
+  - With it off, the map, checks and security findings all still work; only those extras are lost.
+- **Keys.** The CLAUDE.md §6.1 promise holds for every LLM, FlowForge's own included.
+- **Tests.** A fixture repo with fake keys is scanned with the network blocked. The test asserts that no outgoing call is made, and that no stored row, API response or log contains a fake key.
+
+**Why:** the user's code and keys are private, and an LLMOps tool that leaked them to its own model would defeat its purpose. Doing the scan in plain code also makes it free, fast, repeatable and backed by evidence.
+
+**Code:** `scan/`, `security/`.
 
 ---
 

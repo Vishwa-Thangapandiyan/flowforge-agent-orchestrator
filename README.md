@@ -28,10 +28,19 @@ git clone https://github.com/Vishwa-Thangapandiyan/flowforge-agent-orchestrator.
 cd flowforge-agent-orchestrator
 uv sync                                   # Python ≥ 3.12 and dependencies, into .venv
 cd frontend && npm ci && npm run build && cd ..
-uv run flowforge --example                # opens http://127.0.0.1:8000: an example app's flow map, no keys needed
+uv run flowforge --example                # opens http://127.0.0.1:8000: a sample app's maps, no keys needed
 ```
 
 `uv run flowforge` (without `--example`) runs on your own data. Example data lives in its own database, so the two never mix.
+
+### Map your own repo
+
+```bash
+uv run flowforge scan path/to/your/repo     # what it depends on, as JSON: nothing stored, nothing sent
+uv run flowforge --repo path/to/your/repo   # opens its dependency map; add --replace to switch folders
+```
+
+The scan is plain code: it reads your files, never runs them, and sends nothing to anyone, AI included. Every dependency (LLM, MCP server, HTTP API, local command) comes with the `file:line` that shows it, and code excerpts are stored with known key formats masked.
 
 ### On Windows (PowerShell)
 

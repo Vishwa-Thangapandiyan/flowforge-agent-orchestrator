@@ -1,6 +1,6 @@
 # FlowForge — Design Decisions
 
-Every design decision, with the choice, the reason, and where it lives in the code. D1–D9 were made for V1 ([FlowForge_V1_Plan.md](FlowForge_V1_Plan.md)) and still hold on `main`. D10–D18 cover the product (connectors, approval gates, MCP, local commands, planning, the frontend, run history and redaction, the flow map). D19–D20 set the current direction: repo → dependency map → health, security and tests, with a scan that sends nothing to an LLM. D21 is the scanner contract; new decisions take the next free number and are written before the code. A decision is never edited to mean something new: it is superseded by a later entry that says so.
+Every design decision, with the choice, the reason, and where it lives in the code. D1–D9 were made for V1 ([FlowForge_V1_Plan.md](FlowForge_V1_Plan.md)) and still hold on `main`. D10–D18 cover the product (connectors, approval gates, MCP, local commands, planning, the frontend, run history and redaction, the flow map). D19–D20 set the current direction: repo → dependency map → health, security and tests, with a scan that sends nothing to an LLM. D21 is the scanner contract and D22 the rules learned from the first real scans; new decisions take the next free number and are written before the code. A decision is never edited to mean something new: it is superseded by a later entry that says so.
 
 **Hard constraint: zero cost by default.** No paid API or service in the default install, the tests or CI. The default LLM provider is NVIDIA NIM's free tier (see D8).
 
@@ -616,14 +616,42 @@ The scanner keeps only a URL's scheme, host and path. Query strings are dropped,
 - The confirmed/unconfirmed split lets the scan stay generous without presenting a link in a README-like string as a service.
 - Separating coding-tool MCP servers stops a developer's own agent setup from being mistaken for the app's architecture.
 
-**Amended 2026-10-20, before any of D21 shipped.** Scanning a real Flutter repo (`smart-travel-assistant`) showed five gaps, fixed here openly rather than by rewording the rules above:
-- **Merging (replaces "hosts of the same site stay separate").** Hosts of one known service merge into one entry, `api-<service id>`: Wikimedia's `thumb.`, `commons.` and `upload.` hosts are one Wikimedia. Unknown hosts stay one entry each.
-- **Hidden folders are tooling, not the app.** In `.claude`, `.cursor`, `.github` and other dot-folders, only MCP config files are read. The real repo carried a 107-file Claude Code skill that otherwise showed up as fake dependencies.
-- **A `www.` page stays unconfirmed even when the code opens it** (`launchUrl(Uri.parse(...))`), unless it looks like an API or is a known service. It's a link, not a call.
-- **At most 10 evidence entries per dependency, plus a `places` count of all of them.** A fake-data file had produced 764.
-- **Targets stop before template parts** (`/driving/$path`, `/{z}/{x}/{y}.png`), so a check gets an address it can actually call.
-
 **Code:** `scan/` (new), `flowmap/models.py` (`Flow.kind`, `Analysis.scan`), `flowmap/validate.py`, `flowmap/planner.py` (`ScanPlanner`), `connectors/presets.py` (SDK → service table), `cli.py`, `api/flowmap.py`.
+
+## D22. Scanner rules learned from the first real scans (Phase 4)
+
+**Supersedes, in D21:**
+- "Hosts of the same site stay separate entries, and the map groups them by site";
+- the `skipped` keys in D21's example output.
+
+Everything else in D21 holds. These rules came from scanning a real Flutter repo (`smart-travel-assistant`) and from the Phase 4 review, before any of D21 shipped.
+
+**Choice:**
+- **Merging.** Hosts of one known service merge into one entry, `api-<service id>`. For example, Wikimedia's `thumb.`, `commons.` and `upload.` hosts are one Wikimedia. Unknown hosts stay one entry each.
+- **Hidden folders are tooling, not the app.** In `.claude`, `.cursor`, `.github` and other dot-folders, only MCP config files are read. (The real repo carried a 107-file Claude Code skill that otherwise showed up as fake dependencies.)
+- **A `www.` page stays unconfirmed even when the code opens it** (`launchUrl(Uri.parse(...))`), unless it looks like an API or is a known service. It's a link, not a call.
+- **Evidence.**
+  - At most 10 entries per dependency, plus `places`, a count of all of them.
+  - Each place's label says what it shows: "calls it" only for a recognised call, otherwise "uses the address".
+- **Targets stop before template parts** (`/driving/$path`, `/{z}/{x}/{y}.png`), so a check gets an address it can call.
+- **What the excerpts mask.** Before storage they go through `security.logfilter.redact_code`, which masks:
+  - known key shapes;
+  - URL credentials (`user:pass@`) and query strings;
+  - string values given to names containing key, token, secret, password or credential.
+
+  It's pattern-based: it catches known key formats and these shapes, not everything.
+- **`via`** is recorded only when a host is reached *only* through one MCP server.
+- **MCP scope.** If code names one server of a config, the whole config is the app's. A server name counts only when code that imports `mcp` passes it to a call, so a common word like "time" elsewhere doesn't make a config the app's.
+- **Router SDKs.** LiteLLM is resolved per model name by prefix (`anthropic/…` → Claude). The prefixes live in `presets.MODEL_PREFIXES`.
+- **Skipped files are counted by reason:** `ignored` (tests, docs, tool folders), `binary`, `too_big`, `outside` (a symlink leaving the folder), `unparsable`. Vendored and build folders are pruned and not counted. Configs count as `json` in `languages`.
+- **Choosing the folder.**
+  - One repo per database, kept in the `settings` table.
+  - `POST /scan` and `flowforge --repo PATH` follow the same rule: the same folder keeps its map; a different folder starts a fresh map only with `replace: true` / `--replace`. Without it, the API answers 409 and the server refuses to start.
+  - A chosen folder with no map yet is drawn at start-up.
+
+**Why:** a scanner is only useful if its map can be trusted on real repos. Each rule here removes a false dependency, a false confirmation or a possible leak that a real repo or the review actually showed.
+
+**Code:** `scan/`, `security/logfilter.py` (`redact_code`, `SECRET_WORDS`), `connectors/presets.py` (`SERVICES`, `ROUTER_SDKS`, `MODEL_PREFIXES`), `api/scan.py` (`choose_repo`, `startup_repo`), `storage.py` (`FlowStore`, `settings`), `flowmap/service.py` (`map_folder`), `cli.py`.
 
 ---
 

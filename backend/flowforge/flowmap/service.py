@@ -166,7 +166,8 @@ class FlowService:
                 for cid, c in connectors.items() if cid in used}
         pending = self.store.latest_flow_version("pending")
         return {
-            "available": True, "version": row["version"], "created_at": row["created_at"], "layer": layer,
+            "available": True, "kind": flow.kind, "version": row["version"], "created_at": row["created_at"],
+            "layer": layer,
             "fact_sheet_hash": row["fact_sheet_hash"], "nodes": nodes, "edges": edges, "hidden": hidden,
             "critical_path": {"path": cp.path, "length_ms": cp.length_ms, "bottleneck": cp.bottleneck},
             "positions": positions, "apps": apps,

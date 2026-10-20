@@ -23,6 +23,7 @@ from flowforge import state as app_state_module
 from flowforge.api import connectors as connectors_api
 from flowforge.api import flowmap as flowmap_api
 from flowforge.api import runs as runs_api
+from flowforge.api import scan as scan_api
 from flowforge.api import stats as stats_api
 from flowforge.connectors.models import Connector
 from flowforge.connectors.registry import Registry, check_references, load_connectors_file
@@ -38,8 +39,6 @@ load_dotenv()
 
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOWS_DIR = ROOT / "backend" / "workflows"
-EXAMPLE_REPO = ROOT / "examples" / "trip-planner"   # example mode's dependency map: scanned live (D21)
-REPO_SETTING = "repo_path"
 MCP_CHECK_TIMEOUT_S = runs_api.MCP_CHECK_TIMEOUT_S
 
 
@@ -76,7 +75,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     def connected() -> dict[str, Connector]:
         return {c.id: c for c in registry.all()}
 
-    repo = EXAMPLE_REPO if example else storage.setting(REPO_SETTING)
+    repo = scan_api.startup_repo(storage, example)
     s.flows = {"deps": FlowService(storage.flows("deps"), connected, ScanPlanner(repo) if repo else None),
                "flow": FlowService(storage.flows("flow"), connected, FixturePlanner() if example else None)}
     if example:  # offline nodes and a seeded history, never mixed with real data (D16)
@@ -103,6 +102,7 @@ app.include_router(runs_api.router)
 app.include_router(connectors_api.router)
 app.include_router(stats_api.router)
 app.include_router(flowmap_api.router)
+app.include_router(scan_api.router)
 
 
 @app.get("/workflows")

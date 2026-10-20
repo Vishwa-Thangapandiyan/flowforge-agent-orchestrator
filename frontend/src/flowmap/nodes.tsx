@@ -1,5 +1,6 @@
 // The map's blocks (D17): app calls and code (cards), start/end (pills), decisions (diamonds),
-// run-together / wait-for-all (bars) and gates. Drawn from the design tokens.
+// run-together / wait-for-all (bars) and gates. On a dependency map (D21) the cards are dependencies and the
+// pills are your app and your coding tools. Drawn from the design tokens.
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import type { ReactNode } from "react";
 import type { ConnectorType, FlowNode } from "../api/types";
@@ -17,6 +18,8 @@ export interface TileSource {
 export interface BlockData extends Record<string, unknown> {
   node: FlowNode;
   tile: TileSource | null;
+  /** on a dependency map (D21) */
+  deps?: boolean;
   state: NodeState;
   cap: string;
   search: "hit" | "miss" | null;
@@ -160,6 +163,7 @@ export function BarNode({ data, selected }: NodeProps<BlockNode>) {
 export function subOf(d: BlockData): string {
   const n = d.node;
   const op = n.op ?? {};
+  if (d.deps) return depSub(n);
   if (n.kind === "gate") return n.added_by === "policy" ? "added by code · always" : "you approve · always";
   if (n.kind === "start") return d.tile ? `${d.tile.name} webhook` : "start";
   if (n.kind === "end") return "end";
@@ -169,6 +173,18 @@ export function subOf(d: BlockData): string {
   if (n.kind === "mcp") return [d.tile?.name, op.tool].filter(Boolean).join(" · ");
   if (n.kind === "api") return [op.method, op.path].filter(Boolean).join(" ") || d.tile?.name || "API";
   return d.tile?.name ?? "";
+}
+
+/** host and path, without the scheme: "nominatim.openstreetmap.org/search" */
+function shortTarget(what: string): string {
+  return what.replace(/^https?:\/\//, "").replace(/\/$/, "");
+}
+
+function depSub(n: FlowNode): string {
+  if (n.kind === "start") return n.id === "tools" ? "coding tools" : "your app";
+  if (n.kind === "llm") return [n.op?.model, shortTarget(n.what)].filter(Boolean).join(" · ") || "LLM";
+  if (n.added_by === "user") return "added by you";
+  return shortTarget(n.what);
 }
 
 export const nodeTypes = { card: CardNode, pill: PillNode, decision: DecisionNode, bar: BarNode };

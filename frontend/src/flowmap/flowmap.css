@@ -268,3 +268,8 @@
   .fm-hud { bottom: 72px; }
   .sp { position: absolute; left: 0; right: 0; bottom: 0; width: auto; max-height: 66%; border-left: 0; border-top: 1px solid var(--line); border-radius: 18px 18px 0 0; box-shadow: var(--shadow-3); }
 }
+
+/* "Scan a folder": the empty state's one action on your own machine (D21) */
+.scan-form { display: flex; flex-direction: column; gap: 12px; width: min(100%, 520px); }
+.scan-form .btn { align-self: flex-start; }
+.scan-form small { color: var(--muted); font-size: 13px; }

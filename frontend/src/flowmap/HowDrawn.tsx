@@ -1,17 +1,20 @@
-// How the Planner drew the map (D17, docs/design/flow-map-artboards/Planner): its stages, a short log, the
-// files it read, the calls it traced, and what it dropped. The engine behind the Planner is never named.
+// How the map was drawn. The flow map (D17, docs/design/flow-map-artboards/Planner): the Planner's stages, a
+// short log, the files it read, the calls it traced and what it dropped; its engine is never named. The
+// dependency map (D21): what the scan read and found, said plainly, because nothing ran and no AI saw it.
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useApi } from "../api/client";
-import type { Analysis, Connector, FlowResponse } from "../api/types";
+import type { Analysis, Connector, FlowNode, FlowResponse } from "../api/types";
 import { BrandTile } from "../brand/BrandTile";
 import { Icons } from "../components/icons";
 import { CardSkeleton, EmptyState, ErrorBox, prefersReducedMotion } from "../components/ui";
+import { mapQuery, useMapId } from "./FlowMapPage";
 import "./how.css";
 
 export function HowDrawn() {
-  const analysis = useApi<Analysis>("/flow/analysis");
-  const flow = useApi<FlowResponse>("/flow?layer=planner");
+  const map = useMapId();
+  const analysis = useApi<Analysis>(`/flow/analysis${mapQuery(map)}`);
+  const flow = useApi<FlowResponse>(`/flow?layer=planner${mapQuery(map, "&")}`);
   const connectors = useApi<Connector[]>("/connectors");
   const [t, setT] = useState(0);
   const [round, setRound] = useState(0);
@@ -33,11 +36,12 @@ export function HowDrawn() {
 
   if (analysis.error) {
     return analysis.error.message.includes("hasn't drawn")
-      ? <EmptyState tone="violet" icon={Icons.spark(28)} title="No map yet">The Planner maps your repo from Phase 5. Try <code>flowforge --example</code>.</EmptyState>
+      ? <EmptyState tone="violet" icon={Icons.spark(28)} title="No map yet">Scan a folder from the map page, or try <code>flowforge --example</code>.</EmptyState>
       : <ErrorBox error={analysis.error} what="how the map was drawn" />;
   }
   if (!analysis.data) return <CardSkeleton lines={8} />;
   const a = analysis.data;
+  if (flow.data?.available && flow.data.kind === "dependencies") return <ScanHow a={a} nodes={flow.data.nodes} />;
 
   let acc = 0;
   let current = a.stages.length - 1;
@@ -64,7 +68,7 @@ export function HowDrawn() {
         <div className="actions">
           <button className="btn" type="button" onClick={() => { setT(0); setRound((r) => r + 1); }}>{Icons.refresh(18)} Replay</button>
           <button className="btn" type="button" onClick={() => setT(total + 1)}>Skip to the end</button>
-          <Link className="btn primary" to="/">Open the map</Link>
+          <Link className="btn primary" to={`/${mapQuery(map)}`}>Open the map</Link>
         </div>
       </header>
 
@@ -116,7 +120,7 @@ export function HowDrawn() {
               )}
             </div>
           )}
-          {ready && <div className="how-ready" role="status"><b>Map v{a.version} is ready</b><Link className="btn primary" to="/">Open the map</Link></div>}
+          {ready && <div className="how-ready" role="status"><b>Map v{a.version} is ready</b><Link className="btn primary" to={`/${mapQuery(map)}`}>Open the map</Link></div>}
         </section>
 
         <aside className="how-side">
@@ -141,6 +145,64 @@ export function HowDrawn() {
               {log.map(([at, kind, text]) => <div key={at} className={kind}><b>{kind}</b><span>{text}</span></div>)}
             </div>
             <p className="how-priv">{Icons.shield(16)} The Planner sees names, never values. Only apps your code calls go on the map, and gates are added by code.</p>
+          </section>
+        </aside>
+      </div>
+    </>
+  );
+}
+
+const KIND_NAME: Record<string, string> = { llm: "LLMs", api: "APIs", mcp: "MCP servers", local: "Local commands" };
+
+/** A dependency map (D21): what plain code read and found. No animation of steps that never happened. */
+function ScanHow({ a, nodes }: { a: Analysis; nodes: FlowNode[] }) {
+  const deps = nodes.filter((n) => n.kind !== "start");
+  const kinds = Object.keys(KIND_NAME).filter((k) => deps.some((n) => n.kind === k));
+  return (
+    <>
+      <header className="page-head">
+        <div className="titles">
+          <span className="eyebrow">Map v{a.version} · {a.fact_sheet_hash}</span>
+          <h1>How your app was mapped</h1>
+          <p className="lede">Plain code read your files. Nothing ran, nothing was sent, and no AI saw them.</p>
+        </div>
+        <div className="actions"><Link className="btn primary" to="/">Open the map</Link></div>
+      </header>
+      <div className="how">
+        <section className="how-stage card raised" aria-label="What the scan found">
+          <div className="how-draft">
+            {kinds.map((k) => (
+              <div key={k}>
+                <span className="eyebrow">{KIND_NAME[k]}</span>
+                <div className="how-chips">
+                  {deps.filter((n) => n.kind === k).map((n) => (
+                    <span key={n.id} className={`how-chip k-${n.kind}${n.status === "unconfirmed" ? " unc" : ""}`}>{n.title}</span>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <ul className="how-checks" aria-label="Checks">
+              <li className="ok"><i>✓</i>Every dependency points to the lines that show it</li>
+              {deps.filter((n) => n.status === "unconfirmed").map((n) => (
+                <li key={n.id} className="unc"><i>?</i>“{n.title}” is mentioned, but no call to it was found</li>
+              ))}
+              <li className="ok"><i>✓</i>Keys in the code were masked before anything was saved</li>
+            </ul>
+          </div>
+        </section>
+        <aside className="how-side">
+          <section className="card">
+            <span className="eyebrow">Steps</span>
+            <ol className="how-steps">
+              {a.stages.map((st) => (
+                <li key={st.title} className="done"><span className="d">{Icons.check(14)}</span><span><b>{st.title}</b><small>{st.done}</small></span></li>
+              ))}
+            </ol>
+          </section>
+          <section className="card">
+            <span className="eyebrow">Files with evidence</span>
+            <div className="how-files">{a.files.map((f) => <span key={f} className="how-file lit">{Icons.file(14)}{f}</span>)}</div>
+            <p className="how-priv">{Icons.shield(16)} Read on this machine only. Env var names are kept, never their values.</p>
           </section>
         </aside>
       </div>

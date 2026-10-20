@@ -202,6 +202,8 @@ export interface FlowNode {
   added_by: "planner" | "policy" | "user";
   side_effect: boolean;
   evidence: Evidence[];
+  /** dependency maps: a known service's id, for its tile (D21) */
+  catalog?: string | null;
   // added by GET /flow
   yours: { id: number; op: string }[];
   on_critical_path: boolean;
@@ -222,8 +224,12 @@ export interface FlowEdge {
   on_critical_path?: boolean;
 }
 
+/** `flow`: the order the app runs in (D17). `dependencies`: what the app uses, from a scan (D21). */
+export type MapKind = "flow" | "dependencies";
+
 export interface FlowView {
   available: true;
+  kind?: MapKind;
   version: number;
   created_at: string;
   layer: "mine" | "planner";

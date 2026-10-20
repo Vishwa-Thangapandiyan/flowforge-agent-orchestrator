@@ -42,7 +42,7 @@ export const EDGES: FlowEdge[] = [
 ];
 
 export const FLOW: FlowView = {
-  available: true, version: 1, created_at: "2026-10-09T10:00:00Z", layer: "mine", fact_sheet_hash: "sha256:abc",
+  available: true, kind: "flow", version: 1, created_at: "2026-10-09T10:00:00Z", layer: "mine", fact_sheet_hash: "sha256:abc",
   nodes: NODES, edges: EDGES, hidden: [],
   critical_path: { path: ["start", "fetch", "risky", "score", "gate_send", "send", "end"], length_ms: 2700, bottleneck: "score" },
   positions: {}, counts: { steps: NODES.length, unconfirmed: 1, gates: 1, edits: 0 }, pending: null,
@@ -88,4 +88,23 @@ export const PENDING: PendingVersion = {
   default_take: { c1: true, c2: "mine", c3: true },
   nodes: [...NODES.filter((n) => n.id !== "sms"), node("r_start", "start", "Refund received", { connector: "razorpay" })],
   edges: EDGES.filter((e) => e.target !== "sms"),
+};
+
+// A dependency map from a scan (D21): the app, an LLM, two APIs (one reached through an MCP server), a coding-tool server.
+export const DEPS: FlowView = {
+  available: true, kind: "dependencies", version: 1, created_at: "2026-10-21T10:00:00Z", layer: "mine", fact_sheet_hash: "sha256:dep",
+  nodes: [
+    node("app", "start", "trip-planner", { evidence: [{ type: "code", ref: null, text: "11 files read.", first_line: null, lines: [], highlight: null }] }),
+    node("tools", "start", "Your coding tools"),
+    node("llm-ollama", "llm", "Ollama", { catalog: "ollama", op: { model: "llama3.1:8b" }, what: "localhost:11434" }),
+    node("api-nominatim", "api", "Nominatim", { catalog: "nominatim", what: "https://nominatim.openstreetmap.org/search" }),
+    node("mcp-fetch", "mcp", "fetch", { what: "uvx mcp-server-fetch" }),
+    node("api-wikipedia", "api", "Wikipedia", { catalog: "wikipedia", what: "https://en.wikipedia.org/wiki/" }),
+    node("api-www-mysite-test", "api", "www.mysite.test", { status: "unconfirmed", what: "https://www.mysite.test/about" }),
+    node("mcp-github", "mcp", "github", { what: "npx github-mcp" }),
+  ],
+  edges: [edge("app", "llm-ollama"), edge("app", "api-nominatim"), edge("app", "mcp-fetch"), edge("mcp-fetch", "api-wikipedia"),
+    edge("app", "api-www-mysite-test", "unconfirmed"), edge("tools", "mcp-github")],
+  hidden: [], critical_path: { path: [], length_ms: 0, bottleneck: null }, positions: {}, apps: {},
+  counts: { steps: 8, unconfirmed: 1, gates: 0, edits: 0 }, pending: null,
 };

@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, expect, test, vi } from "vitest";
 import { META, mockApi, renderAt } from "../test/api";
 import { CONNECTORS } from "../test/fixtures";
-import { FLOW, TRACE } from "../test/flowFixture";
+import { DEPS, FLOW, TRACE } from "../test/flowFixture";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -39,7 +39,7 @@ test("the layer switch asks for the Planner's own version", async () => {
   renderAt("/");
   await screen.findByText("Fetch order", { selector: ".ff-title" });
   await userEvent.click(screen.getByRole("button", { name: "Planner's map" }));
-  await vi.waitFor(() => expect(calls.some((c) => c.url === "/flow?layer=planner")).toBe(true));
+  await vi.waitFor(() => expect(calls.some((c) => c.url.startsWith("/flow?layer=planner"))).toBe(true));
 });
 
 test("Test run starts the replay", async () => {
@@ -51,9 +51,40 @@ test("Test run starts the replay", async () => {
   expect(within(hud).getByText(/Test order #17/)).toBeInTheDocument();
 });
 
-test("without a Planner the map explains when it arrives", async () => {
-  mockApi({ "/meta": { ...META, example: false }, "/flow": { available: false, message: "The Planner maps your repo from Phase 5." }, "/connectors": [] });
+test("a dependency map shows what the app uses, without a test run or critical path", async () => {
+  mockApi({ "/meta": META, "/flow": DEPS, "/connectors": CONNECTORS });
+  renderAt("/");
+  expect(await screen.findByText("Nominatim", { selector: ".ff-title" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("trip-planner");   // the scanned folder
+  const banner = screen.getByRole("banner");
+  expect(within(banner).getByText("6 dependencies")).toBeInTheDocument();
+  expect(within(banner).queryByText(/gates/)).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: /Scanned from your code/ })).toHaveAttribute("href", "/map/how");
+  expect(screen.queryByRole("button", { name: /Test run/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /Critical path/ })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /Add dependency/ })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /Re-scan the repo/ })).toBeInTheDocument();
+  expect(screen.getByText("Your coding tools", { selector: ".ff-title" })).toBeInTheDocument();
+});
+
+test("in example mode the switch shows the flow map", async () => {
+  const calls = mockApi({ "/meta": META, "/flow": DEPS, "/connectors": CONNECTORS });
+  renderAt("/");
+  await screen.findByText("Nominatim", { selector: ".ff-title" });
+  await userEvent.click(screen.getByRole("button", { name: "Flow" }));
+  await vi.waitFor(() => expect(calls.some((c) => c.url.includes("map=flow"))).toBe(true));
+});
+
+test("without a map, you scan a folder", async () => {
+  let scanned: unknown = null;
+  mockApi({
+    "/meta": { ...META, example: false }, "/connectors": [],
+    "/flow": { available: false, message: "No map yet. Scan a folder to draw what your app depends on." },
+    "/scan": (init?: RequestInit) => { scanned = JSON.parse(String(init?.body)); return { repo: "/home/me/shop", name: "shop", version: 1 }; },
+  });
   renderAt("/");
   expect(await screen.findByText("No map yet")).toBeInTheDocument();
-  expect(screen.getByText("The Planner maps your repo from Phase 5.")).toBeInTheDocument();
+  await userEvent.type(screen.getByLabelText("Folder to scan"), "/home/me/shop");
+  await userEvent.click(screen.getByRole("button", { name: "Scan this folder" }));
+  await vi.waitFor(() => expect(scanned).toEqual({ path: "/home/me/shop" }));
 });

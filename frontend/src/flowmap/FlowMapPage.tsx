@@ -1,13 +1,14 @@
-// The home page (D17): the Planner-drawn map of the app's AI flow. Pan, zoom and drag; click a block for its
-// evidence; replay a traced test order; edit through overrides that never touch your code.
+// The home page (D17, D21): the map of your app. The dependency map (the default) shows what a scanned repo uses;
+// the flow map shows the order it runs in, with a replayable test run. Pan, zoom and drag; click a block for its
+// evidence; edit through overrides that never touch your code.
 import {
   MiniMap, ReactFlow, ReactFlowProvider, useNodesState, useReactFlow, useViewport,
   type NodeChange, type OnSelectionChangeParams,
 } from "@xyflow/react";
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api, useApi } from "../api/client";
-import type { Connector, FlowResponse, FlowView, NodeKind, Trace } from "../api/types";
+import type { Connector, ConnectorType, FlowNode, FlowResponse, FlowView, NodeKind, Trace } from "../api/types";
 import { when } from "../components/format";
 import { Icons } from "../components/icons";
 import { useMeta } from "../components/Shell";
@@ -20,6 +21,19 @@ import { StepPanel } from "./StepPanel";
 import "./flowmap.css";
 
 const TIPS_KEY = "flowforge.tips.dismissed";
+type MapId = "deps" | "flow";
+const TILE_TYPE: Partial<Record<NodeKind, ConnectorType>> = { llm: "llm", api: "http", mcp: "mcp", local: "local" };
+
+/** `?map=flow` picks the flow map; no parameter means the dependency map (D21). */
+export function useMapId(): MapId {
+  const [params] = useSearchParams();
+  return params.get("map") === "flow" ? "flow" : "deps";
+}
+
+/** The query part that names a map in URLs: empty for the default dependency map. */
+export function mapQuery(map: MapId, joiner = "?"): string {
+  return map === "flow" ? `${joiner}map=flow` : "";
+}
 
 /** A design token's current value (SVG attributes such as the minimap's fill can't read CSS variables). */
 function token(name: string, fallback: string): string {
@@ -36,28 +50,71 @@ function readDismissed(): Set<string> {
 }
 
 export function FlowMapPage() {
+  const meta = useMeta();
+  const map = useMapId();
+  const [, setParams] = useSearchParams();
   const [layer, setLayer] = useState<"mine" | "planner">("mine");
-  const flow = useApi<FlowResponse>(`/flow?layer=${layer}`);
-  const trace = useApi<Trace>(flow.data?.available ? "/flow/trace" : null);
+  const flow = useApi<FlowResponse>(`/flow?layer=${layer}${mapQuery(map, "&")}`);
+  const isFlowMap = flow.data?.available && (flow.data.kind ?? "flow") === "flow";
+  const trace = useApi<Trace>(isFlowMap ? `/flow/trace${mapQuery(map)}` : null);
   const connectors = useApi<Connector[]>("/connectors");
-  if (flow.error) return <div style={{ padding: 24 }}><ErrorBox error={flow.error} what="the flow map" /></div>;
+  const setMap = (m: MapId) => setParams(m === "flow" ? { map: "flow" } : {});
+  if (flow.error) return <div style={{ padding: 24 }}><ErrorBox error={flow.error} what="the map" /></div>;
   if (!flow.data) return <div className="fm" aria-busy="true"><div className="fm-stage"><div className="fm-canvas skeleton" /></div></div>;
   if (!flow.data.available) {
     return (
       <div style={{ padding: "32px clamp(16px, 3vw, 40px)" }}>
-        <EmptyState tone="violet" icon={Icons.map(28)} title="No map yet">{flow.data.message}</EmptyState>
+        <EmptyState tone="violet" icon={Icons.map(28)} title="No map yet"
+          action={map === "deps" && !meta.example ? <ScanForm onDone={flow.reload} /> : undefined}>
+          {flow.data.message}
+        </EmptyState>
       </div>
     );
   }
   return (
     <ReactFlowProvider>
-      <MapView flow={flow.data} trace={trace.data ?? null} connectors={connectors.data ?? []} layer={layer}
-        setLayer={setLayer} reload={flow.reload} />
+      <MapView key={map} map={map} setMap={meta.example ? setMap : null} flow={flow.data} trace={trace.data ?? null}
+        connectors={connectors.data ?? []} layer={layer} setLayer={setLayer} reload={flow.reload} />
     </ReactFlowProvider>
   );
 }
 
+/** The first step on your own machine: name a folder. It is read, never run, and nothing is sent (D20). */
+function ScanForm({ onDone }: { onDone: () => void }) {
+  const [path, setPath] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(undefined);
+    try {
+      await api.post("/scan", { path: path.trim() });
+      onDone();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <form className="scan-form" onSubmit={submit}>
+      <label className="field">
+        <span>Folder to scan</span>
+        <input value={path} onChange={(e) => setPath(e.target.value)} placeholder="/home/you/my-app" className="mono"
+          autoComplete="off" spellCheck={false} />
+      </label>
+      <button className="btn primary" type="submit" disabled={busy || !path.trim()}>{busy ? "Scanning…" : "Scan this folder"}</button>
+      {error && <div className="notice" role="alert">{error}</div>}
+      <small>Read on this machine only. Nothing in it runs, and nothing is sent.</small>
+    </form>
+  );
+}
+
 interface ViewProps {
+  map: MapId;
+  /** example mode holds both maps; elsewhere there is no switch */
+  setMap: ((m: MapId) => void) | null;
   flow: FlowView;
   trace: Trace | null;
   connectors: Connector[];
@@ -73,14 +130,16 @@ interface Play {
   rejected: boolean;
 }
 
-function MapView({ flow, trace, connectors, layer, setLayer, reload }: ViewProps) {
+function MapView({ map, setMap, flow, trace, connectors, layer, setLayer, reload }: ViewProps) {
+  const deps = flow.kind === "dependencies";
+  const q = mapQuery(map);
   const meta = useMeta();
   const navigate = useNavigate();
   const rf = useReactFlow<BlockNode, LineEdge>();
   const { zoom } = useViewport();
   const [nodes, setNodes, onNodesChangeBase] = useNodesState<BlockNode>([]);
   const [sel, setSel] = useState<string | null>(null);
-  const [q, setQ] = useState("");
+  const [find, setFind] = useState("");
   const [cp, setCp] = useState(false);
   const [showEvidence, setShowEvidence] = useState(true);
   const [legend, setLegend] = useState(false);
@@ -104,10 +163,17 @@ function MapView({ flow, trace, connectors, layer, setLayer, reload }: ViewProps
     if (c) return c;
     return { id, type: app?.type ?? "http", name: app?.name ?? id };
   }, [flow.apps, connectors]);
+  /** a block's tile: its connected app, or on a dependency map the service it was recognised as (a monogram if unknown) */
+  const tileFor = useCallback((n: FlowNode): TileSource | null => {
+    if (n.kind === "gate" || n.kind === "end") return null;
+    if (n.connector) return tileOf(n.connector);
+    const type = TILE_TYPE[n.kind];
+    return deps && type ? { id: n.catalog ?? n.id, type, name: n.title } : null;
+  }, [tileOf, deps]);
 
-  const query = q.trim().toLowerCase();
+  const query = find.trim().toLowerCase();
   const hits = useMemo(() => new Set(query ? flow.nodes.filter((n) => [n.title, n.connector, flow.apps[n.connector ?? ""]?.name,
-    n.op?.tool, n.op?.path, ...n.evidence.map((e) => e.ref)].filter(Boolean).join(" ").toLowerCase().includes(query)).map((n) => n.id) : []),
+    n.op?.tool, n.op?.path, n.what, ...n.evidence.map((e) => e.ref)].filter(Boolean).join(" ").toLowerCase().includes(query)).map((n) => n.id) : []),
   [query, flow.nodes, flow.apps]);
 
   const dataFor = useCallback((id: string): BlockData | null => {
@@ -115,11 +181,11 @@ function MapView({ flow, trace, connectors, layer, setLayer, reload }: ViewProps
     if (!n) return null;
     const retry = flow.edges.find((e) => e.kind === "retry" && e.source === id);
     return {
-      node: n, tile: n.kind === "gate" || n.kind === "end" ? null : tileOf(n.connector), state: frame?.nodes[id] ?? "idle",
+      node: n, tile: tileFor(n), deps, state: frame?.nodes[id] ?? "idle",
       cap: frame?.caps[id] ?? "", search: query ? (hits.has(id) ? "hit" : "miss") : null, cp: cp && n.on_critical_path,
       showTip: !dismissed.has(id) && !frame, showEvidence, retryMax: retry?.max ?? null,
     };
-  }, [flow.nodes, flow.edges, tileOf, frame, query, hits, cp, dismissed, showEvidence]);
+  }, [flow.nodes, flow.edges, tileFor, deps, frame, query, hits, cp, dismissed, showEvidence]);
 
   useEffect(() => {
     const placed = placeAll(flow.nodes, flow.edges, flow.positions);
@@ -152,9 +218,9 @@ function MapView({ flow, trace, connectors, layer, setLayer, reload }: ViewProps
     saveTimer.current = window.setTimeout(() => {
       const positions = pending.current;
       pending.current = {};
-      if (Object.keys(positions).length) api.put("/flow/positions", { positions, replace }).catch(() => undefined);
+      if (Object.keys(positions).length) api.put(`/flow/positions${q}`, { positions, replace }).catch(() => undefined);
     }, replace ? 0 : 400);
-  }, []);
+  }, [q]);
 
   const onNodesChange = useCallback((changes: NodeChange<BlockNode>[]) => {
     onNodesChangeBase(changes);
@@ -183,10 +249,11 @@ function MapView({ flow, trace, connectors, layer, setLayer, reload }: ViewProps
       focusable: false, selectable: false,
       data: {
         edge: e, state: frame?.edges[e.id] ?? "idle", cp: cp && cpEdges.has(`${e.source}>${e.target}`),
-        dim: !!query && !(hits.has(e.source) && hits.has(e.target)), guard: kinds[e.target] === "llm" && e.kind !== "fallback",
+        // the shield means FlowForge masks keys before this LLM call: true of runs, unknown for a scanned app (D21)
+        dim: !!query && !(hits.has(e.source) && hits.has(e.target)), guard: !deps && kinds[e.target] === "llm" && e.kind !== "fallback",
       },
     };
-  }), [flow.edges, kinds, posNow, frame, cp, cpEdges, query, hits]);
+  }), [flow.edges, kinds, posNow, frame, cp, cpEdges, query, hits, deps]);
 
   // --- test-run replay ------------------------------------------------------------------------------------
   useEffect(() => {
@@ -222,11 +289,11 @@ function MapView({ flow, trace, connectors, layer, setLayer, reload }: ViewProps
 
   // --- edits ----------------------------------------------------------------------------------------------
   const edit = async (body: Record<string, unknown>) => {
-    await api.post("/flow/overrides", body);
+    await api.post(`/flow/overrides${q}`, body);
     reload();
   };
   const reset = async (nodeId: string) => {
-    await api.del(`/flow/nodes/${encodeURIComponent(nodeId)}/overrides`);
+    await api.del(`/flow/nodes/${encodeURIComponent(nodeId)}/overrides${q}`);
     reload();
   };
   const dismissTip = (nodeId: string) => {
@@ -237,10 +304,12 @@ function MapView({ flow, trace, connectors, layer, setLayer, reload }: ViewProps
   const addStep = async () => {
     const box = document.querySelector(".fm-canvas")?.getBoundingClientRect();
     const mid = box ? rf.screenToFlowPosition({ x: box.left + box.width / 2, y: box.top + box.height / 2 }) : { x: 0, y: 0 };
-    const id = `step_${Date.now().toString(36)}`;
+    const id = `${deps ? "dep" : "step"}_${Date.now().toString(36)}`;
+    const newNode = deps ? { id, kind: "api", title: "New dependency", what: "A dependency you added." }
+      : { id, kind: "code", title: "New step", what: "A step you added." };
     try {
-      await api.put("/flow/positions", { positions: { [id]: [Math.round(mid.x - 98), Math.round(mid.y - 32)] } });
-      await api.post("/flow/overrides", { op: "add_node", new_node: { id, kind: "code", title: "New step", what: "A step you added." } });
+      await api.put(`/flow/positions${q}`, { positions: { [id]: [Math.round(mid.x - 98), Math.round(mid.y - 32)] } });
+      await api.post(`/flow/overrides${q}`, { op: "add_node", new_node: newNode });
       setLayer("mine");
       reload();
       setSel(id);
@@ -256,11 +325,11 @@ function MapView({ flow, trace, connectors, layer, setLayer, reload }: ViewProps
     window.setTimeout(() => rf.fitView({ padding: 0.08, duration: 500 }), 30);
   };
   const recheck = async () => {
-    if (flow.pending) { navigate("/map/recheck"); return; }
+    if (flow.pending) { navigate(`/map/recheck${q}`); return; }
     setRechecking(true);
     try {
-      await api.post("/flow/recheck");
-      navigate("/map/recheck");
+      await api.post(`/flow/recheck${q}`);
+      navigate(`/map/recheck${q}`);
     } catch (e) {
       setNotice(e instanceof Error ? e.message : String(e));
       setRechecking(false);
@@ -276,6 +345,7 @@ function MapView({ flow, trace, connectors, layer, setLayer, reload }: ViewProps
 
   const selected = sel ? flow.nodes.find((n) => n.id === sel) : undefined;
   const unconfirmed = flow.nodes.filter((n) => n.status === "unconfirmed");
+  const depCount = flow.nodes.filter((n) => n.kind !== "start").length;
   const bottleneck = flow.critical_path.bottleneck ? flow.nodes.find((n) => n.id === flow.critical_path.bottleneck) : undefined;
   const busy = !!play && !frame?.done;
   const elapsed = frame ? (frame.t / 1000).toFixed(1) : "0.0";
@@ -287,21 +357,38 @@ function MapView({ flow, trace, connectors, layer, setLayer, reload }: ViewProps
       <Markers />
       <header className="fm-top">
         <div className="fm-proj">
-          <h1>{meta.project}</h1>
+          <h1>{deps ? (flow.nodes.find((n) => n.id === "app")?.title ?? meta.project) : meta.project}</h1>
           <small>
-            <span>{flow.counts.steps} steps</span><span>·</span><span>{flow.counts.gates} gates</span>
+            {deps ? <span>{depCount} dependencies</span>
+              : <><span>{flow.counts.steps} steps</span><span>·</span><span>{flow.counts.gates} gates</span></>}
             {flow.counts.unconfirmed > 0 && <><span>·</span><span>{flow.counts.unconfirmed} unconfirmed</span></>}
             {meta.example && <span className="chip tone-violet" style={{ padding: "2px 8px", fontSize: 11 }}>Example data</span>}
           </small>
         </div>
-        <Link className="fm-planner" to="/map/how" aria-label="The Planner drew this map. See how">
-          <span className="fm-spark">{Icons.spark(18)}</span>
-          <span>
-            <span className="k"><span className="fm-live" />Planner · drew this map</span>
-            <span className="v">Map v{flow.version}<span>from your code · {when(flow.created_at)}</span></span>
-          </span>
-        </Link>
+        {deps ? (
+          <Link className="fm-planner" to={`/map/how${q}`} aria-label="Scanned from your code, with no AI. See how">
+            <span className="fm-spark">{Icons.search(18)}</span>
+            <span>
+              <span className="k"><span className="fm-live" />Scanned from your code · no AI</span>
+              <span className="v">Map v{flow.version}<span>nothing run or sent · {when(flow.created_at)}</span></span>
+            </span>
+          </Link>
+        ) : (
+          <Link className="fm-planner" to={`/map/how${q}`} aria-label="The Planner drew this map. See how">
+            <span className="fm-spark">{Icons.spark(18)}</span>
+            <span>
+              <span className="k"><span className="fm-live" />Planner · drew this map</span>
+              <span className="v">Map v{flow.version}<span>from your code · {when(flow.created_at)}</span></span>
+            </span>
+          </Link>
+        )}
         <div className="fm-actions">
+          {setMap && (
+            <div className="seg" role="group" aria-label="Which map">
+              <button type="button" aria-pressed={map === "deps"} onClick={() => setMap("deps")}>Dependencies</button>
+              <button type="button" aria-pressed={map === "flow"} onClick={() => setMap("flow")}>Flow</button>
+            </div>
+          )}
           <div className="seg" role="group" aria-label="Which version of the map">
             <button type="button" aria-pressed={layer === "planner"} onClick={() => setLayer("planner")}>Planner's map</button>
             <button type="button" aria-pressed={layer === "mine"} onClick={() => setLayer("mine")}>
@@ -309,11 +396,15 @@ function MapView({ flow, trace, connectors, layer, setLayer, reload }: ViewProps
             </button>
           </div>
           <button className="btn ai" type="button" onClick={recheck} disabled={rechecking}>
-            {Icons.refresh(18)} {flow.pending ? "Review the re-check" : rechecking ? "Re-checking…" : "Re-check the repo"}
+            {Icons.refresh(18)} {deps
+              ? (flow.pending ? "Review the re-scan" : rechecking ? "Re-scanning…" : "Re-scan the repo")
+              : (flow.pending ? "Review the re-check" : rechecking ? "Re-checking…" : "Re-check the repo")}
           </button>
-          <button className="btn primary" type="button" onClick={startReplay} disabled={!trace || busy}>
-            {Icons.play(18)} {busy ? "Running…" : "Test run"}
-          </button>
+          {!deps && (
+            <button className="btn primary" type="button" onClick={startReplay} disabled={!trace || busy}>
+              {Icons.play(18)} {busy ? "Running…" : "Test run"}
+            </button>
+          )}
         </div>
       </header>
       {notice && <div className="notice" role="alert" style={{ margin: "8px 16px 0" }}>{notice}</div>}
@@ -343,14 +434,15 @@ function MapView({ flow, trace, connectors, layer, setLayer, reload }: ViewProps
               <button className="fm-tbtn" type="button" onClick={() => rf.fitView({ padding: 0.08, duration: 450 })}>{Icons.fit(18)} Fit</button>
               <button className="fm-tbtn" type="button" onClick={retidy}>{Icons.tidy(18)} Re-tidy</button>
               <span className="fm-sep" />
-              <button className="fm-tbtn" type="button" aria-pressed={cp} onClick={() => setCp((v) => !v)}>{Icons.route(18)} Critical path</button>
+              {!deps && <button className="fm-tbtn" type="button" aria-pressed={cp} onClick={() => setCp((v) => !v)}>{Icons.route(18)} Critical path</button>}
               <button className="fm-tbtn" type="button" aria-pressed={showEvidence} onClick={() => setShowEvidence((v) => !v)}>{Icons.fileCode(18)} Evidence</button>
               <span className="fm-sep" />
-              <button className="fm-tbtn" type="button" onClick={addStep}>{Icons.addBox(18)} Add step</button>
+              <button className="fm-tbtn" type="button" onClick={addStep}>{Icons.addBox(18)} {deps ? "Add dependency" : "Add step"}</button>
             </div>
             {unconfirmed.length > 0 && !frame && (
               <button className="fm-note unc" type="button" onClick={() => focusOn(unconfirmed[0].id)}>
-                {Icons.question(16)}<b>{unconfirmed.length} step{unconfirmed.length > 1 ? "s" : ""} unconfirmed</b><span className="m">no evidence in the repo</span>
+                {Icons.question(16)}<b>{unconfirmed.length} {deps ? "dependenc" + (unconfirmed.length > 1 ? "ies" : "y") : "step" + (unconfirmed.length > 1 ? "s" : "")} unconfirmed</b>
+                <span className="m">{deps ? "no call found, only a mention" : "no evidence in the repo"}</span>
               </button>
             )}
             {cp && bottleneck && (
@@ -362,10 +454,11 @@ function MapView({ flow, trace, connectors, layer, setLayer, reload }: ViewProps
           <label className="fm-float fm-search">
             {Icons.search(18)}
             <span className="visually-hidden">Find a step</span>
-            <input type="search" name="find-step" placeholder="Find a step, app or file" value={q} onChange={(e) => setQ(e.target.value)}
+            <input type="search" name="find-step" placeholder={deps ? "Find a dependency, host or file" : "Find a step, app or file"} value={find}
+              onChange={(e) => setFind(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && hits.size) focusOn([...hits][0]);
-                if (e.key === "Escape") setQ("");
+                if (e.key === "Escape") setFind("");
               }} />
             {query && <span className="c">{hits.size} found</span>}
           </label>
@@ -374,7 +467,7 @@ function MapView({ flow, trace, connectors, layer, setLayer, reload }: ViewProps
             <button className="fm-lh" type="button" aria-expanded={legend} onClick={() => setLegend((v) => !v)}>
               <span>Legend</span><span style={{ transform: `rotate(${legend ? 180 : 0}deg)`, display: "inline-flex" }}>{Icons.chevron(15)}</span>
             </button>
-            {legend && <Legend />}
+            {legend && (deps ? <DepsLegend /> : <Legend />)}
           </div>
 
           {frame && trace && (
@@ -395,13 +488,27 @@ function MapView({ flow, trace, connectors, layer, setLayer, reload }: ViewProps
           )}
         </div>
         {selected && (
-          <StepPanel key={selected.id} node={selected} flow={flow} tile={selected.kind === "gate" ? null : tileOf(selected.connector)}
+          <StepPanel key={selected.id} node={selected} flow={flow} tile={tileFor(selected)}
             state={frame?.nodes[selected.id] ?? "idle"} cap={frame?.caps[selected.id] ?? ""} waiting={frame?.waiting === selected.id}
             connectors={connectors} tipShown={!dismissed.has(selected.id)} layer={layer}
             actions={{ close: () => { setSel(null); setNodes((ns) => ns.map((n) => ({ ...n, selected: false }))); }, approve, reject, edit, reset, dismissTip }} />
         )}
       </div>
     </div>
+  );
+}
+
+function DepsLegend() {
+  return (
+    <>
+      <div className="fm-lrow"><span className="fm-lg"><span className="lg-card lg-llm" /></span>LLM</div>
+      <div className="fm-lrow"><span className="fm-lg"><span className="lg-card" /></span>API, MCP server or local command</div>
+      <div className="fm-lrow"><span className="fm-lg"><span className="lg-card lg-unc" /></span>Unconfirmed: mentioned, no call found</div>
+      <div className="fm-ldiv" />
+      <div className="fm-lrow"><span className="fm-lg"><svg width="28" height="8" viewBox="0 0 28 8" aria-hidden="true"><path d="M1 4h26" style={{ stroke: "var(--edge)", strokeWidth: 2 }} /></svg></span>Uses</div>
+      <div className="fm-lrow"><span className="fm-lg" style={{ color: "var(--teal)" }}>{Icons.shield(16)}</span>Scanned on your machine. Nothing sent</div>
+      <div className="fm-lhint">Drag to pan · scroll to zoom · drag a block to move it</div>
+    </>
   );
 }
 

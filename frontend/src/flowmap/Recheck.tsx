@@ -10,6 +10,7 @@ import { Icons } from "../components/icons";
 import { CardSkeleton, EmptyState, ErrorBox } from "../components/ui";
 import { edgeTypes, Markers, type LineEdge } from "./FlowEdge";
 import { handlesFor, placeAll, sizeOf } from "./layout";
+import { mapQuery, useMapId } from "./FlowMapPage";
 import { nodeTypes, typeFor, type BlockData, type BlockNode } from "./nodes";
 import "./flowmap.css";
 import "./how.css";
@@ -18,9 +19,10 @@ type Take = Record<string, boolean | string>;
 const TYPE_LABEL: Record<Change["type"], string> = { add: "Added", change: "Changed", remove: "Removed", conflict: "Needs you", kept: "Yours, kept" };
 
 export function Recheck() {
-  const current = useApi<FlowResponse>("/flow?layer=planner");
+  const map = useMapId();
+  const current = useApi<FlowResponse>(`/flow?layer=planner${mapQuery(map, "&")}`);
   const pendingNo = current.data && current.data.available ? current.data.pending : null;
-  const pending = useApi<PendingVersion>(pendingNo ? `/flow/versions/${pendingNo}` : null);
+  const pending = useApi<PendingVersion>(pendingNo ? `/flow/versions/${pendingNo}${mapQuery(map)}` : null);
   const connectors = useApi<Connector[]>("/connectors");
 
   if (current.error) return <ErrorBox error={current.error} what="the map" />;
@@ -28,7 +30,7 @@ export function Recheck() {
   if (!current.data.available || !pendingNo) {
     return (
       <EmptyState tone="violet" icon={Icons.refresh(28)} title="Nothing to review"
-        action={<Link className="btn primary" to="/">Back to the map</Link>}>
+        action={<Link className="btn primary" to={`/${mapQuery(map)}`}>Back to the map</Link>}>
         Re-check the repo from the map. The Planner looks again and shows you what changed; nothing changes until you save.
       </EmptyState>
     );
@@ -40,6 +42,7 @@ export function Recheck() {
 
 function Review({ base, pending, connectors }: { base: Extract<FlowResponse, { available: true }>; pending: PendingVersion; connectors: Connector[] }) {
   const navigate = useNavigate();
+  const map = useMapId();
   const [take, setTake] = useState<Take>(pending.default_take);
   const [view, setView] = useState<"diff" | "old" | "new">("diff");
   const [sel, setSel] = useState<string | null>(null);
@@ -105,16 +108,16 @@ function Review({ base, pending, connectors }: { base: Extract<FlowResponse, { a
     setSaving(true);
     setError(undefined);
     try {
-      await api.post(`/flow/versions/${pending.version}/accept`, { take });
-      navigate("/");
+      await api.post(`/flow/versions/${pending.version}/accept${mapQuery(map)}`, { take });
+      navigate(`/${mapQuery(map)}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setSaving(false);
     }
   };
   const keep = async () => {
-    await api.post(`/flow/versions/${pending.version}/discard`).catch(() => undefined);
-    navigate("/");
+    await api.post(`/flow/versions/${pending.version}/discard${mapQuery(map)}`).catch(() => undefined);
+    navigate(`/${mapQuery(map)}`);
   };
 
   return (
@@ -124,7 +127,7 @@ function Review({ base, pending, connectors }: { base: Extract<FlowResponse, { a
           <span className="eyebrow">Re-check · v{pending.base_version} → v{pending.version}</span>
           <h1>What changed in your repo</h1>
         </div>
-        <div className="actions"><Link className="btn" to="/">Back to the map</Link></div>
+        <div className="actions"><Link className="btn" to={`/${mapQuery(map)}`}>Back to the map</Link></div>
       </header>
       <section className="rc-banner" aria-label="Re-check summary">
         <span className="fm-spark" style={{ width: 44, height: 44 }}>{Icons.spark(22)}</span>

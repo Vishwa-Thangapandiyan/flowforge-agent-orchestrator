@@ -134,6 +134,7 @@ class _Builder:
                 estimate_ms=float(self.latencies[dep.id]) if measured else DEFAULT_MS.get(dep.kind, 0.0),
                 estimate_source="measured" if measured else "estimate"))
             self.meta[node_id] = {"stmt": s.idx, "entry": start, "async": is_async, "line": s.line, "ref": ev.ref,
+                                  "node": s.node, "func": func,
                                   "name": dep.name, "gathered": s.gathered, "loop": s.loop, "ifs": bool(s.ifs),
                                   "write": (dep.kind == "api" and hit.method not in (None, "GET", "HEAD"))
                                   or (dep.kind == "mcp" and writes(hit.tool))}
@@ -212,7 +213,8 @@ class _Builder:
                           kind="branch" if (a, b) in self.whens else "flow", when=self.whens.get((a, b)))
                  for a, b in sorted(kept)]
         flow = Flow(kind="flow", source="code", nodes=self.nodes, edges=edges)
-        flow.advice = advise(flow, self.meta)
+        modules = {m.path: m.tree for m in self.index.modules.values()}
+        flow.advice = advise(flow, self.meta, self.sources, modules)
         flow.written_ms = written_ms(flow, self.meta)
         return flow
 

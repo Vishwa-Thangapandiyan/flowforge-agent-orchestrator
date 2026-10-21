@@ -281,3 +281,93 @@ def test_a_key_in_an_if_or_a_label_never_reaches_the_flow(tmp_path):
     flow = flow_of(tmp_path).flow
     assert any(n.kind == "decision" for n in flow.nodes)
     assert key not in flow.model_dump_json()   # conditions, questions and labels are masked like evidence (D20)
+
+
+# --- advice you can act on (D27) ------------------------------------------------------------------------------------
+
+LATENCIES = {"api-ip-api-com": 210, "api-nominatim": 420, "api-osrm": 640, "api-open-meteo": 180, "mcp-time": 1900,
+             "mcp-fetch": 6800, "mcp-currency": 400, "local-packing-list": 10, "mcp-files": 2400}
+
+
+def advice_for(flow, *ids):
+    return next(a for a in flow.advice if set(a.nodes) == set(ids))
+
+
+def test_two_awaits_in_a_row_get_the_gather_written_out():
+    flow = flow_of(TRIP_PLANNER, latencies=LATENCIES).flow
+    first = advice_for(flow, "api-ip-api-com-1", "api-nominatim-1")
+    change = first.change
+    assert change.path == "planner.py" and change.first_line == 51
+    assert change.before == [
+        '        home = await attempt("where you are (ip-api)", geo.where_am_i(client))',
+        '        place = await attempt("find the city (Nominatim)", geo.find_place(client, city))',
+    ]
+    assert change.after == [
+        "        home, place = await asyncio.gather(",
+        "            attempt('where you are (ip-api)', geo.where_am_i(client)),",
+        "            attempt('find the city (Nominatim)', geo.find_place(client, city)),",
+        "        )",
+    ]
+    assert change.saved_ms == 210 and change.by_hand == [] and change.needs_import is False
+    # the prompt names the file, the function and every line, and asks for nothing else to change
+    assert "planner.py" in first.prompt and "plan()" in first.prompt
+    assert "line 51" in first.prompt and "line 52" in first.prompt and "Change nothing else" in first.prompt
+
+
+def test_calls_in_other_blocks_are_left_to_move_by_hand():
+    flow = flow_of(TRIP_PLANNER, latencies=LATENCIES).flow
+    after = advice_for(flow, "api-nominatim-2", "api-open-meteo-1", "mcp-fetch-1", "mcp-currency-1")
+    change = after.change
+    assert change.first_line == 66 and change.after[0] == "    background, rate = await asyncio.gather("
+    assert change.saved_ms == 400   # fetch and currency together: the time of the faster one
+    assert change.by_hand == ['"find the sight" (planner.py:58): inside `if sight:`',
+                              '"today\'s weather" (planner.py:60): inside the `async with` block']
+    assert "line 58" in after.prompt and after.caveat in after.prompt
+
+
+def test_no_change_is_written_when_code_between_uses_a_result(tmp_path):
+    write(tmp_path, {"app.py": APP, "main.py": """
+        import asyncio
+        import httpx
+        from app import news, weather
+
+        async def run():
+            async with httpx.AsyncClient() as client:
+                today = await weather(client)
+                print(today)
+                headlines = await news(client)
+                return today, headlines
+    """})
+    (advice,) = flow_of(tmp_path).flow.advice
+    assert advice.change is None
+    assert "main.py" in advice.prompt and "asyncio.gather" in advice.prompt
+
+
+def test_plain_calls_get_a_prompt_but_no_written_change(tmp_path):
+    write(tmp_path, {"main.py": """
+        import httpx
+
+        def run():
+            today = httpx.get("https://api.weather.test/v1/today")
+            headlines = httpx.get("https://api.news.test/v2/top")
+            return today, headlines
+    """})
+    (advice,) = flow_of(tmp_path).flow.advice
+    assert advice.change is None and "thread pool" in advice.prompt
+
+
+def test_the_written_change_says_when_asyncio_needs_importing_and_masks_keys(tmp_path):
+    key = "sk_test_FAKEFAKE12345678"
+    write(tmp_path, {"app.py": APP, "main.py": f"""
+        import httpx
+        from app import news, weather
+
+        async def run():
+            async with httpx.AsyncClient(headers={{"Authorization": "Bearer {key}"}}) as client:
+                today = await weather(client, "{key}")
+                headlines = await news(client)
+                return today, headlines
+    """})
+    (advice,) = flow_of(tmp_path).flow.advice
+    assert advice.change.needs_import is True
+    assert key not in advice.model_dump_json()

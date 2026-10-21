@@ -100,15 +100,31 @@ class Suggestion(_Model):
     text: str = Field(max_length=300)
 
 
+class Change(_Model):
+    """The advice written out (D27): lines as they are and as they would be, masked like evidence. Text to copy,
+    never applied. `by_hand`: calls of the same advice in another block, each with where it is and why."""
+
+    path: str
+    first_line: int = Field(ge=1)
+    before: list[str]
+    after: list[str]
+    saved_ms: float = Field(ge=0)
+    by_hand: list[str] = Field(default_factory=list)
+    needs_import: bool = False
+
+
 class Advice(_Model):
-    """Calls that could start together (D25): next to each other in the code, awaited one after another, and none
-    uses another's result. `saved_ms` is what running them together would save, from the blocks' weights."""
+    """Calls that could start together (D25): awaited one after another, and none uses another's result.
+    `saved_ms` is what running them together would save, from the blocks' weights. `change` writes it out when plain
+    code can do so safely; `prompt` hands it to a coding agent (D27)."""
 
     nodes: list[str] = Field(min_length=2)
     refs: list[str]
     text: str = Field(max_length=300)
     saved_ms: float = Field(ge=0)
     caveat: str | None = Field(default=None, max_length=300)
+    change: Change | None = None
+    prompt: str = Field(default="", max_length=3000)
 
 
 class Flow(_Model):

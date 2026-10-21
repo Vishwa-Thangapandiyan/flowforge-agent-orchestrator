@@ -7,8 +7,10 @@ time of all but the slowest. Steps the code already gathers, and steps in a loop
 
 from __future__ import annotations
 
+import ast
 from collections import defaultdict
 
+from flowforge.flow.rewrite import Call, change, prompt
 from flowforge.flowmap.models import Advice, Flow
 from flowforge.scheduler.graph import DAG, topological_order
 
@@ -28,7 +30,8 @@ def _starts(flow: Flow) -> dict[str, float]:
     return start
 
 
-def advise(flow: Flow, meta: dict[str, dict]) -> list[Advice]:
+def advise(flow: Flow, meta: dict[str, dict], sources: dict[str, str] | None = None,
+           modules: dict[str, ast.Module] | None = None) -> list[Advice]:
     start = _starts(flow)
     by_id = {n.id: n for n in flow.nodes}
     groups: dict[tuple[str, float], list[str]] = defaultdict(list)
@@ -49,8 +52,19 @@ def advise(flow: Flow, meta: dict[str, dict]) -> list[Advice]:
                else "they could run at the same time, for example in a thread pool")
         names = [meta[i]["name"] for i in ids]
         text = f"None of these uses another's result: {how}."
-        out.append(Advice(nodes=ids, refs=[meta[i]["ref"] for i in ids], text=text, saved_ms=round(saved, 1),
-                          caveat=_caveat(flow, ids, meta, names)))
+        caveat = _caveat(flow, ids, meta, names)
+        advice = Advice(nodes=ids, refs=[meta[i]["ref"] for i in ids], text=text, saved_ms=round(saved, 1),
+                        caveat=caveat)
+        if sources is not None and modules is not None and all("node" in meta[i] for i in ids):
+            func = meta[ids[0]]["func"]
+            calls = [Call(stmt=meta[i]["node"], func=meta[i]["func"].node, path=meta[i]["func"].path,
+                          words=by_id[i].what or by_id[i].title, ref=meta[i]["ref"], weight=by_id[i].estimate_ms or 0.0)
+                     for i in ids]
+            if all(isinstance(c.stmt, ast.stmt) for c in calls):
+                advice.change = change(calls, sources[func.path], modules[func.path])
+            advice.prompt = prompt(calls, by_id[meta[ids[0]]["entry"]].title, advice.saved_ms, caveat,
+                                   all(meta[i]["async"] for i in ids))
+        out.append(advice)
     return sorted(out, key=lambda a: -a.saved_ms)
 
 

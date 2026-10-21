@@ -1,3 +1,5 @@
+import sys
+
 import pytest
 
 from flowforge.nodes.mock_node import MockNode
@@ -5,6 +7,8 @@ from flowforge.scheduler.executor import StepState, run_workflow
 from flowforge.scheduler.rate_limit import TokenBucket
 from flowforge.schema import Workflow
 from flowforge.storage import Storage
+
+TIMER_TICK_MS = 16 if sys.platform == "win32" else 1
 
 
 def mk(steps, **wf):
@@ -39,7 +43,9 @@ async def test_diamond_meets_lower_bound():
     assert result.status == "succeeded"
     assert result.predicted_critical_path == ["a", "b", "e"]
     assert result.actual_critical_path == ["a", "b", "e"]
-    assert result.makespan_ms >= 100  # lower bound is 100
+    # never faster than the lower bound (100 ms), give or take one OS timer tick per step on the chain: Windows'
+    # clock ticks every ~15.6 ms, so a 20 ms sleep can read as 16 there (CI saw 78, 93 and 94)
+    assert result.makespan_ms >= 100 - len(result.actual_critical_path) * TIMER_TICK_MS
 
     # Meeting the bound means the critical chain never waits for a slot: when a chain step
     # becomes ready, the steps already running plus any started ahead of it (equal-priority

@@ -1,6 +1,7 @@
 // A line on the map (D17): a curved bezier from the source block to the target, never boxy.
 // Branch answers and fallbacks get a label; lines into an LLM get the redaction shield; running lines carry dots.
 import { EdgeLabelRenderer, Position, useInternalNode, type Edge, type EdgeProps } from "@xyflow/react";
+import type { CSSProperties } from "react";
 import type { FlowEdge, NodeKind } from "../api/types";
 import { Icons } from "../components/icons";
 import type { EdgeState } from "./replay";
@@ -16,6 +17,8 @@ export interface LineData extends Record<string, unknown> {
   theme?: GraphTheme;
   /** the kind of block the line leads to: Metro colours a line by it */
   to?: NodeKind;
+  /** seconds before this line draws itself in on first load (D26) */
+  delay?: number;
 }
 
 export type LineEdge = Edge<LineData>;
@@ -111,7 +114,7 @@ export function FlowEdgeView({ source, target, sourceX, sourceY, targetX, target
     title: "Keys and personal data are removed before the LLM sees anything" });
   return (
     <>
-      <g className={cls}>
+      <g className={cls} style={{ "--draw-delay": `${data.delay ?? 0}s` } as CSSProperties}>
         <path className="ff-under" d={d} />
         <path className="ff-line" d={d} markerEnd={`url(#${marker(data)})`} />
         {data.state === "active" && (

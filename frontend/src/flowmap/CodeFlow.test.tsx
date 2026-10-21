@@ -49,3 +49,21 @@ test("a repo without Python says why its flow waits", async () => {
   expect(await screen.findByText("Flow order needs Python for now; Dart and JS/TS are next.")).toBeInTheDocument();
   expect(screen.queryByLabelText("Folder to scan")).not.toBeInTheDocument();
 });
+
+test("Watch it run plays the could-be schedule, said plainly", async () => {
+  mockApi(routes(CODEFLOW));
+  renderAt("/?map=flow");
+  await userEvent.click(await screen.findByRole("button", { name: /Watch it run/ }, { timeout: 5000 }));
+  expect(await screen.findByRole("status")).toHaveTextContent("Watch it run · the could-be schedule, not a recording");
+});
+
+test("pointing at a block lights what it waits for and what waits for it", async () => {
+  mockApi(routes(CODEFLOW));
+  renderAt("/?map=flow");
+  const weather = await screen.findByText("Today's weather", { selector: ".ff-title" }, { timeout: 5000 });
+  await userEvent.hover(weather.closest(".react-flow__node")!);
+  const lit = [...document.querySelectorAll(".ff-block.hit .ff-title")].map((t) => t.textContent).sort();
+  // up: the city lookup and its check; down: the plan it feeds. fetch runs beside it, so it stays dim.
+  expect(lit).toEqual(["Find the city", "Today's weather", "Write the plan", "plan()"]);
+  expect(document.querySelector(".ff-block.miss .ff-title")).not.toBeNull();
+});

@@ -384,3 +384,13 @@
 .fm[data-graph="soft"] .ff-line { stroke-width: 2.4; }
 .fm[data-graph="soft"] .ff-edge:not(.cp):not(.fb) .ff-line { stroke-dasharray: 1 6; }
 .fm[data-graph="soft"] .cp .ff-card { box-shadow: 0 0 0 2px var(--fg); }
+
+/* motion (D26): lines draw themselves in once, in call order; never with reduced motion */
+.fm.drawing .ff-edge:not(.fb):not(.unc):not(.loop) .ff-line {
+  stroke-dasharray: 2400; stroke-dashoffset: 2400; animation: ff-draw 1s cubic-bezier(.2, .7, .2, 1) forwards;
+  animation-delay: var(--draw-delay, 0s);
+}
+@keyframes ff-draw { to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .fm.drawing .ff-edge .ff-line { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; }
+}

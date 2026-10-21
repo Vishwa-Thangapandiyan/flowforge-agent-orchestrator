@@ -15,7 +15,8 @@ import { when } from "../components/format";
 import { Icons } from "../components/icons";
 import { useMeta } from "../components/Shell";
 import { EmptyState, ErrorBox } from "../components/ui";
-import { Faster } from "./Faster";
+import { earliest, Faster } from "./Faster";
+import { scheduleTrace } from "./schedule";
 import { boxes, readTheme, saveTheme, THEMES, timeColumns, type GraphTheme } from "./themes";
 import { edgeTypes, Markers, type LineEdge } from "./FlowEdge";
 import { autoLayout, handlesFor, placeAll, sizeOf } from "./layout";
@@ -160,7 +161,11 @@ interface Play {
   running: boolean;
   approved: boolean;
   rejected: boolean;
+  /** how much faster than real time it plays: Watch it run fits a long schedule into a few seconds (D26) */
+  speed: number;
 }
+
+const WATCH_MS = 7000;
 
 function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: ViewProps) {
   const deps = flow.kind === "dependencies";
@@ -195,7 +200,9 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
   const fitted = useRef(false);
 
   const kinds = useMemo(() => Object.fromEntries(flow.nodes.map((n) => [n.id, n.kind])) as Record<string, NodeKind>, [flow.nodes]);
-  const replay = useMemo(() => (trace ? buildReplay(flow.nodes, flow.edges, trace) : null), [flow.nodes, flow.edges, trace]);
+  // a flow read from code has no recording: Watch it run plays its could-be schedule instead (D26)
+  const played = useMemo(() => trace ?? (code ? scheduleTrace(flow) : null), [trace, code, flow]);
+  const replay = useMemo(() => (played ? buildReplay(flow.nodes, flow.edges, played) : null), [flow.nodes, flow.edges, played]);
   const frame: Frame | null = useMemo(() => (play && replay ? frameAt(replay, play.t, play.approved, play.rejected) : null), [play, replay]);
 
   // --- blocks: positions from the server (or dagre for new ones), data from the current view --------------
@@ -234,6 +241,28 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
 
   // Boxed on a flow lays blocks out in time columns (D26); every other style keeps your saved layout
   const timed = theme === "boxed" && !deps;
+  // lines draw themselves in once, in call order (D26); off with reduced motion (the CSS checks it too)
+  const [drawing, setDrawing] = useState(true);
+  useEffect(() => {
+    const done = window.setTimeout(() => setDrawing(false), 2600);
+    return () => window.clearTimeout(done);
+  }, []);
+  /** Pointing at a block (D26): it, everything it waits for, and everything that waits for it. */
+  const traceFrom = useCallback((id: string) => {
+    const walk = (next: (e: FlowView["edges"][number]) => [string, string]) => {
+      const seen = new Set([id]);
+      const stack = [id];
+      while (stack.length) {
+        const here = stack.pop()!;
+        for (const e of flow.edges) {
+          const [from, to] = next(e);
+          if (from === here && !seen.has(to)) { seen.add(to); stack.push(to); }
+        }
+      }
+      return seen;
+    };
+    return new Set([...walk((e) => [e.target, e.source]), ...walk((e) => [e.source, e.target])]);
+  }, [flow.edges]);
   const wasTimed = useRef(timed);
   useEffect(() => {
     const saved = placeAll(flow.nodes, flow.edges, flow.positions);
@@ -294,6 +323,11 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
     const path = flow.critical_path.path;
     return new Set(path.slice(1).map((id, i) => `${path[i]}>${id}`));
   }, [flow.critical_path.path]);
+  const drawDelay = useMemo(() => {   // seconds: lines out of earlier calls draw first
+    const start = earliest(flow);
+    const last = Math.max(1, ...Object.values(start));
+    return Object.fromEntries(Object.entries(start).map(([id, t]) => [id, (t / last) * 1.2]));
+  }, [flow]);
   const edges: LineEdge[] = useMemo(() => flow.edges.filter((e) => kinds[e.source] && kinds[e.target]).map((e) => {
     const h = handlesFor(e, kinds, posNow);
     return {
@@ -305,10 +339,10 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
         // calls, whether scanned (D21) or read from its code (D25)
         dim: !!query && !(hits.has(e.source) && hits.has(e.target)),
         guard: !deps && !code && kinds[e.target] === "llm" && e.kind !== "fallback",
-        theme, to: kinds[e.target],
+        theme, to: kinds[e.target], delay: drawDelay[e.source] ?? 0,
       },
     };
-  }), [flow.edges, kinds, posNow, frame, cp, cpEdges, query, hits, deps, code, theme]);
+  }), [flow.edges, kinds, posNow, frame, cp, cpEdges, query, hits, deps, code, theme, drawDelay]);
   // Boxed containers (D26): drawn in map coordinates behind the blocks, never nodes themselves
   const boxRects = useMemo(() => (theme === "boxed" ? boxes(flow, nodes) : []), [theme, flow, nodes]);
 
@@ -323,7 +357,7 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
       last = now;
       setPlay((p) => {
         if (!p || !p.running) return p;
-        const next = p.t + dt;
+        const next = p.t + dt * p.speed;
         const held = gateAt !== null && !p.approved && !p.rejected && next >= gateAt;
         return { ...p, t: held ? gateAt : next };
       });
@@ -338,7 +372,10 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
   }, [frame?.done, play?.running]);
 
   const startReplay = () => {
-    setPlay({ t: 0, running: true, approved: false, rejected: false });
+    const reduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const speed = code ? Math.max(1, (replay?.end ?? 0) / WATCH_MS) : 1;
+    // reduced motion: show where the schedule ends, without the motion
+    setPlay({ t: reduced && code ? (replay?.end ?? 0) : 0, running: true, approved: false, rejected: false, speed });
     setSel(null);
   };
   const approve = () => setPlay((p) => (p ? { ...p, approved: true, running: true } : p));
@@ -413,7 +450,7 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
   const fellBack = !!frame && !!trace && trace.steps.some((s) => s.outcome === "failed" && (frame.nodes[s.node] === "failed"));
 
   return (
-    <div className="fm" data-graph={theme}>
+    <div className={`fm${drawing ? " drawing" : ""}`} data-graph={theme}>
       <Markers />
       <header className="fm-top">
         <div className="fm-proj">
@@ -502,6 +539,11 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
               {Icons.play(18)} {busy ? "Running…" : "Test run"}
             </button>
           )}
+          {code && (
+            <button className="btn primary" type="button" onClick={startReplay} disabled={!replay || busy}>
+              {Icons.play(18)} {busy ? "Playing…" : "Watch it run"}
+            </button>
+          )}
         </div>
       </header>
       {deps && checks.items.length > 0 && <HealthRow checks={checks} />}
@@ -520,6 +562,7 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
           backgroundSize: `${22 * zoom}px ${22 * zoom}px` } as CSSProperties}>
           <ReactFlow<BlockNode, LineEdge>
             nodes={nodes} edges={edges}
+            onNodeMouseEnter={(_, n) => { if (!play) setPointed(traceFrom(n.id)); }} onNodeMouseLeave={() => setPointed(null)}
             nodeTypes={nodeTypes} edgeTypes={edgeTypes}
             onNodesChange={onNodesChange} onSelectionChange={onSelectionChange} onPaneClick={() => setSel(null)}
             nodesConnectable={false} edgesFocusable={false} elementsSelectable minZoom={0.15} maxZoom={1.8}
@@ -589,13 +632,14 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
             {legend && (deps ? <DepsLegend /> : <Legend />)}
           </div>
 
-          {frame && trace && (
+          {frame && played && (code || trace) && (
             <div className="fm-float fm-hud" role="status" aria-live="polite">
               <span className="s"><span className="d" style={{ background: frame.waiting ? "var(--amber-strong)" : frame.done ? (play?.rejected ? "var(--coral)" : "var(--teal)") : "var(--blue)" }} />
-                {frame.waiting ? "Waiting for you" : frame.done ? (play?.rejected ? "Stopped at your gate" : "Test run done") : `Test run · ${trace.label}`}</span>
+                {frame.waiting ? "Waiting for you" : frame.done ? (play?.rejected ? "Stopped at your gate" : code ? "Schedule played" : "Test run done")
+                  : code ? `Watch it run · ${played.label}` : `Test run · ${played.label}`}</span>
               <span className="m">{elapsed} s{fellBack ? " · a fallback answered" : ""}</span>
               <span className="fm-prog" aria-hidden="true"><span style={{ width: `${progress}%` }} /></span>
-              <span className="m">{frame.calls} calls · {frame.cached} cached · {(frame.tokens / 1000).toFixed(1)}k tokens</span>
+              {!code && <span className="m">{frame.calls} calls · {frame.cached} cached · {(frame.tokens / 1000).toFixed(1)}k tokens</span>}
               {frame.waiting && (
                 <>
                   <button className="btn warn" type="button" onClick={approve}>Approve: {flow.nodes.find((n) => n.id === frame.waiting)?.title}</button>

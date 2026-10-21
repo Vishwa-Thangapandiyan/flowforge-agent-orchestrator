@@ -234,6 +234,17 @@ def test_a_module_level_client_makes_its_uses_llm_calls(tmp_path):
     assert ("start-answer", "llm-ollama-1", None) in edges(flow)
 
 
+def test_a_url_written_inside_the_call_is_a_call(tmp_path):
+    write(tmp_path, {"main.py": """
+        import httpx
+
+        def run():
+            return httpx.get("https://api.weather.test/v1/today")
+    """})
+    flow = flow_of(tmp_path).flow
+    assert flow is not None and ("start-run", "api-api-weather-test-1", None) in edges(flow)
+
+
 def test_a_repo_without_python_says_flows_need_python_for_now(tmp_path):
     write(tmp_path, {"web/app.js": "fetch('https://api.weather.test/v1/today');\n"})
     result = flow_of(tmp_path)
@@ -252,3 +263,21 @@ def test_nothing_in_the_repo_runs(tmp_path, no_network):
     """})
     flow_of(tmp_path)
     assert not marker.exists()
+
+
+def test_a_key_in_an_if_or_a_label_never_reaches_the_flow(tmp_path):
+    key = "sk_test_FAKEFAKE12345678"
+    write(tmp_path, {"main.py": f"""
+        import httpx
+
+        def note(text):
+            return {{"note": text}}
+
+        def run(token):
+            if token == "{key}":
+                return
+            httpx.get("https://api.weather.test/v1/today", params=note("send with {key} attached"))
+    """})
+    flow = flow_of(tmp_path).flow
+    assert any(n.kind == "decision" for n in flow.nodes)
+    assert key not in flow.model_dump_json()   # conditions, questions and labels are masked like evidence (D20)

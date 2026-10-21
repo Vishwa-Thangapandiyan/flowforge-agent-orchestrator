@@ -129,7 +129,7 @@ class _Builder:
             node_id = self._id(dep.id)
             measured = dep.kind != "llm" and self.latencies.get(dep.id) is not None
             self.nodes.append(FlowNode(
-                id=node_id, kind=dep.kind, title=dep.name[:80], what=label(s, self.index, func.module)[:300],
+                id=node_id, kind=dep.kind, title=dep.name[:80], what=_masked(label(s, self.index, func.module))[:300],
                 catalog=dep.catalog, op=_op(dep, hit), repeats=s.loop, evidence=[ev],
                 estimate_ms=float(self.latencies[dep.id]) if measured else DEFAULT_MS.get(dep.kind, 0.0),
                 estimate_source="measured" if measured else "estimate"))
@@ -161,8 +161,8 @@ class _Builder:
 
     def _decision(self, func: Func, lines: list[str], s: Stmt, ev: Evidence, question: str) -> str:
         dec = f"if-{sum(1 for n in self.nodes if n.kind == 'decision') + 1}"
-        cond = ast.unparse(s.node)
-        self.nodes.append(FlowNode(id=dec, kind="decision", title=question[:80], condition=cond[:200],
+        cond = _masked(ast.unparse(s.node))
+        self.nodes.append(FlowNode(id=dec, kind="decision", title=_masked(question)[:80], condition=cond[:200],
                                    what=f"if {cond}:"[:300], evidence=[ev]))
         if s.stops:
             stop = self._id("stop")
@@ -215,6 +215,11 @@ class _Builder:
         flow.advice = advise(flow, self.meta)
         flow.written_ms = written_ms(flow, self.meta)
         return flow
+
+
+def _masked(text: str) -> str:
+    """Words taken from the code (a condition, a label) are masked like evidence before they are stored (D20)."""
+    return redact_code(text, _redactor)
 
 
 def _question(func: Func, body: Body, s: Stmt, index: Index) -> str:

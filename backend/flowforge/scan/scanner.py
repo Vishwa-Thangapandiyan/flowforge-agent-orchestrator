@@ -306,7 +306,7 @@ def scan_with_places(root: str | Path) -> tuple[ScanResult, Places]:
         for hit in f.urls:
             via = next((f"mcp-{_slug(s)}" for s in hit.call_strings if s in app_servers), None)
             if hit.url:
-                merge.api(hit.url, f.path, hit.line, hit.confirmed, "the address", via)
+                merge.api(hit.url, f.path, hit.line, hit.confirmed, "calls it" if hit.confirmed else "the address", via)
             elif hit.name in constants:
                 value, where, at = constants[hit.name]
                 url = clean_url(value)

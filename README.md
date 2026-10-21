@@ -55,7 +55,7 @@ Starting an MCP server runs code, so the first check lists exactly what will sta
 Switch the map to **Flow**. FlowForge reads your Python (by its syntax tree, never running it) and draws the order your code calls its dependencies: which call waits for which, the `if`s that choose, and where the code stops early. Every block and line points to its `file:line`.
 
 - **The critical path** is the chain that sets the total time, weighted by the latencies your last check measured (LLMs are estimates, and say so).
-- **Faster** compares "as written" (one call after another) with "could be", and lists the calls that don't need each other's results: start them together (`asyncio.gather`) and save about N ms.
+- **Faster** compares "as written" (one call after another) with "could be", and lists the calls that don't need each other's results. **Show the change** writes out the `asyncio.gather` (now → could be, ready to copy) when it's safe; **Copy prompt for your coding agent** hands the rest to Claude Code, Codex or any agent. FlowForge never edits your code.
 - **Watch it run** plays the could-be schedule; pointing at a block lights up its path. Five map styles: Studio, Boxed, Blueprint, Metro, Soft.
 
 Dart and JS/TS flows come next; the dependency map already covers them.

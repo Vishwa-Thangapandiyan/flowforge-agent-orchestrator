@@ -4,6 +4,7 @@ import json
 import sys
 import time
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -177,9 +178,15 @@ def test_test_connection(client, tmp_path):
         "command": ["flowforge-no-such-program"], "cwd": str(tmp_path)}))
     body = client.post("/connectors/ghostcmd/test").json()
     assert body["ok"] is False and "not found" in body["message"]
+    # llm and http: the health check's one request, without the key (D24)
+    from flowforge.nodes.check_node import CheckNode
+    seen = []
+    main.state.nodes["check"] = CheckNode(transport=httpx.MockTransport(
+        lambda request: seen.append(request) or httpx.Response(401)))
     client.post("/connectors", json=llm())
-    r = client.post("/connectors/gemini/test")
-    assert r.status_code == 501 and "Phase 4" in r.json()["detail"]
+    body = client.post("/connectors/gemini/test").json()
+    assert body == {"ok": True, "message": "Up, needs a key (401) to list its models"}
+    assert str(seen[0].url).endswith("/models") and "authorization" not in seen[0].headers
 
 
 def test_activity_lists_this_connectors_steps(client, tmp_path):

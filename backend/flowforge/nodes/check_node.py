@@ -8,10 +8,12 @@ from typing import Any
 
 import httpx
 
-from flowforge.checks import CheckTarget, check
+from flowforge.checks import CheckTarget, check, new_client
 from flowforge.nodes.base import Node, NodeError
 
-MCP_AT_ONCE = 3   # MCP servers are processes; at most this many start together (D24)
+# MCP servers are processes; at most this many start together (D24). The scheduler's slots are per step type and
+# every check is one type, so the limit lives here; check_workflow() gives MCP steps a timeout that covers the wait.
+MCP_AT_ONCE = 3
 
 
 class CheckNode(Node):
@@ -24,7 +26,7 @@ class CheckNode(Node):
 
     def _client(self) -> httpx.AsyncClient:
         if self._http is None:
-            self._http = httpx.AsyncClient(transport=self._transport)
+            self._http = new_client(self._transport)
         return self._http
 
     async def run(self, params: dict[str, Any]) -> Any:

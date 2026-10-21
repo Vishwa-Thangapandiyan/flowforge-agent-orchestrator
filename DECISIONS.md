@@ -720,14 +720,14 @@ A dependency with nothing to check is `skipped` (grey) and says why. Two cases:
 | Kind | What it does | up | warn | down |
 |---|---|---|---|---|
 | API | One GET to the target: no key, cookie or query; a FlowForge User-Agent; 10 s timeout | any answer below 500. A 401 or 403 means "up, needs a key" | slower than 2 s; plain `http://`; or a TLS certificate that expires within 14 days | no answer, a DNS failure, a timeout, or a 5xx |
-| LLM | Its model list: Ollama `/api/tags`, OpenAI-compatible `{base}/models` | reachable, and the model is listed (or a key is needed to see the list) | the model isn't listed | not reachable |
+| LLM | Its model list: Ollama `/api/tags`, OpenAI-compatible `{base}/models` | reachable, and the model is listed (or a key is needed to see the list) | the model isn't listed; slower than 2 s; plain `http://` to a host that isn't this machine | not reachable |
 | MCP, stdio | Start it in the repo folder with the MCP SDK's minimal environment (none of the user's own variables), list its tools, stop it; 30 s timeout | tools listed | took over 5 s | didn't start or couldn't list tools. The reason is the error and the last lines of its stderr, redacted, plus the env var names its config names |
 | MCP, remote URL | As an API | | | |
 | Local | The script exists in the repo, or the program is on `PATH`. **It is never run** | found | | missing |
 
 **Starting an MCP server runs code.** That code is a script in the repo, or an `npx`/`uvx` package fetched from npm or PyPI.
 - The first "Check now" lists exactly which commands will start, and the user confirms.
-- The confirmation is kept for that exact list of commands, so a re-scan or an edit that changes them asks again.
+- Each yes covers exactly the commands that were shown. "Check this one" on one server confirms that server only. A re-scan or an edit that changes a command asks again.
 - Without it, `POST /checks` answers 409.
 
 **How checks run (D19: the scheduler runs them).**
@@ -740,7 +740,15 @@ A dependency with nothing to check is `skipped` (grey) and says why. Two cases:
 - It starts through the existing `start_run`, so its progress streams over the existing SSE and the run is stored (D16).
 - **A dependency that is down is a result, not a failed step.** The step succeeds with `{status: "down", reason}`. A step fails only when the check itself breaks.
 
-**Storage.** Table `checks`, one row per dependency per check: `run_id, dep_id, kind, status, latency_ms, summary, detail, at`. It is written when the run ends. Every check is kept; there is no pruning yet.
+**Storage.** Table `checks`, one row per dependency per check: `run_id, dep_id, kind, status, latency_ms, summary, detail, at`.
+- Rows are written when the run ends, from its events, so a stopped run keeps the checks that finished.
+- A check that breaks (a FlowForge bug) is recorded as `skipped`, "The check couldn't run", never as the dependency being down. A check that never ran records nothing.
+- Every check is kept; there is no pruning yet.
+- Choosing a different repo (D22) clears the history and every yes.
+
+**Timeouts.** At most 3 MCP servers start at once. That limit sits in the check node, because the scheduler's slots are per step type. So an MCP step's timeout covers its wait for a turn: 30 s for each round of 3.
+
+**Connectors.** "Test connection" on an LLM or HTTP connector makes the same one request as its check, without the key.
 
 **Example mode stays offline (D16).** "Check now" returns recorded results, labelled as example results, and sends nothing. The trip planner's broken `currency` server records its real error.
 

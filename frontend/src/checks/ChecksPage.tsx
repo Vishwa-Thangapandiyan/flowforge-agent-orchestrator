@@ -8,7 +8,7 @@ import { BrandTile } from "../brand/BrandTile";
 import { clock, when } from "../components/format";
 import { Icons } from "../components/icons";
 import { EmptyState, ErrorBox } from "../components/ui";
-import { byProblem, CheckConfirm, countsText, Dot, Squares, took, WORD } from "./Health";
+import { byProblem, CheckConfirm, countOf, countsText, Dot, isProblem, Squares, took, WORD } from "./Health";
 import { useChecks, type LiveItem } from "./useChecks";
 
 const TILE: Partial<Record<NodeKind, ConnectorType>> = { llm: "llm", api: "http", mcp: "mcp", local: "local" };
@@ -44,9 +44,9 @@ export function ChecksPage() {
   const [problems, setProblems] = useState(false);
   const [picked, setPicked] = useState<string | null>(null);
   const sorted = useMemo(() => byProblem(checks.items), [checks.items]);
-  const problemCount = sorted.filter((i) => i.status === "down" || i.status === "warn").length;
-  const rows = problems ? sorted.filter((i) => i.status === "down" || i.status === "warn") : sorted;
-  const selected = sorted.find((i) => i.id === picked) ?? sorted.find((i) => i.status === "down" || i.status === "warn") ?? sorted[0];
+  const problemCount = sorted.filter((i) => isProblem(i.status)).length;
+  const rows = problems ? sorted.filter((i) => isProblem(i.status)) : sorted;
+  const selected = sorted.find((i) => i.id === picked) ?? sorted.find((i) => isProblem(i.status)) ?? sorted[0];
   const view = checks.view;
 
   const head = (
@@ -75,14 +75,13 @@ export function ChecksPage() {
     );
   }
   const statuses = sorted.map((i) => i.status);
-  const n = (s: string) => statuses.filter((x) => x === s).length;
+  const n = (s: LiveItem["status"]) => countOf(statuses, s);
   return (
     <div className="ck">
       {head}
       {checks.asking && (
         <div style={{ borderRadius: "var(--r-lg)", overflow: "hidden", border: "1px solid var(--line)" }}>
-          <CheckConfirm asking={checks.asking} others={sorted.filter((i) => i.status !== "unconfirmed").length - checks.asking.plan.starts.length}
-            onStart={checks.confirm} onWithout={checks.withoutStarts} onCancel={checks.cancel} />
+          <CheckConfirm asking={checks.asking} onStart={checks.confirm} onWithout={checks.withoutStarts} onCancel={checks.cancel} />
         </div>
       )}
       {checks.error && <div className="notice" role="alert">{checks.error}</div>}
@@ -93,7 +92,8 @@ export function ChecksPage() {
           {n("warn") > 0 && <span><b style={{ color: "var(--amber)" }}>{n("warn")}</b> need{n("warn") === 1 ? "s" : ""} a look</span>}
           <span><b>{n("up")}</b> up</span>
         </span>
-        <span className="ck-when">{view.checked_at ? `last check ${when(view.checked_at)}` : "never checked"}</span>
+        <span className="ck-when">{view.checked_at
+          ? `last check ${when(view.checked_at)}${view.took_ms ? `, took ${took(view.took_ms)}` : ""}` : "never checked"}</span>
       </div>
       <div className="ck-split">
         <div className="ck-table-wrap">

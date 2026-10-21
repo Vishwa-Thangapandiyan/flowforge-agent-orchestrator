@@ -18,12 +18,15 @@ export const WORD: Record<LiveStatus, string> = {
 
 /** "3 up, 1 needs a look, 1 down": the counts that matter, in plain words. */
 export function countsText(statuses: LiveStatus[]): string {
-  const n = (s: LiveStatus) => statuses.filter((x) => x === s).length;
+  const n = (s: LiveStatus) => countOf(statuses, s);
   const parts = [`${n("up")} up`];
   if (n("warn")) parts.push(`${n("warn")} need${n("warn") === 1 ? "s" : ""} a look`);
   if (n("down")) parts.push(`${n("down")} down`);
   return parts.join(", ");
 }
+
+export const isProblem = (s: LiveStatus) => s === "down" || s === "warn";
+export const countOf = (statuses: LiveStatus[], s: LiveStatus) => statuses.filter((x) => x === s).length;
 
 const RANK: Record<LiveStatus, number> = { down: 0, warn: 1, checking: 2, skipped: 3, unchecked: 4, up: 5, unconfirmed: 6 };
 
@@ -57,9 +60,10 @@ export function caption(status: LiveStatus, summary: string, latency: number | n
 }
 
 /** The first Check now that would start MCP servers: what starts, from where, and a yes (D24). */
-export function CheckConfirm({ asking, others, onStart, onWithout, onCancel }: {
-  asking: Asking; others: number; onStart: () => void; onWithout: () => void; onCancel: () => void;
+export function CheckConfirm({ asking, onStart, onWithout, onCancel }: {
+  asking: Asking; onStart: () => void; onWithout: () => void; onCancel: () => void;
 }) {
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
   const n = asking.plan.starts.length;
   return (
     <section className="hc-confirm" aria-label="Before checking">
@@ -76,7 +80,8 @@ export function CheckConfirm({ asking, others, onStart, onWithout, onCancel }: {
         ))}
       </div>
       <ul className="hc-promise">
-        {others > 0 && <li>{Icons.check(16)}{others} other{others === 1 ? "" : "s"} get one request each, or are only looked for, without keys</li>}
+        {asking.requests > 0 && <li>{Icons.check(16)}{plural(asking.requests, "API or LLM gets", "APIs and LLMs get")} one request each, without keys</li>}
+        {asking.lookedFor > 0 && <li>{Icons.check(16)}{plural(asking.lookedFor, "local program is", "local programs are")} only looked for, never run</li>}
         <li>{Icons.check(16)}No code or key leaves this computer</li>
       </ul>
       <div className="hc-actions">

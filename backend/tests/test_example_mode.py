@@ -158,5 +158,6 @@ def test_check_now_in_example_mode_is_offline_and_needs_no_yes(client):
     assert len(items) == 12 and all(i["status"] in ("up", "warn", "down") for i in items.values())
     currency = items["mcp-currency"]
     assert currency["status"] == "down" and currency["reason"] == "currency server: CURRENCY_API_URL is not set"
-    assert currency["fix"] == "Its code reads CURRENCY_API_URL, but its MCP config gives it no env."
+    assert currency["fix"] == ("Its code reads CURRENCY_API_URL (mcp_servers/currency.py:9), "
+                               "but its MCP config gives it no env.")
     assert items["api-ip-api-com"]["status"] == "warn"

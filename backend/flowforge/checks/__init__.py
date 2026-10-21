@@ -8,6 +8,6 @@ from __future__ import annotations
 
 from flowforge.checks import probes
 from flowforge.checks.models import CheckResult, CheckTarget, Status
-from flowforge.checks.probes import check
+from flowforge.checks.probes import check, new_client, starts_process
 
-__all__ = ["CheckResult", "CheckTarget", "Status", "check", "probes"]
+__all__ = ["CheckResult", "CheckTarget", "Status", "check", "new_client", "probes", "starts_process"]

@@ -350,6 +350,8 @@ export interface CheckItem {
 export interface ChecksView {
   run_id: string | null;
   checked_at: string | null;
+  /** how long the last check run took */
+  took_ms?: number | null;
   summary: Record<HealthStatus, number>;
   items: CheckItem[];
   example: boolean;

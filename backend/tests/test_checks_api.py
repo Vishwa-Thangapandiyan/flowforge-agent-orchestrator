@@ -3,6 +3,7 @@
 The repo below is real and its MCP servers start for real; the one API answers through httpx's MockTransport.
 """
 
+import asyncio
 import json
 import logging
 import time
@@ -120,10 +121,12 @@ def test_check_now_gives_each_dependency_a_verdict_and_keeps_them(api):
     assert items["mcp-tools"]["status"] == "up" and items["mcp-tools"]["summary"] == "Up: 1 tool"
     broken = items["mcp-broken"]
     assert broken["status"] == "down" and "broken: refused key" in broken["reason"]
-    assert broken["fix"] == "Its code reads BROKEN_API_URL, but its MCP config gives it no env."
+    assert broken["fix"] == "Its code reads BROKEN_API_URL (servers/broken.py:2), but its MCP config gives it no env."
     assert items["local-pack"]["status"] == "up"
     assert items["api-www-help-pages-test"]["status"] == "unconfirmed"
-    summary = api.get("/checks").json()["summary"]
+    view = api.get("/checks").json()
+    assert view["took_ms"] > 0
+    summary = view["summary"]
     assert summary == {"up": 3, "warn": 0, "down": 1, "skipped": 0, "unchecked": 0, "unconfirmed": 1}
 
     # the yes is kept for these commands; one dependency can be checked alone; history grows
@@ -154,3 +157,62 @@ def test_no_key_value_reaches_storage_responses_or_logs(api, tmp_path, caplog):
 
 def test_an_unknown_dependency_has_no_history(api):
     assert api.get("/checks/api-nowhere").status_code == 404
+
+
+def test_a_yes_covers_only_the_servers_you_were_shown(api):
+    """Check this one on an MCP server confirms that server, not every other one (D24)."""
+    one = api.post("/checks", json={"ids": ["mcp-tools"], "confirm": True})
+    assert one.status_code == 201
+    finish(api, one.json()["run_id"])
+    assert api.get("/checks/plan").json()["confirmed"] is False
+    refused = api.post("/checks", json={})
+    assert refused.status_code == 409 and "start 1 MCP server " in refused.json()["detail"]
+
+
+def test_a_dependency_you_added_is_checked_at_its_address_and_a_placeholder_is_not(api):
+    for node in ({"id": "dep_remote", "kind": "mcp", "title": "Remote tools", "what": "https://mcp.tools.test/mcp?token=x"},
+                 {"id": "dep_new", "kind": "api", "title": "New dependency", "what": "A dependency you added."}):
+        api.post("/flow/overrides", json={"op": "add_node", "new_node": node})
+    run_id = api.post("/checks", json={"ids": ["dep_remote", "dep_new"]}).json()["run_id"]
+    finish(api, run_id)
+    items = by_id(api)
+    assert items["dep_remote"]["status"] == "up" and "https://mcp.tools.test/mcp" in api.calls   # no query sent
+    assert items["dep_new"]["status"] == "skipped"
+    assert items["dep_new"]["summary"] == "Not checked: no address in the code"
+
+
+def test_a_check_that_breaks_is_not_counted_as_the_dependency_being_down(api):
+    class Broken(CheckNode):
+        async def run(self, params):
+            raise RuntimeError("a bug in the check")
+    main.state.nodes["check"] = Broken()
+    finish(api, api.post("/checks", json={"ids": ["local-pack"]}).json()["run_id"])
+    item = by_id(api)["local-pack"]
+    assert item["status"] == "skipped" and item["summary"] == "The check couldn't run"
+
+
+def test_steps_that_never_ran_record_nothing(api):
+    class Slow(CheckNode):
+        async def run(self, params):
+            await asyncio.sleep(30)
+    main.state.nodes["check"] = Slow()
+    run_id = api.post("/checks", json={"ids": ["local-pack"]}).json()["run_id"]
+    time.sleep(0.3)
+    api.post(f"/runs/{run_id}/stop")
+    deadline = time.monotonic() + 10
+    while api.get(f"/runs/{run_id}").json()["status"] == "running" and time.monotonic() < deadline:
+        time.sleep(0.1)
+    time.sleep(0.3)
+    assert api.get("/checks/local-pack").json() == []
+    assert by_id(api)["local-pack"]["status"] == "unchecked"
+
+
+def test_queued_mcp_checks_get_time_to_wait_their_turn():
+    """Only 3 MCP servers start at once (D24); a step's timeout covers its wait in that queue."""
+    from flowforge.api.checks import check_workflow
+    from flowforge.checks import CheckTarget, probes
+    targets = [CheckTarget(id=f"mcp-{i}", kind="mcp", name=str(i), command=["python", f"s{i}.py"]) for i in range(7)]
+    workflow = check_workflow(targets + [CheckTarget(id="api-x", kind="api", name="x", target="https://x.test")], "/repo")
+    timeouts = {s.params["target"]["id"]: s.timeout_s for s in workflow.steps}
+    assert timeouts["mcp-0"] >= 3 * probes.MCP_TIMEOUT_S   # 7 servers, 3 at a time: up to 3 rounds
+    assert timeouts["api-x"] < probes.MCP_TIMEOUT_S

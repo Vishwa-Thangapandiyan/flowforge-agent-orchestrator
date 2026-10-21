@@ -450,9 +450,7 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
       </header>
       {deps && checks.items.length > 0 && <HealthRow checks={checks} />}
       {checks.asking && (
-        <CheckConfirm asking={checks.asking}
-          others={checks.items.filter((i) => i.status !== "unconfirmed").length - checks.asking.plan.starts.length}
-          onStart={checks.confirm} onWithout={checks.withoutStarts} onCancel={checks.cancel} />
+        <CheckConfirm asking={checks.asking} onStart={checks.confirm} onWithout={checks.withoutStarts} onCancel={checks.cancel} />
       )}
       {checks.error && <div className="notice" role="alert" style={{ margin: "8px 16px 0" }}>{checks.error}</div>}
       {scanning && (

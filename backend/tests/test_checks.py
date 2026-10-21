@@ -8,6 +8,7 @@ import httpx
 
 from flowforge import checks
 from flowforge.checks import CheckTarget, check
+from flowforge.scan.models import EnvName
 
 
 def client(handler):
@@ -177,10 +178,18 @@ async def test_an_mcp_server_that_stops_at_start_up_is_down_with_its_own_words_a
     command = script(tmp_path, "currency.py", (
         "import os, sys\nif not os.getenv('CURRENCY_API_URL'):\n"
         "    sys.exit('currency server: CURRENCY_API_URL is not set')\n"))
-    result = await check(mcp(command, reads_env=["CURRENCY_API_URL"]), tmp_path)
+    reads = [EnvName(name="CURRENCY_API_URL", ref="servers/currency.py:2")]
+    result = await check(mcp(command, reads_env=reads), tmp_path)
     assert result.status == "down" and result.summary == "Stopped while starting"
     assert "currency server: CURRENCY_API_URL is not set" in result.reason
-    assert result.fix == "Its code reads CURRENCY_API_URL, but its MCP config gives it no env."
+    assert result.fix == ("Its code reads CURRENCY_API_URL (servers/currency.py:2), "
+                          "but its MCP config gives it no env.")
+
+
+async def test_a_down_mcp_server_names_the_env_its_config_sets_never_the_values(tmp_path):
+    command = script(tmp_path, "needy.py", "import sys\nsys.exit('needy: bad token')\n")
+    result = await check(mcp(command, env_names=["SHOP_API_TOKEN", "SHOP_URL"]), tmp_path)
+    assert result.reason.endswith("Its config sets SHOP_API_TOKEN, SHOP_URL.")
 
 
 async def test_an_mcp_server_gets_none_of_your_environment(tmp_path, monkeypatch):
@@ -192,14 +201,13 @@ async def test_an_mcp_server_gets_none_of_your_environment(tmp_path, monkeypatch
 
 async def test_a_slow_or_silent_mcp_server(tmp_path, monkeypatch):
     monkeypatch.setattr(checks.probes, "MCP_SLOW_MS", 300)
-    monkeypatch.setenv("SLEEP_S", "0.5")   # the server reads it; FlowForge passes it only because the test sets it
-    monkeypatch.setattr(checks.probes, "MCP_ENV", {"SLEEP_S"})
-    result = await check(mcp(script(tmp_path, "slow.py", SERVER)), tmp_path)
+    slow = SERVER.replace('float(os.getenv("SLEEP_S", "0"))', "0.5")
+    result = await check(mcp(script(tmp_path, "slow.py", slow)), tmp_path)
     assert result.status == "warn" and result.summary.startswith("Up: 2 tools, but slow to start")
 
     monkeypatch.setattr(checks.probes, "MCP_TIMEOUT_S", 0.5)
-    monkeypatch.setenv("SLEEP_S", "5")
-    result = await check(mcp(script(tmp_path, "silent.py", SERVER)), tmp_path)
+    silent = SERVER.replace('float(os.getenv("SLEEP_S", "0"))', "5")
+    result = await check(mcp(script(tmp_path, "silent.py", silent)), tmp_path)
     assert result.status == "down" and result.summary == "No answer within 0.5 s"
 
 
@@ -239,3 +247,17 @@ async def test_a_missing_script_or_program_is_down(tmp_path):
     assert result.status == "down" and result.summary == "Missing: tools/gone.py isn't in the repo"
     result = await check(local(["no-such-program-ff", "--fast"]), tmp_path)
     assert result.status == "down" and result.summary == "Missing: no-such-program-ff isn't installed"
+
+
+# --- the HTTP client keeps nothing between checks ------------------------------------------------------------
+
+async def test_no_cookie_is_kept_or_sent(tmp_path):
+    """D24: no key, cookie or query. A cookie a service sets is never sent back on a later check."""
+    seen = []
+    def handler(request):
+        seen.append(request.headers.get("cookie"))
+        return httpx.Response(200, headers={"set-cookie": "session=abc123; Path=/"})
+    async with checks.probes.new_client(httpx.MockTransport(handler)) as http:
+        await check(api("https://api.cookies.test/v1"), tmp_path, http=http)
+        await check(api("https://api.cookies.test/v1"), tmp_path, http=http)
+    assert seen == [None, None]

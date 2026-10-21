@@ -17,6 +17,7 @@ from fastapi import APIRouter, Body, HTTPException, Response, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import ValidationError
 
+from flowforge.checks import CheckTarget
 from flowforge.connectors.models import Connector, parse_connector
 from flowforge.connectors.presets import CUSTOM, DEFAULT_CONNECTORS, PRESETS
 from flowforge.connectors.registry import ConnectorFileError, _describe, check_references
@@ -206,12 +207,18 @@ def get_logo(connector_id: str) -> FileResponse:
 
 @router.post("/connectors/{connector_id}/test")
 async def test_connector(connector_id: str) -> dict[str, Any]:
-    """One harmless check. MCP: list its tools. Local: the program and folder exist."""
+    """One harmless check. MCP: list its tools. Local: the program and folder exist. LLM and HTTP: the health
+    check's one request, with no key (D24)."""
     s = app_state()
     connector = get_connector(connector_id)
     node = s.nodes.get(connector_id)
-    if connector.type in ("llm", "http"):
-        raise HTTPException(501, f"Testing {connector.type} connectors arrives in Phase 4")
+    if connector.type in ("llm", "http"):   # the health check's one request, without the key (D24)
+        target = CheckTarget(id=connector.id, kind="llm" if connector.type == "llm" else "api", name=connector.name,
+                             target=connector.connection.base_url, model=getattr(connector.connection, "model", None))
+        out = await s.nodes["check"].run({"target": target.model_dump(mode="json"), "root": "."})
+        result = {"ok": out["status"] in ("up", "warn"), "message": out["summary"]}
+        s.connector_tests[connector_id] = {**result, "at": datetime.now().astimezone().isoformat(timespec="seconds")}
+        return result
     try:
         if isinstance(node, MCPNode):
             tools = await asyncio.wait_for(node.list_tools(), MCP_TIMEOUT_S)

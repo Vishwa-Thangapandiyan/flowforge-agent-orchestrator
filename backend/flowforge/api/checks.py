@@ -11,6 +11,8 @@ Progress streams over GET /runs/{run_id}/events, like any run (D16).
 from __future__ import annotations
 
 import asyncio
+import json
+import math
 import re
 from pathlib import Path
 from typing import Any
@@ -20,22 +22,23 @@ from pydantic import BaseModel, ConfigDict
 
 from flowforge.api.runs import start_run
 from flowforge.api.scan import repo_path
-from flowforge.checks import CheckTarget
-from flowforge.flowmap.planner import fact_hash
-from flowforge.scan.models import Dependency, ScanResult
+from flowforge.checks import CheckTarget, probes, starts_process
+from flowforge.nodes.check_node import MCP_AT_ONCE
+from flowforge.scan.models import Dependency, EnvName, ScanResult
+from flowforge.scan.urls import clean_url
 from flowforge.schema import Step, Workflow
-from flowforge.security.logfilter import REDACTED
 from flowforge.state import AppState, app_state
 
 router = APIRouter()
 
 CHECKABLE = ("llm", "api", "mcp", "local")
-CONFIRMED_SETTING = "checks_confirmed"   # the hash of the MCP commands the user agreed to start
+CONFIRMED_SETTING = "checks_confirmed"   # the MCP commands the user agreed to start, one by one (JSON list)
 LAST_RUN_SETTING = "checks_last_run"
 HISTORY = 12                             # checks shown per dependency
 COUNTS = ("up", "warn", "down", "skipped", "unchecked", "unconfirmed")
 # rough check times by kind, so the scheduler starts the slow MCP servers first (D1 weights, D24)
 ESTIMATE_MS = {"mcp": 3000.0, "llm": 300.0, "api": 300.0, "local": 10.0}
+STEP_SLACK_S = 5.0   # on top of a probe's own timeout
 
 
 class CheckRequest(BaseModel):
@@ -45,12 +48,20 @@ class CheckRequest(BaseModel):
     confirm: bool = False          # yes, start the MCP servers listed in /checks/plan
 
 
-def _reads_env(dep: Dependency, scan: ScanResult) -> list[str]:
-    """Env names an MCP server's own script reads, from the scan (for a likely fix when it won't start)."""
+def _reads_env(dep: Dependency, scan: ScanResult) -> list[EnvName]:
+    """Env names an MCP server's own script reads, and where, from the scan (for a likely fix when it won't start)."""
     if dep.kind != "mcp" or not dep.command or len(dep.command) < 2:
         return []
     script = dep.command[1]
-    return sorted({e.name for e in scan.env_names if e.ref.rsplit(":", 1)[0] == script})
+    return [e for e in scan.env_names if e.ref.rsplit(":", 1)[0] == script]
+
+
+def _address(what: str | None) -> str | None:
+    """A block you added: its text is an address only if it looks like one (no query kept, D24)."""
+    if not what or " " in what.strip():
+        return None
+    what = what.strip()
+    return clean_url(what) if "://" in what else (what if "." in what or ":" in what else None)
 
 
 def _target(node: dict[str, Any], dep: Dependency | None, scan: ScanResult | None) -> CheckTarget:
@@ -58,11 +69,14 @@ def _target(node: dict[str, Any], dep: Dependency | None, scan: ScanResult | Non
         return CheckTarget(id=dep.id, kind=dep.kind, name=node["title"], target=dep.target, command=dep.command,
                            model=dep.model, catalog=dep.catalog, env_names=dep.env_names,
                            reads_env=_reads_env(dep, scan))
-    what = node.get("what") or None   # a dependency the user added on the map: its address or command
-    stdio = node["kind"] in ("mcp", "local") and what and "://" not in what
+    what = (node.get("what") or "").strip()   # a dependency the user added on the map: its address or command
+    address = _address(what)
+    if node["kind"] in ("mcp", "local") and what and "://" not in what:
+        command = what.split()
+    else:
+        command = [address] if node["kind"] == "mcp" and address else None
     return CheckTarget(id=node["id"], kind=node["kind"], name=node["title"], catalog=node.get("catalog"),
-                       target=None if stdio else what, command=what.split() if stdio else ([what] if what else None),
-                       model=(node.get("op") or {}).get("model"))
+                       target=address, command=command, model=(node.get("op") or {}).get("model"))
 
 
 def _map(s: AppState) -> tuple[list[dict[str, Any]], dict[str, CheckTarget], dict[str, Dependency]]:
@@ -78,12 +92,6 @@ def _map(s: AppState) -> tuple[list[dict[str, Any]], dict[str, CheckTarget], dic
     return nodes, targets, deps
 
 
-def _starts(t: CheckTarget) -> bool:
-    """Checking this one starts a process: a stdio MCP server whose arguments are all known (D24)."""
-    return (t.kind == "mcp" and bool(t.command) and "://" not in t.command[0]
-            and not any(REDACTED in part for part in t.command))
-
-
 def _origin(command: list[str], root: Path | None) -> str:
     """Where the code that starts comes from, in plain words."""
     program = Path(command[0]).name
@@ -97,8 +105,36 @@ def _origin(command: list[str], root: Path | None) -> str:
     return f"runs {program} from your PATH"
 
 
-def _confirm_key(targets: list[CheckTarget]) -> str:
-    return fact_hash(sorted(" ".join(t.command or []) for t in targets if _starts(t)))
+def _command(t: CheckTarget) -> str:
+    return " ".join(t.command or [])
+
+
+def _confirmed(s: AppState) -> set[str]:
+    return set(json.loads(s.storage.setting(CONFIRMED_SETTING) or "[]"))
+
+
+def _unconfirmed(s: AppState, targets: list[CheckTarget]) -> list[CheckTarget]:
+    """The servers this check would start that the user hasn't said yes to. Each yes covers the command shown, so
+    a re-scan or an edit that changes a command asks again (D24). Example mode starts nothing."""
+    if s.example:
+        return []
+    yes = _confirmed(s)
+    return [t for t in targets if starts_process(t) and _command(t) not in yes]
+
+
+def check_workflow(targets: list[CheckTarget], root: str) -> Workflow:
+    """One check step per dependency, no edges, no retries, no cache (D24). Only MCP_AT_ONCE servers start
+    together (CheckNode), so a server's timeout includes its wait for a turn: every round may take the full
+    MCP_TIMEOUT_S."""
+    rounds = math.ceil(sum(t.kind == "mcp" for t in targets) / MCP_AT_ONCE) or 1
+    timeout = {"mcp": probes.MCP_TIMEOUT_S * rounds, "llm": probes.HTTP_TIMEOUT_S, "api": probes.HTTP_TIMEOUT_S,
+               "local": 1.0}
+    steps = [Step(id="c_" + re.sub(r"\W", "_", t.id), type="check", retries=0, cache=False,
+                  description=f"Check {t.name}", estimated_ms=ESTIMATE_MS[t.kind],
+                  timeout_s=timeout[t.kind] + STEP_SLACK_S,
+                  params={"target": t.model_dump(mode="json"), "root": root}) for t in targets]
+    return Workflow(id="health-check", name="Health check", max_concurrency=8, type_concurrency={"check": 8},
+                    steps=steps)
 
 
 @router.get("/checks/plan")
@@ -108,32 +144,37 @@ def check_plan() -> dict[str, Any]:
     root = repo_path(s)
     starts = []
     for t in targets.values():
-        if _starts(t):
+        if starts_process(t):
             dep = deps.get(t.id)
             source = dep.evidence[0].ref if dep and dep.evidence else None
             starts.append({"id": t.id, "name": t.name, "command": " ".join(t.command or []),
                            "origin": _origin(t.command or [], root), "source": source})
-    confirmed = s.example or not starts or s.storage.setting(CONFIRMED_SETTING) == _confirm_key(list(targets.values()))
+    confirmed = not _unconfirmed(s, list(targets.values()))
     kinds = {k: sum(t.kind == k for t in targets.values()) for k in CHECKABLE}
     return {"checks": len(targets), "kinds": kinds, "starts": starts, "confirmed": confirmed, "example": s.example}
 
 
 async def _record(s: AppState, run_id: str, workflow: Workflow) -> None:
-    """When the run ends, keep one verdict per dependency (D24). A step that crashed is a check that couldn't run."""
+    """When the run ends, keep a verdict for every check that finished (D24), from the run's events, so a run you
+    stopped still keeps what it found. A check that broke says so (skipped), never blaming the dependency; a
+    check that never ran records nothing."""
     run = s.runs[run_id]
     if run.task is not None:
         await asyncio.wait([run.task])
-    steps = (run.result or {}).get("steps", {})
+    targets = {step.id: step.params["target"] for step in workflow.steps}
     rows = []
-    for step in workflow.steps:
-        target = step.params["target"]
-        out = steps.get(step.id, {}).get("output")
-        if isinstance(out, dict) and out.get("status"):
+    for event in run.events:
+        if event.get("type") != "step" or event.get("step_id") not in targets:
+            continue
+        out = event.get("output")
+        if event.get("state") == "succeeded" and isinstance(out, dict) and out.get("status"):
             rows.append(out)
-        else:
-            rows.append({"id": target["id"], "kind": target["kind"], "status": "down",
-                         "summary": "The check couldn't run", "reason": steps.get(step.id, {}).get("error")})
-    s.storage.add_checks(run_id, rows)
+        elif event.get("state") == "failed":
+            target = targets[event["step_id"]]
+            rows.append({"id": target["id"], "kind": target["kind"], "status": "skipped",
+                         "summary": "The check couldn't run", "reason": event.get("error")})
+    if rows:
+        s.storage.add_checks(run_id, rows)
     s.storage.set_setting(LAST_RUN_SETTING, run_id)
 
 
@@ -150,24 +191,20 @@ async def start_checks(req: CheckRequest) -> dict[str, Any]:
         if unknown:
             raise HTTPException(422, f"not on the map, or unconfirmed: {', '.join(unknown)}")
         chosen = [targets[i] for i in req.ids]
-    starting = [t for t in chosen if _starts(t)]
-    key = _confirm_key(list(targets.values()))
-    if starting and not s.example and s.storage.setting(CONFIRMED_SETTING) != key:
+    asking = _unconfirmed(s, chosen)
+    if asking:
         if not req.confirm:
-            n = len(starting)
+            n = len(asking)
             raise HTTPException(409, f"Checking would start {n} MCP server{'s' if n != 1 else ''} on this computer. "
                                      "See what starts in GET /checks/plan, then send confirm: true.")
-        s.storage.set_setting(CONFIRMED_SETTING, key)
-    steps = [Step(id="c_" + re.sub(r"\W", "_", t.id), type="check", retries=0, cache=False,
-                  description=f"Check {t.name}", estimated_ms=ESTIMATE_MS[t.kind],
-                  params={"target": t.model_dump(mode="json"), "root": str(root)}) for t in chosen]
-    workflow = Workflow(id="health-check", name="Health check", max_concurrency=8, type_concurrency={"check": 8},
-                        steps=steps)
+        # the yes covers exactly the servers this check starts, nothing else on the map
+        s.storage.set_setting(CONFIRMED_SETTING, json.dumps(sorted(_confirmed(s) | {_command(t) for t in asking})))
+    workflow = check_workflow(chosen, str(root))
     run_id = start_run(workflow, use_cache=False)
     task = asyncio.create_task(_record(s, run_id, workflow))
     s.tasks.add(task)
     task.add_done_callback(s.tasks.discard)
-    return {"run_id": run_id, "checks": len(steps)}
+    return {"run_id": run_id, "checks": len(workflow.steps)}
 
 
 def _item(node: dict[str, Any], history: list[dict[str, Any]]) -> dict[str, Any]:
@@ -191,7 +228,10 @@ def latest_checks() -> dict[str, Any]:
     items = [_item(n, by_dep.get(n["id"], [])) for n in nodes]
     summary = {k: sum(i["status"] == k for i in items) for k in COUNTS}
     checked = [i["at"] for i in items if i.get("at")]
-    return {"run_id": s.storage.setting(LAST_RUN_SETTING), "checked_at": max(checked) if checked else None,
+    run_id = s.storage.setting(LAST_RUN_SETTING)
+    last = s.storage.get_run(run_id) if run_id else None
+    return {"run_id": run_id, "checked_at": max(checked) if checked else None,
+            "took_ms": last.get("makespan_ms") if last else None,
             "summary": summary, "items": items, "example": s.example}
 
 

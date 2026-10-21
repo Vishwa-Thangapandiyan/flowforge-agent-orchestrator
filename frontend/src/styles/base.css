@@ -97,6 +97,8 @@ code, .mono { font-family: var(--mono); }
 .btn.violet { background: var(--violet); border-color: var(--violet); color: var(--on-violet); }
 .btn.danger { border-color: var(--coral); color: var(--coral); background: var(--surface); }
 .btn.danger:hover { background: var(--coral-bg); }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--muted); }
+.btn.ghost:hover { color: var(--fg); background: var(--surface-2); }
 .btn[disabled], .btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; box-shadow: none; transform: none; }
 .btn.small { min-height: 36px; padding: 0 12px; font-size: 14px; }
 

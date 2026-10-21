@@ -1,6 +1,4 @@
-/* Health checks (D24), from docs/design/checks-artboards. One colour per verdict:
-   teal up, amber needs a look, coral down, blue checking (the token meaning of "running"), grey not checked. */
-:root { --h-up: var(--teal); --h-warn: var(--amber-strong); --h-down: var(--coral); --h-run: var(--blue); --h-none: var(--line-2); }
+/* Health checks (D24), from docs/design/checks-artboards. Colours are the --h-* tokens in tokens.css. */
 
 .hsq-strip { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 3px; }
 .hsq-strip .sq { width: 10px; height: 10px; border-radius: 3px; background: var(--h-none); }
@@ -14,8 +12,6 @@
 .hdot.checking { background: var(--h-run); animation: hpulse 1.2s ease-in-out infinite; }
 @keyframes hpulse { 50% { opacity: .35; } }
 @media (prefers-reduced-motion: reduce) { .sq.checking, .hdot.checking { animation: none; } }
-.btn.ghost { background: transparent; border-color: transparent; color: var(--muted); }
-.btn.ghost:hover { color: var(--fg); background: var(--surface-2); }
 
 /* the yes before MCP servers start */
 .hc-confirm { position: relative; z-index: 5; padding: 18px 20px 20px; background: var(--surface); border-bottom: 1px solid var(--line); box-shadow: var(--shadow-3); }
@@ -26,9 +22,7 @@
 .hc-cmd > * { display: flex; align-items: center; padding: 10px 14px; border-top: 1px solid var(--line); min-width: 0; }
 .hc-cmd:first-child > * { border-top: 0; }
 .hc-cmd code { font: 500 13px/1.3 var(--mono); overflow-wrap: anywhere; }
-.hc-from { font-size: 12.5px; white-space: nowrap; color: var(--muted); }
-.hc-from::before { content: ""; }
-.hc-from { padding: 3px 8px; border-radius: var(--r-pill); background: var(--surface-2); border: 1px solid var(--line); margin: 7px 0; align-self: center; }
+.hc-from { font-size: 12.5px; white-space: nowrap; color: var(--muted); padding: 3px 8px; border-radius: var(--r-pill); background: var(--surface-2); border: 1px solid var(--line); margin: 7px 0; align-self: center; }
 .hc-from.repo { background: var(--amber-bg); color: var(--amber); border-color: color-mix(in srgb, var(--amber) 35%, transparent); }
 .hc-src { font: 500 12px/1 var(--mono); color: var(--muted); }
 .hc-promise { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 14px 0 0; padding: 0; list-style: none; font-size: 13px; color: var(--muted); }

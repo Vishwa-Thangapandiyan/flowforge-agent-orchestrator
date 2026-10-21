@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from flowforge.scan.models import DependencyKind
+from flowforge.scan.models import DependencyKind, EnvName
 
 Status = Literal["up", "warn", "down", "skipped"]
 
@@ -26,10 +26,12 @@ class CheckTarget(_Model):
     model: str | None = None
     catalog: str | None = None
     env_names: list[str] = Field(default_factory=list)   # env names its MCP config gives it
-    reads_env: list[str] = Field(default_factory=list)   # env names its own script reads (from the scan)
+    reads_env: list[EnvName] = Field(default_factory=list)   # env names its own script reads, and where (scan)
 
 
 class CheckResult(_Model):
+    """One dependency's verdict (D24): up, warn, down, or skipped with the reason nothing was checked."""
+
     id: str
     status: Status
     latency_ms: float | None = None

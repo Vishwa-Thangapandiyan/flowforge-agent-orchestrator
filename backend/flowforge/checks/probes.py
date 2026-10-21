@@ -11,6 +11,7 @@ import tempfile
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from http.cookiejar import CookieJar
 from pathlib import Path
 from typing import Any
 
@@ -18,7 +19,7 @@ import httpx
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import get_default_environment, stdio_client
 
-from flowforge.checks.models import CheckResult, CheckTarget
+from flowforge.checks.models import CheckResult, CheckTarget, Status
 from flowforge.connectors.presets import MODEL_LISTS
 from flowforge.scan.urls import host_of, is_local
 from flowforge.security.logfilter import REDACTED, Redactor
@@ -28,10 +29,35 @@ HTTP_TIMEOUT_S = 10
 CERT_WARN_DAYS = 14
 MCP_SLOW_MS = 5000        # an MCP server slower than this to list its tools needs a look
 MCP_TIMEOUT_S: float = 30
-MCP_ENV: set[str] = set()  # env names passed through on top of the SDK's minimal set (tests only)
 STDERR_LINES = 3
 USER_AGENT = "FlowForge health check (one request, no keys)"
 _redactor = Redactor()
+
+
+class _NoCookies(CookieJar):
+    """A jar that keeps nothing: a cookie a service sets is never sent back on a later check (D24)."""
+
+    def set_cookie(self, cookie: Any) -> None:
+        return None
+
+    def extract_cookies(self, response: Any, request: Any) -> None:
+        return None
+
+
+def new_client(transport: httpx.AsyncBaseTransport | None = None) -> httpx.AsyncClient:
+    """The HTTP client checks share: no cookies kept, no redirects followed, nothing but our User-Agent."""
+    return httpx.AsyncClient(transport=transport, cookies=_NoCookies())
+
+
+def is_remote(command: list[str]) -> bool:
+    return bool(command) and command[0].startswith(("http://", "https://"))
+
+
+def starts_process(target: CheckTarget) -> bool:
+    """Checking this one starts a process: a stdio MCP server whose arguments are all known (D24)."""
+    command = target.command or []
+    return (target.kind == "mcp" and bool(command) and not is_remote(command)
+            and not any(REDACTED in part for part in command))
 
 
 def took(ms: float) -> str:
@@ -56,7 +82,7 @@ def _not_after(response: httpx.Response) -> str | None:
     return cert.get("notAfter") if cert else None
 
 
-def _result(t: CheckTarget, status: str, summary: str, **fields: Any) -> CheckResult:
+def _result(t: CheckTarget, status: Status, summary: str, **fields: Any) -> CheckResult:
     if fields.get("reason"):
         fields["reason"] = _redactor.redact_text(fields["reason"])[:400]
     return CheckResult(id=t.id, status=status, summary=summary, **fields)
@@ -126,7 +152,9 @@ def _model_names(body: bytes) -> set[str]:
 
 async def llm(t: CheckTarget, http: httpx.AsyncClient) -> CheckResult:
     host = host_of(f"http://{t.target}") if t.target and "://" not in t.target else host_of(t.target or "")
-    if t.catalog in MODEL_LISTS:
+    if t.target and "://" in t.target:   # a base URL (a connector's): its model list is under it
+        url = f"{t.target.rstrip('/')}/models"
+    elif t.catalog in MODEL_LISTS:
         url = MODEL_LISTS[t.catalog].format(host=host or "localhost:11434")
     elif host:
         url = f"{'http' if is_local(host) else 'https'}://{host}/v1/models"
@@ -166,11 +194,11 @@ def _program_missing(program: str, root: Path) -> bool:
 
 def _env_fix(t: CheckTarget) -> str | None:
     """A likely fix when the server's own script reads env names its config doesn't give it (D24)."""
-    missing = [n for n in t.reads_env if n not in t.env_names]
+    missing = [e for e in t.reads_env if e.name not in t.env_names]
     if not missing:
         return None
     gives = "gives it no env" if not t.env_names else f"doesn't set {'it' if len(missing) == 1 else 'them'}"
-    return f"Its code reads {', '.join(missing)}, but its MCP config {gives}."
+    return f"Its code reads {', '.join(f'{e.name} ({e.ref})' for e in missing)}, but its MCP config {gives}."
 
 
 def _tail(errlog: Any) -> str:
@@ -196,15 +224,14 @@ async def mcp(t: CheckTarget, root: Path, http: httpx.AsyncClient) -> CheckResul
     command = t.command or []
     if not command:
         return _result(t, "skipped", "Not checked: no command in its config")
-    if command[0].startswith(("http://", "https://")):   # a remote server: reachable, like an API
+    if is_remote(command):   # a remote server: reachable, like an API
         return await api(t.model_copy(update={"target": command[0]}), http)
-    if any(REDACTED in part for part in command):
+    if not starts_process(t):
         return _result(t, "skipped", "Not checked: its arguments hold a masked secret")
     program, args = command[0], command[1:]
     if _program_missing(program, root):
         return _result(t, "down", f"Can't start: {program} isn't installed")
-    env = {**get_default_environment(), **{k: os.environ[k] for k in MCP_ENV if k in os.environ}}
-    params = StdioServerParameters(command=program, args=args, cwd=str(root), env=env)
+    params = StdioServerParameters(command=program, args=args, cwd=str(root), env=get_default_environment())
     with tempfile.TemporaryFile("w+", encoding="utf-8", errors="replace") as errlog:
         start = time.perf_counter()
         try:
@@ -216,6 +243,8 @@ async def mcp(t: CheckTarget, root: Path, http: httpx.AsyncClient) -> CheckResul
             while isinstance(exc, BaseExceptionGroup) and exc.exceptions:
                 exc = exc.exceptions[0]
             reason = _tail(errlog) or str(exc) or type(exc).__name__
+            if t.env_names:   # the names its config sets, never their values (D24)
+                reason += f"\nIts config sets {', '.join(t.env_names)}."
             return _result(t, "down", "Stopped while starting", reason=reason, fix=_env_fix(t))
     ms = (time.perf_counter() - start) * 1000
     up = f"Up: {len(tools)} tool{'s' if len(tools) != 1 else ''}"
@@ -242,7 +271,7 @@ def local(t: CheckTarget, root: Path) -> CheckResult:
 async def check(target: CheckTarget, root: Path, *, http: httpx.AsyncClient | None = None) -> CheckResult:
     """Check one dependency (D24). `root` is the scanned folder, where MCP servers start and scripts are looked for."""
     if http is None:
-        async with httpx.AsyncClient() as own:
+        async with new_client() as own:
             return await check(target, root, http=own)
     if target.kind == "api":
         return await api(target, http)

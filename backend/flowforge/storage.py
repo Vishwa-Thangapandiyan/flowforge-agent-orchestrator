@@ -408,8 +408,9 @@ class Storage:
         return out
 
     def clear_checks(self) -> None:
-        """A different repo starts with no check history (D21, D24)."""
+        """A different repo starts with no check history and no yes to start its MCP servers (D21, D24)."""
         self.conn.execute("DELETE FROM checks")
+        self.conn.execute("DELETE FROM settings WHERE key IN ('checks_confirmed', 'checks_last_run')")
         self.conn.commit()
 
     # --- settings ---------------------------------------------------------------------------------

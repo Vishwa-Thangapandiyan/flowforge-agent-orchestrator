@@ -7,10 +7,13 @@ import type { CheckItem, CheckPlan, ChecksView, HealthStatus } from "../api/type
 export type LiveStatus = HealthStatus | "checking";
 export type LiveItem = Omit<CheckItem, "status"> & { status: LiveStatus };
 
-/** What waits for a yes: the plan's servers that this check would start, and which dependencies it covers. */
+/** What waits for a yes: the plan's servers that this check would start, which dependencies it covers, and
+ * what the rest of the check does (one request each, or only looked for). */
 export interface Asking {
   plan: CheckPlan;
   ids?: string[];
+  requests: number;
+  lookedFor: number;
 }
 
 const STORED_TRIES = 20;   // after a run ends, how often to re-read /checks until its verdicts are stored
@@ -75,14 +78,16 @@ export function useChecks(enabled = true) {
       const plan = await api.get<CheckPlan>("/checks/plan");
       const starts = ids ? plan.starts.filter((s) => ids.includes(s.id)) : plan.starts;
       if (!plan.confirmed && starts.length) {
-        setAsking({ plan: { ...plan, starts }, ids });
+        const covered = items.filter((i) => (ids ?? checkable).includes(i.id) && !starts.some((s) => s.id === i.id));
+        setAsking({ plan: { ...plan, starts }, ids, requests: covered.filter((i) => i.kind !== "local").length,
+          lookedFor: covered.filter((i) => i.kind === "local").length });
         return;
       }
       await start(ids ? { ids } : {});
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [start]);
+  }, [start, items, checkable]);
 
   const confirm = useCallback(() => {
     if (asking) void start(asking.ids ? { ids: asking.ids, confirm: true } : { confirm: true });

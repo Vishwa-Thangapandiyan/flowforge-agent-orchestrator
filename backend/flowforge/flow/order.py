@@ -126,7 +126,7 @@ def flatten(func: Func, index: Index, reach: Reach) -> Body:
 
 def label(stmt: Stmt, index: Index, module_name: str) -> str:
     """The code's own words for a step: a string it passes (`attempt("find the city (Nominatim)", …)`), without the
-    trailing note in brackets; else the function it calls."""
+    trailing note in brackets; else the function it calls, as words (`packing_list` → "packing list")."""
     for sub in ast.walk(stmt.node):
         if isinstance(sub, ast.Call):
             for arg in sub.args:
@@ -136,7 +136,7 @@ def label(stmt: Stmt, index: Index, module_name: str) -> str:
         if isinstance(sub, ast.Call):
             target = index.resolve(sub, index.modules[module_name])
             if target:
-                return f"{target.rsplit('.', 1)[-1]}()"
+                return target.rsplit(".", 1)[-1].replace("_", " ").strip()
     return ""
 
 

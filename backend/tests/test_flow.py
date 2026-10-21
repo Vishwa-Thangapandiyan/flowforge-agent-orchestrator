@@ -71,6 +71,7 @@ def test_the_trip_planner_flow_matches_its_code(no_network):
         ("llm-ollama-1", "if-5", None), ("if-5", "mcp-files-1", "yes"),
     }
     assert node(flow, "api-nominatim-1").what == "find the city"     # the code's own label
+    assert node(flow, "local-packing-list-1").what == "packing list"   # no label: the function it calls, as words
     # each decision asks a whole question, from the step that produced what it checks (or the function's input)
     questions = {n.id: n.title for n in flow.nodes if n.kind == "decision"}
     assert questions == {"if-1": 'Did "find the city" fail?', "if-2": "Was a sight given?",

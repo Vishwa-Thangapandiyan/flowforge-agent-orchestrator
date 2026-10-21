@@ -777,6 +777,77 @@ A dependency with nothing to check is `skipped` (grey) and says why. Two cases:
 
 **Code:** `checks/` (new), `nodes/check_node.py` (new), `schema.py` (`"check"`), `storage.py` (`checks`), `api/checks.py` (new), `connectors/presets.py` (LLM health paths), `example_data.py`, `frontend/src/`.
 
+## D25. Flow order from code: the critical path and "run these together" (Phase 6, Vishwa, 2026-10-21)
+
+**Supersedes:**
+- in D17, policy gates, for flows read from code only;
+- in D23, "The API keeps `?map=flow`. It is empty until flows come from code": flows now come from code.
+
+**Context.** D23 made flow order the next phase. An MCP management tool should say:
+- in what order the app calls its dependencies;
+- which chain makes it slow;
+- what could run at the same time.
+
+D23's rule holds: nothing drawn by hand. Vishwa chose Python first, with Dart and JS/TS as the next step.
+
+**Choice:**
+- **Source.** Python, read by the stdlib `ast`. Nothing is run or sent, and no LLM is used (D20).
+  - A repo with no Python entry point shows "Flow order needs Python for now; Dart and JS/TS are next."
+- **Entry points.**
+  - An entry point is a function in the repo that reaches at least one dependency and that no other function in the repo calls.
+  - A wrapper whose whole body is one call into another such function is unwrapped (`main` → `asyncio.run(plan(...))` → `plan`).
+  - Each entry point is a `start` block, so one map can hold several flows.
+- **Steps.** A statement in an entry function is a step when it reaches a dependency (D21) in one of four ways:
+  - a scan evidence line inside it;
+  - a module-level name whose definition line is evidence (a `client = OpenAI(...)`);
+  - an MCP server's name passed as a string argument (D21's `via` rule);
+  - an in-repo function call, followed transitively through imports.
+
+  One block per step:
+  - its kind and tile come from the dependency;
+  - its evidence is the step's own `file:line`;
+  - its title is the code's own label when there is one, otherwise the dependency's name.
+- **Lines.**
+  - **Data:** step B depends on step A when B reads a name A wrote, directly or through plain code in between. A method call on a name (`facts.append(...)`) writes that name.
+  - **Control:**
+    - a step inside `if cond:` depends on what defined `cond`'s names, and the `if` is a decision block with yes/no branches, its condition (`ast.unparse`) and its `file:line`;
+    - an early `return` inside an `if` makes every later step depend on that decision.
+  - **Order kept:**
+    - two side-effecting steps keep their written order;
+    - steps the code already runs together (`asyncio.gather`, a `TaskGroup`, `create_task`) are drawn together;
+    - a step inside a loop is marked "repeats".
+  - **Readability:** lines are transitively reduced. Plain code is not drawn as blocks, but it still carries data dependencies between steps.
+- **No gates.** A flow read from code describes the user's app, not a run FlowForge executes. Side effects are marked, not gated (D17's gates stay for flows FlowForge runs). Call blocks need no connected app, as on dependency maps (D21).
+- **Weights for the critical path** (`validate.critical`, D1, D5):
+  - the dependency's latest check latency (D24), marked `measured`;
+  - otherwise the per-kind default, marked `estimate`.
+
+  LLM blocks are always `estimate`, because a check measures "is it up", not how long a reply takes.
+- **Advice: run these together.** FlowForge compares the time as written with the critical path of the dependency graph. As written means source order, sequential except where the code already runs calls together.
+  - Each group of steps that sit next to each other in the code, are awaited one after another and don't use each other's results becomes one piece of advice: the steps and their `file:line`s, how (`asyncio.gather`), and about how much time it saves.
+  - When the code stops early if an earlier step fails (`if place is None: return`), the advice carries that caveat: starting a step earlier can waste a call.
+  - FlowForge never changes the code. V2 (Phase 10) can hand advice to a coding agent, on a branch, behind a gate.
+- **Model (additive):**
+  - `Flow.advice` (`nodes`, `refs`, `text`, `saved_ms`, `caveat`);
+  - `FlowNode.repeats`;
+  - `FlowNode.estimate_source` (`measured` | `estimate`).
+- **Maps.**
+  - The `flow` map is drawn by `CodeFlowPlanner`, from the chosen repo or, in example mode, from `examples/trip-planner`.
+  - The Dependencies | Flow switch returns, because both maps now come from code.
+  - Versions, re-scan → diff, overrides and positions come from D17 unchanged.
+- **Limits, said in the UI.** These are missed or flattened, and the analysis says so instead of guessing:
+  - calls passed around as values;
+  - callbacks;
+  - dynamic dispatch;
+  - steps buried in other entry points' helpers.
+
+**Why:**
+- Saying "these four calls don't need each other, so run them together" turns a picture into advice.
+- Reading it from the AST keeps D23's promise that every line can be proved.
+- Reusing the Planner seam, `critical()` and the flow-map UI means the work is the analysis, not new plumbing.
+
+**Code:** `flow/` (new), `scan/scanner.py` (`scan_with_places`), `flowmap/models.py`, `flowmap/validate.py`, `flowmap/planner.py` (`CodeFlowPlanner`), `main.py`, `example_data.py`, `frontend/src/flowmap/`.
+
 ---
 
 ## Step JSON schema (reference)

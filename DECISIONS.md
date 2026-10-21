@@ -926,6 +926,30 @@ D23's rule holds: nothing drawn by hand. Vishwa chose Python first, with Dart an
 
 ---
 
+## D28. Two brains, both optional: the user's coding agent first, through FlowForge as an MCP server (Vishwa, 2026-10-21)
+
+**Context.** Vishwa and a friend: users either use FlowForge's own LLM (NIM, another API wrapper, later the SLM of Phase 11) or "their brain", the coding agent they already have (Claude Code, Codex, Antigravity), connected to the project. Vishwa prefers the second and wants FlowForge to offer the connection.
+
+**Choice:**
+- **The core needs no brain.** Scan, maps, checks, the critical path and the advice are plain code (D20, D25, D27) and stay that way. Neither brain is ever required.
+- **Brain B, the user's coding agent, is the default for AI work.** It runs on the user's own subscription and already has the repo, so FlowForge pays nothing and holds no extra code.
+- **The connection: FlowForge is itself an MCP server.** One entry in the agent's MCP config (for example `.mcp.json`) starts it. Its tools, read-only first:
+  - `get_map` (the dependency map and the flow);
+  - `get_advice` (D27's changes and prompts);
+  - `run_checks` (D24);
+  - `get_security_findings` (Phase 7).
+
+  The agent makes changes on a branch; FlowForge re-scans to confirm; the user approves every change (D11 gates, Phase 10). FlowForge never edits code itself.
+- **Brain A, FlowForge's own LLM, is the fallback** for users with no agent: today NIM or another provider the user picks, seeing masked findings only (D20); later FlowForge's own SLM (Phase 11).
+- **Safety:** whatever the agent gets from FlowForge is masked like evidence (D22); no key value, ever. Tool descriptions and repo text are untrusted input (section 6.5).
+- **Delivery:** each piece ships on its own branch and PR (the MCP server, then each later brain feature), not bundled into another phase.
+
+**Why:** an MCP management tool that is itself an MCP server is the natural way in for the agents developers already use, and it keeps FlowForge free and private by default.
+
+**Code:** not yet. Planned as its own branch (`feat/mcp-server`) after Phase 6 is merged; plan mode first.
+
+---
+
 ## Step JSON schema (reference)
 
 ```json

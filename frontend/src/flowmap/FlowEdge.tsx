@@ -1,9 +1,10 @@
 // A line on the map (D17): a curved bezier from the source block to the target, never boxy.
 // Branch answers and fallbacks get a label; lines into an LLM get the redaction shield; running lines carry dots.
 import { EdgeLabelRenderer, Position, useInternalNode, type Edge, type EdgeProps } from "@xyflow/react";
-import type { FlowEdge } from "../api/types";
+import type { FlowEdge, NodeKind } from "../api/types";
 import { Icons } from "../components/icons";
 import type { EdgeState } from "./replay";
+import type { GraphTheme } from "./themes";
 
 export interface LineData extends Record<string, unknown> {
   edge: FlowEdge;
@@ -11,6 +12,10 @@ export interface LineData extends Record<string, unknown> {
   cp: boolean;
   dim: boolean;
   guard: boolean;
+  /** how the map looks (D26): Boxed and Blueprint draw right angles, Metro draws transit lines */
+  theme?: GraphTheme;
+  /** the kind of block the line leads to: Metro colours a line by it */
+  to?: NodeKind;
 }
 
 export type LineEdge = Edge<LineData>;
@@ -31,6 +36,24 @@ export function curve(sx: number, sy: number, sp: Position, tx: number, ty: numb
 export function pathOf(p: Pt[]): string {
   const f = (v: number) => Math.round(v * 10) / 10;
   return `M ${f(p[0][0])} ${f(p[0][1])} C ${f(p[1][0])} ${f(p[1][1])}, ${f(p[2][0])} ${f(p[2][1])}, ${f(p[3][0])} ${f(p[3][1])}`;
+}
+
+/** The line's shape in a theme (D26): a curve (Studio, Soft), right angles (Boxed, Blueprint), or a transit line
+ * with one 45° turn (Metro). Lines that don't run left to right keep the curve. */
+function routed(theme: GraphTheme | undefined, p: Pt[], sp: Position, tp: Position): string {
+  const [[sx, sy], , , [tx, ty]] = p;
+  if (sp !== Position.Right || tp !== Position.Left || tx <= sx) return pathOf(p);
+  const f = (v: number) => Math.round(v * 10) / 10;
+  if (theme === "boxed" || theme === "blueprint") {
+    const mx = f((sx + tx) / 2);
+    return `M ${f(sx)} ${f(sy)} H ${mx} V ${f(ty)} H ${f(tx)}`;
+  }
+  if (theme === "metro") {
+    const run = Math.min(Math.abs(ty - sy), Math.max(0, tx - sx - 24));
+    const x1 = sx + (tx - sx - run) / 2;
+    return `M ${f(sx)} ${f(sy)} H ${f(x1)} L ${f(x1 + run)} ${f(sy + Math.sign(ty - sy) * run)} V ${f(ty)} H ${f(tx)}`;
+  }
+  return pathOf(p);
 }
 
 export function pointAt(p: Pt[], t: number): Pt {
@@ -75,8 +98,8 @@ export function FlowEdgeView({ source, target, sourceX, sourceY, targetX, target
     }
     pts = curve(sourceX, sy, sourcePosition, targetX, ty, targetPosition, e.kind === "fallback");
   }
-  const d = pathOf(pts);
-  const cls = ["ff-edge", e.kind === "fallback" && "fb", e.kind === "unconfirmed" && "unc", e.kind === "retry" && "loop",
+  const d = e.kind === "retry" ? pathOf(pts) : routed(data.theme, pts, sourcePosition, targetPosition);
+  const cls = ["ff-edge", data.to && `to-${data.to}`, e.kind === "fallback" && "fb", e.kind === "unconfirmed" && "unc", e.kind === "retry" && "loop",
     data.cp && data.state === "idle" && "cp", data.state !== "idle" && data.state, data.dim && "dim"].filter(Boolean).join(" ");
   const off = data.state === "skipped" || data.dim;
   const labels: { at: Pt; text: string; cls: string; shield?: boolean; title?: string }[] = [];

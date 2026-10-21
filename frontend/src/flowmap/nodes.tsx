@@ -10,6 +10,7 @@ import type { LiveStatus } from "../checks/useChecks";
 import { Icons } from "../components/icons";
 import { sizeOf } from "./layout";
 import type { NodeState } from "./replay";
+import type { GraphTheme } from "./themes";
 
 export interface TileSource {
   id: string;
@@ -24,6 +25,8 @@ export interface BlockData extends Record<string, unknown> {
   deps?: boolean;
   /** on a flow read from code (D25): blocks lead with what they do */
   code?: boolean;
+  /** how the map looks (D26); Metro draws a call as a station on its line */
+  theme?: GraphTheme;
   /** its latest health check, or "checking" while one runs (D24) */
   health?: { status: LiveStatus; summary: string; latency_ms?: number | null };
   state: NodeState;
@@ -122,6 +125,18 @@ function Tile({ d }: { d: BlockData }) {
 
 export function CardNode({ data, selected }: NodeProps<BlockNode>) {
   const n = data.node;
+  if (data.theme === "metro") {   // a station: the line runs through it, its name above, what it is below
+    return (
+      <Shell d={data} selected={selected}>
+        <span className="ff-metro">
+          <span className="ff-title">{titleOf(data)}</span>
+          <span className="ff-track"><i className="ff-station" /></span>
+          <span className="ff-sub">{subOf(data)}</span>
+        </span>
+        <Caption d={data} evidence={data.showEvidence} />
+      </Shell>
+    );
+  }
   return (
     <Shell d={data} selected={selected}>
       <span className="ff-card">

@@ -16,7 +16,7 @@ function line(n: FlowNode): number {
 }
 
 /** Each call's earliest start: when every block it waits for is done (weights from the map). */
-function earliest(flow: FlowView): Record<string, number> {
+export function earliest(flow: FlowView): Record<string, number> {
   const into: Record<string, string[]> = {};
   for (const e of flow.edges) (into[e.target] ||= []).push(e.source);
   const weight = Object.fromEntries(flow.nodes.map((n) => [n.id, n.estimate_ms ?? 0]));

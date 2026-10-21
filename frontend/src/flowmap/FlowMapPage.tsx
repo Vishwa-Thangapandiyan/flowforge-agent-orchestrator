@@ -2,7 +2,7 @@
 // the flow map shows the order it runs in, with a replayable test run, once flow order comes from code (D23).
 // Pan, zoom and drag; click a block for its evidence; edit through overrides that never touch your code.
 import {
-  MiniMap, ReactFlow, ReactFlowProvider, useNodesState, useReactFlow, useViewport,
+  MiniMap, ReactFlow, ReactFlowProvider, useNodesState, useReactFlow, useViewport, ViewportPortal,
   type NodeChange, type OnSelectionChangeParams,
 } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
@@ -16,6 +16,7 @@ import { Icons } from "../components/icons";
 import { useMeta } from "../components/Shell";
 import { EmptyState, ErrorBox } from "../components/ui";
 import { Faster } from "./Faster";
+import { boxes, readTheme, saveTheme, THEMES, timeColumns, type GraphTheme } from "./themes";
 import { edgeTypes, Markers, type LineEdge } from "./FlowEdge";
 import { autoLayout, handlesFor, placeAll, sizeOf } from "./layout";
 import { mapQuery, useMapId, type MapId } from "./mapId";
@@ -182,6 +183,9 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
   const [cp, setCp] = useState(code);   // a flow read from code opens on its critical path (D25)
   const [showEvidence, setShowEvidence] = useState(true);
   const [legend, setLegend] = useState(false);
+  const [theme, setThemeState] = useState<GraphTheme>(readTheme);   // how the map looks, per viewer (D26)
+  const [themeMenu, setThemeMenu] = useState(false);
+  const setTheme = (t: GraphTheme) => { setThemeState(t); saveTheme(t); setThemeMenu(false); };
   const [dismissed, setDismissed] = useState(readDismissed);
   const [play, setPlay] = useState<Play | null>(null);
   const [rechecking, setRechecking] = useState(false);
@@ -220,18 +224,24 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
     if (!n) return null;
     const retry = flow.edges.find((e) => e.kind === "retry" && e.source === id);
     return {
-      node: n, tile: tileFor(n), deps, code, state: frame?.nodes[id] ?? "idle",
+      node: n, tile: tileFor(n), deps, code, theme, state: frame?.nodes[id] ?? "idle",
       cap: frame?.caps[id] ?? "", cp: cp && n.on_critical_path,
       search: query ? (hits.has(id) ? "hit" : "miss") : pointed ? (pointed.has(id) ? "hit" : "miss") : null,
       showTip: !dismissed.has(id) && !frame, showEvidence, retryMax: retry?.max ?? null,
       health: deps && health[id] ? health[id] : undefined,
     };
-  }, [flow.nodes, flow.edges, tileFor, deps, code, frame, query, hits, cp, dismissed, showEvidence, health, pointed]);
+  }, [flow.nodes, flow.edges, tileFor, deps, code, theme, frame, query, hits, cp, dismissed, showEvidence, health, pointed]);
 
+  // Boxed on a flow lays blocks out in time columns (D26); every other style keeps your saved layout
+  const timed = theme === "boxed" && !deps;
+  const wasTimed = useRef(timed);
   useEffect(() => {
-    const placed = placeAll(flow.nodes, flow.edges, flow.positions);
+    const saved = placeAll(flow.nodes, flow.edges, flow.positions);
+    const placed = timed ? timeColumns(flow, saved) : saved;
+    const switched = wasTimed.current !== timed;
+    wasTimed.current = timed;
     setNodes((current) => {
-      const at = Object.fromEntries(current.map((n) => [n.id, n.position]));
+      const at = timed || switched ? {} : Object.fromEntries(current.map((n) => [n.id, n.position]));
       return flow.nodes.map((n) => {
         const size = sizeOf(n.kind);
         const p = at[n.id] ?? { x: placed[n.id][0], y: placed[n.id][1] };
@@ -239,9 +249,10 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
           selected: current.find((c) => c.id === n.id)?.selected ?? false };
       });
     });
-    // positions only reset when the map itself changes; data updates are below
+    if (switched) window.requestAnimationFrame(() => rf.fitView({ padding: 0.08, maxZoom: 1.1, duration: 400 }));
+    // positions only reset when the map itself (or the time layout) changes; data updates are below
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [flow]);
+  }, [flow, timed]);
 
   useEffect(() => {
     setNodes((ns) => ns.map((n) => ({ ...n, data: dataFor(n.id) ?? n.data })));
@@ -266,12 +277,12 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
   const onNodesChange = useCallback((changes: NodeChange<BlockNode>[]) => {
     onNodesChangeBase(changes);
     for (const c of changes) {
-      if (c.type === "position" && c.position && !c.dragging) {
+      if (c.type === "position" && c.position && !c.dragging && !timed) {   // the time layout is never saved
         pending.current[c.id] = [Math.round(c.position.x), Math.round(c.position.y)];
         savePositions();
       }
     }
-  }, [onNodesChangeBase, savePositions]);
+  }, [onNodesChangeBase, savePositions, timed]);
 
   const onSelectionChange = useCallback(({ nodes: picked }: OnSelectionChangeParams) => {
     setSel(picked[0]?.id ?? null);
@@ -290,11 +301,16 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
       focusable: false, selectable: false,
       data: {
         edge: e, state: frame?.edges[e.id] ?? "idle", cp: cp && cpEdges.has(`${e.source}>${e.target}`),
-        // the shield means FlowForge masks keys before this LLM call: true of runs, unknown for a scanned app (D21)
-        dim: !!query && !(hits.has(e.source) && hits.has(e.target)), guard: !deps && kinds[e.target] === "llm" && e.kind !== "fallback",
+        // the shield means FlowForge masks keys before this LLM call: true of runs it executes, not of an app's own
+        // calls, whether scanned (D21) or read from its code (D25)
+        dim: !!query && !(hits.has(e.source) && hits.has(e.target)),
+        guard: !deps && !code && kinds[e.target] === "llm" && e.kind !== "fallback",
+        theme, to: kinds[e.target],
       },
     };
-  }), [flow.edges, kinds, posNow, frame, cp, cpEdges, query, hits, deps]);
+  }), [flow.edges, kinds, posNow, frame, cp, cpEdges, query, hits, deps, code, theme]);
+  // Boxed containers (D26): drawn in map coordinates behind the blocks, never nodes themselves
+  const boxRects = useMemo(() => (theme === "boxed" ? boxes(flow, nodes) : []), [theme, flow, nodes]);
 
   // --- test-run replay ------------------------------------------------------------------------------------
   useEffect(() => {
@@ -397,7 +413,7 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
   const fellBack = !!frame && !!trace && trace.steps.some((s) => s.outcome === "failed" && (frame.nodes[s.node] === "failed"));
 
   return (
-    <div className="fm">
+    <div className="fm" data-graph={theme}>
       <Markers />
       <header className="fm-top">
         <div className="fm-proj">
@@ -437,6 +453,23 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
           </Link>
         )}
         <div className="fm-actions">
+          <div className="fm-theme">
+            <button className="btn" type="button" aria-haspopup="menu" aria-expanded={themeMenu}
+              onClick={() => setThemeMenu((v) => !v)}>
+              {Icons.monitor(18)} Style: {THEMES.find((t) => t.id === theme)?.name}
+            </button>
+            {themeMenu && (
+              <div className="fm-theme-menu" role="menu" aria-label="Map style">
+                {THEMES.map((t) => (
+                  <button key={t.id} type="button" role="menuitemradio" aria-checked={t.id === theme}
+                    onClick={() => setTheme(t.id)}>
+                    <i className={`fm-swatch sw-${t.id}`} aria-hidden="true" />
+                    <span><b>{t.name}</b><small>{t.note}</small></span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="seg" role="group" aria-label="Which map">
             <button type="button" aria-pressed={map === "deps"} onClick={() => setMap("deps")}>Dependencies</button>
             <button type="button" aria-pressed={map === "flow"} onClick={() => setMap("flow")}>Flow</button>
@@ -486,11 +519,23 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
         <div className="fm-canvas" style={{ backgroundImage: "radial-gradient(var(--dot) 1.1px, transparent 1.4px)",
           backgroundSize: `${22 * zoom}px ${22 * zoom}px` } as CSSProperties}>
           <ReactFlow<BlockNode, LineEdge>
-            nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
+            nodes={nodes} edges={edges}
+            nodeTypes={nodeTypes} edgeTypes={edgeTypes}
             onNodesChange={onNodesChange} onSelectionChange={onSelectionChange} onPaneClick={() => setSel(null)}
             nodesConnectable={false} edgesFocusable={false} elementsSelectable minZoom={0.15} maxZoom={1.8}
             fitView fitViewOptions={{ padding: 0.08, maxZoom: 1.1 }} proOptions={{ hideAttribution: true }}
             aria-label="Flow map" zoomOnDoubleClick={false} deleteKeyCode={null}>
+            {boxRects.length > 0 && (
+              <ViewportPortal>
+                {boxRects.map((b) => (
+                  <div key={b.key} className="ff-box" role="group" aria-label={/^\d+$/.test(b.note) ? b.label : `${b.label} ${b.note}`}
+                    style={{ transform: `translate(${b.x}px, ${b.y}px)`, width: b.w, height: b.h }}>
+                    <span className="ff-box-label">{b.label}</span>
+                    {b.note && <span className="ff-box-note">{b.note}</span>}
+                  </div>
+                ))}
+              </ViewportPortal>
+            )}
             <MiniMap position="bottom-right" pannable zoomable ariaLabel="Mini map" nodeStrokeWidth={0}
               nodeColor={(n) => {
                 const k = (n.data as BlockData).node.kind;

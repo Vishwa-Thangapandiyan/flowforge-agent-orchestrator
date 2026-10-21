@@ -320,3 +320,67 @@
 .fx-refs { font: 500 11.5px var(--mono); color: var(--muted); }
 .fx-caveat { margin: 8px 0 0; padding: 10px 12px; border-radius: var(--r-md); border: 1px dashed var(--line-2); font-size: 13px; color: var(--muted); }
 .fx-cp { margin: 0; font-size: 13px; color: var(--muted); } .fx-cp b { color: var(--fg); }
+
+/* ---- graph themes (D26, docs/design/flow-artboards/themes.html). Meanings stay fixed in every theme: health
+   colours, the critical path as the thickest line in the theme's ink, measured versus estimated weights. ---- */
+.fm-theme { position: relative; }
+.fm-theme-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; display: grid; gap: 2px; width: 250px; padding: 6px;
+  border-radius: var(--r-md); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-3); }
+.fm-theme-menu button { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 0; border-radius: 8px; background: none;
+  color: var(--fg); text-align: left; font: inherit; cursor: pointer; }
+.fm-theme-menu button:hover, .fm-theme-menu button:focus-visible { background: var(--surface-2); outline: none; }
+.fm-theme-menu button[aria-checked="true"] { background: var(--teal-bg); }
+.fm-theme-menu b { display: block; font-weight: 600; } .fm-theme-menu small { display: block; color: var(--muted); font-size: 12px; }
+.fm-swatch { flex: 0 0 auto; width: 30px; height: 22px; border-radius: 6px; border: 1px solid var(--line); }
+.sw-studio { background: linear-gradient(90deg, var(--surface) 60%, var(--teal) 60%); }
+.sw-boxed { background: var(--surface-2); box-shadow: inset 0 0 0 4px var(--surface), inset 0 0 0 5px var(--line-2); }
+.sw-blueprint { background: #163E9C repeating-linear-gradient(0deg, transparent 0 5px, rgb(255 255 255 / 18%) 5px 6px); }
+.sw-metro { background: linear-gradient(transparent 40%, #2F6FDB 40% 60%, transparent 60%), var(--surface); }
+.sw-soft { background: linear-gradient(90deg, #E2EBFF 33%, #DDF3E6 33% 66%, #ECE5FC 66%); }
+
+/* Boxed: containers of what runs together (flow) or of one kind (dependencies); right-angled lines */
+.react-flow__viewport-portal { z-index: -1; }   /* Boxed containers sit behind the lines and blocks */
+.ff-box { position: absolute; top: 0; left: 0; border-radius: 18px; background: color-mix(in srgb, var(--teal) 6%, var(--surface-2));
+  border: 1px solid color-mix(in srgb, var(--teal) 20%, var(--line)); pointer-events: none; }
+.ff-box-label { position: absolute; top: 10px; left: 14px; font: 650 13px/1 var(--display); color: var(--fg); }
+.ff-box-note { position: absolute; top: 27px; left: 14px; font: 500 11px/1 var(--mono); color: var(--muted); }
+.fm[data-graph="boxed"] .ff-card { box-shadow: none; border-color: var(--line); }
+
+/* Blueprint: an engineering drawing */
+.fm[data-graph="blueprint"] .fm-canvas { background-color: #EAF1FB !important;
+  background-image: linear-gradient(#CFDCF2 1px, transparent 1px), linear-gradient(90deg, #CFDCF2 1px, transparent 1px) !important;
+  background-size: 24px 24px !important; }
+.fm[data-graph="blueprint"] { --bp-ink: #163E9C; --bp-muted: #4F6AA6; }
+.fm[data-graph="blueprint"] .ff-card, .fm[data-graph="blueprint"] .ff-pill { background: transparent; border: 1.4px solid var(--bp-ink); box-shadow: none; border-radius: 3px; }
+.fm[data-graph="blueprint"] .ff-title { color: var(--bp-ink); font-family: var(--mono); font-size: 13px; }
+.fm[data-graph="blueprint"] .ff-sub, .fm[data-graph="blueprint"] .ff-cap { color: var(--bp-muted); }
+.fm[data-graph="blueprint"] .ff-cap { border-top: 1px solid var(--bp-muted); padding-top: 3px; }
+.fm[data-graph="blueprint"] .ff-line { stroke: var(--bp-ink); stroke-width: 1.2; opacity: .8; }
+.fm[data-graph="blueprint"] .ff-edge.cp .ff-line { stroke-width: 2.6; opacity: 1; }
+.fm[data-graph="blueprint"] .brand-slot { filter: grayscale(1) contrast(1.2); opacity: .8; }
+
+/* Metro: a station on a line coloured by its kind; the critical path is the main line */
+.ff-metro { position: absolute; inset: 0; display: grid; grid-template-rows: 1fr auto 1fr; justify-items: center; align-items: center; }
+.ff-metro .ff-title { align-self: end; max-width: 100%; font-size: 13.5px; padding: 0 6px 4px; }
+.ff-metro .ff-sub { align-self: start; padding-top: 4px; font-size: 11px; }
+.ff-track { position: relative; width: 100%; height: 8px; border-radius: 4px; background: var(--k, var(--edge)); }
+.ff-station { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%;
+  background: var(--surface); border: 4px solid var(--fg); }
+.kind-api { --k: #2F6FDB; } .kind-mcp { --k: #2E8B57; } .kind-llm { --k: #7C5CD6; } .kind-local { --k: #64748B; }
+.fm[data-graph="metro"] .ff-line { stroke-width: 7; marker-end: none; stroke-linejoin: round; }
+.fm[data-graph="metro"] .ff-edge.to-api .ff-line { stroke: #2F6FDB; } .fm[data-graph="metro"] .ff-edge.to-mcp .ff-line { stroke: #2E8B57; }
+.fm[data-graph="metro"] .ff-edge.to-llm .ff-line { stroke: #7C5CD6; } .fm[data-graph="metro"] .ff-edge.to-local .ff-line { stroke: #64748B; }
+.fm[data-graph="metro"] .ff-edge.cp .ff-line { stroke: var(--fg); stroke-width: 11; }
+.fm[data-graph="metro"] .cp .ff-track { background: var(--fg); }
+.fm[data-graph="metro"] .selected .ff-station { border-color: var(--teal); }
+.fm[data-graph="metro"] .ff-block.h-down .ff-station { border-color: var(--h-down); } .fm[data-graph="metro"] .ff-block.h-warn .ff-station { border-color: var(--h-warn); }
+
+/* Soft: calm colour fields by kind, no borders */
+.fm[data-graph="soft"] .ff-card { border: 0; border-radius: 20px; box-shadow: none; }
+.fm[data-graph="soft"] .kind-api .ff-card { background: color-mix(in srgb, #2F6FDB 13%, var(--surface)); }
+.fm[data-graph="soft"] .kind-mcp .ff-card { background: color-mix(in srgb, #2E8B57 14%, var(--surface)); }
+.fm[data-graph="soft"] .kind-llm .ff-card { background: color-mix(in srgb, #7C5CD6 14%, var(--surface)); }
+.fm[data-graph="soft"] .kind-local .ff-card { background: color-mix(in srgb, #64748B 14%, var(--surface)); }
+.fm[data-graph="soft"] .ff-line { stroke-width: 2.4; }
+.fm[data-graph="soft"] .ff-edge:not(.cp):not(.fb) .ff-line { stroke-dasharray: 1 6; }
+.fm[data-graph="soft"] .cp .ff-card { box-shadow: 0 0 0 2px var(--fg); }

@@ -92,6 +92,9 @@ export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, t
   };
 
   const mine = layer === "mine";
+  // a scanned dependency (D21): its line is where a check will go, and it needs no app connected (D23)
+  const deps = flow.kind === "dependencies";
+  const what = deps ? (node.kind === "mcp" || node.kind === "local" ? "Starts with" : "Address") : "What it does";
   const isUser = node.added_by === "user";
   const isCall = CALLS.has(node.kind);
   const fixed = ["gate", "start", "end"].includes(node.kind) || node.added_by === "policy";
@@ -117,8 +120,8 @@ export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, t
       {runText && state !== "idle" && <div className={`sp-run ${state}`} role="status">{runText}</div>}
 
       <div className="sp-sec">
-        <span className="sp-sh">What it does</span>
-        <p className="sp-what">{node.what || "No description from the Planner."}</p>
+        <span className="sp-sh">{what}</span>
+        <p className="sp-what">{node.what || (deps ? "No address in the code." : "No description from the Planner.")}</p>
         <div className="sp-chips">
           {node.on_critical_path && <span className="sp-chip cp">{Icons.route(12)} On the critical path</span>}
           {node.side_effect && <span className="sp-chip side">Side effect · behind a gate</span>}
@@ -141,10 +144,14 @@ export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, t
 
       {node.status === "unconfirmed" && (
         <div className="sp-sec">
-          <div className="sp-unc">{Icons.question(18)}<span>Unconfirmed. It never runs until you confirm it or the Planner finds code that calls it.</span></div>
+          <div className="sp-unc">{Icons.question(18)}<span>{deps
+            ? "Unconfirmed: the code only mentions it, and no call was found. It isn't checked until you confirm it."
+            : "Unconfirmed. It never runs until you confirm it or the Planner finds code that calls it."}</span></div>
           {mine && (
             <div className="sp-row">
-              <button className="btn" type="button" disabled={busy} onClick={() => run({ op: "confirm", node: node.id })}>Keep as my step</button>
+              <button className="btn" type="button" disabled={busy} onClick={() => run({ op: "confirm", node: node.id })}>
+                {deps ? "Keep it" : "Keep as my step"}
+              </button>
               <button className="btn danger" type="button" disabled={busy} onClick={() => run({ op: "hide", node: node.id })}>Hide it</button>
             </div>
           )}
@@ -161,7 +168,7 @@ export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, t
         </div>
       )}
 
-      {isCall && (
+      {isCall && (!deps || node.connector) && (
         <div className="sp-sec">
           <span className="sp-sh">App</span>
           <div className="sp-conn">

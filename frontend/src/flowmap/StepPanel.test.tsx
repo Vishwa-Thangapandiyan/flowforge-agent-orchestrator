@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { expect, test, vi } from "vitest";
 import type { Connector } from "../api/types";
 import { CONNECTORS } from "../test/fixtures";
-import { FLOW } from "../test/flowFixture";
+import { DEPS, FLOW } from "../test/flowFixture";
 import { StepPanel, type PanelActions } from "./StepPanel";
 
 function actions(): PanelActions {
@@ -70,4 +70,21 @@ test("the Planner's map is read-only", () => {
   show("score", { layer: "planner" });
   expect(screen.queryByText("Edit")).not.toBeInTheDocument();
   expect(screen.queryByLabelText("Use another app for this step")).not.toBeInTheDocument();
+});
+
+test("a scanned dependency shows the address it will be checked at, not an app to connect", async () => {
+  const dep = (id: string) => DEPS.nodes.find((n) => n.id === id)!;
+  const { rerender } = render(<StepPanel node={dep("api-nominatim")} flow={DEPS} tile={null} state="idle" cap="" waiting={false}
+    connectors={[]} tipShown layer="mine" actions={actions()} />);
+  expect(screen.getByText("Address")).toBeInTheDocument();
+  expect(screen.getByText("https://nominatim.openstreetmap.org/search")).toBeInTheDocument();
+  expect(screen.queryByText("What it does")).not.toBeInTheDocument();
+  expect(screen.queryByText(/not connected/)).not.toBeInTheDocument();   // nothing to connect: it's not an error
+  rerender(<StepPanel node={dep("mcp-fetch")} flow={DEPS} tile={null} state="idle" cap="" waiting={false}
+    connectors={[]} tipShown layer="mine" actions={actions()} />);
+  expect(screen.getByText("Starts with")).toBeInTheDocument();
+  rerender(<StepPanel node={dep("api-www-mysite-test")} flow={DEPS} tile={null} state="idle" cap="" waiting={false}
+    connectors={[]} tipShown layer="mine" actions={actions()} />);
+  expect(screen.getByText(/only mentions it/)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Keep it" })).toBeInTheDocument();
 });

@@ -230,6 +230,19 @@ export interface FlowEdge {
 /** `flow`: the order the app runs in (D17). `dependencies`: what the app uses, from a scan (D21). */
 export type MapKind = "flow" | "dependencies";
 
+/** The advice written out (D27): text to copy, never applied. */
+export interface CodeChange {
+  path: string;
+  first_line: number;
+  before: string[];
+  after: string[];
+  /** what this change saves on its own */
+  saved_ms: number;
+  /** calls of the same advice in another block: "\"find the sight\" (planner.py:58): inside `if sight:`" */
+  by_hand: string[];
+  needs_import: boolean;
+}
+
 /** Calls that could start together (D25), with what running them together saves. */
 export interface Advice {
   nodes: string[];
@@ -237,6 +250,9 @@ export interface Advice {
   text: string;
   saved_ms: number;
   caveat: string | null;
+  change?: CodeChange | null;
+  /** the advice for a coding agent (D27) */
+  prompt?: string;
 }
 
 export interface FlowView {

@@ -318,6 +318,20 @@
 .fx-chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .fx-chips i { font-style: normal; padding: 2px 8px; border-radius: var(--r-pill); background: var(--surface-2); border: 1px solid var(--line); font: 500 11.5px/1.5 var(--mono); }
 .fx-refs { font: 500 11.5px var(--mono); color: var(--muted); }
+.fx-do { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+.fx-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--fg); font: 550 13px var(--sans); cursor: pointer; }
+.fx-btn:hover, .fx-btn:focus-visible { border-color: var(--teal); outline: none; }
+.fx-said { color: var(--teal); font-size: 13px; font-weight: 600; }
+.fx-change { display: grid; gap: 6px; margin-top: 8px; padding: 12px; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--surface-2); }
+.fx-ch-head { display: flex; justify-content: space-between; gap: 8px; font: 600 12.5px var(--mono); }
+.fx-ch-head em { font-style: normal; color: var(--teal); }
+.fx-ch-label { font: 600 11px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+.fx-code { margin: 0; padding: 8px 10px; border-radius: 8px; overflow-x: auto; font: 12px/1.55 var(--mono); background: var(--surface); }
+.fx-code.now { border-left: 3px solid var(--coral); } .fx-code.could { border-left: 3px solid var(--teal); }
+.fx-code b { display: inline-block; width: 3ch; margin-right: 10px; color: var(--muted); font-weight: 500; text-align: right; user-select: none; }
+.fx-note { margin: 0; font-size: 12.5px; color: var(--muted); } .fx-note ul { margin: 4px 0 0; padding-left: 18px; }
+.fx-note code { font-family: var(--mono); }
 .fx-caveat { margin: 8px 0 0; padding: 10px 12px; border-radius: var(--r-md); border: 1px dashed var(--line-2); font-size: 13px; color: var(--muted); }
 .fx-limits { margin: 0; padding: 10px 16px 14px; font-size: 12px; color: var(--muted); }
 .fx-cp { margin: 0; font-size: 13px; color: var(--muted); } .fx-cp b { color: var(--fg); }

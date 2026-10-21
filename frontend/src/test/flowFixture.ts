@@ -165,5 +165,9 @@ export const CODEFLOW: FlowView = {
   written_ms: 9400,
   advice: [{ nodes: ["api-open-meteo-1", "mcp-fetch-1"], refs: ["planner.py:60", "planner.py:66"], saved_ms: 180,
     text: "None of these uses another's result: start them together with asyncio.gather.",
-    caveat: "fetch only need what was known before the check at planner.py:53, so they could start even earlier, but when the code stops there, those calls are wasted." }],
+    caveat: "fetch only need what was known before the check at planner.py:53, so they could start even earlier, but when the code stops there, those calls are wasted.",
+    change: { path: "planner.py", first_line: 60, saved_ms: 180, by_hand: [], needs_import: false,
+      before: ["    forecast = await attempt(\"today's weather\", weather.today(client))", "    background = await attempt(\"about the city\", fetch())"],
+      after: ["    forecast, background = await asyncio.gather(", "        attempt(\"today's weather\", weather.today(client)),", "        attempt('about the city', fetch()),", "    )"] },
+    prompt: "In planner.py, plan() waits for each of these calls before starting the next.\nChange nothing else, and run the tests." }],
 };

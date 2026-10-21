@@ -36,6 +36,24 @@ test("the Flow switch shows the order the code calls its dependencies, and how i
   expect(within(faster).getByText(/Can.t see: calls passed around as values/)).toBeInTheDocument();   // limits, said (D25)
 });
 
+test("each piece of advice shows the code change and copies a prompt for a coding agent (D27)", async () => {
+  const copied: string[] = [];
+  vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText: async (t: string) => { copied.push(t); } } });
+  mockApi(routes(CODEFLOW));
+  renderAt("/?map=flow");
+  const faster = await screen.findByRole("region", { name: "Faster" }, { timeout: 5000 });
+  await userEvent.click(within(faster).getByRole("button", { name: "Show the change" }));
+  const change = within(faster).getByRole("region", { name: "The change" });
+  expect(change).toHaveTextContent("planner.py · lines 60–61");
+  expect(within(change).getByText("60")).toBeInTheDocument();   // the lines as they are, numbered
+  expect(change).toHaveTextContent("forecast, background = await asyncio.gather(");
+  await userEvent.click(within(change).getByRole("button", { name: /Copy the new code/ }));
+  expect(copied[0].split("\n")[0]).toBe("    forecast, background = await asyncio.gather(");
+  await userEvent.click(within(faster).getByRole("button", { name: /Copy prompt for your coding agent/ }));
+  expect(copied[1]).toMatch(/^In planner.py, plan\(\) waits/);
+  expect(await within(faster).findByText("Copied")).toBeInTheDocument();
+});
+
 test("pointing at a piece of advice lights up its blocks", async () => {
   mockApi(routes(CODEFLOW));
   renderAt("/?map=flow");

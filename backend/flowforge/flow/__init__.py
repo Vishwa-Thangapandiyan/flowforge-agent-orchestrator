@@ -134,6 +134,7 @@ class _Builder:
                 estimate_ms=float(self.latencies[dep.id]) if measured else DEFAULT_MS.get(dep.kind, 0.0),
                 estimate_source="measured" if measured else "estimate"))
             self.meta[node_id] = {"stmt": s.idx, "entry": start, "async": is_async, "line": s.line, "ref": ev.ref,
+                                  "awaited": is_async and any(isinstance(n, ast.Await) for n in ast.walk(s.node)),
                                   "node": s.node, "func": func,
                                   "name": dep.name, "gathered": s.gathered, "loop": s.loop, "ifs": bool(s.ifs),
                                   "write": (dep.kind == "api" and hit.method not in (None, "GET", "HEAD"))

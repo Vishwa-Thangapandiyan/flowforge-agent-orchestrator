@@ -131,10 +131,10 @@ function AdviceCard({ a, flow, onPoint }: { a: Advice; flow: FlowView; onPoint: 
                       </div>
                       <span className="fx-ch-label">Now</span>
                       <pre className="fx-code now">{c.before.map((l, i) => (
-                        <span key={i}><b>{c.first_line + i}</b>{l || " "}{"\n"}</span>
+                        <span key={i}><b>{c.first_line + i}</b>{l || " "}</span>
                       ))}</pre>
                       <span className="fx-ch-label">Could be</span>
-                      <pre className="fx-code could">{c.after.map((l, i) => <span key={i}>{l || " "}{"\n"}</span>)}</pre>
+                      <pre className="fx-code could">{c.after.map((l, i) => <span key={i}>{l || " "}</span>)}</pre>
                       <button type="button" className="fx-btn" onClick={() => copy(c.after.join("\n"))}>
                         {Icons.copy(15)} Copy the new code
                       </button>

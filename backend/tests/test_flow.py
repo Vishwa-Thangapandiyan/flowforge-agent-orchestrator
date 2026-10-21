@@ -371,3 +371,10 @@ def test_the_written_change_says_when_asyncio_needs_importing_and_masks_keys(tmp
     (advice,) = flow_of(tmp_path).flow.advice
     assert advice.change.needs_import is True
     assert key not in advice.model_dump_json()
+
+
+def test_a_plain_call_beside_an_await_runs_in_a_thread():
+    measured = {k: v for k, v in LATENCIES.items() if k != "local-packing-list"}   # its 1 s estimate, then
+    flow = flow_of(TRIP_PLANNER, latencies=measured).flow
+    mixed = advice_for(flow, "mcp-time-1", "local-packing-list-1")   # packing_list() isn't awaited
+    assert "asyncio.to_thread" in mixed.text and "asyncio.to_thread" in mixed.prompt

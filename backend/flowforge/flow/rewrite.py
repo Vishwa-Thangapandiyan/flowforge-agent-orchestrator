@@ -128,11 +128,9 @@ def change(calls: list[Call], source: str, module: ast.Module) -> Change | None:
         needs_import=not imported)
 
 
-def prompt(calls: list[Call], entry: str, saved_ms: float, caveat: str | None, is_async: bool) -> str:
+def prompt(calls: list[Call], entry: str, saved_ms: float, caveat: str | None, how: str) -> str:
     """The advice for a coding agent: where, what, why, and what not to touch. Masked; no code beyond the words."""
     paths = sorted({c.path for c in calls})
-    how = ("for example with asyncio.gather or asyncio.create_task" if is_async
-           else "for example in a thread pool (concurrent.futures)")
     lines = [f"In {', '.join(paths)}, {entry} waits for each of these calls before starting the next, "
              "but none of them uses another's result:",
              *(f"- line {c.ref.rsplit(':', 1)[1]}: \"{c.words}\"" for c in sorted(calls, key=lambda c: c.stmt.lineno)),

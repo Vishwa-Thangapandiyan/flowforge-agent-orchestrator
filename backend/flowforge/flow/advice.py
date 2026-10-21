@@ -48,8 +48,13 @@ def advise(flow: Flow, meta: dict[str, dict], sources: dict[str, str] | None = N
         if saved < MIN_SAVING_MS:
             continue
         ids.sort(key=lambda i: meta[i]["line"])
-        how = ("start them together with asyncio.gather" if all(meta[i]["async"] for i in ids)
-               else "they could run at the same time, for example in a thread pool")
+        if all(meta[i].get("awaited", meta[i]["async"]) for i in ids):
+            how, hint = "start them together with asyncio.gather", "for example with asyncio.gather"
+        elif all(meta[i]["async"] for i in ids):   # a plain call inside async code blocks the loop: give it a thread
+            how = hint = "start them together with asyncio.gather, running the plain calls in asyncio.to_thread"
+        else:
+            how, hint = ("they could run at the same time, for example in a thread pool",
+                         "for example in a thread pool (concurrent.futures)")
         names = [meta[i]["name"] for i in ids]
         text = f"None of these uses another's result: {how}."
         caveat = _caveat(flow, ids, meta, names)
@@ -62,8 +67,7 @@ def advise(flow: Flow, meta: dict[str, dict], sources: dict[str, str] | None = N
                      for i in ids]
             if all(isinstance(c.stmt, ast.stmt) for c in calls):
                 advice.change = change(calls, sources[func.path], modules[func.path])
-            advice.prompt = prompt(calls, by_id[meta[ids[0]]["entry"]].title, advice.saved_ms, caveat,
-                                   all(meta[i]["async"] for i in ids))
+            advice.prompt = prompt(calls, by_id[meta[ids[0]]["entry"]].title, advice.saved_ms, caveat, hint)
         out.append(advice)
     return sorted(out, key=lambda a: -a.saved_ms)
 

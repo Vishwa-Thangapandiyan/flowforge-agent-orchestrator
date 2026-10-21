@@ -909,6 +909,23 @@ D23's rule holds: nothing drawn by hand. Vishwa chose Python first, with Dart an
 
 ---
 
+## D27. Advice you can act on: the code change, and a prompt for your coding agent (Phase 6, Vishwa, 2026-10-21)
+
+**Context.** Vishwa, on the Faster panel: "what's the point of advice if it's just there to say 'start these'? How is the user supposed to start them?" D25's advice names the calls and the saving, not the change.
+
+**Choice:**
+- **The change, written out, when plain code can write it safely.** For async calls in one block of one function, each a plain `x = await …` or `await …`, with nothing in between that reads their results or changes what they read: one `asyncio.gather` in place of the first of them, with the rest removed. The card shows the lines as they are and as they would be, each with line numbers, masked like evidence (D22). Copying the new lines is one click.
+- **Partial when it has to be.** Calls of the same piece of advice that sit in another block (an `if`, a `with`, a `try`) are listed under "move by hand", each with its `file:line` and why ("inside `if sight:`"). The card says how much the written change saves on its own.
+- **Never applied.** FlowForge doesn't edit the user's code (D19, section 9.3). The change is text to copy.
+- **A prompt for a coding agent.** Every card has "Copy prompt": the file, the function, each call's line and words, the saving, the caveat (D25), and "keep the behaviour the same; change nothing else; run the tests". It names no key and quotes no code beyond the masked lines. This is the hand-off V2's agents (Phase 10) will take over.
+- Synchronous calls get no written change (a thread pool changes too much to write blind); they get the prompt.
+
+**Why:** advice that ends in "do it yourself" is a to-do, not help. A written change for the safe case, and a precise prompt for the rest, turn it into a minute's work, while the user's code stays the user's.
+
+**Code:** `backend/flowforge/flow/rewrite.py` (new), `flow/advice.py`, `flowmap/models.py` (`Advice.change`, `Advice.prompt`), `frontend/src/flowmap/Faster.tsx`.
+
+---
+
 ## Step JSON schema (reference)
 
 ```json

@@ -148,6 +148,14 @@ _SERVICE_ROWS: list[tuple[str, str, str, tuple[str, ...], tuple[str, ...]]] = [
 ]
 SERVICES: list[dict] = [{"id": r[0], "name": r[1], "kind": r[2], "hosts": list(r[3]), "sdks": list(r[4])}
                         for r in _SERVICE_ROWS]
+# Where a health check reads an LLM's model list, with no key (D24). "{host}" is the address the code uses.
+MODEL_LISTS: dict[str, str] = {
+    "ollama": "http://{host}/api/tags", "nim": "https://integrate.api.nvidia.com/v1/models",
+    "openai": "https://api.openai.com/v1/models", "claude": "https://api.anthropic.com/v1/models",
+    "gemini": "https://generativelanguage.googleapis.com/v1beta/models", "mistral": "https://api.mistral.ai/v1/models",
+    "cohere": "https://api.cohere.com/v1/models", "groq": "https://api.groq.com/openai/v1/models",
+    "openrouter": "https://openrouter.ai/api/v1/models", "deepseek": "https://api.deepseek.com/models",
+}
 # SDKs that route to many providers (D21): the provider comes from the model name, by these prefixes
 ROUTER_SDKS = ("litellm",)
 MODEL_PREFIXES: dict[str, tuple[str, ...]] = {

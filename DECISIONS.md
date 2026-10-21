@@ -713,6 +713,10 @@ Vishwa also restated the goal: an MCP management tool that works out the critica
 
 **One check per kind.** Results are `up` (green), `warn` (amber) or `down` (red), with a latency and a short reason that passes through the redactor. Response bodies are never kept.
 
+A dependency with nothing to check is `skipped` (grey) and says why. Two cases:
+- the code holds no address for it (an SDK such as Supabase, whose URL comes from config at runtime);
+- its MCP arguments include a masked secret, which FlowForge won't fill in.
+
 | Kind | What it does | up | warn | down |
 |---|---|---|---|---|
 | API | One GET to the target: no key, cookie or query; a FlowForge User-Agent; 10 s timeout | any answer below 500. A 401 or 403 means "up, needs a key" | slower than 2 s; plain `http://`; or a TLS certificate that expires within 14 days | no answer, a DNS failure, a timeout, or a 5xx |

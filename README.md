@@ -79,7 +79,7 @@ To use real LLM steps, `cp .env.example .env` and add a free `NVIDIA_API_KEY` fr
 
 | Page | What it shows |
 |---|---|
-| **Flow map** (home) | The Planner's map of your app's AI flow on a canvas: pan, zoom, drag, search, minimap. Click a block for what it does, its evidence (`file:line` with the code), its last runs and the Planner's tips. **Test run** replays a traced test order: lines light up, a fallback answers, the run waits at a gate until you approve. "Planner's map / With my edits" switches between the Planner's version and yours |
+| **Flow map** (home) | Your app's dependency map on a canvas: pan, zoom, drag, search, minimap. Every block is something the code uses (an LLM, an MCP server, an API, a local program), with its evidence (`file:line` with the code). Dashed blocks were only mentioned, never called. **Scan a folder** maps another folder; **Re-scan the repo** shows what changed. "As scanned / With my edits" switches between the scan and your edits |
 | **How the Planner drew it** | The analysis replayed: read the repo, run the app in test mode, trace the calls, draft, check. What it read, what it dropped and why |
 | **Re-check** | What changed in your repo since the last map: added, changed, removed, and conflicts with your edits. You pick what to take; the old version stays listed |
 | **Connectors** | A catalog of 56 apps with search and categories, honest **Live** / **Demo only** badges, and a mock test run for every one. Apps you connected but your code doesn't call wait here, off the map |
@@ -88,7 +88,7 @@ To use real LLM steps, `cp .env.example .env` and add a free `NVIDIA_API_KEY` fr
 | **Runs** | Money and time saved, app health, and every scheduled run: live bars with the slowest chain outlined, outputs, and why a failed run failed |
 | Approvals, Security | Placeholders until approval gates (Phase 5) and the vault (Phase 4) arrive |
 
-The Planner is a background LLM; the UI doesn't name the model behind it or offer to change it. In this release it is an example-mode fixture (the "Baby-care shop" app): reading your own repo arrives in Phase 5, after the security work in Phase 4. Without `--example` the map says so. Edits on the map change how FlowForge maps and tests the flow, never your code.
+The map is drawn by plain code from your repo, with no AI, and nothing on it is drawn by hand. Flow order (which call waits for which, the critical path, and what could run together) comes next. Edits on the map change how FlowForge maps your app, never your code.
 
 ## Connect any provider
 

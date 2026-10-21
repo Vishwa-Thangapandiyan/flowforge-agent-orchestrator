@@ -79,11 +79,12 @@ Rules:
 | 3 Flow map V1 | Scout, Spec (D17, D18), Test, **Frontend**, Core (`flowmap/`, storage, routes), Reviewer, Verifier | Yes, light |
 | 4 Repo scan V1 | Scout, Spec (D21 scanner contract), Test (sample repo fixture, no-network/no-LLM proof), **Core** (`scan/`, CLI), Security (no key value stored), Frontend (map from a scan), Reviewer, Verifier | **Yes, full** (reads users' repos) |
 | 5 Health checks + test results | Scout, Spec, Test (stub servers), **Connectors** (checks per kind), Core (checks through the scheduler, storage), Frontend (Checks page, map dots), Reviewer, Verifier | Yes, light |
-| 6 Security findings | Scout, Spec, Test (golden finder tests, first), **Security** (finders), Frontend (Security page), Reviewer, Verifier | **Yes, full, with veto** |
-| 7 Launch | **Infra** (packaging, release), Docs (README, demo GIF), Reviewer, Verifier | No |
-| 8 Flow order | Scout, Spec, Test, **Core** (tracing), Security (masked findings to the optional LLM, D20), Frontend, Reviewer, Verifier | **Yes, full** |
+| 6 Flow order from code | Scout, Spec, Test, **Core** (AST call graph, critical path, suggestions), Frontend (flow map from code), Reviewer, Verifier | Yes, light (reads users' repos) |
+| 7 Security findings | Scout, Spec, Test (golden finder tests, first), **Security** (finders), Frontend (Security page), Reviewer, Verifier | **Yes, full, with veto** |
+| 8 Launch | **Infra** (packaging, release), Docs (README, demo GIF), Reviewer, Verifier | No |
 | 9 CLI agent + Tauri | Scout, Spec, Test, **Infra** (Tauri, sidecar, signing), Frontend, Reviewer, Verifier | Yes, light |
 | 10 V2 coding agents | Scout, Spec (D11 gates, agent contract), Test (first), **Security** (vault, redact → verify → scan → restore, key isolation), Core, Frontend (approvals), Reviewer, Verifier | **Yes, full, with veto** |
+| 11 Own SLM | Scout, Spec, Test (guardrails first), **Core** (local model, checks against the code), Security (masked findings only, D20), Reviewer, Verifier | **Yes, full** |
 
 ## A4. Mapping to tools
 

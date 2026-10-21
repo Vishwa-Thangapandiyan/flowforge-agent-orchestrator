@@ -9,10 +9,10 @@ Guidance for Claude Code when working in this repository. Read this whole file a
 | | |
 |---|---|
 | Branch rules | `DAA` = frozen course project. **Never commit to it, never merge into it.** `main` = the product. |
-| Current phase | **Phase 4: repo scan V1 (D19–D22), done on branch `feat/repo-scan` (made from `feat/phase-1-connectors`), not pushed; awaiting Vishwa's review.** Commits: vision + roadmap `7d87aa4`, sample app `575c1e1`, D21 `9260ffc`, scanner `7e9f3aa`, dependency map `be0fa6d`, API + CLI `180a8f2`, dashboard `3261b06`, review fixes `ca6ea6f`. A two-axis review (standards, spec) ran on it; its findings are fixed or listed under Known limits. Next: Phase 5 (health checks + test results). Phases 1–3 are pushed on `feat/phase-1-connectors`; none is merged into `main`. Roadmap (section 5): 4 = repo scan, 5 = health checks + test results, 6 = security findings, 7 = launch, 8 = flow order, 9 = CLI agent + Tauri, 10 = V2 coding agents |
+| Current phase | **Phase 4: repo scan V1 (D19–D23), done on branch `feat/repo-scan` (made from `feat/phase-1-connectors`), not pushed; awaiting Vishwa's review.** Commits: vision + roadmap `7d87aa4`, sample app `575c1e1`, D21 `9260ffc`, scanner `7e9f3aa`, dependency map `be0fa6d`, API + CLI `180a8f2`, dashboard `3261b06`, review fixes `ca6ea6f`, docs `ad269ad`, then the D23 clean-up after Vishwa's first look (no hand-drawn map, fake-data files skipped, readable local names, "Scan a folder" always there). Next: Phase 5 (health checks + test results); its Checks page needs an artboard Vishwa approves first. Phases 1–3 are pushed on `feat/phase-1-connectors`; none is merged into `main`. Roadmap (section 5, D23): 4 = repo scan, 5 = health checks + test results, 6 = flow order from code + critical path, 7 = security findings, 8 = launch, 9 = CLI agent + Tauri, 10 = V2 coding agents, 11 = FlowForge's own SLM |
 | Direction | Point FlowForge at a repo. It finds every dependency (LLM, MCP server, HTTP API, local command) with `file:line` evidence and draws the map. It checks each one's health and security on demand and shows the test results. The scan is plain code and never sends code or keys to an LLM (D20). V2: a local coding agent adds a dependency on a branch for the user to approve (section 1, D19). Workflow JSON and the run API stay as the Advanced path |
-| Done | Scheduler core, five policies, caches, SSE run stream, plain-HTML status page. Phase 1: D10 connectors (provider-agnostic `LLMNode`: openai_compatible + anthropic; per-connector buckets, cache namespaces, fallback), D12 MCP (tool discovery, schema-checked calls, non-text blocks, artifacts), D13 `local` step, connector registry + presets + `connectors.json`, HTTP connectors, ruff, CI (Linux + Windows), CONTRIBUTING. Phase 2 (D15, D16): dashboard (Vite + React + TS), persisted runs and events, minimal redaction (`security/logfilter.py`), connector create/edit/delete + logos, tool health, savings, example-data mode, `flowforge` command. Phase 3 (D17, D18): `flowmap/` (Flow JSON models, validation, code-inserted policy gates, critical path, overrides merge, version diff, `Planner` protocol + `FixturePlanner`), storage tables `flow_versions`/`flow_overrides`/`flow_positions`, `/flow*` and `/catalog` routes, 56-app catalog with mock test runs; dashboard: icon rail, flow map at `/` (React Flow + dagre, saved positions, search, legend, minimap, step panel with evidence and edits, test-run replay that holds at the gate), `/map/how`, `/map/recheck`, catalog at `/connectors`, money/time + app health on Runs, Geist fonts; Overview and HubMap removed; `Storage` calls serialised by a lock. Phase 4 (D19–D22): `scan/` (plain code, no network, no LLM: Python by `ast`, JS/TS and Dart by patterns, MCP configs, dependency files; stable ids, redacted evidence, confirmed/unconfirmed, coding-tool MCP servers as their own group), `presets.SERVICES` (22 services), `ScanPlanner` → dependency map (no gates, no critical path), one set of versions/edits/positions per map (`deps`, `flow`) with per-map numbering and in-place migration, `GET/POST /scan`, `?map=` on `/flow*`, `flowforge scan PATH`, `flowforge --repo PATH [--replace]`, `security.logfilter.redact_code`; dashboard: Dependencies | Flow switch (example mode), "Scan a folder" empty state, scan view of "how it was mapped"; `examples/trip-planner` sample app. 363 backend (on Linux; one test skips on Windows) + 56 dashboard tests pass offline |
-| Not started | Health checks and the Checks page (Phase 5), security findings and the Security page (Phase 6), the launch README and packaging (Phase 7), flow order (8), Tauri (9), V2 (coding agents, vault, redact/verify/scan/restore, gates) |
+| Done | Scheduler core, five policies, caches, SSE run stream, plain-HTML status page. Phase 1: D10 connectors (provider-agnostic `LLMNode`: openai_compatible + anthropic; per-connector buckets, cache namespaces, fallback), D12 MCP (tool discovery, schema-checked calls, non-text blocks, artifacts), D13 `local` step, connector registry + presets + `connectors.json`, HTTP connectors, ruff, CI (Linux + Windows), CONTRIBUTING. Phase 2 (D15, D16): dashboard (Vite + React + TS), persisted runs and events, minimal redaction (`security/logfilter.py`), connector create/edit/delete + logos, tool health, savings, example-data mode, `flowforge` command. Phase 3 (D17, D18): `flowmap/` (Flow JSON models, validation, code-inserted policy gates, critical path, overrides merge, version diff, `Planner` protocol + `FixturePlanner`), storage tables `flow_versions`/`flow_overrides`/`flow_positions`, `/flow*` and `/catalog` routes, 56-app catalog with mock test runs; dashboard: icon rail, flow map at `/` (React Flow + dagre, saved positions, search, legend, minimap, step panel with evidence and edits, test-run replay that holds at the gate), `/map/how`, `/map/recheck`, catalog at `/connectors`, money/time + app health on Runs, Geist fonts; Overview and HubMap removed; `Storage` calls serialised by a lock. Phase 4 (D19–D22): `scan/` (plain code, no network, no LLM: Python by `ast`, JS/TS and Dart by patterns, MCP configs, dependency files; stable ids, redacted evidence, confirmed/unconfirmed, coding-tool MCP servers as their own group), `presets.SERVICES` (22 services), `ScanPlanner` → dependency map (no gates, no critical path), one set of versions/edits/positions per map (`deps`, `flow`) with per-map numbering and in-place migration, `GET/POST /scan`, `?map=` on `/flow*`, `flowforge scan PATH`, `flowforge --repo PATH [--replace]`, `security.logfilter.redact_code`; dashboard: "Scan a folder" (empty state and header), scan view of "how it was mapped"; `examples/trip-planner` sample app. D23: example mode shows only the scanned map (the hand-made Baby-care flow is test data now), fake-data and test files skipped, a target from the host most URLs use, local blocks named for what they run. 366 backend (on Linux; one test skips on Windows) + 57 dashboard tests pass offline |
+| Not started | Health checks and the Checks page (Phase 5), flow order from code with the critical path and "run these together" suggestions (6), security findings and the Security page (7), the launch README and packaging (8), Tauri (9), V2 (coding agents, vault, redact/verify/scan/restore, gates) (10), FlowForge's own SLM (11) |
 | Next decision needed | Section 12. Ask Vishwa, don't guess. |
 
 ---
@@ -182,22 +182,22 @@ Fixed in Phase 1: `LLMNode` is no longer NIM-only (D10); `MCPNode` has tool disc
 - On Windows, killing a timed-out `local` process does not kill its children.
 - Runs that were running when the server stopped are marked `interrupted`; they are not resumed.
 - Live run has Stop but no Pause (a pause would change the scheduler).
-- The flow map (Baby-care) is example data only: the one flow Planner is `FixturePlanner`, its Test run replays a recorded trace and makes no calls, and catalog test runs are canned mocks. Outside example mode only the dependency map exists.
+- No map in the dashboard shows flow order yet (D23): the only flow Planner is `FixturePlanner`, the hand-made Baby-care flow, kept as test data for the flow-map code (gates, critical path, the Test run replay of a recorded trace). Flow order from code is Phase 6. Catalog test runs are canned mocks.
 - Repo scan (D21, D22) limits:
   - JS/TS and Dart are read by patterns, line by line, so a call split across lines can be missed. Python uses the AST.
   - The dependency map is laid out by dagre in one column, ordered by kind; it isn't drawn in lanes per kind yet.
   - A dependency's `places` count isn't shown in the step panel yet.
-  - Once a map exists, the dashboard has no "scan a different folder" button: use `POST /scan` with `replace` or `flowforge --repo PATH --replace`.
   - Start-up scans the chosen folder when it has no map yet, inside the server's start-up, so a very large repo delays start-up.
-  - Example mode scans `examples/trip-planner` from the repo checkout; an installed package has no `examples/` folder (Phase 7).
+  - Example mode scans `examples/trip-planner` from the repo checkout; an installed package has no `examples/` folder (Phase 8).
   - Block ids `app` and `tools` (the two start blocks) are repeated in the dashboard instead of coming from the API.
 - Map gates are inserted by code (D17), but scheduled runs have no gate step yet (D11, V2). A GET to a payment API isn't gated; any other method is, and an HTTP block with no method counts as a write (D17).
 - `Storage` shares one SQLite connection across the threadpool, so every public method takes one `RLock` (a race existed since sync connector routes; `test_storage_threads.py`). Fine for one local user; revisit if a server version comes (section 5, "Later, maybe").
+- At phone width the top rail scrolls sideways, and Firefox draws its scrollbar as a light strip under it, in dark mode too.
 - The dashboard bundle is about 709 kB (React Flow + dagre); Vite warns over 500 kB. No code splitting yet.
 - Timing-sensitive tests: tests assert scheduling decisions, not wall-clock windows. Exception: `actual_critical_path` in `test_diamond_meets_lower_bound` still depends on measured durations; it held in 500 stress runs.
 
 ### Rules that already exist and must not break
-- `DECISIONS.md` is the spec: D1–D9 (V1), D10 connectors, D11 approval gates (reserved for V2), D12 MCP connectors, D13 local command step, D14 plan from connectors, D15 frontend stack, D16 run history + redaction + example mode + editable connectors, D17 the flow map, D18 frontend additions (Geist, React Flow, dagre), D19 the product direction (repo → dependency map → health, security and tests; also renumbers the roadmap), D20 a scan with no LLM and an optional, user-chosen LLM that sees only masked findings, D21 the scanner contract, D22 scanner rules learned from the first real scans. Cited in code as `(D7)` etc. Keep code and doc in agreement. **New decisions get the next free number (D23, …) in the same format**, written *before* the code.
+- `DECISIONS.md` is the spec: D1–D9 (V1), D10 connectors, D11 approval gates (reserved for V2), D12 MCP connectors, D13 local command step, D14 plan from connectors, D15 frontend stack, D16 run history + redaction + example mode + editable connectors, D17 the flow map, D18 frontend additions (Geist, React Flow, dagre), D19 the product direction (repo → dependency map → health, security and tests; also renumbers the roadmap), D20 a scan with no LLM and an optional, user-chosen LLM that sees only masked findings, D21 the scanner contract, D22 scanner rules learned from the first real scans, D23 no hand-drawn maps and the roadmap after the first look. Cited in code as `(D7)` etc. Keep code and doc in agreement. **New decisions get the next free number (D24, …) in the same format**, written *before* the code.
 - Say "concurrent on one event loop (I/O-bound)", never "parallel on CPUs" (D4).
 - Benchmarks must keep running unchanged (`benchmarks/`). Don't change the five policies' behaviour to make a new feature easier.
 
@@ -332,7 +332,18 @@ Goal: point FlowForge at a folder and get a real dependency map, with evidence, 
 - A slow stub dependency shows its latency.
 - Tests use stub servers and no network.
 
-### Phase 6: Security findings
+### Phase 6: Flow order from code + critical path  *(D23)*
+The order the app calls its dependencies in, from the code, so FlowForge can say what slows the app down and what could run together. Nothing on it is drawn by hand: every block and line keeps its `file:line`.
+- **Python first, through the AST.** A call that uses another call's result depends on it, which gives a real DAG of the app's calls. Decisions (`if` branches) show where they are in the code. JS/TS and Dart follow, honestly labelled when they're less exact.
+- **Critical path** with the existing DP, weighted by Phase 5's measured latencies, labelled as estimates.
+- **Suggestions:** "these calls don't depend on each other: run them together, about N ms saved", each pointing at the code.
+- The flow map's existing pieces (critical path view, gates before side effects, the Test run replay) are reused.
+
+**Acceptance:**
+- In `examples/trip-planner`, the independent calls (ip-api, Nominatim, the fetch and currency servers) are found as able to run together, with `file:line`.
+- Every line on the flow map points to code. No test needs a network or a key; the scheduler and benchmarks are untouched.
+
+### Phase 7: Security findings
 - **Hard-coded keys,** found with the §6.4 finders:
   - known key patterns + entropy;
   - the Python AST;
@@ -346,13 +357,10 @@ Goal: point FlowForge at a folder and get a real dependency map, with evidence, 
 
 **Acceptance:** the planted fake key and `http://` URL are reported with `file:line`, and the key's value appears nowhere: DB bytes, API responses, logs, the DOM.
 
-### Phase 7: Launch
+### Phase 8: Launch
 - **Docs:** rewrite the README around the one-command demo, record a demo GIF, write a short "how it works".
 - **Install:** `uvx flowforge` / `pip install` (check the PyPI name first, section 12).
 - **Release:** CI green, first tagged release, merge into `main`.
-
-### Phase 8: Flow order (optional)
-The order of calls, drawn on top of the dependency map. It comes from tracing a test-mode run and/or from the optional LLM (D20: off by default, chosen by the user, masked findings only).
 
 ### Phase 9: CLI agent + Tauri desktop app
 - A richer CLI.
@@ -375,6 +383,9 @@ Safety, in order:
 
 This phase carries the old specs: the vault and redact → verify → scan → restore (§6.2–6.4), and the swap and gate design (§8).
 
+### Phase 11: FlowForge's own SLM  *(D23)*
+A small language model run locally, with proper guardrails and algorithms, replacing the dependence on hosted APIs (NIM or others) for anything FlowForge itself needs an LLM for. Plain code stays the source of truth: the SLM's proposals are data, checked against the code before they reach a map (D14), and it sees masked findings only (D20).
+
 ### Later, maybe
 - Server + workers (`FlowForge_Server_Orchestrator_Plan.md`) for scheduled monitoring on a home server.
 - The visual builder for non-developers is dropped: FlowForge is not an app builder (D17, D19).
@@ -384,7 +395,7 @@ This phase carries the old specs: the vault and redact → verify → scan → r
 ## 6. Security and privacy spec (binding for all phases)
 
 **What applies when (D19, D20):**
-- **V1 (Phases 4–7):** the finders in 6.4 step 1 (patterns, entropy, AST) power the scan's security findings. The storage, display and logging rules in 6.5 apply everywhere.
+- **V1 (Phases 4–8):** the finders in 6.4 step 1 (patterns, entropy, AST) power the scan's security findings. The storage, display and logging rules in 6.5 apply everywhere.
 - **V2 (Phase 10):** the vault (6.2–6.3) and the full redact → LLM → verify → scan → restore pipeline (6.4) are needed when a coding agent edits code.
 
 ### 6.1 The promise (say exactly this, never more)
@@ -572,7 +583,7 @@ New directories you will create: `backend/flowforge/connectors/`, `backend/flowf
 
 Settled: the frontend stack (D15); where the design HTML lives (`docs/design/`); JS/TS key detection depth for V1 (the Python AST; JS/TS and Dart by patterns + entropy; `tree-sitter` is revisited in V2); OAuth (not needed in V1, revisit in V2).
 
-1. **Package and CLI name.** Keep `flowforge`? Check for PyPI name clashes before Phase 7.
+1. **Package and CLI name.** Keep `flowforge`? Check for PyPI name clashes before Phase 8.
 2. **Check timer (Phase 5).** Whether checks also run on a timer, and how often by default.
 3. **Authenticated checks (Phase 5).** Should a health check ever call an endpoint that needs the user's key from `.env`, or only check reachability without one?
 4. **GitHub URLs.** When the "scan a GitHub URL" input lands (Phase 4 or after).

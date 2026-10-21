@@ -414,6 +414,12 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
   };
   const retidy = () => {
     const laid = autoLayout(flow.nodes, flow.edges);
+    if (timed) {   // Boxed keeps its time columns, tidied from the fresh layout's order; never saved (D26)
+      const cols = timeColumns(flow, laid);
+      setNodes((ns) => ns.map((n) => (cols[n.id] ? { ...n, position: { x: cols[n.id][0], y: cols[n.id][1] } } : n)));
+      window.setTimeout(() => rf.fitView({ padding: 0.08, duration: 500 }), 30);
+      return;
+    }
     setNodes((ns) => ns.map((n) => (laid[n.id] ? { ...n, position: { x: laid[n.id][0], y: laid[n.id][1] } } : n)));
     pending.current = { ...laid };
     savePositions(true);

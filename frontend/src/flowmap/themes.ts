@@ -3,6 +3,7 @@
 import type { Node } from "@xyflow/react";
 import type { FlowView, NodeKind } from "../api/types";
 import { CALL_KINDS, earliest, isThrough } from "./kinds";
+import { sizeOf } from "./layout";
 
 export type GraphTheme = "studio" | "boxed" | "blueprint" | "metro" | "soft";
 
@@ -84,6 +85,8 @@ export function boxes(flow: FlowView, placed: Node[]): BoxRect[] {
 /** Boxed on a flow (D26): one column per moment in time, so a box holds exactly the calls that start together.
  * Decisions (and where they stop) sit just before the calls that wait on them; a block reached through a server
  * stays with that server; within a column the usual layout's top-to-bottom order is kept. */
+const COLUMN = 340, ROW_GAP = 52;
+
 const isThroughId = (flow: FlowView, id: string) => { const n = flow.nodes.find((x) => x.id === id); return !!n && isThrough(n); };
 
 export function timeColumns(flow: FlowView, placed: Record<string, [number, number]>): Record<string, [number, number]> {
@@ -93,7 +96,7 @@ export function timeColumns(flow: FlowView, placed: Record<string, [number, numb
   const key = (id: string): number => {
     const n = flow.nodes.find((x) => x.id === id)!;
     if (n.kind === "start") return -1;
-    if (through.has(id)) return key(through.get(id)!);
+    if (through.has(id)) return key(through.get(id)!) + 0.01;   // its own narrow column, right of its server
     if (n.kind === "decision" || n.kind === "end") {
       const gate = flow.edges.find((e) => e.target === id && flow.nodes.find((x) => x.id === e.source)?.kind === "decision");
       return n.kind === "end" && gate ? key(gate.source) : (start[id] ?? 0) - 0.5;
@@ -106,10 +109,17 @@ export function timeColumns(flow: FlowView, placed: Record<string, [number, numb
     columns.set(k, [...(columns.get(k) ?? []), n.id]);
   }
   const out: Record<string, [number, number]> = {};
+  const kind = (id: string) => flow.nodes.find((x) => x.id === id)!.kind;
   [...columns.keys()].sort((a, b) => a - b).forEach((k, col) => {
     const ids = columns.get(k)!.sort((a, b) => (placed[a]?.[1] ?? 0) - (placed[b]?.[1] ?? 0));
-    const top = -((ids.length - 1) * 104) / 2;
-    ids.forEach((id, row) => { out[id] = [col * 280, top + row * 104]; });
+    // stack by each block's own height, with room for its file:line underneath and the box's title above
+    const total = ids.reduce((t, id) => t + sizeOf(kind(id)).h, 0) + ROW_GAP * (ids.length - 1);
+    let y = -total / 2;
+    for (const id of ids) {
+      out[id] = [col * COLUMN, through.has(id) ? NaN : y];
+      y += sizeOf(kind(id)).h + ROW_GAP;
+    }
   });
+  for (const [id, server] of through) if (out[id] && out[server]) out[id][1] = out[server][1];   // level with its server
   return out;
 }

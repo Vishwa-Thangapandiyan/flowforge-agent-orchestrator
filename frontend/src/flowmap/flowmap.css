@@ -325,7 +325,7 @@
 /* ---- graph themes (D26, docs/design/flow-artboards/themes.html). Meanings stay fixed in every theme: health
    colours, the critical path as the thickest line in the theme's ink, measured versus estimated weights. ---- */
 .fm-theme { position: relative; }
-.fm-theme-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; display: grid; gap: 2px; width: 250px; padding: 6px;
+.fm-theme-menu { position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; display: grid; gap: 2px; width: 250px; padding: 6px;
   border-radius: var(--r-md); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-3); }
 .fm-theme-menu button { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 0; border-radius: 8px; background: none;
   color: var(--fg); text-align: left; font: inherit; cursor: pointer; }

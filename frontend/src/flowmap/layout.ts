@@ -23,7 +23,7 @@ export function sizeOf(kind: NodeKind): Size {
 /** Left-to-right layered layout. Returns each block's top-left corner. Retry loops are left out. */
 export function autoLayout(nodes: Pick<FlowNode, "id" | "kind">[], edges: Pick<FlowEdge, "source" | "target" | "kind">[]) {
   const g = new dagre.graphlib.Graph();
-  g.setGraph({ rankdir: "LR", nodesep: 40, ranksep: 70, marginx: 32, marginy: 32 });
+  g.setGraph({ rankdir: "LR", nodesep: 56, ranksep: 104, marginx: 32, marginy: 32 });
   g.setDefaultEdgeLabel(() => ({}));
   for (const n of nodes) {
     const s = sizeOf(n.kind);

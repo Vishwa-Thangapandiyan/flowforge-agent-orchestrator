@@ -68,12 +68,12 @@ test("a dependency map shows what the app uses, without a test run or critical p
   expect(screen.getByText("Your coding tools", { selector: ".ff-title" })).toBeInTheDocument();
 });
 
-test("example mode has one map, and Scan a folder says how to map your own", async () => {
+test("example mode has both maps, and Scan a folder says how to map your own", async () => {
   mockApi({ "/meta": META, "/flow": DEPS, "/connectors": CONNECTORS });
   renderAt("/");
   await screen.findByText("Nominatim", { selector: ".ff-title" });
-  // nothing drawn by hand reaches the dashboard (D23)
-  expect(screen.queryByRole("group", { name: "Which map" })).not.toBeInTheDocument();
+  // both maps come from code now (D25), so the switch is back; nothing drawn by hand reaches it (D23)
+  expect(screen.getByRole("group", { name: "Which map" })).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: /Scan a folder/ }));
   expect(screen.getByText(/flowforge --repo/)).toBeInTheDocument();
   expect(screen.queryByLabelText("Folder to scan")).not.toBeInTheDocument();

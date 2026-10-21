@@ -137,3 +137,33 @@ export const PLAN: CheckPlan = {
     { id: "mcp-github", name: "github", command: "npx github-mcp", origin: "downloads from npm, any version", source: ".cursor/mcp.json:3" },
   ],
 };
+
+// A flow read from code (D25): the city lookup, a check that stops early, two calls that could start together.
+const step = (id: string, kind: "api" | "mcp" | "llm", title: string, what: string, ref: string, ms: number,
+  source: "measured" | "estimate" = "measured"): FlowNode =>
+  node(id, kind, title, { what, catalog: null, estimate_ms: ms, estimate_source: source, evidence: [code(ref)] });
+
+export const CODEFLOW: FlowView = {
+  available: true, kind: "flow", source: "code", version: 1, created_at: "2026-10-21T10:00:00Z", layer: "mine",
+  fact_sheet_hash: "sha256:code",
+  nodes: [
+    node("start-plan", "start", "plan()", { evidence: [code("planner.py:48")] }),
+    step("api-nominatim-1", "api", "Nominatim", "find the city", "planner.py:52", 420),
+    node("if-1", "decision", "place is None?", { condition: "place is None", evidence: [code("planner.py:53")] }),
+    node("stop-1", "end", "Stop", { evidence: [code("planner.py:55")] }),
+    step("api-open-meteo-1", "api", "Open-Meteo", "today's weather", "planner.py:60", 180),
+    step("mcp-fetch-1", "mcp", "fetch", "about the city", "planner.py:66", 6800),
+    step("llm-ollama-1", "llm", "Ollama", "write the plan", "planner.py:88", 2000, "estimate"),
+  ],
+  edges: [edge("start-plan", "api-nominatim-1"), edge("api-nominatim-1", "if-1"),
+    { ...edge("if-1", "stop-1", "branch"), when: "yes" }, { ...edge("if-1", "api-open-meteo-1", "branch"), when: "no" },
+    { ...edge("if-1", "mcp-fetch-1", "branch"), when: "no" }, edge("api-open-meteo-1", "llm-ollama-1"),
+    edge("mcp-fetch-1", "llm-ollama-1")],
+  hidden: [], positions: {}, apps: {},
+  critical_path: { path: ["start-plan", "api-nominatim-1", "if-1", "mcp-fetch-1", "llm-ollama-1"], length_ms: 9220, bottleneck: "mcp-fetch-1" },
+  counts: { steps: 7, unconfirmed: 0, gates: 0, edits: 0 }, pending: null,
+  written_ms: 9400,
+  advice: [{ nodes: ["api-open-meteo-1", "mcp-fetch-1"], refs: ["planner.py:60", "planner.py:66"], saved_ms: 180,
+    text: "None of these uses another's result: start them together with asyncio.gather.",
+    caveat: "fetch only need what was known before the check at planner.py:53, so they could start even earlier, but when the code stops there, those calls are wasted." }],
+};

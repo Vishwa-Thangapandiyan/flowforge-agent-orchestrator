@@ -204,6 +204,9 @@ export interface FlowNode {
   evidence: Evidence[];
   /** dependency maps: a known service's id, for its tile (D21) */
   catalog?: string | null;
+  /** flows read from code (D25): the call sits in a loop, and where its weight came from */
+  repeats?: boolean;
+  estimate_source?: "measured" | "estimate" | null;
   // added by GET /flow
   yours: { id: number; op: string }[];
   on_critical_path: boolean;
@@ -227,9 +230,23 @@ export interface FlowEdge {
 /** `flow`: the order the app runs in (D17). `dependencies`: what the app uses, from a scan (D21). */
 export type MapKind = "flow" | "dependencies";
 
+/** Calls that could start together (D25), with what running them together saves. */
+export interface Advice {
+  nodes: string[];
+  refs: string[];
+  text: string;
+  saved_ms: number;
+  caveat: string | null;
+}
+
 export interface FlowView {
   available: true;
   kind?: MapKind;
+  /** "code": read from the repo's own code (D25) */
+  source?: "planner" | "code";
+  advice?: Advice[];
+  /** code flows: every call one after another, as written */
+  written_ms?: number | null;
   version: number;
   created_at: string;
   layer: "mine" | "planner";

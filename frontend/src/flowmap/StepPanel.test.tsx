@@ -4,7 +4,7 @@ import { expect, test, vi } from "vitest";
 import type { Connector } from "../api/types";
 import { CONNECTORS } from "../test/fixtures";
 import { mockApi } from "../test/api";
-import { CHECKS, DEPS, FLOW } from "../test/flowFixture";
+import { CHECKS, CODEFLOW, DEPS, FLOW } from "../test/flowFixture";
 import { StepPanel, type PanelActions } from "./StepPanel";
 
 function actions(): PanelActions {
@@ -108,4 +108,13 @@ test("a dependency's Health says why it is down and how to fix it, and can be ch
   await userEvent.click(screen.getByRole("button", { name: /Check this one/ }));
   expect(onCheck).toHaveBeenCalledWith("llm-ollama");
   vi.unstubAllGlobals();
+});
+
+test("a step read from code says how long it takes and where that number came from", () => {
+  const fetch = { ...CODEFLOW.nodes.find((n) => n.id === "mcp-fetch-1")!, repeats: true };
+  render(<StepPanel node={fetch} flow={CODEFLOW} tile={null} state="idle" cap="" waiting={false} connectors={[]} tipShown
+    layer="mine" actions={actions()} />);
+  expect(screen.getByText("6.8 s · measured")).toBeInTheDocument();
+  expect(screen.getByText("Repeats in a loop")).toBeInTheDocument();
+  expect(screen.queryByText(/not connected/)).not.toBeInTheDocument();   // a code flow needs no connected app (D25)
 });

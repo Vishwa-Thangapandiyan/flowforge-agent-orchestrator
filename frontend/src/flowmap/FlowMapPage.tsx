@@ -6,7 +6,7 @@ import {
   type NodeChange, type OnSelectionChangeParams,
 } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, useApi } from "../api/client";
 import { CheckConfirm, countsText, Squares } from "../checks/Health";
 import { useChecks } from "../checks/useChecks";
@@ -15,6 +15,7 @@ import { when } from "../components/format";
 import { Icons } from "../components/icons";
 import { useMeta } from "../components/Shell";
 import { EmptyState, ErrorBox } from "../components/ui";
+import { Faster } from "./Faster";
 import { edgeTypes, Markers, type LineEdge } from "./FlowEdge";
 import { autoLayout, handlesFor, placeAll, sizeOf } from "./layout";
 import { mapQuery, useMapId, type MapId } from "./mapId";
@@ -162,6 +163,10 @@ interface Play {
 
 function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: ViewProps) {
   const deps = flow.kind === "dependencies";
+  const code = flow.source === "code";   // the app's own flow, read from its code (D25)
+  const [params, setParams] = useSearchParams();
+  const setMap = (m: MapId) => setParams(m === "flow" ? { ...Object.fromEntries(params), map: "flow" } : {});
+  const [pointed, setPointed] = useState<Set<string> | null>(null);   // the blocks a piece of advice covers
   const q = mapQuery(map);
   const meta = useMeta();
   const navigate = useNavigate();
@@ -173,7 +178,7 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
   const checks = useChecks(deps);   // health on a dependency map (D24)
   const health = useMemo(() => Object.fromEntries(checks.items.map((i) => [i.id, i])), [checks.items]);
   const [find, setFind] = useState("");
-  const [cp, setCp] = useState(false);
+  const [cp, setCp] = useState(code);   // a flow read from code opens on its critical path (D25)
   const [showEvidence, setShowEvidence] = useState(true);
   const [legend, setLegend] = useState(false);
   const [dismissed, setDismissed] = useState(readDismissed);
@@ -201,8 +206,8 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
     if (n.kind === "gate" || n.kind === "end") return null;
     if (n.connector) return tileOf(n.connector);
     const type = TILE_TYPE[n.kind];
-    return deps && type ? { id: n.catalog ?? n.id, type, name: n.title } : null;
-  }, [tileOf, deps]);
+    return (deps || code) && type ? { id: n.catalog ?? n.id, type, name: n.title } : null;
+  }, [tileOf, deps, code]);
 
   const query = find.trim().toLowerCase();
   const hits = useMemo(() => new Set(query ? flow.nodes.filter((n) => [n.title, n.connector, flow.apps[n.connector ?? ""]?.name,
@@ -215,11 +220,12 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
     const retry = flow.edges.find((e) => e.kind === "retry" && e.source === id);
     return {
       node: n, tile: tileFor(n), deps, state: frame?.nodes[id] ?? "idle",
-      cap: frame?.caps[id] ?? "", search: query ? (hits.has(id) ? "hit" : "miss") : null, cp: cp && n.on_critical_path,
+      cap: frame?.caps[id] ?? "", cp: cp && n.on_critical_path,
+      search: query ? (hits.has(id) ? "hit" : "miss") : pointed ? (pointed.has(id) ? "hit" : "miss") : null,
       showTip: !dismissed.has(id) && !frame, showEvidence, retryMax: retry?.max ?? null,
       health: deps && health[id] ? health[id] : undefined,
     };
-  }, [flow.nodes, flow.edges, tileFor, deps, frame, query, hits, cp, dismissed, showEvidence, health]);
+  }, [flow.nodes, flow.edges, tileFor, deps, frame, query, hits, cp, dismissed, showEvidence, health, pointed]);
 
   useEffect(() => {
     const placed = placeAll(flow.nodes, flow.edges, flow.positions);
@@ -408,6 +414,14 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
               <span className="v">Map v{flow.version}<span>nothing run or sent · {when(flow.created_at)}</span></span>
             </span>
           </Link>
+        ) : code ? (
+          <Link className="fm-planner" to={`/map/how${q}`} aria-label="Read from your code, with no AI. See how">
+            <span className="fm-spark">{Icons.code(18)}</span>
+            <span>
+              <span className="k"><span className="fm-live" />Read from your code · no AI</span>
+              <span className="v">Flow v{flow.version}<span>nothing run or sent · {when(flow.created_at)}</span></span>
+            </span>
+          </Link>
         ) : (
           <Link className="fm-planner" to={`/map/how${q}`} aria-label="The Planner drew this map. See how">
             <span className="fm-spark">{Icons.spark(18)}</span>
@@ -418,6 +432,10 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
           </Link>
         )}
         <div className="fm-actions">
+          <div className="seg" role="group" aria-label="Which map">
+            <button type="button" aria-pressed={map === "deps"} onClick={() => setMap("deps")}>Dependencies</button>
+            <button type="button" aria-pressed={map === "flow"} onClick={() => setMap("flow")}>Flow</button>
+          </div>
           {deps && (
             <button className="btn" type="button" aria-expanded={scanning} onClick={() => setScanning((v) => !v)}>
               {Icons.search(18)} Scan a folder
@@ -425,7 +443,7 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
           )}
           <div className="seg" role="group" aria-label="Which version of the map">
             <button type="button" aria-pressed={layer === "planner"} onClick={() => setLayer("planner")}>
-              {deps ? "As scanned" : "Planner's map"}
+              {deps ? "As scanned" : code ? "As read" : "Planner's map"}
             </button>
             <button type="button" aria-pressed={layer === "mine"} onClick={() => setLayer("mine")}>
               With my edits<span className="n">{flow.counts.edits}</span>
@@ -441,7 +459,7 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
               {Icons.activity(18)} {checks.running ? "Checking…" : "Check now"}
             </button>
           )}
-          {!deps && (
+          {!deps && !code && (
             <button className="btn primary" type="button" onClick={startReplay} disabled={!trace || busy}>
               {Icons.play(18)} {busy ? "Running…" : "Test run"}
             </button>
@@ -547,6 +565,7 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
             connectors={connectors} tipShown={!dismissed.has(selected.id)} layer={layer}
             actions={{ close: () => { setSel(null); setNodes((ns) => ns.map((n) => ({ ...n, selected: false }))); }, approve, reject, edit, reset, dismissTip }} />
         )}
+        {!selected && code && <Faster flow={flow} onPoint={(ids) => setPointed(ids ? new Set(ids) : null)} />}
       </div>
     </div>
   );

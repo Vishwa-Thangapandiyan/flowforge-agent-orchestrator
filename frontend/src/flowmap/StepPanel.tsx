@@ -146,6 +146,7 @@ export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, t
   const mine = layer === "mine";
   // a scanned dependency (D21): its line is where a check will go, and it needs no app connected (D23)
   const deps = flow.kind === "dependencies";
+  const code = flow.source === "code";   // read from the app's code (D25): no connected app to show
   const what = deps ? (node.kind === "mcp" || node.kind === "local" ? "Starts with" : "Address") : "What it does";
   const isUser = node.added_by === "user";
   const isCall = CALLS.has(node.kind);
@@ -177,6 +178,10 @@ export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, t
         <p className="sp-what">{node.what || (deps ? "No address in the code." : "No description from the Planner.")}</p>
         <div className="sp-chips">
           {node.on_critical_path && <span className="sp-chip cp">{Icons.route(12)} On the critical path</span>}
+          {node.estimate_source && node.estimate_ms != null && node.estimate_ms > 0 && (
+            <span className="sp-chip">{took(node.estimate_ms)} · {node.estimate_source}</span>
+          )}
+          {node.repeats && <span className="sp-chip">{Icons.refresh(12)} Repeats in a loop</span>}
           {node.side_effect && <span className="sp-chip side">Side effect · behind a gate</span>}
           {node.kind === "llm" && <span className="sp-chip">{Icons.shield(12)} Keys and personal data removed first</span>}
           {node.yours.length > 0 && <span className="sp-chip yours">Your edit</span>}
@@ -221,7 +226,7 @@ export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, t
         </div>
       )}
 
-      {isCall && (!deps || node.connector) && (
+      {isCall && (!(deps || code) || node.connector) && (
         <div className="sp-sec">
           <span className="sp-sh">App</span>
           <div className="sp-conn">

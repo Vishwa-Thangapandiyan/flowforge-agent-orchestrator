@@ -182,15 +182,9 @@ def install(state: AppState) -> None:
 
 
 def seed_flow(state: AppState) -> None:
-    """The example maps (D17, D21): the trip planner's dependency map, scanned live, and the Baby-care flow map
-    with the project's own edits and the designed layout."""
-    from flowforge.flowmap import fixture
-    from flowforge.flowmap.service import example_edits
-
+    """The example map (D21, D23): the trip planner's dependency map, scanned live."""
     if "deps" in state.flows:
         state.flows["deps"].first_map()
-    if "flow" in state.flows and state.flows["flow"].first_map() is not None:
-        example_edits(state.flows["flow"], fixture.EXAMPLE_OVERRIDES, fixture.POSITIONS)
 
 
 async def seed(state: AppState) -> list[str]:

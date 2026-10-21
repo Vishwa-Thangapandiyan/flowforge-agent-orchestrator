@@ -53,6 +53,21 @@ def client(tmp_path, monkeypatch, offline):
         yield c
 
 
+def test_example_mode_shows_only_the_scanned_map_even_with_an_old_hand_drawn_one_saved(tmp_path, monkeypatch, offline):
+    """D23: nothing drawn by hand reaches a map. An example.db from before still holds the Baby-care flow."""
+    from flowforge.flowmap import fixture
+    from flowforge.storage import Storage
+
+    old = Storage(tmp_path / "example.db")
+    old.add_flow_version("flow", "accepted", fixture.flow_v1().model_dump(mode="json"), None, {}, "sha256:old")
+    old.conn.close()
+    monkeypatch.setenv("FLOWFORGE_EXAMPLE", "1")
+    monkeypatch.setenv("FLOWFORGE_DB", str(tmp_path / "example.db"))
+    with TestClient(main.app) as c:
+        assert c.get("/flow").json()["kind"] == "dependencies"
+        assert c.get("/flow?map=flow").json()["available"] is False
+
+
 def test_meta_and_connectors(client):
     assert client.get("/meta").json()["example"] is True
     assert client.get("/meta").json()["project"] == "Baby-care shop"

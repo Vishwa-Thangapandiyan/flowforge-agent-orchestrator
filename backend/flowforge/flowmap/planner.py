@@ -1,6 +1,7 @@
 """The Planner interface (D17) and its two implementations.
 
-`FixturePlanner` draws the example Baby-care flow map. `ScanPlanner` scans a folder and draws its dependency
+`FixturePlanner` draws the hand-made Baby-care flow map, test data for the flow-map code: nothing hand-drawn
+reaches the dashboard (D23). `ScanPlanner` scans a folder and draws its dependency
 map (D21): plain code, no LLM (D20). Both return the same `Draft`, so versions, re-checks and edits work alike.
 """
 
@@ -36,7 +37,7 @@ def fact_hash(value: object) -> str:
 
 
 class FixturePlanner:
-    """Example mode: the Baby-care shop. Round 0 is the first map; any later round is the re-check."""
+    """The Baby-care shop, for tests (D23). Round 0 is the first map; any later round is the re-check."""
 
     def analyze(self, round: int) -> Draft:
         recheck = round > 0

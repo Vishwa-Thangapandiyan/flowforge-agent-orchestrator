@@ -11,7 +11,8 @@ from flowforge.connectors.models import parse_connector
 from flowforge.flowmap import fixture
 from flowforge.flowmap.diff import apply_choices, diff
 from flowforge.flowmap.models import Flow, Override
-from flowforge.flowmap.service import merge
+from flowforge.flowmap.planner import FixturePlanner
+from flowforge.flowmap.service import FlowService, merge
 from flowforge.flowmap.validate import FlowError, check, critical
 
 FAKE_KEY = "sk_test_FAKEFAKE12345678"
@@ -189,6 +190,14 @@ def api(tmp_path, monkeypatch):
     monkeypatch.setenv("FLOWFORGE_DB", str(tmp_path / "example.db"))
     monkeypatch.setenv("INVENTORY_TOKEN", FAKE_KEY)
     with TestClient(main.app) as c:
+        # the hand-made Baby-care flow, which the dashboard no longer shows (D23), with its edits and layout
+        s = main.state
+        flow = s.flows["flow"] = FlowService(s.storage.flows("flow"), lambda: {c.id: c for c in s.registry.all()},
+                                             FixturePlanner())
+        flow.first_map()
+        for data in fixture.EXAMPLE_OVERRIDES:
+            flow.add_override(Override.model_validate(data))
+        flow.set_positions(fixture.POSITIONS)
         yield c
 
 

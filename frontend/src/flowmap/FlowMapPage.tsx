@@ -1,13 +1,13 @@
 // The home page (D17, D21): the map of your app. The dependency map (the default) shows what a scanned repo uses;
-// the flow map shows the order it runs in, with a replayable test run. Pan, zoom and drag; click a block for its
-// evidence; edit through overrides that never touch your code.
+// the flow map shows the order it runs in, with a replayable test run, once flow order comes from code (D23).
+// Pan, zoom and drag; click a block for its evidence; edit through overrides that never touch your code.
 import {
   MiniMap, ReactFlow, ReactFlowProvider, useNodesState, useReactFlow, useViewport,
   type NodeChange, type OnSelectionChangeParams,
 } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { api, useApi } from "../api/client";
+import { Link, useNavigate } from "react-router-dom";
+import { api, ApiError, useApi } from "../api/client";
 import type { Connector, ConnectorType, FlowNode, FlowResponse, FlowView, NodeKind, Trace } from "../api/types";
 import { when } from "../components/format";
 import { Icons } from "../components/icons";
@@ -41,13 +41,11 @@ function readDismissed(): Set<string> {
 export function FlowMapPage() {
   const meta = useMeta();
   const map = useMapId();
-  const [, setParams] = useSearchParams();
   const [layer, setLayer] = useState<"mine" | "planner">("mine");
   const flow = useApi<FlowResponse>(`/flow?layer=${layer}${mapQuery(map, "&")}`);
   const isFlowMap = flow.data?.available && (flow.data.kind ?? "flow") === "flow";
   const trace = useApi<Trace>(isFlowMap ? `/flow/trace${mapQuery(map)}` : null);
   const connectors = useApi<Connector[]>("/connectors");
-  const setMap = (m: MapId) => setParams(m === "flow" ? { map: "flow" } : {});
   if (flow.error) return <div style={{ padding: 24 }}><ErrorBox error={flow.error} what="the map" /></div>;
   if (!flow.data) return <div className="fm" aria-busy="true"><div className="fm-stage"><div className="fm-canvas skeleton" /></div></div>;
   if (!flow.data.available) {
@@ -62,48 +60,72 @@ export function FlowMapPage() {
   }
   return (
     <ReactFlowProvider>
-      <MapView key={map} map={map} setMap={meta.example ? setMap : null} flow={flow.data} trace={trace.data ?? null}
+      <MapView key={map} map={map} flow={flow.data} trace={trace.data ?? null}
         connectors={connectors.data ?? []} layer={layer} setLayer={setLayer} reload={flow.reload} />
     </ReactFlowProvider>
   );
 }
 
-/** The first step on your own machine: name a folder. It is read, never run, and nothing is sent (D20). */
-function ScanForm({ onDone }: { onDone: () => void }) {
+/** Name a folder to map. It is read, never run, and nothing is sent (D20). With a map of `current` already, a
+ * different folder replaces it, after you confirm (D22, D23). */
+function ScanForm({ onDone, current }: { onDone: () => void; current?: string }) {
   const [path, setPath] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
+  const [confirming, setConfirming] = useState(false);
+  const scan = async (replace: boolean) => {
     setBusy(true);
     setError(undefined);
     try {
-      await api.post("/scan", { path: path.trim() });
+      await api.post("/scan", replace ? { path: path.trim(), replace: true } : { path: path.trim() });
       onDone();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      if (current && err instanceof ApiError && err.status === 409) setConfirming(true);
+      else setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
     }
+  };
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    void scan(false);
   };
   return (
     <form className="scan-form" onSubmit={submit}>
       <label className="field">
         <span>Folder to scan</span>
-        <input value={path} onChange={(e) => setPath(e.target.value)} placeholder="/home/you/my-app" className="mono"
-          autoComplete="off" spellCheck={false} />
+        <input value={path} onChange={(e) => { setPath(e.target.value); setConfirming(false); }}
+          placeholder="/home/you/my-app" className="mono" autoComplete="off" spellCheck={false} />
       </label>
-      <button className="btn primary" type="submit" disabled={busy || !path.trim()}>{busy ? "Scanning…" : "Scan this folder"}</button>
+      {confirming ? (
+        <div className="notice" role="alert">
+          <p style={{ margin: "0 0 10px" }}>A different folder: {current}'s map and its versions are deleted.</p>
+          <button className="btn warn" type="button" onClick={() => void scan(true)} disabled={busy}>
+            {busy ? "Scanning…" : "Replace the map"}
+          </button>
+        </div>
+      ) : (
+        <button className="btn primary" type="submit" disabled={busy || !path.trim()}>{busy ? "Scanning…" : "Scan this folder"}</button>
+      )}
       {error && <div className="notice" role="alert">{error}</div>}
       <small>Read on this machine only. Nothing in it runs, and nothing is sent.</small>
     </form>
   );
 }
 
+/** Example data never mixes with yours (D16), so example mode says how to map your own folder instead. */
+function ScanHint() {
+  return (
+    <div className="scan-form">
+      <span>This is example data. To map your own folder, stop FlowForge and run:</span>
+      <code className="mono">uv run flowforge --repo /home/you/my-app</code>
+      <small>Read on this machine only. Nothing in it runs, and nothing is sent.</small>
+    </div>
+  );
+}
+
 interface ViewProps {
   map: MapId;
-  /** example mode holds both maps; elsewhere there is no switch */
-  setMap: ((m: MapId) => void) | null;
   flow: FlowView;
   trace: Trace | null;
   connectors: Connector[];
@@ -119,7 +141,7 @@ interface Play {
   rejected: boolean;
 }
 
-function MapView({ map, setMap, flow, trace, connectors, layer, setLayer, reload }: ViewProps) {
+function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: ViewProps) {
   const deps = flow.kind === "dependencies";
   const q = mapQuery(map);
   const meta = useMeta();
@@ -128,6 +150,7 @@ function MapView({ map, setMap, flow, trace, connectors, layer, setLayer, reload
   const { zoom } = useViewport();
   const [nodes, setNodes, onNodesChangeBase] = useNodesState<BlockNode>([]);
   const [sel, setSel] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
   const [find, setFind] = useState("");
   const [cp, setCp] = useState(false);
   const [showEvidence, setShowEvidence] = useState(true);
@@ -333,6 +356,7 @@ function MapView({ map, setMap, flow, trace, connectors, layer, setLayer, reload
   };
 
   const selected = sel ? flow.nodes.find((n) => n.id === sel) : undefined;
+  const appName = flow.nodes.find((n) => n.id === "app")?.title;
   const unconfirmed = flow.nodes.filter((n) => n.status === "unconfirmed");
   const depCount = flow.nodes.filter((n) => n.kind !== "start").length;
   const bottleneck = flow.critical_path.bottleneck ? flow.nodes.find((n) => n.id === flow.critical_path.bottleneck) : undefined;
@@ -346,7 +370,7 @@ function MapView({ map, setMap, flow, trace, connectors, layer, setLayer, reload
       <Markers />
       <header className="fm-top">
         <div className="fm-proj">
-          <h1>{deps ? (flow.nodes.find((n) => n.id === "app")?.title ?? meta.project) : meta.project}</h1>
+          <h1>{deps ? (appName ?? meta.project) : meta.project}</h1>
           <small>
             {deps ? <span>{depCount} dependencies</span>
               : <><span>{flow.counts.steps} steps</span><span>·</span><span>{flow.counts.gates} gates</span></>}
@@ -372,14 +396,15 @@ function MapView({ map, setMap, flow, trace, connectors, layer, setLayer, reload
           </Link>
         )}
         <div className="fm-actions">
-          {setMap && (
-            <div className="seg" role="group" aria-label="Which map">
-              <button type="button" aria-pressed={map === "deps"} onClick={() => setMap("deps")}>Dependencies</button>
-              <button type="button" aria-pressed={map === "flow"} onClick={() => setMap("flow")}>Flow</button>
-            </div>
+          {deps && (
+            <button className="btn" type="button" aria-expanded={scanning} onClick={() => setScanning((v) => !v)}>
+              {Icons.search(18)} Scan a folder
+            </button>
           )}
           <div className="seg" role="group" aria-label="Which version of the map">
-            <button type="button" aria-pressed={layer === "planner"} onClick={() => setLayer("planner")}>Planner's map</button>
+            <button type="button" aria-pressed={layer === "planner"} onClick={() => setLayer("planner")}>
+              {deps ? "As scanned" : "Planner's map"}
+            </button>
             <button type="button" aria-pressed={layer === "mine"} onClick={() => setLayer("mine")}>
               With my edits<span className="n">{flow.counts.edits}</span>
             </button>
@@ -396,6 +421,11 @@ function MapView({ map, setMap, flow, trace, connectors, layer, setLayer, reload
           )}
         </div>
       </header>
+      {scanning && (
+        <section className="fm-scan" aria-label="Scan a folder">
+          {meta.example ? <ScanHint /> : <ScanForm current={appName} onDone={() => { setScanning(false); reload(); }} />}
+        </section>
+      )}
       {notice && <div className="notice" role="alert" style={{ margin: "8px 16px 0" }}>{notice}</div>}
       <div className="fm-stage">
         <div className="fm-canvas" style={{ backgroundImage: "radial-gradient(var(--dot) 1.1px, transparent 1.4px)",

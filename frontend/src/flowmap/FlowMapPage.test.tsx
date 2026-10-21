@@ -64,15 +64,41 @@ test("a dependency map shows what the app uses, without a test run or critical p
   expect(screen.queryByRole("button", { name: /Critical path/ })).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: /Add dependency/ })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /Re-scan the repo/ })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "As scanned" })).toBeInTheDocument();   // no Planner drew it
   expect(screen.getByText("Your coding tools", { selector: ".ff-title" })).toBeInTheDocument();
 });
 
-test("in example mode the switch shows the flow map", async () => {
-  const calls = mockApi({ "/meta": META, "/flow": DEPS, "/connectors": CONNECTORS });
+test("example mode has one map, and Scan a folder says how to map your own", async () => {
+  mockApi({ "/meta": META, "/flow": DEPS, "/connectors": CONNECTORS });
   renderAt("/");
   await screen.findByText("Nominatim", { selector: ".ff-title" });
-  await userEvent.click(screen.getByRole("button", { name: "Flow" }));
-  await vi.waitFor(() => expect(calls.some((c) => c.url.includes("map=flow"))).toBe(true));
+  // nothing drawn by hand reaches the dashboard (D23)
+  expect(screen.queryByRole("group", { name: "Which map" })).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: /Scan a folder/ }));
+  expect(screen.getByText(/flowforge --repo/)).toBeInTheDocument();
+  expect(screen.queryByLabelText("Folder to scan")).not.toBeInTheDocument();
+});
+
+test("with a map, a different folder replaces it only after you confirm", async () => {
+  const bodies: unknown[] = [];
+  mockApi({
+    "/meta": { ...META, example: false }, "/flow": DEPS, "/connectors": CONNECTORS,
+    "/scan": (init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      bodies.push(body);
+      return body.replace ? { repo: "/home/me/shop", name: "shop", version: 1 }
+        : new Response(JSON.stringify({ detail: "This database maps trip-planner." }), { status: 409 });
+    },
+  });
+  renderAt("/");
+  await screen.findByText("Nominatim", { selector: ".ff-title" });
+  await userEvent.click(screen.getByRole("button", { name: /Scan a folder/ }));
+  await userEvent.type(screen.getByLabelText("Folder to scan"), "/home/me/shop");
+  await userEvent.click(screen.getByRole("button", { name: "Scan this folder" }));
+  const replace = await screen.findByRole("button", { name: /Replace the map/ });
+  expect(screen.getByText(/trip-planner's map and its versions are deleted/)).toBeInTheDocument();
+  await userEvent.click(replace);
+  await vi.waitFor(() => expect(bodies).toEqual([{ path: "/home/me/shop" }, { path: "/home/me/shop", replace: true }]));
 });
 
 test("without a map, you scan a folder", async () => {

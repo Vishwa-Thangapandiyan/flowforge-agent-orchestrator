@@ -347,14 +347,3 @@ def _need_connector(connector_id: str | None, kind: str, connectors: dict[str, C
     want = CONNECTOR_TYPE[kind]
     if connectors[connector_id].type != want:
         raise OverrideError(f"'{connector_id}' is a {connectors[connector_id].type} app; this step needs a {want} app")
-
-
-def example_edits(service: FlowService, overrides: list[dict[str, Any]],
-                  positions: dict[str, tuple[float, float]]) -> None:
-    """Example mode: seed the project's own edits and the designed layout once (D16, D17)."""
-    if service.store.flow_overrides():
-        return
-    for data in overrides:
-        service.add_override(Override.model_validate(data))
-    if not service.store.flow_positions():
-        service.set_positions(positions)

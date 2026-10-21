@@ -28,7 +28,7 @@ from flowforge.api import stats as stats_api
 from flowforge.connectors.models import Connector
 from flowforge.connectors.registry import Registry, check_references, load_connectors_file
 from flowforge.connectors.runtime import build_nodes  # noqa: F401 (re-exported for callers)
-from flowforge.flowmap.planner import FixturePlanner, ScanPlanner
+from flowforge.flowmap.planner import ScanPlanner
 from flowforge.flowmap.service import FlowService
 from flowforge.home import flowforge_home
 from flowforge.security.logfilter import Redactor, install_log_redaction, secret_values_for
@@ -71,13 +71,16 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     s = app_state_module.current = AppState(
         nodes=nodes, rate_limits=buckets, storage=storage, registry=registry, redactor=redactor,
         file_managed={c.id for c in from_file}, example=example)
-    # the maps (D17, D21): the dependency map of the scanned repo, and the flow map (example mode only for now)
+    # the maps (D17, D21): the dependency map of the scanned repo, and the flow map, which stays empty until flow
+    # order comes from code (D23: nothing drawn by hand reaches a map)
     def connected() -> dict[str, Connector]:
         return {c.id: c for c in registry.all()}
 
     sample = ScanPlanner(scan_api.EXAMPLE_REPO) if example else None
+    if example:   # an example.db from before D23 still holds the hand-drawn Baby-care flow
+        storage.clear_map("flow")
     s.flows = {"deps": FlowService(storage.flows("deps"), connected, sample),
-               "flow": FlowService(storage.flows("flow"), connected, FixturePlanner() if example else None)}
+               "flow": FlowService(storage.flows("flow"), connected, None)}
     if not example:   # your folder: from --repo or the last one chosen, mapped now if it has no map yet
         scan_api.startup_repo(storage, s.flows["deps"])
     if example:  # offline nodes and a seeded history, never mixed with real data (D16)

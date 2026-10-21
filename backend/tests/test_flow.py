@@ -71,6 +71,11 @@ def test_the_trip_planner_flow_matches_its_code(no_network):
         ("llm-ollama-1", "if-5", None), ("if-5", "mcp-files-1", "yes"),
     }
     assert node(flow, "api-nominatim-1").what == "find the city"     # the code's own label
+    # each decision asks a whole question, from the step that produced what it checks (or the function's input)
+    questions = {n.id: n.title for n in flow.nodes if n.kind == "decision"}
+    assert questions == {"if-1": 'Did "find the city" fail?', "if-2": "Was a sight given?",
+                         "if-3": "Did \"today's weather\" work?", "if-4": "Did \"today's weather\" work?",
+                         "if-5": 'Did "write the plan" work?'}
     assert node(flow, "start-plan").evidence[0].ref == "planner.py:48"
     assert node(flow, "mcp-files-1").op.tool == "write_file" and node(flow, "mcp-files-1").op.read_only is False
     assert node(flow, "mcp-time-1").op.read_only is True

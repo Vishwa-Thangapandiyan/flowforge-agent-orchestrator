@@ -5,6 +5,8 @@ import { useMemo } from "react";
 import type { FlowNode, FlowView } from "../api/types";
 import { took } from "../checks/Health";
 
+/** What a call does, in the code's own words, else the service's name. */
+const named = (n: FlowNode) => (n.what ? n.what.charAt(0).toUpperCase() + n.what.slice(1) : n.title);
 const seconds = (ms: number) => `${(ms / 1000).toFixed(1)} s`;
 const CALLS = new Set(["llm", "api", "mcp", "local"]);
 const LANES = 4;
@@ -63,7 +65,7 @@ export function Faster({ flow, onPoint }: { flow: FlowView; onPoint: (ids: strin
               const left = at;
               at += n.estimate_ms ?? 0;
               return <i key={n.id} className={`fx-seg ${n.kind}${n.estimate_source === "estimate" ? " est" : ""}`}
-                style={{ left: pct(left), width: pct(n.estimate_ms ?? 0) }} title={`${n.title}: ${took(n.estimate_ms ?? 0)}`} />;
+                style={{ left: pct(left), width: pct(n.estimate_ms ?? 0) }} title={`${named(n)}: ${took(n.estimate_ms ?? 0)}`} />;
             })}
           </div>
           <span>Could be<b>{took(could)}</b></span>
@@ -88,7 +90,10 @@ export function Faster({ flow, onPoint }: { flow: FlowView; onPoint: (ids: strin
                 aria-label={`Start these ${a.nodes.length} together, ${seconds(a.saved_ms)} faster`}>
                 <span className="fx-title">Start these {a.nodes.length} together <em>−{seconds(a.saved_ms)}</em></span>
                 <span className="fx-text">{a.text}</span>
-                <span className="fx-chips">{a.nodes.map((id) => <i key={id}>{flow.nodes.find((n) => n.id === id)?.title ?? id}</i>)}</span>
+                <span className="fx-chips">{a.nodes.map((id) => {
+                  const n = flow.nodes.find((x) => x.id === id);
+                  return <i key={id}>{n ? named(n) : id}</i>;
+                })}</span>
                 <span className="fx-refs">{a.refs.join(", ")}</span>
               </button>
               {a.caveat && <p className="fx-caveat">{a.caveat}</p>}
@@ -99,8 +104,8 @@ export function Faster({ flow, onPoint }: { flow: FlowView; onPoint: (ids: strin
       {path.length > 0 && (
         <div className="sp-sec">
           <span className="sp-sh">Critical path</span>
-          <p className="fx-cp"><b>{path.map((n) => n!.title).join(" → ")}</b>, {took(could)}.
-            {slowest && <> Slowest: <b>{slowest.title}</b>, {took(slowest.estimate_ms ?? 0)} ({slowest.estimate_source === "measured"
+          <p className="fx-cp"><b>{path.map((n) => named(n!)).join(" → ")}</b>, {took(could)}.
+            {slowest && <> Slowest: <b>{named(slowest)}</b> ({slowest.title}), {took(slowest.estimate_ms ?? 0)} ({slowest.estimate_source === "measured"
               ? "measured by the last check" : "an estimate"}).</>}
           </p>
         </div>

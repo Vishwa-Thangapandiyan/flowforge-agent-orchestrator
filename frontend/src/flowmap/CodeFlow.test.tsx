@@ -18,7 +18,9 @@ test("the Flow switch shows the order the code calls its dependencies, and how i
   renderAt("/");
   await screen.findByText("Nominatim", { selector: ".ff-title" }, { timeout: 5000 });
   await userEvent.click(screen.getByRole("button", { name: "Flow" }));
-  expect(await screen.findByText("fetch", { selector: ".ff-title" })).toBeInTheDocument();
+  // a block leads with what it does, in the code's own words; the service is underneath (D25)
+  expect(await screen.findByText("About the city", { selector: ".ff-title" })).toBeInTheDocument();
+  expect(screen.getByText("fetch · MCP server", { selector: ".ff-sub" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: /Read from your code/ })).toBeInTheDocument();
   expect(await screen.findByRole("heading", { level: 1, name: "trip-planner" })).toBeInTheDocument();
   expect(screen.getByRole("banner")).toHaveTextContent("4 calls·1 decision");
@@ -35,10 +37,10 @@ test("the Flow switch shows the order the code calls its dependencies, and how i
 test("pointing at a piece of advice lights up its blocks", async () => {
   mockApi(routes(CODEFLOW));
   renderAt("/?map=flow");
-  await screen.findByText("fetch", { selector: ".ff-title" }, { timeout: 5000 });
+  await screen.findByText("About the city", { selector: ".ff-title" }, { timeout: 5000 });
   await userEvent.hover(screen.getByRole("button", { name: /Start these 2 together/ }));
   const lit = [...document.querySelectorAll(".ff-block.hit")].map((b) => b.querySelector(".ff-title")?.textContent);
-  expect(lit.sort()).toEqual(["Open-Meteo", "fetch"]);
+  expect(lit.sort()).toEqual(["About the city", "Today's weather"]);
 });
 
 test("a repo without Python says why its flow waits", async () => {

@@ -22,6 +22,8 @@ export interface BlockData extends Record<string, unknown> {
   tile: TileSource | null;
   /** on a dependency map (D21) */
   deps?: boolean;
+  /** on a flow read from code (D25): blocks lead with what they do */
+  code?: boolean;
   /** its latest health check, or "checking" while one runs (D24) */
   health?: { status: LiveStatus; summary: string; latency_ms?: number | null };
   state: NodeState;
@@ -124,7 +126,7 @@ export function CardNode({ data, selected }: NodeProps<BlockNode>) {
     <Shell d={data} selected={selected}>
       <span className="ff-card">
         <Tile d={data} />
-        <span className="ff-text"><span className="ff-title">{n.title}</span><span className="ff-sub">{subOf(data)}</span></span>
+        <span className="ff-text"><span className="ff-title">{titleOf(data)}</span><span className="ff-sub">{subOf(data)}</span></span>
       </span>
       <span className={`ff-tag ${n.kind === "llm" ? "llm" : n.kind === "gate" ? "gate" : ""}`}>{TAG[n.kind] ?? n.kind}</span>
       {data.retryMax && data.state === "idle" && <span className="ff-retry">{Icons.refresh(10)} {data.retryMax}×</span>}
@@ -166,11 +168,25 @@ export function BarNode({ data, selected }: NodeProps<BlockNode>) {
   );
 }
 
+const SERVICE_WORD: Record<string, string> = { llm: "LLM", api: "API", mcp: "MCP server", local: "local program" };
+
+/** A block's name: on a flow read from code, what the call does in the code's own words ("Today's weather"). */
+export function titleOf(d: BlockData): string {
+  const n = d.node;
+  if (d.code && n.what && SERVICE_WORD[n.kind]) return n.what.charAt(0).toUpperCase() + n.what.slice(1);
+  return n.title;
+}
+
 /** The grey line under a block's title: the model, endpoint or tool, from the map or the connector. */
 export function subOf(d: BlockData): string {
   const n = d.node;
   const op = n.op ?? {};
   if (d.deps) return depSub(n);
+  if (d.code) {   // the service under the action: "Open-Meteo · API"
+    if (SERVICE_WORD[n.kind]) return n.what ? `${n.title} · ${SERVICE_WORD[n.kind]}` : SERVICE_WORD[n.kind];
+    if (n.kind === "start") return "where it starts";
+    if (n.kind === "end") return "the code stops";
+  }
   if (n.kind === "gate") return n.added_by === "policy" ? "added by code · always" : "you approve · always";
   if (n.kind === "start") return d.tile ? `${d.tile.name} webhook` : "start";
   if (n.kind === "end") return "end";

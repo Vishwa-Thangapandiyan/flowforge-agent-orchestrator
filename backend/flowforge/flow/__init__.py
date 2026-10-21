@@ -108,7 +108,7 @@ class _Builder:
             ev = _evidence(func.path, lines, s.line, "in your code")
             steps = self._steps(func, lines, s, ev, start, is_async)
             if s.idx in decisions:
-                dec = self._decision(func, lines, s, ev)
+                dec = self._decision(func, lines, s, ev, _question(func, body, s, self.index))
                 for step in steps:
                     self.edges.add((step, dec))
                 enters[s.idx], leaves[s.idx] = (steps or [dec]), [dec]
@@ -159,10 +159,10 @@ class _Builder:
                                        evidence=[_evidence(func.path, lines, at, f"reached through {server.name}")]))
             self.edges.add((server_id, via_id))
 
-    def _decision(self, func: Func, lines: list[str], s: Stmt, ev: Evidence) -> str:
+    def _decision(self, func: Func, lines: list[str], s: Stmt, ev: Evidence, question: str) -> str:
         dec = f"if-{sum(1 for n in self.nodes if n.kind == 'decision') + 1}"
         cond = ast.unparse(s.node)
-        self.nodes.append(FlowNode(id=dec, kind="decision", title=f"{cond}?"[:80], condition=cond[:200],
+        self.nodes.append(FlowNode(id=dec, kind="decision", title=question[:80], condition=cond[:200],
                                    what=f"if {cond}:"[:300], evidence=[ev]))
         if s.stops:
             stop = self._id("stop")
@@ -215,6 +215,31 @@ class _Builder:
         flow.advice = advise(flow, self.meta)
         flow.written_ms = written_ms(flow, self.meta)
         return flow
+
+
+def _question(func: Func, body: Body, s: Stmt, index: Index) -> str:
+    """A decision as a whole question, from the code (D25): what it checks, and where that came from. `if place is
+    None` after `place = … find the city …` asks 'Did "find the city" fail?'; `if sight` on an input asks 'Was a
+    sight given?'. Anything else shows its condition."""
+    node, cond = s.node, ast.unparse(s.node)
+    name, failed = None, False
+    if isinstance(node, ast.Name):
+        name = node.id
+    elif isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not) and isinstance(node.operand, ast.Name):
+        name, failed = node.operand.id, True
+    elif isinstance(node, ast.Compare) and len(node.ops) == 1 and isinstance(node.left, ast.Name) \
+            and isinstance(node.comparators[0], ast.Constant) and node.comparators[0].value is None:
+        name, failed = node.left.id, isinstance(node.ops[0], ast.Is)
+    if name is None:
+        return f"Is {cond} true?"
+    writer = next((t for t in reversed(body.stmts[: s.idx]) if name in t.writes and t.hits), None)
+    if writer is not None and (said := label(writer, index, func.module)):
+        return f'Did "{said}" {"fail" if failed else "work"}?'
+    words = name.replace("_", " ")
+    inputs = {a.arg for a in [*func.node.args.posonlyargs, *func.node.args.args, *func.node.args.kwonlyargs]}
+    if name in inputs:
+        return f"No {words} given?" if failed else f"Was a {words} given?"
+    return f"No {words}?" if failed else f"Has a {words}?"
 
 
 def _op(dep: Dependency, hit: Hit) -> Op | None:

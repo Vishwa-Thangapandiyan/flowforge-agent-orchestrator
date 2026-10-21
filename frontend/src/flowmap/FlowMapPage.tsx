@@ -220,13 +220,13 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
     if (!n) return null;
     const retry = flow.edges.find((e) => e.kind === "retry" && e.source === id);
     return {
-      node: n, tile: tileFor(n), deps, state: frame?.nodes[id] ?? "idle",
+      node: n, tile: tileFor(n), deps, code, state: frame?.nodes[id] ?? "idle",
       cap: frame?.caps[id] ?? "", cp: cp && n.on_critical_path,
       search: query ? (hits.has(id) ? "hit" : "miss") : pointed ? (pointed.has(id) ? "hit" : "miss") : null,
       showTip: !dismissed.has(id) && !frame, showEvidence, retryMax: retry?.max ?? null,
       health: deps && health[id] ? health[id] : undefined,
     };
-  }, [flow.nodes, flow.edges, tileFor, deps, frame, query, hits, cp, dismissed, showEvidence, health, pointed]);
+  }, [flow.nodes, flow.edges, tileFor, deps, code, frame, query, hits, cp, dismissed, showEvidence, health, pointed]);
 
   useEffect(() => {
     const placed = placeAll(flow.nodes, flow.edges, flow.positions);

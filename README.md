@@ -50,6 +50,20 @@ Then press **Check now**. Every dependency gets one harmless check, and the map 
 
 Starting an MCP server runs code, so the first check lists exactly what will start and waits for your yes. When something is down, the **Checks** page says why, in the server's own words, and the likely fix.
 
+### See the order your app runs in
+
+Switch the map to **Flow**. FlowForge reads your Python (by its syntax tree, never running it) and draws the order your code calls its dependencies: which call waits for which, the `if`s that choose, and where the code stops early. Every block and line points to its `file:line`.
+
+- **The critical path** is the chain that sets the total time, weighted by the latencies your last check measured (LLMs are estimates, and say so).
+- **Faster** compares "as written" (one call after another) with "could be", and lists the calls that don't need each other's results: start them together (`asyncio.gather`) and save about N ms.
+- **Watch it run** plays the could-be schedule; pointing at a block lights up its path. Five map styles: Studio, Boxed, Blueprint, Metro, Soft.
+
+Dart and JS/TS flows come next; the dependency map already covers them.
+
+### Send someone the map
+
+**Export** on the map opens the **MCP Map**: a standard picture of an app's MCP architecture (lanes by kind, time left to right, one shape per kind, a title block and a key; rules in [docs/mcp-map.md](docs/mcp-map.md)). Download it as **SVG** (documents), **PNG 2×** (slides), **PDF** (reports, A4 landscape), copy it as **Mermaid** (GitHub draws it in a README or pull request), or save the **Flow JSON** behind it. It's all made in your browser, from data whose key formats were already masked.
+
 ### On Windows (PowerShell)
 
 ```powershell
@@ -87,16 +101,18 @@ To use real LLM steps, `cp .env.example .env` and add a free `NVIDIA_API_KEY` fr
 
 | Page | What it shows |
 |---|---|
-| **Flow map** (home) | Your app's dependency map on a canvas: pan, zoom, drag, search, minimap. Every block is something the code uses (an LLM, an MCP server, an API, a local program), with its evidence (`file:line` with the code). Dashed blocks were only mentioned, never called. **Scan a folder** maps another folder; **Re-scan the repo** shows what changed. "As scanned / With my edits" switches between the scan and your edits |
+| **Flow map** (home) | Your app's dependency map on a canvas: pan, zoom, drag, search, minimap. Every block is something the code uses (an LLM, an MCP server, an API, a local program), with its evidence (`file:line` with the code). Dashed blocks were only mentioned, never called. **Scan a folder** maps another folder; **Re-scan the repo** shows what changed. "As scanned / With my edits" switches between the scan and your edits. **Flow** shows the order the code calls them, the critical path and the **Faster** panel; **Style** picks one of five looks |
+| **MCP Map** (Export) | The map to send: SVG, PNG, PDF, Mermaid or Flow JSON |
+| **Checks** | Check now, each dependency's verdict, why it's down and the likely fix, and the history |
 | **How the Planner drew it** | The analysis replayed: read the repo, run the app in test mode, trace the calls, draft, check. What it read, what it dropped and why |
 | **Re-check** | What changed in your repo since the last map: added, changed, removed, and conflicts with your edits. You pick what to take; the old version stays listed |
 | **Connectors** | A catalog of 56 apps with search and categories, honest **Live** / **Demo only** badges, and a mock test run for every one. Apps you connected but your code doesn't call wait here, off the map |
 | **Connector page** | One app's connection (keys shown only as *configured*, *missing* or *example*), what it has done, and its recent activity |
 | **Add an app** | LLM, MCP server, HTTP API or local command; colour and logo; a live preview; and exactly what gets saved, with no secrets |
-| **Runs** | Money and time saved, app health, and every scheduled run: live bars with the slowest chain outlined, outputs, and why a failed run failed |
-| Approvals, Security | Placeholders until approval gates (Phase 5) and the vault (Phase 4) arrive |
+| **Workflow runs** (under Checks, advanced) | Money and time saved, and every scheduled run: live bars with the slowest chain outlined, outputs, and why a failed run failed |
+| Security | A placeholder until security findings (Phase 7) |
 
-The map is drawn by plain code from your repo, with no AI, and nothing on it is drawn by hand. Flow order (which call waits for which, the critical path, and what could run together) comes next. Edits on the map change how FlowForge maps your app, never your code.
+Both maps are drawn by plain code from your repo, with no AI, and nothing on them is drawn by hand. Edits on the map change how FlowForge maps your app, never your code.
 
 ## Connect any provider
 
@@ -134,12 +150,16 @@ Ready-made presets: NVIDIA NIM, Gemini, Claude, Ollama, Razorpay, Stripe and the
 | — | Scheduler core: five policies, caches, retries, SSE run stream, status page, benchmarks | **Done** |
 | 1 | Any LLM (OpenAI-compatible + Anthropic), any MCP server with tool discovery, `local` command steps, connector registry, ruff + CI | **Done** |
 | 2 | Dashboard v1: live run, tool health, money and time, run history, add/edit apps, example data | **Done** |
-| 3 | The flow map: the Planner-drawn home page, step panel and edits, test-run replay, re-check diff, connector catalog (on example data) | **Done**, in review |
-| 4 | Secrets vault, full redaction, connector forms, security tab | Planned |
-| 5 | The real Planner (reads your repo, runs the app in test mode) and approval gates in scheduled runs | Planned |
-| 6 | Swap one app for another (e.g. Razorpay → Stripe) on a git branch; later, add a new app to your code the same way | Planned |
-| 7 | Control plane on a home server, workers on a laptop, over Tailscale ([plan](FlowForge_Server_Orchestrator_Plan.md)) | Planned, after Phase 4 |
-| 8 | Visual builder for non-developers | Later |
+| 3 | The flow map: canvas, step panel and edits, replay, re-check diff, connector catalog | **Done**, in review |
+| 4 | Repo scan: every dependency with its `file:line`, no LLM | **Done**, in review |
+| 5 | Health checks: Check now, why it's down, the Checks page | **Done**, in review |
+| 6 | Flow order from Python code, the critical path, "run these together", map styles, the MCP Map export | **Done**, in review |
+| 6b | Flow order from Dart and JS/TS | Next |
+| 7 | Security findings: hard-coded keys, `http://` APIs, risky MCP configs | Planned |
+| 8 | Launch: docs, demo, `pip install` | Planned |
+| 9 | CLI agent and a desktop app (Tauri) | Planned |
+| 10 | V2: a local coding agent adds a dependency on a branch, for you to approve | Later |
+| 11 | FlowForge's own small local model | Later |
 
 The full roadmap with acceptance criteria is in [CLAUDE.md](CLAUDE.md) §5.
 
@@ -226,6 +246,9 @@ Both tracks run every policy with the cache off and on, and write CSV plus a mar
 | `backend/flowforge/scheduler/cache.py` | Single-flight memo + persistent cache |
 | `backend/flowforge/nodes/` | `llm` (any provider), `http`, `mcp`, `local`, `mock` step types |
 | `backend/flowforge/connectors/` | Connector models, secret references, presets and the catalog, registry |
+| `backend/flowforge/scan/` | The repo scan: dependencies and their evidence, by plain code |
+| `backend/flowforge/checks/` | One harmless health check per dependency |
+| `backend/flowforge/flow/` | Flow order from Python code: the calls, the `if`s, the critical path weights, the advice |
 | `backend/flowforge/flowmap/` | The flow map: Flow JSON models, validation and code-inserted gates, the Planner interface and its example fixture, re-check diff |
 | `backend/flowforge/schema.py`, `templating.py`, `storage.py` | Validation, `{{steps.x.output}}` templates, SQLite |
 | `backend/flowforge/main.py`, `api/` | The API: start-up wiring, runs, connectors, health and savings |
@@ -239,7 +262,8 @@ Tests are in `backend/tests/` and never touch the network. They include property
 
 ## Docs
 
-- [DECISIONS.md](DECISIONS.md): every design decision and its reason (D1–D9 for the scheduler core, D10–D18 for connectors, gates, MCP, local commands, planning, the dashboard, run history and the flow map)
+- [DECISIONS.md](DECISIONS.md): every design decision and its reason (D1–D9 for the scheduler core, D10–D18 for connectors, gates, MCP, local commands, planning, the dashboard, run history and the flow map, D19–D26 for the repo scan, health checks, flow order and the MCP Map)
+- [docs/mcp-map.md](docs/mcp-map.md): the MCP Map's six rules and its export formats
 - [CLAUDE.md](CLAUDE.md): roadmap, security spec, data model and working rules
 - [docs/design/](docs/design/README.md): the design artboards; `flow-map-artboards/` is the current spec for the flow map
 - [AGENTS.md](AGENTS.md): the build workflow for coding agents, and the processes deployed at runtime

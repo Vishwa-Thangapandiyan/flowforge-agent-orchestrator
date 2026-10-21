@@ -13,9 +13,9 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from flowforge.connectors.models import CONNECTOR_ID_PATTERN
 from flowforge.templating import referenced_steps
 
-StepType = Literal["llm", "mcp", "http", "local", "mock"]
+StepType = Literal["llm", "mcp", "http", "local", "mock", "check"]   # check: a health check (D24)
 
-DEFAULT_TIMEOUT_S: dict[str, float] = {"llm": 60, "mcp": 30, "http": 30, "local": 60, "mock": 30}
+DEFAULT_TIMEOUT_S: dict[str, float] = {"llm": 60, "mcp": 30, "http": 30, "local": 60, "mock": 30, "check": 60}
 
 
 class Step(BaseModel):

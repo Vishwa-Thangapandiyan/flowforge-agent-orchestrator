@@ -53,6 +53,11 @@ CREATE TABLE IF NOT EXISTS flow_positions (
 CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY, value TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS checks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, run_id TEXT NOT NULL, dep_id TEXT NOT NULL, kind TEXT NOT NULL,
+    status TEXT NOT NULL, latency_ms REAL, summary TEXT NOT NULL, detail_json TEXT, at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS checks_by_dep ON checks (dep_id, id);
 """
 MAP_IDS = ("deps", "flow")   # the dependency map and the flow map (D21)
 FLOW_VERSION_FIELDS = ("version", "status", "created_at", "decided_at", "fact_sheet_hash", "flow_json", "trace_json",
@@ -369,6 +374,42 @@ class Storage:
         """Forget one map entirely: a different repo starts fresh (D21)."""
         for table in ("flow_versions", "flow_overrides", "flow_positions"):
             self.conn.execute(f"DELETE FROM {table} WHERE map_id = ?", (map_id,))
+        self.conn.commit()
+
+    # --- health checks (D24) ----------------------------------------------------------------------
+
+    def add_checks(self, run_id: str, results: list[dict[str, Any]]) -> None:
+        """One row per dependency checked. `results` are CheckResult dumps plus `kind`; redacted before storage."""
+        at = now_iso()
+        rows = []
+        for r in results:
+            detail = {k: r.get(k) for k in ("reason", "fix", "detail") if r.get(k)}
+            rows.append((run_id, r["id"], r["kind"], r["status"], r.get("latency_ms"), self.redact(r["summary"]),
+                         json.dumps(self.redact(detail)), at))
+        self.conn.executemany("INSERT INTO checks (run_id, dep_id, kind, status, latency_ms, summary, detail_json, at)"
+                              " VALUES (?, ?, ?, ?, ?, ?, ?, ?)", rows)
+        self.conn.commit()
+
+    def check_history(self, dep_id: str | None = None, limit: int = 12) -> list[dict[str, Any]]:
+        """Newest first: one dependency's checks, or, without `dep_id`, the latest `limit` of each."""
+        if dep_id is not None:
+            rows = self.conn.execute("SELECT * FROM checks WHERE dep_id = ? ORDER BY id DESC LIMIT ?",
+                                     (dep_id, limit)).fetchall()
+        else:
+            rows = self.conn.execute(
+                "SELECT * FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY dep_id ORDER BY id DESC) AS n FROM checks)"
+                " WHERE n <= ? ORDER BY id DESC", (limit,)).fetchall()
+        names = [c[0] for c in self.conn.execute("SELECT * FROM checks LIMIT 0").description]
+        out = []
+        for row in rows:
+            item = dict(zip(names, row[:len(names)], strict=True))
+            item.update(json.loads(item.pop("detail_json") or "{}"))
+            out.append(item)
+        return out
+
+    def clear_checks(self) -> None:
+        """A different repo starts with no check history (D21, D24)."""
+        self.conn.execute("DELETE FROM checks")
         self.conn.commit()
 
     # --- settings ---------------------------------------------------------------------------------

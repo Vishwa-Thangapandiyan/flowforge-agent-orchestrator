@@ -45,6 +45,8 @@ def choose_repo(storage: Storage, service: FlowService, path: Path, replace: boo
         raise RepoChangeError(f"there is already a map of {Path(current).name}; mapping {path.name} starts a fresh map")
     if changed:
         storage.set_setting(REPO_SETTING, str(path))
+        if current:
+            storage.clear_checks()   # another repo's results don't belong to this one (D24)
     service.map_folder(ScanPlanner(path), fresh=changed)
 
 

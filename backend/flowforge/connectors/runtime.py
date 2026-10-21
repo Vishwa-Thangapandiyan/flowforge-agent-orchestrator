@@ -7,6 +7,7 @@ import os
 from flowforge.connectors.models import Connector
 from flowforge.connectors.presets import with_env_overrides
 from flowforge.nodes.base import Node
+from flowforge.nodes.check_node import CheckNode
 from flowforge.nodes.http_node import HTTPNode
 from flowforge.nodes.llm_node import LLMNode
 from flowforge.nodes.local_node import LocalNode
@@ -34,7 +35,7 @@ def build_nodes(connectors: list[Connector]) -> tuple[dict[str, Node], dict[str,
     The default llm is the `nim` connector; it keeps the V1 cache namespace and the "nim"
     bucket. mcp and http keep their V1 nodes as defaults (a step may still pass params.server).
     """
-    nodes: dict[str, Node] = {"http": HTTPNode(), "mcp": MCPNode(), "mock": MockNode()}
+    nodes: dict[str, Node] = {"http": HTTPNode(), "mcp": MCPNode(), "mock": MockNode(), "check": CheckNode()}
     buckets: dict[str, TokenBucket] = {}
     for connector in connectors:
         node, bucket = build_node(connector)

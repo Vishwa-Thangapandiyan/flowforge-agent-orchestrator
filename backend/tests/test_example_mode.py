@@ -144,3 +144,19 @@ def test_cli_example_flag(monkeypatch):
     finally:
         os.environ.clear()
         os.environ.update(saved)
+
+
+def test_check_now_in_example_mode_is_offline_and_needs_no_yes(client):
+    """D24: recorded results for the trip planner; nothing starts and nothing is sent."""
+    assert client.get("/checks/plan").json()["confirmed"] is True
+    run_id = client.post("/checks", json={}).json()["run_id"]
+    deadline = time.monotonic() + 30
+    while client.get("/checks").json()["run_id"] != run_id:
+        assert time.monotonic() < deadline, "the example check run did not finish"
+        time.sleep(0.1)
+    items = {i["id"]: i for i in client.get("/checks").json()["items"]}
+    assert len(items) == 12 and all(i["status"] in ("up", "warn", "down") for i in items.values())
+    currency = items["mcp-currency"]
+    assert currency["status"] == "down" and currency["reason"] == "currency server: CURRENCY_API_URL is not set"
+    assert currency["fix"] == "Its code reads CURRENCY_API_URL, but its MCP config gives it no env."
+    assert items["api-ip-api-com"]["status"] == "warn"

@@ -20,6 +20,7 @@ from fastapi import FastAPI, HTTPException
 
 from flowforge import example_data, spa
 from flowforge import state as app_state_module
+from flowforge.api import checks as checks_api
 from flowforge.api import connectors as connectors_api
 from flowforge.api import flowmap as flowmap_api
 from flowforge.api import runs as runs_api
@@ -108,6 +109,7 @@ app.include_router(connectors_api.router)
 app.include_router(stats_api.router)
 app.include_router(flowmap_api.router)
 app.include_router(scan_api.router)
+app.include_router(checks_api.router)
 
 
 @app.get("/workflows")

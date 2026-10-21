@@ -99,6 +99,7 @@ def example_nodes(state: AppState) -> None:
         connector = {"llm": "nim", "mcp": "fetch"}.get(key)
         if connector and connector in state.nodes:
             state.nodes[key] = state.nodes[connector]
+    state.nodes["check"] = ExampleCheckNode()   # recorded results, offline (D24)
 
 
 def _llm(text: str, prompt: int, completion: int) -> dict[str, Any]:
@@ -165,6 +166,40 @@ SEED_RUNS = [
     ("payment_risk_check", timedelta(hours=3)),
     ("nightly_finance_check", timedelta(minutes=40)),
 ]
+
+
+# Recorded check results for the trip planner (D24): what a real check run gave, so example mode stays offline.
+# id -> (status, latency_ms, summary, reason, fix)
+CHECK_RESULTS: dict[str, tuple[str, float | None, str, str | None, str | None]] = {
+    "mcp-time": ("up", 1900, "Up: 2 tools", None, None),
+    "mcp-files": ("up", 2400, "Up: 14 tools", None, None),
+    "mcp-fetch": ("warn", 6800, "Up: 1 tool, but slow to start: 6.8 s", None, None),
+    "mcp-currency": ("down", None, "Stopped while starting", "currency server: CURRENCY_API_URL is not set",
+                     "Its code reads CURRENCY_API_URL, but its MCP config gives it no env."),
+    "local-packing-list": ("up", None, "Found, not run", None, None),
+    "llm-ollama": ("down", None, "Nothing answers at localhost:11434", "[Errno 111] Connection refused",
+                   "Start Ollama (`ollama serve`)."),
+    "api-osrm": ("up", 640, "Up", None, None),
+    "api-open-meteo": ("up", 180, "Up", None, None),
+    "api-nominatim": ("up", 420, "Up", None, None),
+    "api-ip-api-com": ("warn", 210, "Up, but plain http://: not encrypted", None, None),
+    "api-google-maps": ("up", 230, "Up, needs a key (403)", None, None),
+    "api-wikipedia": ("up", 310, "Up", None, None),
+}
+
+
+class ExampleCheckNode(Node):
+    """Offline stand-in for the check node (D24): waits a little, then returns the recorded result."""
+
+    type = "check"
+
+    async def run(self, params: dict[str, Any]) -> Any:
+        target = params["target"]
+        status, ms, summary, reason, fix = CHECK_RESULTS.get(
+            target["id"], ("skipped", None, "Not checked: no example result", None, None))
+        await asyncio.sleep(min(ms or 150, 1500) / 1000)
+        return {"id": target["id"], "kind": target["kind"], "status": status, "latency_ms": ms, "summary": summary,
+                "reason": reason, "fix": fix, "detail": {"example": True}}
 
 
 def install(state: AppState) -> None:

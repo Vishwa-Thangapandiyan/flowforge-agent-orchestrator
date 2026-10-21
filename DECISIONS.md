@@ -727,7 +727,7 @@ A dependency with nothing to check is `skipped` (grey) and says why. Two cases:
 
 **Starting an MCP server runs code.** That code is a script in the repo, or an `npx`/`uvx` package fetched from npm or PyPI.
 - The first "Check now" lists exactly which commands will start, and the user confirms.
-- The confirmation is kept per map version (its `fact_sheet_hash`), so a re-scan that changes the commands asks again.
+- The confirmation is kept for that exact list of commands, so a re-scan or an edit that changes them asks again.
 - Without it, `POST /checks` answers 409.
 
 **How checks run (D19: the scheduler runs them).**

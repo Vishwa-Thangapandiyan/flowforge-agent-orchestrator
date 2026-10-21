@@ -852,6 +852,53 @@ D23's rule holds: nothing drawn by hand. Vishwa chose Python first, with Dart an
 
 **Code:** `flow/` (new), `scan/scanner.py` (`scan_with_places`), `flowmap/models.py`, `flowmap/validate.py`, `flowmap/planner.py` (`CodeFlowPlanner`), `main.py`, `example_data.py`, `frontend/src/flowmap/`.
 
+## D26. Graph themes with motion, and the MCP Map: a standard picture to send (Phase 6, Vishwa, 2026-10-21)
+
+**Context.** Vishwa approved two artboards (`docs/design/flow-artboards/themes.html`, `standard.html`) and asked for two things:
+- graphs that look better, with motion, in themes users can pick;
+- "a standard way to send someone your MCP architecture": an exportable graph, professional enough for reports.
+
+**Choice:**
+- **Themes, for viewing in FlowForge.** Five themes for both maps:
+  - **Studio:** today's cards;
+  - **Boxed:** blocks inside containers of what runs together;
+  - **Blueprint:** outlines on a grid, with timings as dimension lines;
+  - **Metro:** stations on lines coloured by kind, with the critical path as the main line;
+  - **Soft:** calm colour fields by kind.
+
+  Every theme keeps the same meanings: health colours (D24), the critical path as the thickest line in the theme's ink, and measured versus estimated weights (D25). A theme menu sits on the map. The choice is kept per viewer in the browser, as a viewer convenience; FlowForge itself doesn't store it.
+- **Motion that explains, never decorates.**
+  - Lines draw themselves in once, in call order.
+  - **Watch it run** (code flows) replays the "could be" schedule (each call starting as early as its inputs allow, weighted as in D25) through the existing replay engine (D17), with a train on each line while its call runs. It is labelled as the schedule, not a recording.
+  - Hovering a block lights what it waits for and what waits for it.
+  - Reduced-motion settings turn all of it off.
+- **The MCP Map, for sending (rules v1, written up in `docs/mcp-map.md`):**
+  1. **Lanes are kinds,** always in this order: decisions, LLMs, MCP servers, APIs, local programs.
+  2. **Time runs left to right.** A call starts when its inputs are ready, and its bar is as long as it takes. A dependency map has no time, so its blocks sit in lanes in name order.
+  3. **One shape per kind,** readable without colour: a double ring for an entry point, a ring with a dot for an LLM, a hexagon for an MCP server, a rounded square for an API, a triangle for a local program, a diamond for a decision.
+  4. **Lines:**
+     - the thick line is the critical path;
+     - a dashed line means reached through another server;
+     - a dashed bar is an estimate.
+  5. **Marks:** a dot is health (teal up, amber needs a look, coral down), ✎ writes, ↻ repeats.
+  6. **Every block has a source:** the Flow JSON behind the map gives each one's `file:line`.
+
+  A title block (the app, where it was read from, the date, the counts) and a key go on every map.
+- **Exports, made in the browser from the map's own data** (no server round trip, nothing sent anywhere):
+  - **SVG:** the map itself, fonts named with system fallbacks;
+  - **PNG:** at 2×, for slides;
+  - **PDF:** through the browser's print dialog, from a print layout (A4 landscape);
+  - **Mermaid:** a `flowchart LR` that GitHub renders in a README, keeping shapes, `yes`/`no` branches, `==>` for the critical path and `-.->` for through-a-server;
+  - **Flow JSON:** the map's data with every block's evidence.
+
+  Evidence excerpts are already masked (D22, `redact_code`); an export never contains a key value.
+
+**Why:**
+- A picture that follows fixed rules can be compared across apps and read without FlowForge. That is what makes it worth sending.
+- Themes are a matter of taste. The MCP Map is a matter of agreement, so it gets rules and the themes don't.
+
+**Code:** `frontend/src/flowmap/` (themes, motion, Metro and Boxed blocks), `frontend/src/mcpmap/` (new: layout, SVG, Mermaid, exports, `/map/export`), `docs/mcp-map.md` (new).
+
 ---
 
 ## Step JSON schema (reference)

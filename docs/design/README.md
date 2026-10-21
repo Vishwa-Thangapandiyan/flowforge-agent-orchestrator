@@ -8,6 +8,7 @@
   - **Kinds:** blocks, lines, colours, the Flow JSON shape, and the Geist / Geist Mono type scale.
 
   Logos in them load from the canvas's uploaded simple-icons marks (`/_blob/...`); the app imports the same marks from the `simple-icons` package. All data is example data.
+- **checks-artboards/checks.html** (Phase 5, D24; awaiting approval): the map with health dots, the first "Check now" confirmation, the step panel's Health section and the Checks page. Plain HTML with the same tokens (no Claude Design runtime): open it in a browser; the button at the top right switches light and dark. Example data: the trip planner.
 - **system-map.html:** the original six-view system map. Still the reference for the connector zoom, add-an-app, swap and security views. View 1 (hub map) and View 7 (plan-review list) are replaced by the flow map.
 - **plan.html, swap-flow.html:** the roadmap and swap flow.
 - **dashboard-artboards/:** the Phase 2 dashboard pages as Claude Design source. They are structure and wording references with example data, deliberately plain. Page map: Main=Overview (replaced by the flow map), Connector, AddConnector, PlanReview (replaced), Run, Approvals, History, Security.

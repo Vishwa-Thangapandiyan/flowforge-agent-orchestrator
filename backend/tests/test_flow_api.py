@@ -28,6 +28,8 @@ def test_example_mode_draws_the_trip_planner_from_its_code(example):
     assert not any(n["kind"] == "gate" for n in f["nodes"])   # the app's own flow: marked, never gated (D25)
     assert by_id["api-nominatim-1"]["estimate_source"] == "measured" and by_id["api-nominatim-1"]["estimate_ms"] == 420
     assert by_id["llm-ollama-1"]["estimate_source"] == "estimate"
+    # writes by D25's rule: the file write is one; a local program and a page read through fetch aren't claimed
+    assert {n["id"] for n in f["nodes"] if n["side_effect"]} == {"mcp-files-1"}
     assert f["critical_path"]["path"][0] == "start-plan" and f["critical_path"]["length_ms"] > 0
     assert "mcp-fetch-1" in f["critical_path"]["path"]   # 6.8 s to start: the slowest link
     assert f["written_ms"] > f["critical_path"]["length_ms"]

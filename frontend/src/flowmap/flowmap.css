@@ -305,7 +305,7 @@
 .fx-lanes { display: grid; gap: 3px; }
 .fx-lane { position: relative; height: 14px; border-radius: 4px; background: var(--surface-2); }
 .fx-seg { position: absolute; top: 0; bottom: 0; border-radius: 3px; border: 1px solid var(--surface); }
-.fx-seg.api { background: #2F6FDB; } .fx-seg.mcp { background: #2E8B57; } .fx-seg.llm { background: var(--violet); } .fx-seg.local { background: #4A5E6A; }
+.fx-seg.api { background: var(--blue); } .fx-seg.mcp { background: var(--green); } .fx-seg.llm { background: var(--violet); } .fx-seg.local { background: var(--slate); }
 .fx-seg.est { background-image: repeating-linear-gradient(135deg, transparent 0 3px, rgb(255 255 255 / 45%) 3px 5px); }
 .fx-saving { display: flex; align-items: baseline; gap: 8px; margin: 14px 0 0; padding: 10px 12px; border-radius: var(--r-md); background: var(--teal-bg); font-size: 13.5px; }
 .fx-saving b { font: 650 20px/1 var(--display); color: var(--teal-ink, var(--teal)); }
@@ -319,6 +319,7 @@
 .fx-chips i { font-style: normal; padding: 2px 8px; border-radius: var(--r-pill); background: var(--surface-2); border: 1px solid var(--line); font: 500 11.5px/1.5 var(--mono); }
 .fx-refs { font: 500 11.5px var(--mono); color: var(--muted); }
 .fx-caveat { margin: 8px 0 0; padding: 10px 12px; border-radius: var(--r-md); border: 1px dashed var(--line-2); font-size: 13px; color: var(--muted); }
+.fx-limits { margin: 0; padding: 10px 16px 14px; font-size: 12px; color: var(--muted); }
 .fx-cp { margin: 0; font-size: 13px; color: var(--muted); } .fx-cp b { color: var(--fg); }
 
 /* ---- graph themes (D26, docs/design/flow-artboards/themes.html). Meanings stay fixed in every theme: health
@@ -334,9 +335,9 @@
 .fm-swatch { flex: 0 0 auto; width: 30px; height: 22px; border-radius: 6px; border: 1px solid var(--line); }
 .sw-studio { background: linear-gradient(90deg, var(--surface) 60%, var(--teal) 60%); }
 .sw-boxed { background: var(--surface-2); box-shadow: inset 0 0 0 4px var(--surface), inset 0 0 0 5px var(--line-2); }
-.sw-blueprint { background: #163E9C repeating-linear-gradient(0deg, transparent 0 5px, rgb(255 255 255 / 18%) 5px 6px); }
-.sw-metro { background: linear-gradient(transparent 40%, #2F6FDB 40% 60%, transparent 60%), var(--surface); }
-.sw-soft { background: linear-gradient(90deg, #E2EBFF 33%, #DDF3E6 33% 66%, #ECE5FC 66%); }
+.sw-blueprint { background: var(--blue) repeating-linear-gradient(0deg, transparent 0 5px, rgb(255 255 255 / 18%) 5px 6px); }
+.sw-metro { background: linear-gradient(transparent 40%, var(--blue) 40% 60%, transparent 60%), var(--surface); }
+.sw-soft { background: linear-gradient(90deg, var(--blue-bg) 33%, var(--green-bg) 33% 66%, var(--violet-bg) 66%); }
 
 /* Boxed: containers of what runs together (flow) or of one kind (dependencies); right-angled lines */
 .react-flow__viewport-portal { z-index: -1; }   /* Boxed containers sit behind the lines and blocks */
@@ -347,10 +348,11 @@
 .fm[data-graph="boxed"] .ff-card { box-shadow: none; border-color: var(--line); }
 
 /* Blueprint: an engineering drawing */
-.fm[data-graph="blueprint"] .fm-canvas { background-color: #EAF1FB !important;
-  background-image: linear-gradient(#CFDCF2 1px, transparent 1px), linear-gradient(90deg, #CFDCF2 1px, transparent 1px) !important;
+.fm[data-graph="blueprint"] .fm-canvas { background-color: var(--blue-bg) !important;
+  background-image: linear-gradient(var(--bp-grid) 1px, transparent 1px), linear-gradient(90deg, var(--bp-grid) 1px, transparent 1px) !important;
   background-size: 24px 24px !important; }
-.fm[data-graph="blueprint"] { --bp-ink: #163E9C; --bp-muted: #4F6AA6; }
+.fm[data-graph="blueprint"] { --bp-ink: var(--blue); --bp-muted: color-mix(in srgb, var(--blue) 65%, var(--muted));
+  --bp-grid: color-mix(in srgb, var(--blue) 16%, transparent); }
 .fm[data-graph="blueprint"] .ff-card, .fm[data-graph="blueprint"] .ff-pill { background: transparent; border: 1.4px solid var(--bp-ink); box-shadow: none; border-radius: 3px; }
 .fm[data-graph="blueprint"] .ff-title { color: var(--bp-ink); font-family: var(--mono); font-size: 13px; }
 .fm[data-graph="blueprint"] .ff-sub, .fm[data-graph="blueprint"] .ff-cap { color: var(--bp-muted); }
@@ -366,10 +368,10 @@
 .ff-track { position: relative; width: 100%; height: 8px; border-radius: 4px; background: var(--k, var(--edge)); }
 .ff-station { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%;
   background: var(--surface); border: 4px solid var(--fg); }
-.kind-api { --k: #2F6FDB; } .kind-mcp { --k: #2E8B57; } .kind-llm { --k: #7C5CD6; } .kind-local { --k: #64748B; }
+.kind-api { --k: var(--blue); } .kind-mcp { --k: var(--green); } .kind-llm { --k: var(--violet); } .kind-local { --k: var(--slate); }
 .fm[data-graph="metro"] .ff-line { stroke-width: 7; marker-end: none; stroke-linejoin: round; }
-.fm[data-graph="metro"] .ff-edge.to-api .ff-line { stroke: #2F6FDB; } .fm[data-graph="metro"] .ff-edge.to-mcp .ff-line { stroke: #2E8B57; }
-.fm[data-graph="metro"] .ff-edge.to-llm .ff-line { stroke: #7C5CD6; } .fm[data-graph="metro"] .ff-edge.to-local .ff-line { stroke: #64748B; }
+.fm[data-graph="metro"] .ff-edge.to-api .ff-line { stroke: var(--blue); } .fm[data-graph="metro"] .ff-edge.to-mcp .ff-line { stroke: var(--green); }
+.fm[data-graph="metro"] .ff-edge.to-llm .ff-line { stroke: var(--violet); } .fm[data-graph="metro"] .ff-edge.to-local .ff-line { stroke: var(--slate); }
 .fm[data-graph="metro"] .ff-edge.cp .ff-line { stroke: var(--fg); stroke-width: 11; }
 .fm[data-graph="metro"] .cp .ff-track { background: var(--fg); }
 .fm[data-graph="metro"] .selected .ff-station { border-color: var(--teal); }
@@ -377,10 +379,10 @@
 
 /* Soft: calm colour fields by kind, no borders */
 .fm[data-graph="soft"] .ff-card { border: 0; border-radius: 20px; box-shadow: none; }
-.fm[data-graph="soft"] .kind-api .ff-card { background: color-mix(in srgb, #2F6FDB 13%, var(--surface)); }
-.fm[data-graph="soft"] .kind-mcp .ff-card { background: color-mix(in srgb, #2E8B57 14%, var(--surface)); }
-.fm[data-graph="soft"] .kind-llm .ff-card { background: color-mix(in srgb, #7C5CD6 14%, var(--surface)); }
-.fm[data-graph="soft"] .kind-local .ff-card { background: color-mix(in srgb, #64748B 14%, var(--surface)); }
+.fm[data-graph="soft"] .kind-api .ff-card { background: color-mix(in srgb, var(--blue) 13%, var(--surface)); }
+.fm[data-graph="soft"] .kind-mcp .ff-card { background: color-mix(in srgb, var(--green) 14%, var(--surface)); }
+.fm[data-graph="soft"] .kind-llm .ff-card { background: color-mix(in srgb, var(--violet) 14%, var(--surface)); }
+.fm[data-graph="soft"] .kind-local .ff-card { background: color-mix(in srgb, var(--slate) 14%, var(--surface)); }
 .fm[data-graph="soft"] .ff-line { stroke-width: 2.4; }
 .fm[data-graph="soft"] .ff-edge:not(.cp):not(.fb) .ff-line { stroke-dasharray: 1 6; }
 .fm[data-graph="soft"] .cp .ff-card { box-shadow: 0 0 0 2px var(--fg); }

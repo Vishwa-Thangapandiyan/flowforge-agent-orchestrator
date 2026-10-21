@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Protocol
 
 from flowforge.flowmap import fixture
-from flowforge.flowmap.models import Analysis, AnalysisStage, Evidence, Flow, FlowEdge, FlowNode, Op, Trace
+from flowforge.flowmap.models import CALL_KINDS, Analysis, AnalysisStage, Evidence, Flow, FlowEdge, FlowNode, Op, Trace
 from flowforge.scan import ScanResult, scan
 
 
@@ -114,7 +114,7 @@ class CodeFlowPlanner:
         if result.flow is None:
             raise NoFlow(result.message or "No flow to draw.")
         flow = result.flow
-        steps = [n for n in flow.nodes if n.kind in ("llm", "api", "mcp", "local")]
+        steps = [n for n in flow.nodes if n.kind in CALL_KINDS]
         measured = sum(n.estimate_source == "measured" for n in steps)
         analysis = Analysis(
             stages=[

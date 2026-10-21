@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { act, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, test, vi } from "vitest";
 import { META, mockApi, renderAt } from "../test/api";
@@ -33,6 +33,7 @@ test("the Flow switch shows the order the code calls its dependencies, and how i
   expect(within(faster).getByText(/start them together with asyncio.gather/)).toBeInTheDocument();
   expect(within(faster).getByText("−0.2 s")).toBeInTheDocument();
   expect(within(faster).getByText(/could start even earlier/)).toBeInTheDocument();
+  expect(within(faster).getByText(/Can.t see: calls passed around as values/)).toBeInTheDocument();   // limits, said (D25)
 });
 
 test("pointing at a piece of advice lights up its blocks", async () => {
@@ -67,4 +68,10 @@ test("pointing at a block lights what it waits for and what waits for it", async
   // up: the city lookup and its check; down: the plan it feeds. fetch runs beside it, so it stays dim.
   expect(lit).toEqual(["Find the city", "Today's weather", "Write the plan", "plan()"]);
   expect(document.querySelector(".ff-block.miss .ff-title")).not.toBeNull();
+  await userEvent.unhover(weather.closest(".react-flow__node")!);
+  expect(document.querySelector(".ff-block.hit")).toBeNull();
+  // the keyboard does the same: focus a block (D18: keyboard-reachable)
+  act(() => (weather.closest(".react-flow__node") as HTMLElement).focus());
+  expect([...document.querySelectorAll(".ff-block.hit .ff-title")].map((t) => t.textContent).sort())
+    .toEqual(["Find the city", "Today's weather", "Write the plan", "plan()"]);
 });

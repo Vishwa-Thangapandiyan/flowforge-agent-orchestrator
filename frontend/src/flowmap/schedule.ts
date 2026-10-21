@@ -1,7 +1,7 @@
 // Watch it run (D26): the "could be" schedule of a flow read from code, as a trace the replay engine (D17) plays.
 // Each call starts as early as its inputs allow and lasts its weight (D25). It is a schedule, not a recording.
 import type { FlowView, Trace, TraceStep } from "../api/types";
-import { earliest } from "./Faster";
+import { earliest, isThrough } from "./kinds";
 
 export function scheduleTrace(flow: FlowView): Trace {
   const start = earliest(flow);
@@ -16,7 +16,7 @@ export function scheduleTrace(flow: FlowView): Trace {
   }
   const stopped = new Set(flow.nodes.filter((n) => n.kind === "end").map((n) => n.id));
   const steps: TraceStep[] = flow.nodes.filter((n) => !stopped.has(n.id)).map((n) => {
-    const through = n.what.startsWith("through ") ? flow.edges.find((e) => e.target === n.id)?.source : undefined;
+    const through = isThrough(n) ? flow.edges.find((e) => e.target === n.id)?.source : undefined;
     const from = through ?? n.id;   // a block reached through a server runs during that server's call
     return {
       node: n.id, start_ms: start[from] ?? 0, duration_ms: byId[from]?.estimate_ms ?? 0, outcome: "ok", attempts: 1,

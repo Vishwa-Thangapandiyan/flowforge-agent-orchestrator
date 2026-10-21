@@ -11,6 +11,7 @@ import { Icons } from "../components/icons";
 import { sizeOf } from "./layout";
 import type { NodeState } from "./replay";
 import type { GraphTheme } from "./themes";
+import { actionName, isThrough, SERVICE_WORD } from "./kinds";
 
 export interface TileSource {
   id: string;
@@ -183,16 +184,12 @@ export function BarNode({ data, selected }: NodeProps<BlockNode>) {
   );
 }
 
-const SERVICE_WORD: Record<string, string> = { llm: "LLM", api: "API", mcp: "MCP server", local: "local program" };
 
 /** A block's name: on a flow read from code, what the call does in the code's own words ("Today's weather"). */
 export function titleOf(d: BlockData): string {
   const n = d.node;
   // a block reached through another server keeps its own name; "through fetch" goes underneath
-  if (d.code && n.what && SERVICE_WORD[n.kind] && !n.what.startsWith("through ")) {
-    return n.what.charAt(0).toUpperCase() + n.what.slice(1);
-  }
-  return n.title;
+  return d.code && SERVICE_WORD[n.kind] ? actionName(n) : n.title;
 }
 
 /** The grey line under a block's title: the model, endpoint or tool, from the map or the connector. */
@@ -201,7 +198,7 @@ export function subOf(d: BlockData): string {
   const op = n.op ?? {};
   if (d.deps) return depSub(n);
   if (d.code) {   // the service under the action: "Open-Meteo · API"
-    if (SERVICE_WORD[n.kind] && n.what.startsWith("through ")) return `${SERVICE_WORD[n.kind]}, ${n.what}`;
+    if (SERVICE_WORD[n.kind] && isThrough(n)) return `${SERVICE_WORD[n.kind]}, ${n.what}`;
     if (SERVICE_WORD[n.kind]) return n.what ? `${n.title} · ${SERVICE_WORD[n.kind]}` : SERVICE_WORD[n.kind];
     if (n.kind === "start") return "where it starts";
     if (n.kind === "end") return "the code stops";

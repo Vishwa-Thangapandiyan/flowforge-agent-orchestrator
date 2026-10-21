@@ -15,7 +15,8 @@ import { when } from "../components/format";
 import { Icons } from "../components/icons";
 import { useMeta } from "../components/Shell";
 import { EmptyState, ErrorBox } from "../components/ui";
-import { earliest, Faster } from "./Faster";
+import { Faster } from "./Faster";
+import { CALL_KINDS, earliest } from "./kinds";
 import { scheduleTrace } from "./schedule";
 import { boxes, readTheme, saveTheme, THEMES, timeColumns, type GraphTheme } from "./themes";
 import { edgeTypes, Markers, type LineEdge } from "./FlowEdge";
@@ -444,7 +445,7 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
   const bottleneck = flow.critical_path.bottleneck ? flow.nodes.find((n) => n.id === flow.critical_path.bottleneck) : undefined;
   const busy = !!play && !frame?.done;
   const elapsed = frame ? (frame.t / 1000).toFixed(1) : "0.0";
-  const callCount = flow.nodes.filter((n) => ["llm", "api", "mcp", "local"].includes(n.kind)).length;
+  const callCount = flow.nodes.filter((n) => CALL_KINDS.has(n.kind)).length;
   const decisionCount = flow.nodes.filter((n) => n.kind === "decision").length;
   const progress = frame ? Math.round((Object.values(frame.nodes).filter((s) => !["idle", "running", "retry", "waiting"].includes(s)).length / Math.max(1, flow.nodes.length)) * 100) : 0;
   const fellBack = !!frame && !!trace && trace.steps.some((s) => s.outcome === "failed" && (frame.nodes[s.node] === "failed"));
@@ -564,6 +565,11 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
           <ReactFlow<BlockNode, LineEdge>
             nodes={nodes} edges={edges}
             onNodeMouseEnter={(_, n) => { if (!play) setPointed(traceFrom(n.id)); }} onNodeMouseLeave={() => setPointed(null)}
+            onFocus={(e) => {   // the keyboard traces a block's path too
+              const id = (e.target as HTMLElement).closest(".react-flow__node")?.getAttribute("data-id");
+              if (id && !play) setPointed(traceFrom(id));
+            }}
+            onBlur={(e) => { if ((e.target as HTMLElement).closest(".react-flow__node")) setPointed(null); }}
             nodeTypes={nodeTypes} edgeTypes={edgeTypes}
             onNodesChange={onNodesChange} onSelectionChange={onSelectionChange} onPaneClick={() => setSel(null)}
             nodesConnectable={false} edgesFocusable={false} elementsSelectable minZoom={0.15} maxZoom={1.8}
@@ -630,7 +636,7 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
             <button className="fm-lh" type="button" aria-expanded={legend} onClick={() => setLegend((v) => !v)}>
               <span>Legend</span><span style={{ transform: `rotate(${legend ? 180 : 0}deg)`, display: "inline-flex" }}>{Icons.chevron(15)}</span>
             </button>
-            {legend && (deps ? <DepsLegend /> : <Legend />)}
+            {legend && (deps ? <DepsLegend /> : code ? <CodeLegend /> : <Legend />)}
           </div>
 
           {frame && played && (code || trace) && (
@@ -676,6 +682,21 @@ function DepsLegend() {
       <div className="fm-lrow"><span className="fm-lg"><svg width="28" height="8" viewBox="0 0 28 8" aria-hidden="true"><path d="M1 4h26" style={{ stroke: "var(--edge)", strokeWidth: 2 }} /></svg></span>Uses</div>
       <div className="fm-lrow"><span className="fm-lg" style={{ color: "var(--teal)" }}>{Icons.shield(16)}</span>Scanned on your machine. Nothing sent</div>
       <div className="fm-lhint">Drag to pan · scroll to zoom · drag a block to move it</div>
+    </>
+  );
+}
+
+/** A flow read from code (D25): no gates, no fallbacks, no redaction claims; the app's own calls are its own. */
+function CodeLegend() {
+  return (
+    <>
+      <div className="fm-lrow"><span className="fm-lg"><span className="lg-card" /></span>A call to a dependency</div>
+      <div className="fm-lrow"><span className="fm-lg"><span className="lg-card lg-llm" /></span>An LLM call</div>
+      <div className="fm-lrow"><span className="fm-lg"><span className="lg-dia" /></span>An if in the code</div>
+      <div className="fm-ldiv" />
+      <div className="fm-lrow"><span className="fm-lg"><svg width="28" height="8" viewBox="0 0 28 8" aria-hidden="true"><path d="M1 4h26" style={{ stroke: "var(--edge)", strokeWidth: 2 }} /></svg></span>Waits for the call before it</div>
+      <div className="fm-lrow"><span className="fm-lg"><svg width="28" height="8" viewBox="0 0 28 8" aria-hidden="true"><path d="M1 4h26" style={{ stroke: "var(--teal)", strokeWidth: 3.5 }} /></svg></span>Critical path: sets the total time</div>
+      <div className="fm-lhint">Every block and line points to its file:line</div>
     </>
   );
 }

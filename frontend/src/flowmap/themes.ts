@@ -2,7 +2,7 @@
 // the same meanings: health colours, the critical path as the thickest line, measured versus estimated weights.
 import type { Node } from "@xyflow/react";
 import type { FlowView, NodeKind } from "../api/types";
-import { earliest } from "./Faster";
+import { CALL_KINDS, earliest, isThrough } from "./kinds";
 
 export type GraphTheme = "studio" | "boxed" | "blueprint" | "metro" | "soft";
 
@@ -29,7 +29,6 @@ export function saveTheme(theme: GraphTheme): void {
   try { localStorage.setItem(KEY, theme); } catch { /* not remembered */ }
 }
 
-const CALLS = new Set<NodeKind>(["llm", "api", "mcp", "local"]);
 const KIND_LANE: Partial<Record<NodeKind, string>> = { llm: "LLMs", mcp: "MCP servers", api: "APIs", local: "Local programs" };
 
 /** A Boxed container (D26), in map coordinates. */
@@ -60,7 +59,7 @@ export function boxes(flow: FlowView, placed: Node[]): BoxRect[] {
   } else {
     const start = earliest(flow);
     for (const n of flow.nodes) {
-      if (!CALLS.has(n.kind) || n.what.startsWith("through ")) continue;   // reached through a server: not a call
+      if (!CALL_KINDS.has(n.kind) || isThrough(n)) continue;   // reached through a server: not a call
       const key = (start[n.id] ?? 0).toFixed(0);
       const g = groups.get(key) ?? { label: "Start together", note: `at ${((start[n.id] ?? 0) / 1000).toFixed(1)} s`, ids: [] };
       g.ids.push(n.id);
@@ -85,9 +84,11 @@ export function boxes(flow: FlowView, placed: Node[]): BoxRect[] {
 /** Boxed on a flow (D26): one column per moment in time, so a box holds exactly the calls that start together.
  * Decisions (and where they stop) sit just before the calls that wait on them; a block reached through a server
  * stays with that server; within a column the usual layout's top-to-bottom order is kept. */
+const isThroughId = (flow: FlowView, id: string) => { const n = flow.nodes.find((x) => x.id === id); return !!n && isThrough(n); };
+
 export function timeColumns(flow: FlowView, placed: Record<string, [number, number]>): Record<string, [number, number]> {
   const start = earliest(flow);
-  const through = new Map(flow.edges.filter((e) => flow.nodes.find((n) => n.id === e.target)?.what.startsWith("through "))
+  const through = new Map(flow.edges.filter((e) => isThroughId(flow, e.target))
     .map((e) => [e.target, e.source]));
   const key = (id: string): number => {
     const n = flow.nodes.find((x) => x.id === id)!;

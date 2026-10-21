@@ -1,7 +1,7 @@
 // The MCP Map (D26, docs/mcp-map.md): where each block sits. Lanes are kinds (rule 1); on a flow, time runs left to
 // right and a bar is as long as the call (rule 2); a map of dependencies only has no time axis.
 import type { FlowNode, FlowView, HealthStatus, NodeKind } from "../api/types";
-import { earliest } from "../flowmap/Faster";
+import { actionName, earliest, isThrough, SERVICE_WORD as SERVICE } from "../flowmap/kinds";
 
 export type Lane = "decision" | "llm" | "mcp" | "api" | "local";
 
@@ -10,7 +10,6 @@ export const LANES: { kind: Lane; label: string }[] = [
   { kind: "api", label: "APIs" }, { kind: "local", label: "Local programs" },
 ];
 
-const SERVICE: Record<string, string> = { llm: "LLM", api: "API", mcp: "MCP server", local: "local program" };
 
 export interface Block {
   id: string;
@@ -92,9 +91,9 @@ export function layoutMap(flow: FlowView, health: Record<string, HealthStatus> =
   for (const n of order) {
     const lane = laneOf(n.kind);
     const ms = n.estimate_ms ?? 0;
-    const through = n.what?.startsWith("through ");
+    const through = isThrough(n);
     const named = code && SERVICE[n.kind] && n.what && !through;
-    const name = n.kind === "end" ? "Stop" : named ? n.what.charAt(0).toUpperCase() + n.what.slice(1) : n.title;
+    const name = n.kind === "end" ? "Stop" : named ? actionName(n) : n.title;
     const estimate = n.kind === "llm" || n.estimate_source === "estimate";
     const note = [
       named ? n.title : through ? n.what : null,
@@ -126,7 +125,7 @@ export function layoutMap(flow: FlowView, health: Record<string, HealthStatus> =
   }
 
   // through a server: on a flow the block says so ("through fetch"); on a dependency map a server's own lines (D21)
-  const through = new Set(flow.nodes.filter((n) => n.what?.startsWith("through ")).map((n) => n.id));
+  const through = new Set(flow.nodes.filter(isThrough).map((n) => n.id));
   const lines: Line[] = flow.edges.filter((e) => kindOf[e.source] && kindOf[e.target]).map((e) => ({
     from: e.source, to: e.target, when: e.when,
     critical: critical.has(e.source) && critical.has(e.target),

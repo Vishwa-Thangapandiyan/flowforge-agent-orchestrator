@@ -182,8 +182,8 @@ export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, t
             <span className="sp-chip">{took(node.estimate_ms)} · {node.estimate_source}</span>
           )}
           {node.repeats && <span className="sp-chip">{Icons.refresh(12)} Repeats in a loop</span>}
-          {node.side_effect && <span className="sp-chip side">Side effect · behind a gate</span>}
-          {node.kind === "llm" && <span className="sp-chip">{Icons.shield(12)} Keys and personal data removed first</span>}
+          {node.side_effect && <span className="sp-chip side">{code ? "Writes something" : "Side effect · behind a gate"}</span>}
+          {node.kind === "llm" && !code && !deps && <span className="sp-chip">{Icons.shield(12)} Keys and personal data removed first</span>}
           {node.yours.length > 0 && <span className="sp-chip yours">Your edit</span>}
         </div>
       </div>

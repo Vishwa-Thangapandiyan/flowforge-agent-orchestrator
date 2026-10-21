@@ -4,36 +4,18 @@
 import { useMemo } from "react";
 import type { FlowNode, FlowView } from "../api/types";
 import { took } from "../checks/Health";
+import { actionName, CALL_KINDS, earliest } from "./kinds";
 
-/** What a call does, in the code's own words, else the service's name. */
-const named = (n: FlowNode) => (n.what ? n.what.charAt(0).toUpperCase() + n.what.slice(1) : n.title);
 const seconds = (ms: number) => `${(ms / 1000).toFixed(1)} s`;
-const CALLS = new Set(["llm", "api", "mcp", "local"]);
 const LANES = 4;
 
 function line(n: FlowNode): number {
   return Number(n.evidence[0]?.ref?.split(":").pop() ?? 0);
 }
 
-/** Each call's earliest start: when every block it waits for is done (weights from the map). */
-export function earliest(flow: FlowView): Record<string, number> {
-  const into: Record<string, string[]> = {};
-  for (const e of flow.edges) (into[e.target] ||= []).push(e.source);
-  const weight = Object.fromEntries(flow.nodes.map((n) => [n.id, n.estimate_ms ?? 0]));
-  const start: Record<string, number> = {};
-  const at = (id: string, seen = new Set<string>()): number => {
-    if (id in start) return start[id];
-    if (seen.has(id)) return 0;
-    seen.add(id);
-    start[id] = Math.max(0, ...(into[id] ?? []).map((p) => at(p, seen) + weight[p]));
-    return start[id];
-  };
-  for (const n of flow.nodes) at(n.id);
-  return start;
-}
 
 export function Faster({ flow, onPoint }: { flow: FlowView; onPoint: (ids: string[] | null) => void }) {
-  const calls = useMemo(() => flow.nodes.filter((n) => CALLS.has(n.kind) && (n.estimate_ms ?? 0) > 0)
+  const calls = useMemo(() => flow.nodes.filter((n) => CALL_KINDS.has(n.kind) && (n.estimate_ms ?? 0) > 0)
     .sort((a, b) => line(a) - line(b)), [flow.nodes]);
   const start = useMemo(() => earliest(flow), [flow]);
   const written = flow.written_ms ?? calls.reduce((t, n) => t + (n.estimate_ms ?? 0), 0);
@@ -52,7 +34,7 @@ export function Faster({ flow, onPoint }: { flow: FlowView; onPoint: (ids: strin
   }
   let at = 0;
   const saved = written - could;
-  const path = flow.critical_path.path.map((id) => flow.nodes.find((n) => n.id === id)).filter((n) => n && CALLS.has(n.kind));
+  const path = flow.critical_path.path.map((id) => flow.nodes.find((n) => n.id === id)).filter((n) => n && CALL_KINDS.has(n.kind));
   const slowest = flow.nodes.find((n) => n.id === flow.critical_path.bottleneck);
   return (
     <section className="sp fx" aria-label="Faster">
@@ -65,7 +47,7 @@ export function Faster({ flow, onPoint }: { flow: FlowView; onPoint: (ids: strin
               const left = at;
               at += n.estimate_ms ?? 0;
               return <i key={n.id} className={`fx-seg ${n.kind}${n.estimate_source === "estimate" ? " est" : ""}`}
-                style={{ left: pct(left), width: pct(n.estimate_ms ?? 0) }} title={`${named(n)}: ${took(n.estimate_ms ?? 0)}`} />;
+                style={{ left: pct(left), width: pct(n.estimate_ms ?? 0) }} title={`${actionName(n)}: ${took(n.estimate_ms ?? 0)}`} />;
             })}
           </div>
           <span>Could be<b>{took(could)}</b></span>
@@ -92,7 +74,7 @@ export function Faster({ flow, onPoint }: { flow: FlowView; onPoint: (ids: strin
                 <span className="fx-text">{a.text}</span>
                 <span className="fx-chips">{a.nodes.map((id) => {
                   const n = flow.nodes.find((x) => x.id === id);
-                  return <i key={id}>{n ? named(n) : id}</i>;
+                  return <i key={id}>{n ? actionName(n) : id}</i>;
                 })}</span>
                 <span className="fx-refs">{a.refs.join(", ")}</span>
               </button>
@@ -104,12 +86,13 @@ export function Faster({ flow, onPoint }: { flow: FlowView; onPoint: (ids: strin
       {path.length > 0 && (
         <div className="sp-sec">
           <span className="sp-sh">Critical path</span>
-          <p className="fx-cp"><b>{path.map((n) => named(n!)).join(" → ")}</b>, {took(could)}.
-            {slowest && <> Slowest: <b>{named(slowest)}</b> ({slowest.title}), {took(slowest.estimate_ms ?? 0)} ({slowest.estimate_source === "measured"
+          <p className="fx-cp"><b>{path.map((n) => actionName(n!)).join(" → ")}</b>, {took(could)}.
+            {slowest && <> Slowest: <b>{actionName(slowest)}</b> ({slowest.title}), {took(slowest.estimate_ms ?? 0)} ({slowest.estimate_source === "measured"
               ? "measured by the last check" : "an estimate"}).</>}
           </p>
         </div>
       )}
+      <p className="fx-limits">Can't see: calls passed around as values, callbacks, or chosen at run time (D25).</p>
     </section>
   );
 }

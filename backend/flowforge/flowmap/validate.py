@@ -41,6 +41,15 @@ def side_effecting(node: FlowNode) -> bool:
     return False
 
 
+def code_writes(node: FlowNode) -> bool:
+    """D25, on a flow read from code: marked, never gated. An HTTP call other than GET or HEAD, or an MCP tool that
+    isn't read-only. A local program or a call with no method isn't claimed to write."""
+    op = node.op
+    if node.kind == "api":
+        return op is not None and op.method is not None and op.method.upper() not in ("GET", "HEAD")
+    return node.kind == "mcp" and op is not None and op.read_only is False
+
+
 def _dag(flow: Flow, kinds: set[str]) -> DAG:
     nodes = [n.id for n in flow.nodes]
     parents: dict[str, list[str]] = {n: [] for n in nodes}
@@ -78,7 +87,8 @@ def check(flow: Flow, connectors: Mapping[str, Connector], strict: bool = True) 
                     raise
                 node.status = "unconfirmed"
                 node.evidence = [*node.evidence, Evidence(type="missing", text=str(err).capitalize() + ".")]
-        node.side_effect = flow.kind == "flow" and side_effecting(node)   # gates belong to flow maps (D21)
+        # gates belong to flow maps (D21); a flow read from code only marks its writes (D25)
+        node.side_effect = code_writes(node) if code else flow.kind == "flow" and side_effecting(node)
         if node.kind == "decision":
             whens = [e.when for e in flow.edges if e.source == node.id and e.kind == "branch"]
             if len(set(whens)) < (1 if code else 2):   # code: an `if` with no else just carries on (D25)

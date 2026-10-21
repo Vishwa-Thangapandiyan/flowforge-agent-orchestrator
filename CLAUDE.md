@@ -607,5 +607,5 @@ Settled: the frontend stack (D15); where the design HTML lives (`docs/design/`);
 3. **Authenticated checks (Phase 5).** Should a health check ever call an endpoint that needs the user's key from `.env`, or only check reachability without one?
 4. **GitHub URLs.** When the "scan a GitHub URL" input lands (Phase 4 or after).
 5. **Antigravity (Phase 10).** Can it run headless, without its window? Check before relying on it.
-7. **Flow advice grouping (Phase 6).** Advice groups calls that could start at the same moment (trip planner: {ip-api, Nominatim} and {the sight, Open-Meteo, fetch, currency}). The plan said the first four calls form one card. Keep the grouping by start time, or merge?
 6. **Dashboard housekeeping.** Code-split the bundle (709 kB; Vite warns over 500 kB)? Delete `frontend/classic.html`?
+7. **Flow advice grouping (Phase 6).** Advice groups calls that could start at the same moment (trip planner: {ip-api, Nominatim} and {the sight, Open-Meteo, fetch, currency}). The plan said the first four calls form one card. Keep the grouping by start time, or merge?

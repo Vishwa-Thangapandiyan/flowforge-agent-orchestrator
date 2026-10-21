@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -13,8 +14,9 @@ from flowforge.scan.mcp_config import is_config
 # never walked into, and not counted: other people's code and build output
 VENDOR_DIRS = frozenset({".git", "node_modules", ".venv", "venv", "build", "dist", ".dart_tool", "__pycache__",
                          "vendor"})
-# skipped on purpose, and counted as "ignored": their URLs are fixtures, not calls
-TEST_DIRS = frozenset({"tests", "test", "__tests__"})
+# skipped on purpose, and counted as "ignored": their URLs are fixtures, not calls (D21, D23)
+TEST_DIRS = frozenset({"tests", "test", "__tests__", "fixtures", "mocks", "__mocks__", "fakes"})
+TEST_FILE = re.compile(r"^(?:fake|mock|dummy)_|^test_.*\.py$|_test\.(?:py|dart)$|\.(?:test|spec)\.[^.]+$")
 DOC_SUFFIXES = frozenset({".md", ".txt", ".rst"})
 MAX_BYTES = 1_000_000
 BINARY_PROBE = 8192
@@ -36,7 +38,7 @@ def language(rel: str) -> str | None:
 
 
 def classify(rel: str) -> str | None:
-    """"read", "ignored" (code or docs skipped on purpose: tests, docs, your tools' hidden folders) or None
+    """"read", "ignored" (code or docs skipped on purpose: tests, fake data, docs, your tools' hidden folders) or None
     (not something the scan looks at, such as images or lock files).
 
     Hidden folders (.claude, .cursor, .github …) hold your tools, not your app: only their MCP configs are read.
@@ -45,7 +47,7 @@ def classify(rel: str) -> str | None:
     relevant = language(rel) is not None or is_config(rel) or is_manifest(rel)
     if any(part.startswith(".") for part in path.parent.parts):
         return "read" if is_config(rel) else "ignored" if relevant else None
-    if any(part in TEST_DIRS for part in path.parent.parts):
+    if any(part in TEST_DIRS for part in path.parent.parts) or TEST_FILE.search(path.name):
         return "ignored" if relevant else None
     if path.suffix.lower() in DOC_SUFFIXES and not is_manifest(rel):
         return "ignored"

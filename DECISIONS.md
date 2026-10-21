@@ -653,6 +653,53 @@ Everything else in D21 holds. These rules came from scanning a real Flutter repo
 
 **Code:** `scan/`, `security/logfilter.py` (`redact_code`, `SECRET_WORDS`), `connectors/presets.py` (`SERVICES`, `ROUTER_SDKS`, `MODEL_PREFIXES`), `api/scan.py` (`choose_repo`, `startup_repo`), `storage.py` (`FlowStore`, `settings`), `flowmap/service.py` (`map_folder`), `cli.py`.
 
+## D23. No hand-drawn maps, and the phases after the first look (Vishwa, 2026-10-21)
+
+**Supersedes:**
+- in D21, "Example mode shows two maps, switchable";
+- in D21, the list of skipped test folders (extended below);
+- in D19, the roadmap order from Phase 6 on.
+
+Everything else in D21 and D22 holds.
+
+**Context.** Vishwa used Phase 4 on the sample and on `smart-travel-assistant`. Three things stood out:
+- The Dependencies | Flow switch put two different apps under one switch. The Flow side, Baby-care, was drawn by hand, yet its header said the Planner drew it from your code.
+- A real repo's fake-data file (`lib/dev/fake_recommendations.dart`) became a dependency.
+- Once a map existed, the dashboard had no way to scan another folder.
+
+Vishwa also restated the goal: an MCP management tool that works out the critical path and the most efficient way for the code to use its dependencies, and later works next to coding agents.
+
+**Choice:**
+- **Every block and line on a map comes from the user's code (`file:line`) or from the user's own edit.** Nothing is drawn by hand or invented, in example mode too.
+  - Example mode shows one map: the trip planner's dependency map.
+  - The Baby-care flow map and the switch leave the dashboard.
+  - The Baby-care fixture stays as test data for the flow-map code (gates, critical path, replay), which flow order from code reuses.
+  - The API keeps `?map=flow`. It is empty until flows come from code.
+- **Fake and test data files are skipped like test folders,** and counted as `ignored`:
+  - file names starting with `fake_`, `mock_` or `dummy_`;
+  - test files: `test_*.py`, `*_test.py`, `*_test.dart`, `*.test.*`, `*.spec.*`;
+  - folders `fixtures/`, `mocks/`, `__mocks__/` and `fakes/`.
+- **A dependency's `target` is the address a check will call.** It comes from the host most of its URLs use. With several URLs on that host, it is their longest shared path up to a `/`. So a page on `commons.` plus nine images on `thumb.` give `https://thumb.wikimedia.org/wikipedia/commons/thumb/`, not the first URL.
+- **Local blocks are named for what they run:** the script's file name without folder or extension, with `_` and `-` as spaces (`tools/packing_list.py` → "packing list"). The full command stays the target.
+- **"Scan a folder" is always in the map's header.**
+  - The same folder re-scans as before.
+  - A different folder replaces the map after the user confirms. The old folder's versions are deleted, as with `--replace` (D22).
+  - In example mode it shows the command instead (`flowforge --repo <folder>`), because example data and real data never mix (D16).
+- **Roadmap from Phase 6 on:**
+  - **6, flow order from code:** Python first, through the AST. A call that uses another call's result depends on it, and every line keeps its `file:line`. The result is a real DAG. Its critical path is weighted by Phase 5's measured latencies, labelled as estimates. On top of it come suggestions like "these calls don't depend on each other: run them together, about N ms saved".
+  - **7:** security findings.
+  - **8:** launch.
+  - **9:** CLI agent + Tauri.
+  - **10 (V2):** coding agents. A suggestion from Phase 6 is one of the changes an agent can make, on a branch, behind a gate.
+  - **11:** FlowForge's own small language model (SLM), run locally with guardrails, replacing the dependence on hosted APIs such as NIM for anything FlowForge itself needs an LLM for. Plain code stays the source of truth. The SLM's proposals are data, checked against the code before they reach a map (D14), and it sees masked findings only (D20).
+
+**Why:**
+- A map the user cannot trust is worse than no map. A hand-drawn graph can show services the code never calls.
+- The critical path and "run these together" turn the map from a picture into advice, which is what an MCP management tool owes its user. It needs flow order, so flow order moves ahead of security and launch.
+- Owning the model removes the last outside service FlowForge itself relies on.
+
+**Code:** `main.py`, `example_data.py`, `scan/files.py`, `scan/scanner.py`, `frontend/src/flowmap/FlowMapPage.tsx`, `CLAUDE.md` (roadmap).
+
 ---
 
 ## Step JSON schema (reference)

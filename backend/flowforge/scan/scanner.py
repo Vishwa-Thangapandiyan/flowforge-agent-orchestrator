@@ -6,9 +6,11 @@ readers produce `FileFacts`; this module merges them into one `Dependency` per s
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from flowforge.scan import manifests, mcp_config, patterns, python_ast, services
 from flowforge.scan.facts import FileFacts, Ref
@@ -27,6 +29,21 @@ Constants = dict[str, tuple[str, str, int]]   # NAME -> (value, path, line), fro
 
 def _slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:56]
+
+
+def _shared_target(urls: list[str]) -> str:
+    """The address to check (D23): on the host most of the URLs use, the one URL or the longest path they share,
+    up to a `/`."""
+    hosts = [urlsplit(u).netloc for u in urls]
+    host = max(hosts, key=hosts.count)   # the first one on a tie
+    same_host = [u for u, h in zip(urls, hosts, strict=True) if h == host]
+    if len(same_host) == 1:
+        return same_host[0]
+    first = urlsplit(same_host[0])
+    root = f"{first.scheme}://{host}/"
+    shared = os.path.commonprefix(same_host)
+    shared = shared[:shared.rfind("/") + 1]
+    return shared if len(shared) > len(root) else root
 
 
 @dataclass
@@ -83,7 +100,7 @@ class _Merge:
             dep = self.deps.setdefault(f"api-{_slug(host)}", _Dep(kind="api", name=host))
         if url not in dep.targets:
             dep.targets.append(url)
-        dep.target = dep.target or url
+        dep.target = _shared_target(dep.targets)
         # a www. page the app opens (a link, an attribution) is not a call, even through Uri.parse (D21)
         page = host.startswith("www.") and service is None and not api_shaped(url)
         dep.confirmed = dep.confirmed or (confirmed and not page) or service is not None or api_shaped(url)
@@ -113,8 +130,10 @@ class _Merge:
             self.service_dep(service).add(path, line, f"lists {pkg}")
 
     def local(self, command: list[str], path: str, line: int) -> None:
-        name = command[-1]
-        stem = name.rsplit("/", 1)[-1].rsplit(".", 1)[0] if len(command) > 1 else name.rsplit("/", 1)[-1]
+        program = command[-1].rsplit("/", 1)[-1]
+        stem = program.rsplit(".", 1)[0] if len(command) > 1 else program
+        # a script is named for what it runs, "packing list"; a program keeps its own name (D23)
+        name = re.sub(r"[_-]+", " ", stem) if len(command) > 1 else program
         dep = self.deps.setdefault(f"local-{_slug(stem)}", _Dep(kind="local", name=name))
         dep.command = dep.command or command
         dep.target = dep.target or " ".join(command)

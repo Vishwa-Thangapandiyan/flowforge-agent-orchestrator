@@ -156,7 +156,7 @@ def test_programs_the_code_runs_are_local_dependencies(tmp_path):
         "HERE = Path(__file__).parent\n"
         "\n"
         "def pack(t):\n"
-        '    subprocess.run([sys.executable, str(HERE / "tools" / "pack.py"), "--max", str(t)], check=True)\n'
+        '    subprocess.run([sys.executable, str(HERE / "tools" / "packing_list.py"), "--max", str(t)], check=True)\n'
         "\n"
         "def thumbs():\n"
         '    os.system("convert in.png out.jpg")\n'
@@ -165,9 +165,12 @@ def test_programs_the_code_runs_are_local_dependencies(tmp_path):
         "    subprocess.run(cmd)\n"
     )})
     deps = by_id(scan(tmp_path))
-    assert set(deps) == {"local-pack", "local-convert"}
-    assert deps["local-pack"].name == "tools/pack.py" and refs(deps["local-pack"]) == {"jobs.py:6"}
-    assert deps["local-convert"].command == ["convert"] and deps["local-convert"].status == "confirmed"
+    assert set(deps) == {"local-packing-list", "local-convert"}
+    packing = deps["local-packing-list"]
+    assert packing.name == "packing list" and refs(packing) == {"jobs.py:6"}   # named for what it runs (D23)
+    assert packing.target.endswith("tools/packing_list.py")
+    assert deps["local-convert"].name == "convert" and deps["local-convert"].command == ["convert"]
+    assert deps["local-convert"].status == "confirmed"
 
 
 def test_a_service_sdk_is_its_service_even_without_a_url(tmp_path):
@@ -238,6 +241,17 @@ def test_a_target_stops_before_template_parts(tmp_path):
     deps = by_id(scan(tmp_path))
     assert deps["api-router-test"].target == "https://router.test/route/v1/driving/"
     assert deps["api-tiles-test"].target == "https://tiles.test/"
+
+
+def test_many_addresses_target_the_shared_path_of_the_host_most_use(tmp_path):
+    """D23: nine image URLs gave the first image as the address to check."""
+    write(tmp_path, {"lib/places.dart": (
+        "final page = Uri.https('commons.wikimedia.org', '/wiki/File:$name');\n"
+        "final a = 'https://thumb.wikimedia.org/commons/thumb/9/97/Glass_house.jpg';\n"
+        "final b = 'https://thumb.wikimedia.org/commons/thumb/d/d5/Cubbon_Park.jpg';\n"
+        "final c = 'https://thumb.wikimedia.org/commons/thumbnails/x.jpg';\n"
+    )})
+    assert by_id(scan(tmp_path))["api-wikimedia"].target == "https://thumb.wikimedia.org/commons/"
 
 
 def test_evidence_is_capped_and_the_rest_are_counted(tmp_path):
@@ -389,6 +403,24 @@ def test_litellm_is_resolved_by_its_model_prefix(tmp_path):
     write(tmp_path, {"bot.py": 'import litellm\nlitellm.completion(model="anthropic/claude-sonnet", messages=[])\n'})
     dep = by_id(scan(tmp_path))["llm-claude"]
     assert dep.model == "anthropic/claude-sonnet" and {"bot.py:1", "bot.py:2"} <= refs(dep)
+
+
+def test_fake_data_and_test_files_are_ignored_wherever_they_are(tmp_path):
+    """D23: a real repo's lib/dev/fake_recommendations.dart showed up as a dependency."""
+    write(tmp_path, {
+        "lib/dev/fake_recommendations.dart": "final a = 'https://img.fake.test/a.jpg';\n",
+        "lib/dev/app_config.dart": "final api = Uri.https('api.real.test', '/v1');\n",
+        "src/mock_server.ts": "fetch('https://mock.test/api/v1');\n",
+        "src/client.test.ts": "fetch('https://spec.test/api/v1');\n",
+        "lib/route_test.dart": "http.get(Uri.parse('https://dart-test.test/api/v1'));\n",
+        "app/test_jobs.py": 'URL = "https://pytest.test/api/v1"\n',
+        "web/__mocks__/api.js": "fetch('https://jest.test/api/v1');\n",
+        "fixtures/data.py": 'URL = "https://fixture.test/api/v1"\n',
+        "app/contest.py": 'URL = "https://contest.test/api/v1"\n',
+    })
+    result = scan(tmp_path)
+    assert set(by_id(result)) == {"api-api-real-test", "api-contest-test"}
+    assert result.skipped["ignored"] == 7
 
 
 def test_binary_and_ignored_files_are_counted_not_read(tmp_path):

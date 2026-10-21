@@ -529,6 +529,7 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
               ? (flow.pending ? "Review the re-scan" : rechecking ? "Re-scanning…" : "Re-scan the repo")
               : (flow.pending ? "Review the re-check" : rechecking ? "Re-checking…" : "Re-check the repo")}
           </button>
+          <Link className="btn" to={`/map/export${q}`}>{Icons.share(18)} Export</Link>
           {deps && checks.items.length > 0 && (
             <button className="btn primary" type="button" onClick={() => void checks.checkNow()} disabled={checks.running}>
               {Icons.activity(18)} {checks.running ? "Checking…" : "Check now"}

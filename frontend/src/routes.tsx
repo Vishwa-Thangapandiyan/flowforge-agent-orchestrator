@@ -4,6 +4,7 @@ import { Shell } from "./components/Shell";
 import { FlowMapPage } from "./flowmap/FlowMapPage";
 import { HowDrawn } from "./flowmap/HowDrawn";
 import { Recheck } from "./flowmap/Recheck";
+import { ExportPage } from "./mcpmap/ExportPage";
 import { AddConnector } from "./pages/AddConnector";
 import { Catalog } from "./pages/Catalog";
 import { ConnectorPage } from "./pages/Connector";
@@ -27,6 +28,7 @@ export const routes = [
       { path: "/", element: <FlowMapPage />, handle: { bleed: true } },
       { path: "/map/how", element: <HowDrawn /> },
       { path: "/map/recheck", element: <Recheck /> },
+      { path: "/map/export", element: <ExportPage /> },
       { path: "/connectors", element: <Catalog /> },
       { path: "/connectors/new", element: <AddConnector /> },
       { path: "/connectors/:id", element: <ConnectorPage /> },

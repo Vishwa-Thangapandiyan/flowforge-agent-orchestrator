@@ -45,5 +45,8 @@ export const Icons = {
   question: (s?: number) => <Icon size={s}><circle cx="12" cy="12" r="9" /><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.4c-.6.3-1 .8-1 1.5v.5M12 17v.01" /></Icon>,
   key: (s?: number) => <Icon size={s}><circle cx="8" cy="15" r="4" /><path d="M10.8 12.2L20 3M16 7l3 3M14 9l2 2" /></Icon>,
   pencil: (s?: number) => <Icon size={s}><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4" /></Icon>,
+  download: (s?: number) => <Icon size={s}><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></Icon>,
+  copy: (s?: number) => <Icon size={s}><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" /></Icon>,
+  share: (s?: number) => <Icon size={s}><path d="M12 15V4M7 9l5-5 5 5M5 14v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5" /></Icon>,
   chevron: (s?: number) => <Icon size={s}><path d="M6 9l6 6 6-6" /></Icon>,
 };

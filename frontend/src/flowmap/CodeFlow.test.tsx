@@ -25,6 +25,7 @@ test("the Flow switch shows the order the code calls its dependencies, and how i
   expect(await screen.findByRole("heading", { level: 1, name: "trip-planner" })).toBeInTheDocument();
   expect(screen.getByRole("banner")).toHaveTextContent("4 calls·1 decision");
   expect(screen.getByRole("button", { name: /Re-scan the repo/ })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: /Export/ })).toHaveAttribute("href", "/map/export?map=flow");   // the MCP Map (D26)
   expect(screen.queryByRole("button", { name: /Test run/ })).not.toBeInTheDocument();   // nothing to replay (D25)
   const faster = screen.getByRole("region", { name: "Faster" });
   expect(within(faster).getByText("9.4 s")).toBeInTheDocument();   // as written

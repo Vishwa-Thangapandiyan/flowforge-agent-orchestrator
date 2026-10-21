@@ -899,6 +899,14 @@ D23's rule holds: nothing drawn by hand. Vishwa chose Python first, with Dart an
 
 **Code:** `frontend/src/flowmap/` (themes, motion, Metro and Boxed blocks), `frontend/src/mcpmap/` (new: layout, SVG, Mermaid, exports, `/map/export`), `docs/mcp-map.md` (new).
 
+**Settled while building (2026-10-21), after the two-axis review:**
+- Rule 3 also has a **filled square for a stop** (the code returns early), as `docs/mcp-map.md` already said.
+- The export page offers **light or dark paper**; the file you download is the paper you see. Mermaid adds a stroke colour per kind (`classDef`), and the shapes still carry the meaning without it.
+- ✎ on the MCP Map, and "Writes something" in the step panel, follow D25's rule: a method other than GET or HEAD, or an MCP tool that isn't read-only. D17's wider rule (every local program, any block with no method) stays for gates on flows FlowForge runs.
+- Words taken from the code (a decision's condition and question, a call's label) are masked like evidence (`redact_code`) before they are stored, so an export can't carry a key from an `if`.
+- Focusing a block with the keyboard traces its path, as hovering does.
+- Not built yet: Blueprint's timings as dimension lines (it has the grid and the outlines).
+
 ---
 
 ## Step JSON schema (reference)

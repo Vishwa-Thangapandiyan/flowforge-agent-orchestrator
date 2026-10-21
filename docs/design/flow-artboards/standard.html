@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en" data-mode="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MCP Map notation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Phase 6 artboard (D25, round 2): a standard way to send someone an app's MCP architecture. A proposal, not a
+   brand: lanes by kind, time left to right, a shape per kind that survives black-and-white printing. */
+:root { --sans: 'Geist', ui-sans-serif, system-ui, sans-serif; --mono: 'Geist Mono', ui-monospace, Menlo, monospace;
+  --paper: #FFFFFF; --ink: #111A21; --muted: #55656F; --rule: #D9E1E6; --band: #F4F7F9;
+  --llm: #6B46C1; --mcp: #1E7A4A; --api: #2457C5; --local: #4A5E6A; --control: #111A21;
+  --up: #0B7A70; --warn: #E3A535; --down: #D2513E; }
+[data-mode="dark"] { --paper: #0E1519; --ink: #E6EEF2; --muted: #9AAEB9; --rule: #24343D; --band: #121D23;
+  --llm: #B79CFF; --mcp: #5CD49A; --api: #7FA8FF; --local: #A9B8C2; --control: #E6EEF2; --up: #4FD1C0; --warn: #F2B84B; --down: #FF8C7A; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #0A1216; color: #C9D6DC; font: 15px/1.5 var(--sans); }
+.sheet { display: flex; flex-direction: column; gap: 36px; padding: 40px; max-width: 1680px; margin: 0 auto; }
+.bar { position: sticky; top: 0; z-index: 5; display: flex; gap: 8px; justify-content: flex-end; padding: 12px 40px; background: rgb(10 18 22 / 88%); backdrop-filter: blur(6px); }
+.bar button { padding: 8px 14px; border-radius: 999px; border: 1px solid #2C424D; background: #13232B; color: #E8F0F3; font: 500 14px var(--sans); cursor: pointer; }
+.bar button[aria-pressed="true"] { background: #E8F0F3; color: #0A1216; }
+h1 { margin: 0 0 8px; color: #fff; font: 650 28px/1.15 var(--sans); letter-spacing: -.02em; }
+.intro p { margin: 0; max-width: 80ch; }
+.map { border-radius: 16px; overflow: hidden; box-shadow: 0 30px 70px -30px rgb(0 0 0 / 70%); position: relative; }
+.map svg { display: block; width: 100%; height: auto; }
+.export { position: absolute; top: 22px; right: 24px; display: flex; gap: 8px; }
+.export button { display: inline-flex; align-items: center; gap: 7px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--rule); background: var(--paper); color: var(--ink); font: 550 13.5px var(--sans); cursor: pointer; }
+.export button.main { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.export svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.rules { display: grid; grid-template-columns: 1.1fr 1fr; gap: 24px; }
+.card { padding: 22px 24px; border-radius: 16px; background: #0F1A20; border: 1px solid #1F3039; }
+.card h2 { margin: 0 0 14px; color: #fff; font: 650 19px/1.2 var(--sans); }
+.card ol { margin: 0; padding-left: 22px; display: grid; gap: 10px; }
+.card li b { color: #fff; font-weight: 600; }
+.key { display: grid; grid-template-columns: 44px 1fr; gap: 12px 14px; align-items: center; }
+.key svg { width: 40px; height: 40px; }
+.key span { color: #C9D6DC; } .key span small { display: block; color: #98ADB8; font-size: 13px; }
+pre { margin: 0; padding: 16px; border-radius: 12px; background: #081014; color: #C9D6DC; font: 12.5px/1.6 var(--mono); overflow-x: auto; }
+@media (max-width: 1000px) { .rules { grid-template-columns: 1fr; } .sheet { padding: 20px 16px; } .export { position: static; padding: 12px; flex-wrap: wrap; background: var(--paper); } }
+
+/* the map itself */
+svg .paper { fill: var(--paper); }
+svg .std-title { font: 650 26px var(--sans); fill: var(--ink); letter-spacing: -.02em; }
+svg .std-sub { font: 500 13px var(--mono); fill: var(--muted); }
+svg .lane { fill: var(--paper); } svg .lane.odd { fill: var(--band); }
+svg .lane-label { font: 600 14px var(--sans); fill: var(--ink); }
+svg .tick { stroke: var(--rule); stroke-width: 1; } svg .tick.minor { stroke-dasharray: 2 4; } svg .tick-label { font: 500 11.5px var(--mono); fill: var(--muted); }
+svg .std-line { fill: none; stroke: var(--muted); stroke-width: 1.4; } svg .std-line.cp { stroke: var(--ink); stroke-width: 3; } svg .std-line.via { stroke-dasharray: 5 4; }
+svg .arrow { fill: var(--muted); }
+svg .sym { fill: var(--paper); stroke-width: 2.2; } svg .sym-in { fill: currentColor; }
+svg .k-llm { color: var(--llm); } svg .k-mcp { color: var(--mcp); } svg .k-api { color: var(--api); } svg .k-local { color: var(--local); } svg .k-decision { color: var(--control); }
+svg .std-node .sym { stroke: currentColor; } svg .std-node .stopsym { fill: currentColor; }
+svg .bar { fill: currentColor; opacity: .22; } svg .bar.est { opacity: .12; stroke: currentColor; stroke-dasharray: 3 3; }
+svg .std-node.cp .bar { opacity: .45; }
+svg .std-name { font: 600 13px var(--sans); fill: var(--ink); } svg .std-ms { font: 500 11px var(--mono); fill: var(--muted); }
+svg .hdot { stroke: var(--paper); stroke-width: 1.5; } svg .h-up .hdot { fill: var(--up); } svg .h-warn .hdot { fill: var(--warn); } svg .h-down .hdot { fill: var(--down); }
+</style>
+</head>
+<body>
+<div class="bar" role="group" aria-label="Light or dark"><button type="button" data-mode="light" aria-pressed="true">Light</button><button type="button" data-mode="dark" aria-pressed="false">Dark</button></div>
+<div class="sheet">
+  <section class="intro">
+    <h1>The MCP Map</h1>
+    <p>A proposal for a standard way to send someone your app's MCP architecture: what it calls, in what order, how long
+      each call takes, and what is slow. Lanes are kinds, time runs left to right, and every call is a bar as long as
+      it takes. It prints in black and white, and it travels as an image, as Mermaid that GitHub renders, or as the Flow
+      JSON behind it, which cites every block's file and line.</p>
+  </section>
+
+  <div class="map">
+    <svg id="std" role="img" aria-label="The trip planner as an MCP map"></svg>
+    <div class="export" role="group" aria-label="Send this map">
+      <button type="button" class="main"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Download SVG</button>
+      <button type="button"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 15l5-5 4 4 3-3 6 6"/></svg>PNG</button>
+      <button type="button"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>Copy as Mermaid</button>
+      <button type="button"><svg viewBox="0 0 24 24"><path d="M8 4H6a2 2 0 0 0-2 2v4l-2 2 2 2v4a2 2 0 0 0 2 2h2M16 4h2a2 2 0 0 1 2 2v4l2 2-2 2v4a2 2 0 0 1-2 2h-2"/></svg>Flow JSON</button>
+    </div>
+  </div>
+
+  <div class="rules">
+    <section class="card">
+      <h2>The rules</h2>
+      <ol>
+        <li><b>Lanes are kinds.</b> Decisions on top, then LLMs, MCP servers, APIs and local programs, always in that order, so any two maps compare at a glance.</li>
+        <li><b>Time runs left to right.</b> A call starts when its inputs are ready; its bar is as long as the call takes. Long bars are what make an app slow.</li>
+        <li><b>One shape per kind,</b> so it reads without colour: a ring for an LLM, a hexagon for an MCP server, a square for an API, a triangle for a local program, a diamond for a decision.</li>
+        <li><b>The thick line is the critical path.</b> Dashed means reached through another server. A dashed bar is an estimate, not a measurement.</li>
+        <li><b>Marks:</b> a dot is health (teal up, amber needs a look, coral down), ✎ writes something, ↻ repeats in a loop.</li>
+        <li><b>Every block has a source.</b> The Flow JSON behind the map gives each one's file and line, so anyone can check it against the code.</li>
+      </ol>
+    </section>
+    <section class="card">
+      <h2>Key</h2>
+      <div class="key" id="key"></div>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>Copy as Mermaid: the same map, in a README</h2>
+    <pre id="mermaid"></pre>
+  </section>
+</div>
+<script src="./graph.js"></script>
+<script>
+  drawStandard(document.getElementById("std"));
+  const key = [["start", "Entry point", "where the flow begins: plan()"], ["llm", "LLM", "a model the code asks"],
+    ["mcp", "MCP server", "started or reached by the app"], ["api", "API", "an HTTP service"],
+    ["local", "Local program", "run on this machine"], ["decision", "Decision", "an if in the code"]];
+  for (const [kind, name, note] of key) {
+    const svg = document.createElementNS(SVGNS, "svg");
+    svg.setAttribute("viewBox", "0 0 40 40");
+    const g = el("g", { class: `std-node k-${kind}` });
+    for (const s of shape(kind, 20, 20, 13)) g.append(s);
+    svg.append(g);
+    const label = document.createElement("span");
+    label.innerHTML = `${name}<small>${note}</small>`;
+    document.getElementById("key").append(svg, label);
+  }
+  // the export the map would produce, written from the same data
+  const ids = Object.fromEntries(FLOW.nodes.map((n) => [n.id, n]));
+  const shapeOf = { start: (t) => `((${t}))`, llm: (t) => `([${t}])`, mcp: (t) => `{{${t}}}`, api: (t) => `[${t}]`,
+    local: (t) => `[/${t}/]`, decision: (t) => `{${t}}`, end: (t) => `[[${t}]]` };
+  const lines = ["flowchart LR", "  %% MCP map of trip-planner, read from planner.py by FlowForge"];
+  for (const n of FLOW.nodes) lines.push(`  ${n.id}${shapeOf[n.kind](`"${n.kind === "decision" ? n.cond : n.title}${n.ms ? ` · ${took(n.ms)}` : ""}"`)}`);
+  for (const [s, t, label] of FLOW.edges) lines.push(`  ${s} ${label === "via" ? "-.->" : FLOW.critical.includes(s) && FLOW.critical.includes(t) ? "==>" : "-->"}${label === "yes" || label === "no" ? `|${label}|` : ""} ${t}`);
+  document.getElementById("mermaid").textContent = lines.join("\n");
+  for (const b of document.querySelectorAll(".bar button")) b.addEventListener("click", () => {
+    document.documentElement.dataset.mode = b.dataset.mode;
+    for (const o of document.querySelectorAll(".bar button")) o.setAttribute("aria-pressed", String(o === b));
+  });
+</script>
+</body>
+</html>

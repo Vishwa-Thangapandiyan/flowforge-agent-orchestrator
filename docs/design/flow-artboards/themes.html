@@ -42,6 +42,28 @@ svg .edge { fill: none; }
 svg .edge.via { stroke-dasharray: 4 4; }
 svg .weight.estimate { font-style: italic; }
 
+/* motion (D25 themes, round 2): lines draw in, in call order, once; "Watch it run" sends a train along each line
+   while its call runs; hovering traces what a block waits for and what waits for it. Reduced motion: none of it. */
+svg .edge:not(.via):not(.branch) { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw .9s cubic-bezier(.2,.7,.2,1) forwards; animation-delay: var(--draw-delay, 0s); }
+svg .edge.branch { animation: fade .6s ease forwards; animation-delay: var(--draw-delay, 0s); opacity: 0; }
+svg .edge.via { stroke-dasharray: .035 .025; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes fade { to { opacity: 1; } }
+svg .node, svg .edge { transition: opacity .3s ease, stroke-width .3s ease; }
+svg.playing .node:not(.running):not(.done) { opacity: .38; }
+svg .node.running .card, svg .node.running .station, svg .node.running .diamond { stroke: var(--up); stroke-width: 2.5; }
+svg .train { fill: #fff; stroke: #0F1D26; stroke-width: 2.2; filter: drop-shadow(0 1px 2px rgb(0 0 0 / 35%)); pointer-events: none; }
+svg .train.cp { fill: #0F1D26; stroke: #fff; }
+svg .edge.live { stroke-width: 3; }
+svg.tracing .node:not(.on-trace) { opacity: .22; } svg.tracing .edge:not(.on-trace) { opacity: .12; }
+@media (prefers-reduced-motion: reduce) { svg .edge, svg .edge.branch { animation: none; stroke-dashoffset: 0; opacity: 1; } svg .node, svg .edge { transition: none; } }
+.controls { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+.controls button { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; border: 0; background: #E8F0F3; color: #0A1216; font: 600 14px var(--sans); cursor: pointer; }
+.controls button:focus-visible { outline: 2px solid #4FD1C0; outline-offset: 2px; }
+.controls span { font: 500 13px var(--mono); color: #98ADB8; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; font-size: 13px; color: #98ADB8; }
+.legend i { display: inline-block; width: 26px; height: 6px; border-radius: 3px; vertical-align: middle; margin-right: 7px; }
+
 /* 1 Studio: today's cards, refined */
 svg[data-theme="studio"] { --bg: #F2F6F7; --dotc: rgb(15 29 38 / 12%); --card: #fff; --line: #BFCCD3; --ink: #0F1D26; --muted: #4A5E6A; --edgec: #93A5AF; background: var(--bg); }
 [data-mode="dark"] svg[data-theme="studio"] { --bg: #081014; --dotc: rgb(147 168 179 / 12%); --card: #132229; --line: #2C424D; --ink: #E8F0F3; --muted: #98ADB8; --edgec: #46606D; }
@@ -88,7 +110,10 @@ svg[data-theme="metro"] .edge.to-local { stroke: #64748B; } svg[data-theme="metr
 svg[data-theme="metro"] .edge.cp { stroke: var(--ink); stroke-width: 10; opacity: 1; }
 svg[data-theme="metro"] .edge.via { stroke-width: 3; }
 svg[data-theme="metro"] .station { fill: var(--station); stroke: var(--ink); stroke-width: 3; }
-svg[data-theme="metro"] .title { fill: var(--ink); font-size: 12.5px; } svg[data-theme="metro"] .sub, svg[data-theme="metro"] .branch-label { fill: var(--muted); }
+svg[data-theme="metro"] text { paint-order: stroke; stroke: var(--bg); stroke-width: 5px; stroke-linejoin: round; }
+svg[data-theme="metro"] .title { fill: var(--ink); font-size: 14px; } svg[data-theme="metro"] .sub, svg[data-theme="metro"] .branch-label { fill: var(--muted); font-size: 11.5px; }
+svg[data-theme="metro"] .node { cursor: pointer; } svg[data-theme="metro"] .node:hover .station { stroke-width: 4.5; }
+svg[data-theme="metro"] .train { r: 7; }
 
 /* 5 Soft: calm colour fields, no borders */
 svg[data-theme="soft"] { --bg: #F4F7FB; --ink: #1B2A36; --muted: #556776; --edgec: #A9B8C4; background: var(--bg);
@@ -136,7 +161,8 @@ svg[data-theme="soft"] .cp .card { stroke: var(--ink); stroke-width: 1.5; }
   <section class="theme">
     <div><h2>Metro</h2><p>A transit map: each dependency is a station, line colours are kinds, and the critical path is the main line.</p>
       <ul><li>The most distinctive</li><li>Least room for detail; details open on click</li></ul></div>
-    <div class="frame"><svg data-render="metro" role="img" aria-label="The flow in the Metro theme"></svg></div>
+    <div><div class="frame"><svg data-render="metro" role="img" aria-label="The flow in the Metro theme"></svg></div>
+      <div class="legend" aria-label="Metro lines"><span><i style="background:#0F1D26"></i>Main line: the critical path</span><span><i style="background:#2F6FDB"></i>APIs</span><span><i style="background:#2E8B57"></i>MCP servers</span><span><i style="background:#7C5CD6"></i>LLMs</span><span><i style="background:#64748B"></i>Local programs</span></div></div>
   </section>
   <section class="theme">
     <div><h2>Soft</h2><p>Calm colour fields by kind, no borders, branches as dotted lines.</p>
@@ -146,7 +172,25 @@ svg[data-theme="soft"] .cp .card { stroke: var(--ink); stroke-width: 1.5; }
 </div>
 <script src="./graph.js"></script>
 <script>
-  for (const svg of document.querySelectorAll("svg[data-render]")) drawFlow(svg, svg.dataset.render, { critical: true });
+  for (const svg of document.querySelectorAll("svg[data-render]")) {
+    drawFlow(svg, svg.dataset.render, { critical: true });
+    traceOnHover(svg);
+    const frame = svg.closest(".frame");
+    const bar = document.createElement("div");
+    bar.className = "controls";
+    bar.innerHTML = `<button type="button">&#9654; Watch it run</button><span>11.6 s at best, shown in 7 s</span>`;
+    (frame.parentElement.classList.contains("theme") ? frame : frame.parentElement).after(bar);
+    let stop = null;
+    bar.querySelector("button").addEventListener("click", () => {
+      stop?.();
+      svg.classList.add("playing");
+      const clock = bar.querySelector("span");
+      stop = playFlow(svg, { onTick: (t) => {
+        clock.textContent = `${(t / 1000).toFixed(1)} s of 11.6 s`;
+        if (t >= FLOW.total) svg.classList.remove("playing");
+      } });
+    });
+  }
   for (const b of document.querySelectorAll(".bar button")) {
     b.addEventListener("click", () => {
       document.documentElement.dataset.mode = b.dataset.mode;

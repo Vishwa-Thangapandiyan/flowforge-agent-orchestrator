@@ -31,6 +31,11 @@ const FLOW = {
   critical: ["start", "nomc", "d1", "fetch", "llm", "d4", "save"],
   // the two pieces of advice, and the steps each covers
   advice: [["ip", "nomc"], ["noms", "meteo", "fetch", "cur"]],
+  // when each block runs if every call starts as soon as its inputs are ready (ms): the "could be" schedule
+  timing: { start: [0, 0], ip: [0, 210], nomc: [0, 420], d1: [420, 420], stop: [420, 420], d2: [420, 420],
+    noms: [420, 840], osrm: [840, 1480], meteo: [420, 600], d3: [600, 600], time: [600, 2500], pack: [600, 610],
+    fetch: [420, 7220], wiki: [420, 7220], cur: [420, 820], llm: [7220, 9220], d4: [9220, 9220], save: [9220, 11620] },
+  total: 11620,
 };
 
 const KIND_WORD = { api: "API", mcp: "MCP", llm: "LLM", local: "Local" };
@@ -122,7 +127,8 @@ function drawFlow(svg, theme, opts = {}) {
     const kind = byId[t].kind;
     const cls = ["edge", cp && "cp", label === "via" && "via", label === "yes" || label === "no" ? "branch" : "", `to-${kind}`]
       .filter(Boolean).join(" ");
-    const path = el("path", { d, class: cls });
+    const path = el("path", { d, class: cls, "data-s": s, "data-t": t, pathLength: 1 });
+    path.style.setProperty("--draw-delay", `${(FLOW.timing[s]?.[1] ?? 0) / FLOW.total * 1.4}s`);
     if (theme !== "metro") path.setAttribute("marker-end", `url(#arr-${theme})`);
     layer.append(path);
     if ((label === "yes" || label === "no") && !labelled.has(`${s}:${label}`)) {
@@ -134,7 +140,7 @@ function drawFlow(svg, theme, opts = {}) {
   }
 
   for (const n of FLOW.nodes) {
-    const g = el("g", { class: ["node", `k-${n.kind}`, `h-${n.health || "none"}`, onPath.has(n.id) && "cp",
+    const g = el("g", { "data-id": n.id, class: ["node", `k-${n.kind}`, `h-${n.health || "none"}`, onPath.has(n.id) && "cp",
       lit.size && (lit.has(n.id) ? "lit" : "dim"), opts.selected === n.id && "sel"].filter(Boolean).join(" ") });
     const b = box(n, theme);
     if (theme === "metro") {
@@ -189,4 +195,153 @@ function drawFlow(svg, theme, opts = {}) {
     layer.append(g);
   }
   svg.append(layer);
+}
+
+
+/** "Watch it run": trains travel each line while its call runs, blocks light up as they start and finish, all in
+ * the "could be" schedule, squeezed into `seconds`. Respects reduced motion (it jumps to the end). Returns stop(). */
+function playFlow(svg, { seconds = 7, onTick } = {}) {
+  const layer = svg.querySelector("g[transform]") || svg;
+  for (const t of layer.querySelectorAll(".train")) t.remove();
+  const total = FLOW.total, scale = (seconds * 1000) / total;
+  const trains = [];
+  for (const path of layer.querySelectorAll("path.edge")) {
+    const span = FLOW.timing[path.dataset.t];
+    if (!span || span[1] === span[0]) continue;
+    const train = el("circle", { r: 5, class: `train${path.classList.contains("cp") ? " cp" : ""}` });
+    layer.append(train);
+    trains.push({ path, train, span, len: path.getTotalLength() });
+  }
+  const nodes = [...layer.querySelectorAll(".node")];
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let raf = 0;
+  const t0 = performance.now();
+  const frame = (now) => {
+    const t = reduced ? total : Math.min(total, (now - t0) / scale);
+    for (const { path, train, span, len } of trains) {
+      const [a, b] = span;
+      const k = t <= a ? 0 : t >= b ? 1 : (t - a) / (b - a);
+      const p = path.getPointAtLength(k * len);
+      train.setAttribute("cx", p.x); train.setAttribute("cy", p.y);
+      train.style.opacity = t < a ? 0 : t >= b ? 0 : 1;
+      path.classList.toggle("live", t >= a && t < b);
+    }
+    for (const g of nodes) {
+      const span = FLOW.timing[g.dataset.id];
+      if (!span) continue;
+      g.classList.toggle("running", t >= span[0] && t < span[1]);
+      g.classList.toggle("done", t >= span[1]);
+    }
+    onTick?.(t);
+    if (t < total) raf = requestAnimationFrame(frame);
+  };
+  raf = requestAnimationFrame(frame);
+  return () => cancelAnimationFrame(raf);
+}
+
+/** Hovering a block lights what it waits for and what waits for it. */
+function traceOnHover(svg) {
+  const up = {}, down = {};
+  for (const [s, t] of FLOW.edges) { (up[t] ||= []).push(s); (down[s] ||= []).push(t); }
+  const walk = (start, next) => { const seen = new Set([start]), stack = [start];
+    while (stack.length) for (const n of next[stack.pop()] || []) if (!seen.has(n)) { seen.add(n); stack.push(n); }
+    return seen; };
+  svg.addEventListener("mouseover", (e) => {
+    const g = e.target.closest?.(".node"); if (!g) return;
+    const keep = new Set([...walk(g.dataset.id, up), ...walk(g.dataset.id, down)]);
+    svg.classList.add("tracing");
+    for (const n of svg.querySelectorAll(".node")) n.classList.toggle("on-trace", keep.has(n.dataset.id));
+    for (const p of svg.querySelectorAll("path.edge")) p.classList.toggle("on-trace", keep.has(p.dataset.s) && keep.has(p.dataset.t));
+  });
+  svg.addEventListener("mouseleave", () => svg.classList.remove("tracing"));
+}
+
+/* ---------------------------------------------------------------------------------------------------------------
+ * The MCP Map notation (a proposal): lanes by kind, time left to right, each call a bar as long as it takes,
+ * one shape per kind so it reads in black and white, a title block and a legend. Made to be sent to someone.
+ * ------------------------------------------------------------------------------------------------------------ */
+const LANES = [
+  { kind: "control", label: "Decisions" }, { kind: "llm", label: "LLMs" }, { kind: "mcp", label: "MCP servers" },
+  { kind: "api", label: "APIs" }, { kind: "local", label: "Local programs" },
+];
+
+function shape(kind, x, y, r) {
+  if (kind === "llm") return [el("circle", { cx: x, cy: y, r, class: "sym" }), el("circle", { cx: x, cy: y, r: r * 0.38, class: "sym-in" })];
+  if (kind === "mcp") {
+    const pts = [...Array(6)].map((_, i) => { const a = Math.PI / 3 * i + Math.PI / 6; return `${x + r * Math.cos(a)},${y + r * Math.sin(a)}`; });
+    return [el("polygon", { points: pts.join(" "), class: "sym" })];
+  }
+  if (kind === "api") return [el("rect", { x: x - r * 0.88, y: y - r * 0.88, width: r * 1.76, height: r * 1.76, rx: r * 0.3, class: "sym" })];
+  if (kind === "local") return [el("polygon", { points: `${x},${y - r} ${x + r},${y + r * 0.8} ${x - r},${y + r * 0.8}`, class: "sym" })];
+  if (kind === "decision") return [el("rect", { x: x - r * 0.7, y: y - r * 0.7, width: r * 1.4, height: r * 1.4, transform: `rotate(45 ${x} ${y})`, class: "sym" })];
+  if (kind === "start") return [el("circle", { cx: x, cy: y, r, class: "sym" }), el("circle", { cx: x, cy: y, r: r * 0.66, class: "sym" })];
+  return [el("rect", { x: x - r * 0.7, y: y - r * 0.7, width: r * 1.4, height: r * 1.4, class: "sym stopsym" })];
+}
+
+function drawStandard(svg, opts = {}) {
+  while (svg.firstChild) svg.firstChild.remove();
+  const W = 1600, left = 230, right = 40, top = 100, rowH = 54, pad = 16, ms = (W - left - right) / 12000;
+  const xAt = (t) => left + t * ms;
+  // where each block sits: its lane, its start time, and a row of its own when it would collide with a neighbour
+  const place = {}, rows = {};
+  for (const n of FLOW.nodes) {
+    if (n.kind === "start" || n.kind === "end") continue;
+    const lane = n.kind === "decision" ? "control" : n.kind;
+    const [a, b] = FLOW.timing[n.id];
+    const used = (rows[lane] ||= []);
+    let row = used.findIndex((end) => end <= a);
+    if (row < 0) { row = used.length; used.push(0); }
+    used[row] = Math.max(b, a + 1250);   // a name needs room even for a short call
+    place[n.id] = { x: xAt(a), x2: xAt(b), lane, row };
+  }
+  const laneTop = {}, laneHeight = {};
+  let y = top;
+  for (const lane of LANES) {
+    laneTop[lane.kind] = y;
+    laneHeight[lane.kind] = Math.max(1, (rows[lane.kind] || []).length) * rowH + pad * 2;
+    y += laneHeight[lane.kind];
+  }
+  const axisY = y, H = axisY + 60;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const defs = el("defs");
+  defs.innerHTML = `<marker id="std-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrow"/></marker>`;
+  svg.append(defs, el("rect", { x: 0, y: 0, width: W, height: H, class: "paper" }));
+  svg.append(el("text", { x: 32, y: 44, class: "std-title" }, "trip-planner"));
+  svg.append(el("text", { x: 32, y: 68, class: "std-sub" }, "MCP map, read from planner.py on 21 Oct 2026. 11 calls, 4 decisions, 11.6 s at best."));
+  LANES.forEach((lane, i) => {
+    svg.append(el("rect", { x: 0, y: laneTop[lane.kind], width: W, height: laneHeight[lane.kind], class: `lane ${i % 2 ? "odd" : ""}` }));
+    svg.append(el("text", { x: 32, y: laneTop[lane.kind] + laneHeight[lane.kind] / 2 + 5, class: "lane-label" }, lane.label));
+  });
+  for (let t = 0; t <= 12000; t += 1000) {
+    svg.append(el("line", { x1: xAt(t), y1: top, x2: xAt(t), y2: axisY + 6, class: `tick${t % 2000 ? " minor" : ""}` }));
+    if (t % 2000 === 0) svg.append(el("text", { x: xAt(t), y: axisY + 24, class: "tick-label", "text-anchor": "middle" }, `${t / 1000} s`));
+  }
+  const rowY = (p) => laneTop[p.lane] + pad + rowH * p.row + rowH / 2 + 4;
+  place.start = { x: 172, x2: 172, lane: "api", row: 0 };
+  place.start.y = (top + axisY) / 2;
+  const onPath = new Set(FLOW.critical);
+  for (const [s, t, label] of FLOW.edges) {
+    const a = place[s], b = place[t];
+    if (!a || !b) continue;
+    const ay = a.y ?? rowY(a), by = b.y ?? rowY(b);
+    const ax = s === "start" ? a.x + 16 : a.x2 + (FLOW.nodes.find((n) => n.id === s).kind === "decision" ? 10 : 0);
+    const bx = b.x - 15;
+    const mx = Math.min(Math.max(ax + 10, bx - 14), bx - 4);
+    const d = `M${ax},${ay} H${mx} V${by} H${bx}`;
+    const cls = ["std-line", onPath.has(s) && onPath.has(t) && "cp", label === "via" && "via"].filter(Boolean).join(" ");
+    svg.append(el("path", { d, class: cls, "marker-end": "url(#std-arrow)" }));
+  }
+  const byId = Object.fromEntries(FLOW.nodes.map((n) => [n.id, n]));
+  for (const [id, p] of Object.entries(place)) {
+    const n = byId[id], yy = p.y ?? rowY(p);
+    const g = el("g", { class: `std-node k-${n.kind} h-${n.health || "none"}${onPath.has(id) ? " cp" : ""}` });
+    if (p.x2 - p.x > 2) g.append(el("rect", { x: p.x, y: yy - 5, width: p.x2 - p.x, height: 10, rx: 5, class: `bar ${n.src === "estimate" ? "est" : ""}` }));
+    for (const sh of shape(n.kind, p.x, yy, 13)) g.append(sh);
+    const name = n.kind === "decision" ? n.cond : n.title;
+    g.append(el("text", { x: p.x + 20, y: yy - 13, class: "std-name" }, name));
+    const note = n.ms ? `${took(n.ms)}${n.src === "estimate" ? " est." : ""}${n.side ? "  ✎ writes" : ""}` : n.via ? "through fetch" : "";
+    if (note) g.append(el("text", { x: p.x + 20, y: yy + 24, class: "std-ms" }, note));
+    if (n.health) g.append(el("circle", { cx: p.x + 11, cy: yy - 11, r: 4, class: "hdot" }));
+    svg.append(g);
+  }
 }

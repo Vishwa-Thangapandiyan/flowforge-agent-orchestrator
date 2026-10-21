@@ -42,6 +42,14 @@ uv run flowforge --repo path/to/your/repo   # opens its dependency map; add --re
 
 The scan is plain code: it reads your files, never runs them, and sends nothing to anyone, AI included. Every dependency (LLM, MCP server, HTTP API, local command) comes with the `file:line` that shows it, and code excerpts are stored with known key formats masked.
 
+Then press **Check now**. Every dependency gets one harmless check, and the map turns green, amber or red:
+- **APIs:** one request, with no key, cookie or query.
+- **LLMs:** their model list is read.
+- **MCP servers:** each is started in your repo folder, without your environment variables, asked for its tools, then stopped.
+- **Local programs:** only looked for, never run.
+
+Starting an MCP server runs code, so the first check lists exactly what will start and waits for your yes. When something is down, the **Checks** page says why, in the server's own words, and the likely fix.
+
 ### On Windows (PowerShell)
 
 ```powershell

@@ -407,6 +407,13 @@ class Storage:
             out.append(item)
         return out
 
+    def latest_latencies(self) -> dict[str, float]:
+        """Each dependency's latency from its latest check that measured one (D24), for flow weights (D25)."""
+        rows = self.conn.execute(
+            "SELECT dep_id, latency_ms FROM checks WHERE id IN (SELECT MAX(id) FROM checks WHERE latency_ms IS NOT NULL"
+            " GROUP BY dep_id)").fetchall()
+        return {dep: float(ms) for dep, ms in rows}
+
     def clear_checks(self) -> None:
         """A different repo starts with no check history and no yes to start its MCP servers (D21, D24)."""
         self.conn.execute("DELETE FROM checks")

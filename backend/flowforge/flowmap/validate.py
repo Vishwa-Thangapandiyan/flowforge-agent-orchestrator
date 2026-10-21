@@ -60,6 +60,7 @@ def check(flow: Flow, connectors: Mapping[str, Connector], strict: bool = True) 
     block unconfirmed instead, so deleting a connector never breaks the page.
     """
     flow = flow.model_copy(deep=True)
+    code = flow.source == "code"   # the app's own flow, read from its code: no connected apps, no gates (D25)
     try:
         topological_order(_dag(flow, {"flow", "branch", "fallback", "unconfirmed"}))
     except CycleError as err:
@@ -69,7 +70,7 @@ def check(flow: Flow, connectors: Mapping[str, Connector], strict: bool = True) 
         if node.kind in NEEDS_EVIDENCE and node.status == "confirmed" and node.added_by != "user" \
                 and not any(ev.confirms for ev in node.evidence):
             node.status = "unconfirmed"
-        if node.kind in CALL_KINDS and (flow.kind == "flow" or node.connector):
+        if node.kind in CALL_KINDS and ((flow.kind == "flow" and not code) or node.connector):
             try:
                 _check_connector(node, connectors)   # a dependency needs no connected app (D21)
             except FlowError as err:
@@ -80,7 +81,7 @@ def check(flow: Flow, connectors: Mapping[str, Connector], strict: bool = True) 
         node.side_effect = flow.kind == "flow" and side_effecting(node)   # gates belong to flow maps (D21)
         if node.kind == "decision":
             whens = [e.when for e in flow.edges if e.source == node.id and e.kind == "branch"]
-            if len(set(whens)) < 2:
+            if len(set(whens)) < (1 if code else 2):   # code: an `if` with no else just carries on (D25)
                 raise FlowError(f"decision '{node.title}' needs two labelled branches (for example yes and no)")
 
     unconfirmed = {n.id for n in flow.nodes if n.status == "unconfirmed"}
@@ -90,7 +91,8 @@ def check(flow: Flow, connectors: Mapping[str, Connector], strict: bool = True) 
         elif e.kind == "unconfirmed":
             e.kind = "flow"
 
-    _insert_gates(flow)
+    if not code:
+        _insert_gates(flow)
     return flow
 
 

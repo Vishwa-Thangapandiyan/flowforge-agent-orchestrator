@@ -245,7 +245,22 @@ def _config_scope(rel: str, servers: list[mcp_config.Server], facts: list[FileFa
     return "app" if named else "dev_tool"
 
 
+@dataclass
+class Places:
+    """What the scan saw, for readers that follow calls (D25): every place behind each dependency, uncapped, as
+    (path, line, what it shows); the MCP servers the app itself uses; and the facts of each Python file."""
+
+    by_dep: dict[str, list[tuple[str, int, str]]]
+    app_servers: set[str]
+    facts: dict[str, FileFacts]
+
+
 def scan(root: str | Path) -> ScanResult:
+    """A repo's dependencies with evidence (D21): plain code, read-only, nothing sent (D20)."""
+    return scan_with_places(root)[0]
+
+
+def scan_with_places(root: str | Path) -> tuple[ScanResult, Places]:
     root = Path(root).resolve()
     listing = list_files(root)
     texts: dict[str, list[str]] = {}
@@ -308,6 +323,9 @@ def scan(root: str | Path) -> ScanResult:
         for name, line in f.env:
             env.setdefault((f.path, line), []).append(name)
             seen.setdefault(name, f"{f.path}:{line}")
-    return ScanResult(root=root.name, files_scanned=len(listing.files), skipped=listing.skipped,
-                      languages=languages, dependencies=merge.result(env),
-                      env_names=[EnvName(name=n, ref=r) for n, r in sorted(seen.items())])
+    result = ScanResult(root=root.name, files_scanned=len(listing.files), skipped=listing.skipped,
+                        languages=languages, dependencies=merge.result(env),
+                        env_names=[EnvName(name=n, ref=r) for n, r in sorted(seen.items())])
+    places = Places(by_dep={dep_id: sorted(d.places) for dep_id, d in merge.deps.items()}, app_servers=app_servers,
+                    facts={f.path: f for f in facts if f.language == "python"})
+    return result, places

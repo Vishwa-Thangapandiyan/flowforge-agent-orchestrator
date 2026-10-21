@@ -17,6 +17,7 @@ from flowforge.connectors.models import Connector, parse_connector
 from flowforge.nodes.base import Node, NodeError, TransientNodeError
 from flowforge.schema import Workflow
 from flowforge.state import AppState
+from flowforge.storage import Storage
 
 PROJECT_NAME = "Baby-care shop"
 SEED_SCALE = 0.1  # seeded history runs 10x faster than a demo run started from the UI
@@ -220,10 +221,17 @@ def install(state: AppState) -> None:
     example_nodes(state)
 
 
+def latencies(storage: Storage) -> dict[str, float]:
+    """Flow weights in example mode (D25): the latest checks, or the recorded results before any check ran."""
+    recorded = {r.id: r.latency_ms for r in CHECK_RESULTS.values() if r.latency_ms is not None}
+    return {**recorded, **storage.latest_latencies()}
+
+
 def seed_flow(state: AppState) -> None:
-    """The example map (D21, D23): the trip planner's dependency map, scanned live."""
-    if "deps" in state.flows:
-        state.flows["deps"].first_map()
+    """The example maps (D21, D25): the trip planner's dependency map and its flow, both read from its code."""
+    for map_id in ("deps", "flow"):
+        if map_id in state.flows:
+            state.flows[map_id].first_map()
 
 
 async def seed(state: AppState) -> list[str]:

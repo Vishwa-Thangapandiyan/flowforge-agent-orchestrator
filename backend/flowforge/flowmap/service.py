@@ -10,7 +10,7 @@ from typing import Any
 from flowforge.connectors.models import Connector
 from flowforge.flowmap.diff import apply_choices, default_take, diff
 from flowforge.flowmap.models import CALL_KINDS, CONNECTOR_TYPE, Analysis, Evidence, Flow, FlowEdge, Override, Trace
-from flowforge.flowmap.planner import Planner
+from flowforge.flowmap.planner import NoFlow, Planner
 from flowforge.flowmap.validate import FlowError, check, critical
 from flowforge.storage import FlowStore
 
@@ -107,6 +107,7 @@ class FlowService:
         self.store = store   # one map's versions, edits and positions (D21)
         self.connectors = connectors
         self.planner = planner
+        self.message: str | None = None   # why the Planner had nothing to draw (D25)
 
     # --- reading ---------------------------------------------------------------------------------
 
@@ -127,7 +128,7 @@ class FlowService:
     def current(self, layer: str = "mine") -> dict[str, Any]:
         base = self._base()
         if base is None:
-            return {"available": False, "message": NOT_AVAILABLE}
+            return {"available": False, "message": self.message or NOT_AVAILABLE}
         row, flow = base
         edits: dict[str, list[dict[str, Any]]] = {}
         hidden: list[dict[str, Any]] = []
@@ -166,7 +167,9 @@ class FlowService:
                 for cid, c in connectors.items() if cid in used}
         pending = self.store.latest_flow_version("pending")
         return {
-            "available": True, "kind": flow.kind, "version": row["version"], "created_at": row["created_at"],
+            "available": True, "kind": flow.kind, "source": flow.source, "version": row["version"],
+            "created_at": row["created_at"],
+            "advice": [a.model_dump(mode="json") for a in flow.advice], "written_ms": flow.written_ms,
             "layer": layer,
             "fact_sheet_hash": row["fact_sheet_hash"], "nodes": nodes, "edges": edges, "hidden": hidden,
             "critical_path": {"path": cp.path, "length_ms": cp.length_ms, "bottleneck": cp.bottleneck},
@@ -211,7 +214,12 @@ class FlowService:
         """Draw the first map if there is none. Returns its version, or None without a Planner."""
         if self.planner is None or self.store.count_flow_versions():
             return None
-        draft = self.planner.analyze(0)
+        try:
+            draft = self.planner.analyze(0)
+        except NoFlow as why:
+            self.message = str(why)
+            return None
+        self.message = None
         check(draft.flow, self.connectors())   # the Planner's output must be a valid map
         return self.store.add_flow_version("accepted", draft.flow.model_dump(mode="json"),
                                              draft.trace.model_dump(mode="json") if draft.trace else None,
@@ -286,7 +294,10 @@ class FlowService:
         if base is None:
             raise VersionError("there is no map to re-check yet")
         row, old = base
-        draft = self.planner.analyze(self.store.count_flow_versions())
+        try:
+            draft = self.planner.analyze(self.store.count_flow_versions())
+        except NoFlow as why:
+            raise VersionError(str(why)) from None
         try:
             check(draft.flow, self.connectors())
         except FlowError as err:

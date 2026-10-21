@@ -190,8 +190,10 @@ def api(tmp_path, monkeypatch):
     monkeypatch.setenv("FLOWFORGE_DB", str(tmp_path / "example.db"))
     monkeypatch.setenv("INVENTORY_TOKEN", FAKE_KEY)
     with TestClient(main.app) as c:
-        # the hand-made Baby-care flow, which the dashboard no longer shows (D23), with its edits and layout
+        # the hand-made Baby-care flow, which the dashboard no longer shows (D23), with its edits and layout; it
+        # replaces the trip planner's flow that example mode draws from code (D25)
         s = main.state
+        s.storage.clear_map("flow")
         flow = s.flows["flow"] = FlowService(s.storage.flows("flow"), lambda: {c.id: c for c in s.registry.all()},
                                              FixturePlanner())
         flow.first_map()

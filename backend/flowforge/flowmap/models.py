@@ -12,6 +12,8 @@ Lines (`FlowEdge.kind`): flow, branch (with `when`), fallback (taken when the so
 retry (a self-loop: the call is tried again), unconfirmed (leads to a block with no evidence).
 
 A map is a `flow` (the order the app runs in, D17) or `dependencies` (what the app uses, from a scan, D21).
+A flow read from code (`source="code"`, D25) carries no gates and no connected apps; its `advice` says which calls
+could run together.
 On a dependency map an app-call block is a dependency: it needs no connected app, gets no gate and no
 critical path, and `catalog` names a known service for its tile.
 """
@@ -74,6 +76,8 @@ class FlowNode(_Model):
     added_by: Literal["planner", "policy", "user"] = "planner"
     side_effect: bool = False   # set by validation, never trusted from input
     catalog: str | None = None  # dependency maps: a known service's id, for its tile (D21)
+    repeats: bool = False       # flows read from code: the call sits in a loop (D25)
+    estimate_source: Literal["measured", "estimate"] | None = None   # where `estimate_ms` came from (D25)
     evidence: list[Evidence] = Field(default_factory=list)
 
 
@@ -96,11 +100,25 @@ class Suggestion(_Model):
     text: str = Field(max_length=300)
 
 
+class Advice(_Model):
+    """Calls that could start together (D25): next to each other in the code, awaited one after another, and none
+    uses another's result. `saved_ms` is what running them together would save, from the blocks' weights."""
+
+    nodes: list[str] = Field(min_length=2)
+    refs: list[str]
+    text: str = Field(max_length=300)
+    saved_ms: float = Field(ge=0)
+    caveat: str | None = Field(default=None, max_length=300)
+
+
 class Flow(_Model):
     kind: Literal["flow", "dependencies"] = "flow"
+    source: Literal["planner", "code"] = "planner"   # code: read from the repo's own code (D25)
     nodes: list[FlowNode]
     edges: list[FlowEdge] = Field(default_factory=list)
     suggestions: list[Suggestion] = Field(default_factory=list)
+    advice: list[Advice] = Field(default_factory=list)
+    written_ms: float | None = None   # code flows: every call one after another, as the code is written (D25)
 
     @model_validator(mode="after")
     def _structure(self) -> Flow:
@@ -126,6 +144,10 @@ class Flow(_Model):
         for s in self.suggestions:
             if s.node not in known:
                 raise ValueError(f"suggestion for unknown block '{s.node}'")
+        for a in self.advice:
+            missing = [n for n in a.nodes if n not in known]
+            if missing:
+                raise ValueError(f"advice for unknown block '{missing[0]}'")
         return self
 
     def node(self, node_id: str) -> FlowNode | None:

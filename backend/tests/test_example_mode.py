@@ -53,8 +53,8 @@ def client(tmp_path, monkeypatch, offline):
         yield c
 
 
-def test_example_mode_shows_only_the_scanned_map_even_with_an_old_hand_drawn_one_saved(tmp_path, monkeypatch, offline):
-    """D23: nothing drawn by hand reaches a map. An example.db from before still holds the Baby-care flow."""
+def test_example_mode_shows_only_maps_read_from_code_even_with_an_old_hand_drawn_one_saved(tmp_path, monkeypatch, offline):
+    """D23, D25: nothing drawn by hand reaches a map. An example.db from before still holds the Baby-care flow."""
     from flowforge.flowmap import fixture
     from flowforge.storage import Storage
 
@@ -65,7 +65,8 @@ def test_example_mode_shows_only_the_scanned_map_even_with_an_old_hand_drawn_one
     monkeypatch.setenv("FLOWFORGE_DB", str(tmp_path / "example.db"))
     with TestClient(main.app) as c:
         assert c.get("/flow").json()["kind"] == "dependencies"
-        assert c.get("/flow?map=flow").json()["available"] is False
+        flow = c.get("/flow?map=flow").json()   # D25: the flow map is the trip planner's, read from its code
+        assert flow["source"] == "code" and not any(n["title"] == "Fetch order" for n in flow["nodes"])
 
 
 def test_meta_and_connectors(client):

@@ -795,7 +795,7 @@ D23's rule holds: nothing drawn by hand. Vishwa chose Python first, with Dart an
   - A repo with no Python entry point shows "Flow order needs Python for now; Dart and JS/TS are next."
 - **Entry points.**
   - An entry point is a function in the repo that reaches at least one dependency and that no other function in the repo calls.
-  - A wrapper whose whole body is one call into another such function is unwrapped (`main` → `asyncio.run(plan(...))` → `plan`).
+  - A wrapper whose whole body is one call into another such function is unwrapped (`main` → `asyncio.run(plan(...))` → `plan`). FlowForge doesn't unwrap into a helper that makes its own calls (`weather()` calling an API itself): that helper is a step.
   - Each entry point is a `start` block, so one map can hold several flows.
 - **Steps.** A statement in an entry function is a step when it reaches a dependency (D21) in one of four ways:
   - a scan evidence line inside it;
@@ -813,10 +813,12 @@ D23's rule holds: nothing drawn by hand. Vishwa chose Python first, with Dart an
     - a step inside `if cond:` depends on what defined `cond`'s names, and the `if` is a decision block with yes/no branches, its condition (`ast.unparse`) and its `file:line`;
     - an early `return` inside an `if` makes every later step depend on that decision.
   - **Order kept:**
-    - two side-effecting steps keep their written order;
+    - two writing steps keep their written order. A write is an HTTP call other than GET or HEAD, or an MCP tool whose name starts with a write verb (`write_file`, `create_…`, `send_…`, `delete_…` …). The tool's name also sets `Op.read_only`;
     - steps the code already runs together (`asyncio.gather`, a `TaskGroup`, `create_task`) are drawn together;
     - a step inside a loop is marked "repeats".
   - **Readability:** lines are transitively reduced. Plain code is not drawn as blocks, but it still carries data dependencies between steps.
+  - **One branch is enough.** An `if` without an `else` just carries on, so a decision on a code flow may show only its `yes` branch.
+  - **Reached through a server.** A dependency the scan found only through an MCP server (D21's `via`), named inside the statement that calls that server, gets its own block off the server's block. It adds no time of its own.
 - **No gates.** A flow read from code describes the user's app, not a run FlowForge executes. Side effects are marked, not gated (D17's gates stay for flows FlowForge runs). Call blocks need no connected app, as on dependency maps (D21).
 - **Weights for the critical path** (`validate.critical`, D1, D5):
   - the dependency's latest check latency (D24), marked `measured`;
@@ -828,7 +830,9 @@ D23's rule holds: nothing drawn by hand. Vishwa chose Python first, with Dart an
   - When the code stops early if an earlier step fails (`if place is None: return`), the advice carries that caveat: starting a step earlier can waste a call.
   - FlowForge never changes the code. V2 (Phase 10) can hand advice to a coding agent, on a branch, behind a gate.
 - **Model (additive):**
-  - `Flow.advice` (`nodes`, `refs`, `text`, `saved_ms`, `caveat`);
+  - `Flow.source` (`planner` | `code`);
+  - `Flow.advice` (`nodes`, `refs`, `text`, `saved_ms`, `caveat`). Advice below 50 ms is not shown;
+  - `Flow.written_ms`, the time as written;
   - `FlowNode.repeats`;
   - `FlowNode.estimate_source` (`measured` | `estimate`).
 - **Maps.**

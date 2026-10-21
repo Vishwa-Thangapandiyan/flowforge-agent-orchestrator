@@ -16,7 +16,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from flowforge.flowmap.planner import ScanPlanner
+from flowforge.flowmap.planner import CodeFlowPlanner, ScanPlanner
 from flowforge.flowmap.service import FlowService
 from flowforge.state import AppState, app_state
 from flowforge.storage import Storage
@@ -37,20 +37,28 @@ class RepoChangeError(ValueError):
     """A different folder while a map exists: it needs an explicit replace (D21)."""
 
 
-def choose_repo(storage: Storage, service: FlowService, path: Path, replace: bool) -> None:
-    """Map `path`: the same folder keeps its map; a different one starts a fresh map, but only with `replace`."""
+def map_repo(storage: Storage, maps: dict[str, FlowService], path: Path, fresh: bool) -> None:
+    """Both maps of one folder: what it depends on (D21) and the order its code calls them (D25), weighted by the
+    latest checks (D24)."""
+    maps["deps"].map_folder(ScanPlanner(path), fresh=fresh)
+    if "flow" in maps:
+        maps["flow"].map_folder(CodeFlowPlanner(path, storage.latest_latencies), fresh=fresh)
+
+
+def choose_repo(storage: Storage, maps: dict[str, FlowService], path: Path, replace: bool) -> None:
+    """Map `path`: the same folder keeps its maps; a different one starts fresh maps, but only with `replace`."""
     current = storage.setting(REPO_SETTING)
     changed = current != str(path)
-    if changed and current and service.has_map() and not replace:
+    if changed and current and maps["deps"].has_map() and not replace:
         raise RepoChangeError(f"there is already a map of {Path(current).name}; mapping {path.name} starts a fresh map")
     if changed:
         storage.set_setting(REPO_SETTING, str(path))
         if current:
             storage.clear_checks()   # another repo's results don't belong to this one (D24)
-    service.map_folder(ScanPlanner(path), fresh=changed)
+    map_repo(storage, maps, path, fresh=changed)
 
 
-def startup_repo(storage: Storage, service: FlowService) -> None:
+def startup_repo(storage: Storage, maps: dict[str, FlowService]) -> None:
     """At start-up outside example mode: FLOWFORGE_REPO (`flowforge --repo`), else the folder chosen last time.
     A different folder needs FLOWFORGE_REPO_REPLACE=1 (`--replace`); otherwise FlowForge refuses to start."""
     chosen = os.getenv("FLOWFORGE_REPO")
@@ -59,13 +67,13 @@ def startup_repo(storage: Storage, service: FlowService) -> None:
         if not path.is_dir():
             raise RuntimeError(f"FLOWFORGE_REPO={chosen} is not a folder")
         try:
-            choose_repo(storage, service, path.resolve(), replace=os.getenv("FLOWFORGE_REPO_REPLACE") == "1")
+            choose_repo(storage, maps, path.resolve(), replace=os.getenv("FLOWFORGE_REPO_REPLACE") == "1")
         except RepoChangeError as err:
             raise RuntimeError(f"{err}. Run with --replace to start it fresh.") from None
         return
     saved = storage.setting(REPO_SETTING)
     if saved and Path(saved).is_dir():
-        service.map_folder(ScanPlanner(Path(saved)), fresh=False)
+        map_repo(storage, maps, Path(saved), fresh=False)
 
 
 def repo_path(s: AppState) -> Path | None:
@@ -101,9 +109,8 @@ def post_scan(body: ScanRequest) -> dict[str, Any]:
     if not path.is_dir():
         raise HTTPException(422, "that isn't a folder on this machine")
     path = path.resolve()
-    service = s.flows["deps"]
     try:
-        choose_repo(s.storage, service, path, body.replace)
+        choose_repo(s.storage, s.flows, path, body.replace)
     except RepoChangeError as err:
         raise HTTPException(409, f"{err} (send replace: true)") from None
-    return {"repo": str(path), "name": path.name, "version": service.current().get("version")}
+    return {"repo": str(path), "name": path.name, "version": s.flows["deps"].current().get("version")}

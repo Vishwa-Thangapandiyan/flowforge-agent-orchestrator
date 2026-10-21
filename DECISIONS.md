@@ -700,6 +700,64 @@ Vishwa also restated the goal: an MCP management tool that works out the critica
 
 **Code:** `main.py`, `example_data.py`, `scan/files.py`, `scan/scanner.py`, `frontend/src/flowmap/FlowMapPage.tsx`, `CLAUDE.md` (roadmap).
 
+## D24. Health checks: what a check is and how it runs (Phase 5, Vishwa, 2026-10-21)
+
+**Context.** D19 asked for "Check now" with generic checks per kind and results stored over time. Vishwa's answers:
+- **Timer:** not sure yet. This phase has none; checks run when the user presses the button.
+- **Keys:** only if it's safe. No check reads or sends a key.
+
+**What gets checked.** The current dependency map, with the user's edits:
+- confirmed blocks, including the "Your coding tools" group (D21);
+- not hidden blocks;
+- not unconfirmed blocks, which show grey: "not checked: unconfirmed".
+
+**One check per kind.** Results are `up` (green), `warn` (amber) or `down` (red), with a latency and a short reason that passes through the redactor. Response bodies are never kept.
+
+| Kind | What it does | up | warn | down |
+|---|---|---|---|---|
+| API | One GET to the target: no key, cookie or query; a FlowForge User-Agent; 10 s timeout | any answer below 500. A 401 or 403 means "up, needs a key" | slower than 2 s; plain `http://`; or a TLS certificate that expires within 14 days | no answer, a DNS failure, a timeout, or a 5xx |
+| LLM | Its model list: Ollama `/api/tags`, OpenAI-compatible `{base}/models` | reachable, and the model is listed (or a key is needed to see the list) | the model isn't listed | not reachable |
+| MCP, stdio | Start it in the repo folder with the MCP SDK's minimal environment (none of the user's own variables), list its tools, stop it; 30 s timeout | tools listed | took over 5 s | didn't start or couldn't list tools. The reason is the error and the last lines of its stderr, redacted, plus the env var names its config names |
+| MCP, remote URL | As an API | | | |
+| Local | The script exists in the repo, or the program is on `PATH`. **It is never run** | found | | missing |
+
+**Starting an MCP server runs code.** That code is a script in the repo, or an `npx`/`uvx` package fetched from npm or PyPI.
+- The first "Check now" lists exactly which commands will start, and the user confirms.
+- The confirmation is kept per map version (its `fact_sheet_hash`), so a re-scan that changes the commands asks again.
+- Without it, `POST /checks` answers 409.
+
+**How checks run (D19: the scheduler runs them).**
+- `StepType` gains `"check"`, an additive change, and `CheckNode` runs one check per step.
+- A check run is a workflow with:
+  - one step per dependency and no edges;
+  - `retries: 0`, because a retry would hide flakiness;
+  - no cache;
+  - at most 8 checks at once, 3 of them MCP servers.
+- It starts through the existing `start_run`, so its progress streams over the existing SSE and the run is stored (D16).
+- **A dependency that is down is a result, not a failed step.** The step succeeds with `{status: "down", reason}`. A step fails only when the check itself breaks.
+
+**Storage.** Table `checks`, one row per dependency per check: `run_id, dep_id, kind, status, latency_ms, summary, detail, at`. It is written when the run ends. Every check is kept; there is no pruning yet.
+
+**Example mode stays offline (D16).** "Check now" returns recorded results, labelled as example results, and sends nothing. The trip planner's broken `currency` server records its real error.
+
+**Later, opt-in, not built now: authenticated checks.**
+- The key is read from `.env` only at check time.
+- It is sent only to the dependency's own host from the code.
+- It is never stored, logged or shown.
+- The user turns it on per dependency.
+
+**Defaults.** These numbers are FlowForge's choices and may be tuned:
+- slow means over 2 s for an API or LLM, and over 5 s for an MCP server;
+- 14 days of certificate left;
+- 10 s and 30 s timeouts.
+
+**Why:**
+- A check that needs no key and runs nothing it doesn't have to is safe to press on any repo.
+- Running checks through the scheduler gives live progress, stored history and concurrency limits for free. Their latencies become Phase 6's critical-path weights.
+- Asking before starting MCP servers keeps the promise that FlowForge never runs your code behind your back.
+
+**Code:** `checks/` (new), `nodes/check_node.py` (new), `schema.py` (`"check"`), `storage.py` (`checks`), `api/checks.py` (new), `connectors/presets.py` (LLM health paths), `example_data.py`, `frontend/src/`.
+
 ---
 
 ## Step JSON schema (reference)

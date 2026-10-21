@@ -167,6 +167,7 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
   const [params, setParams] = useSearchParams();
   const setMap = (m: MapId) => setParams(m === "flow" ? { ...Object.fromEntries(params), map: "flow" } : {});
   const [pointed, setPointed] = useState<Set<string> | null>(null);   // the blocks a piece of advice covers
+  const repo = useApi<{ name: string | null }>(code ? "/scan" : null);   // a code flow is named after its repo
   const q = mapQuery(map);
   const meta = useMeta();
   const navigate = useNavigate();
@@ -390,6 +391,8 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
   const bottleneck = flow.critical_path.bottleneck ? flow.nodes.find((n) => n.id === flow.critical_path.bottleneck) : undefined;
   const busy = !!play && !frame?.done;
   const elapsed = frame ? (frame.t / 1000).toFixed(1) : "0.0";
+  const callCount = flow.nodes.filter((n) => ["llm", "api", "mcp", "local"].includes(n.kind)).length;
+  const decisionCount = flow.nodes.filter((n) => n.kind === "decision").length;
   const progress = frame ? Math.round((Object.values(frame.nodes).filter((s) => !["idle", "running", "retry", "waiting"].includes(s)).length / Math.max(1, flow.nodes.length)) * 100) : 0;
   const fellBack = !!frame && !!trace && trace.steps.some((s) => s.outcome === "failed" && (frame.nodes[s.node] === "failed"));
 
@@ -398,10 +401,12 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
       <Markers />
       <header className="fm-top">
         <div className="fm-proj">
-          <h1>{deps ? (appName ?? meta.project) : meta.project}</h1>
+          <h1>{deps ? (appName ?? meta.project) : code ? (repo.data?.name ?? meta.project) : meta.project}</h1>
           <small>
             {deps ? <span>{depCount} dependencies</span>
-              : <><span>{flow.counts.steps} steps</span><span>·</span><span>{flow.counts.gates} gates</span></>}
+              : code ? <><span>{callCount} call{callCount === 1 ? "" : "s"}</span><span>·</span>
+                <span>{decisionCount} decision{decisionCount === 1 ? "" : "s"}</span></>
+                : <><span>{flow.counts.steps} steps</span><span>·</span><span>{flow.counts.gates} gates</span></>}
             {flow.counts.unconfirmed > 0 && <><span>·</span><span>{flow.counts.unconfirmed} unconfirmed</span></>}
             {meta.example && <span className="chip tone-violet" style={{ padding: "2px 8px", fontSize: 11 }}>Example data</span>}
           </small>
@@ -450,7 +455,7 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
             </button>
           </div>
           <button className="btn ai" type="button" onClick={recheck} disabled={rechecking}>
-            {Icons.refresh(18)} {deps
+            {Icons.refresh(18)} {deps || code
               ? (flow.pending ? "Review the re-scan" : rechecking ? "Re-scanning…" : "Re-scan the repo")
               : (flow.pending ? "Review the re-check" : rechecking ? "Re-checking…" : "Re-check the repo")}
           </button>

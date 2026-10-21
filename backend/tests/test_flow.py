@@ -96,6 +96,7 @@ def test_the_advice_starts_independent_calls_together():
     assert "asyncio.gather" in after.text
     # fetch and currency need only values known before the city check: starting them earlier could waste them
     assert "planner.py:53" in after.caveat and "fetch" in after.caveat and "currency" in after.caveat
+    assert "Open-Meteo" not in after.caveat   # it needs the city's coordinates: it can't start before the check
     assert all(a.saved_ms > 0 for a in flow.advice)
     # as written: every call one after another. Nominatim is called twice (the city, the sight), Ollama counts its
     # 2.0 s estimate, and Wikipedia is inside fetch's time.

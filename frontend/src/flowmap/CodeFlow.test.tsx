@@ -10,7 +10,7 @@ afterEach(() => vi.unstubAllGlobals());
 const REAL = { ...META, example: false };
 const routes = (flow: unknown) => ({
   "/meta": REAL, "/connectors": CONNECTORS, "/checks": { run_id: null, checked_at: null, summary: {}, items: [], example: false },
-  "/flow?layer=mine": DEPS, "/flow?layer=mine&map=flow": flow,
+  "/flow?layer=mine": DEPS, "/flow?layer=mine&map=flow": flow, "/scan": { name: "trip-planner", example: false },
 });
 
 test("the Flow switch shows the order the code calls its dependencies, and how it could be faster", async () => {
@@ -20,6 +20,9 @@ test("the Flow switch shows the order the code calls its dependencies, and how i
   await userEvent.click(screen.getByRole("button", { name: "Flow" }));
   expect(await screen.findByText("fetch", { selector: ".ff-title" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: /Read from your code/ })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { level: 1, name: "trip-planner" })).toBeInTheDocument();
+  expect(screen.getByRole("banner")).toHaveTextContent("4 calls·1 decision");
+  expect(screen.getByRole("button", { name: /Re-scan the repo/ })).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /Test run/ })).not.toBeInTheDocument();   // nothing to replay (D25)
   const faster = screen.getByRole("region", { name: "Faster" });
   expect(within(faster).getByText("9.4 s")).toBeInTheDocument();   // as written

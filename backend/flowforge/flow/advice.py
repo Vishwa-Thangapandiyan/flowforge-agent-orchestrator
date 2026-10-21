@@ -55,8 +55,8 @@ def advise(flow: Flow, meta: dict[str, dict]) -> list[Advice]:
 
 
 def _caveat(flow: Flow, ids: list[str], meta: dict[str, dict], names: list[str]) -> str | None:
-    """Steps that wait only for an early return, not for any data: they could start even before it, but when the
-    code stops there, those calls are wasted."""
+    """Steps that need no other call's result, only an early return's go-ahead: they could start even before that
+    check, but when the code stops there, those calls are wasted."""
     into: dict[str, list[str]] = defaultdict(list)
     for e in flow.edges:
         into[e.target].append(e.source)
@@ -64,7 +64,8 @@ def _caveat(flow: Flow, ids: list[str], meta: dict[str, dict], names: list[str])
     early, guard = [], None
     for i in ids:
         sources = into[i]
-        if sources and not meta[i]["ifs"] and all(by_id[s].kind == "decision" for s in sources):
+        if sources and not meta[i]["ifs"] and not meta[i].get("needs_data") \
+                and all(by_id[s].kind == "decision" for s in sources):
             stops = [s for s in sources if any(e.source == s and by_id[e.target].kind == "end" for e in flow.edges)]
             if stops and len(stops) == len(sources):
                 early.append(meta[i]["name"])

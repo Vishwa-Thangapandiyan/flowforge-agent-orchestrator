@@ -184,7 +184,12 @@ class _Builder:
                     memo[i] |= {(p, lab)} if p in leaves else {(q, None) for q, _ in drawn(p)}
             return memo[i]
 
+        steps = {i for i, out in leaves.items() if not out[0].startswith("if-")}
         for i, targets in enters.items():
+            # does it need a value another call produced? (before reduction hides it behind a decision)
+            for b in targets:
+                if b in self.meta:
+                    self.meta[b]["needs_data"] = any(p in steps for p, _ in drawn(i))
             for p, lab in drawn(i):
                 for a in leaves[p]:
                     for b in targets:

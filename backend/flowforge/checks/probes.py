@@ -6,6 +6,7 @@ import asyncio
 import json
 import os
 import shutil
+import socket
 import ssl
 import tempfile
 import time
@@ -14,6 +15,7 @@ from datetime import UTC, datetime
 from http.cookiejar import CookieJar
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 from mcp import ClientSession, StdioServerParameters
@@ -30,6 +32,8 @@ CERT_WARN_DAYS = 14
 MCP_SLOW_MS = 5000        # an MCP server slower than this to list its tools needs a look
 MCP_TIMEOUT_S: float = 30
 STDERR_LINES = 3
+KNOCK_TIMEOUT_S = 5       # when a request can't connect: how long each address gets to accept a connection
+MAX_ADDRESSES = 4
 USER_AGENT = "FlowForge health check (one request, no keys)"
 _redactor = Redactor()
 
@@ -88,6 +92,75 @@ def _result(t: CheckTarget, status: Status, summary: str, **fields: Any) -> Chec
     return CheckResult(id=t.id, status=status, summary=summary, **fields)
 
 
+async def lookup(host: str, port: int) -> list[str]:
+    """The addresses a name resolves to (DNS). Raises OSError (socket.gaierror) when it doesn't resolve."""
+    infos = await asyncio.get_running_loop().getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    return list(dict.fromkeys(info[4][0] for info in infos))
+
+
+async def knock(ip: str, port: int) -> str:
+    """Does this address accept a connection? "open", "refused", "silent" (no answer) or "unreachable"."""
+    try:
+        _, writer = await asyncio.wait_for(asyncio.open_connection(ip, port), KNOCK_TIMEOUT_S)
+    except ConnectionRefusedError:
+        return "refused"
+    except TimeoutError:
+        return "silent"
+    except OSError:
+        return "unreachable"
+    writer.close()
+    return "open"
+
+
+def _addresses(ips: list[str], total: int | None = None) -> str:
+    """"Both of its addresses (a, b)", or "2 of its 4 addresses (a, b)" when only some of them are meant."""
+    n, total = len(ips), total or len(ips)
+    if n < total:
+        who = f"{n} of its {total} addresses"
+    else:
+        who = "Its address" if n == 1 else "Both of its addresses" if n == 2 else f"All {n} of its addresses"
+    return f"{who} ({', '.join(ips)})"
+
+
+async def _why_not(t: CheckTarget, url: str, error: str) -> CheckResult:
+    """A request that couldn't connect, explained step by step (D24): does the name resolve, and does each address
+    accept, refuse or ignore a connection on the port? Only names, addresses and ports: nothing is sent."""
+    parts = urlsplit(url)
+    host, port = parts.hostname or "", parts.port or (443 if parts.scheme == "https" else 80)
+    try:
+        ips = (await lookup(host, port))[:MAX_ADDRESSES]
+    except OSError as exc:
+        why = getattr(exc, "strerror", None) or str(exc)
+        return _result(t, "down", "Its name doesn't resolve", reason=f"{host} has no address (DNS): {why}",
+                       fix="Check the host name in the code. If it is right, the service may be gone, or this "
+                           "computer's DNS is failing.", detail={"network": "dns"})
+    knocks = await asyncio.gather(*(knock(ip, port) for ip in ips))
+    by = {k: [ip for ip, r in zip(ips, knocks, strict=True) if r == k] for k in set(knocks)}
+    if by.get("open"):
+        return _result(t, "down", "Its server answers, but the secure connection failed" if parts.scheme == "https"
+                       else "Its server answers, but the request failed", reason=error,
+                       fix="Often a certificate problem, or a proxy or antivirus between you and the service.",
+                       detail={"network": "request"})
+    if by.get("refused"):
+        others = len(ips) - len(by["refused"])
+        tail = f" The other {others} {'is' if others == 1 else 'are'} unreachable from this network." if others else ""
+        return _result(t, "down", "Refused the connection",
+                       reason=f"{_addresses(by['refused'], len(ips))} refused connections on port {port}.{tail}",
+                       fix="Nothing there accepts connections: the service is down, or it is blocking this computer "
+                           "(public servers often block addresses that send too many requests). Try again later; if "
+                           "it lasts, check the service's status page or use a mirror.",
+                       detail={"network": "refused"})
+    if by.get("silent"):
+        server = "server" if len(ips) == 1 else "servers"
+        return _result(t, "down", f"No answer from its {server}",
+                       reason=f"{_addresses(ips)} didn't answer on port {port}.",
+                       fix="The service may be down, or a firewall between you is dropping the connection.",
+                       detail={"network": "silent"})
+    return _result(t, "down", "Can't reach its servers",
+                   reason=f"{_addresses(ips)} can't be reached from this network.",
+                   fix="Check this computer's network or VPN.", detail={"network": "unreachable"})
+
+
 @dataclass
 class _Answer:
     code: int
@@ -108,6 +181,8 @@ async def _get(t: CheckTarget, url: str, http: httpx.AsyncClient, *, read: bool 
             return answer
     except httpx.TimeoutException:
         return _result(t, "down", f"No answer within {HTTP_TIMEOUT_S} s")
+    except httpx.ConnectError as exc:
+        return await _why_not(t, url, str(exc) or type(exc).__name__)
     except httpx.HTTPError as exc:
         return _result(t, "down", "Can't connect", reason=str(exc) or type(exc).__name__)
 

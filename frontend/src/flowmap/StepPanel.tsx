@@ -5,7 +5,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useApi } from "../api/client";
 import type { CheckRecord, Connector, Evidence, FlowNode, FlowView } from "../api/types";
 import { BrandTile } from "../brand/BrandTile";
-import { Dot, took, WORD } from "../checks/Health";
+import { Dot, InternetWorks, took, WORD } from "../checks/Health";
 import type { LiveItem } from "../checks/useChecks";
 import { when } from "../components/format";
 import { Icons } from "../components/icons";
@@ -46,6 +46,8 @@ interface Props {
   actions: PanelActions;
   /** a dependency's latest check (D24) */
   health?: LiveItem;
+  /** how many other dependencies answered in the last check: a down one then isn't your connection */
+  othersUp?: number;
   example?: boolean;
   checking?: boolean;
   onCheck?: (id: string) => void;
@@ -54,8 +56,8 @@ interface Props {
 const HISTORY_BARS = 8;
 
 /** The verdict first, in the dependency's own words, then a likely fix and the last checks (D24). */
-function Health({ item, example, checking, onCheck }: { item: LiveItem; example?: boolean; checking?: boolean;
-  onCheck?: (id: string) => void }) {
+function Health({ item, othersUp, example, checking, onCheck }: { item: LiveItem; othersUp?: number; example?: boolean;
+  checking?: boolean; onCheck?: (id: string) => void }) {
   const checked = !["unchecked", "unconfirmed", "checking"].includes(item.status);
   const history = useApi<CheckRecord[]>(checked ? `/checks/${encodeURIComponent(item.id)}?limit=${HISTORY_BARS}` : null);
   const bars = [...(history.data ?? [])].reverse();
@@ -71,6 +73,7 @@ function Health({ item, example, checking, onCheck }: { item: LiveItem; example?
         </span>
       </div>
       {item.reason && <p className={`sp-reason ${item.status}`}>{item.reason}</p>}
+      <InternetWorks item={item} othersUp={othersUp} />
       {item.fix && <p className="hc-fix"><span>Likely fix</span>{item.fix}</p>}
       {bars.length > 1 && (
         <div className="sp-bars" role="img" aria-label={`last ${bars.length} checks`}>
@@ -116,8 +119,8 @@ function EvidenceItem({ ev }: { ev: Evidence }) {
   );
 }
 
-export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, tipShown, layer, actions, health, example,
-  checking, onCheck }: Props) {
+export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, tipShown, layer, actions, health, othersUp,
+  example, checking, onCheck }: Props) {
   const [name, setName] = useState(node.title);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -167,7 +170,7 @@ export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, t
         <button className="fm-ib" type="button" aria-label="Close details" onClick={actions.close}>{Icons.close(18)}</button>
       </div>
       {runText && state !== "idle" && <div className={`sp-run ${state}`} role="status">{runText}</div>}
-      {health && <Health item={health} example={example} checking={checking} onCheck={onCheck} />}
+      {health && <Health item={health} othersUp={othersUp} example={example} checking={checking} onCheck={onCheck} />}
 
       <div className="sp-sec">
         <span className="sp-sh">{what}</span>

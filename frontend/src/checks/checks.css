@@ -87,3 +87,6 @@
   .hc-cmd:first-child { border-top: 0; }
   .hc-cmd > * { border: 0; padding: 2px 14px; }
 }
+.hc-net { display: flex; align-items: center; gap: 7px; margin: 10px 0 0; font-size: 13px; color: var(--muted); }
+.hc-net svg { color: var(--teal); flex: 0 0 auto; }
+.ck-side .hc-net { margin: 0 0 16px; }

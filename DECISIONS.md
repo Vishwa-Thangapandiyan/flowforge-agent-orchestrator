@@ -713,6 +713,13 @@ Vishwa also restated the goal: an MCP management tool that works out the critica
 
 **One check per kind.** Results are `up` (green), `warn` (amber) or `down` (red), with a latency and a short reason that passes through the redactor. Response bodies are never kept.
 
+**When a request can't connect, the check says why, step by step.** It asks:
+- does the name resolve (DNS)?
+- does each of its addresses, up to 4, accept, refuse or ignore a connection on the port?
+- if the port is open, did the secure connection fail?
+
+Only the name, the addresses and the port are used, and nothing else is sent. The answer goes in plain words, with a likely fix. For example, "both of its addresses refused connections on port 443" means the service is down or blocking this computer. The dashboard adds "your internet works" when other dependencies answered in the same check.
+
 A dependency with nothing to check is `skipped` (grey) and says why. Two cases:
 - the code holds no address for it (an SDK such as Supabase, whose URL comes from config at runtime);
 - its MCP arguments include a masked secret, which FlowForge won't fill in.

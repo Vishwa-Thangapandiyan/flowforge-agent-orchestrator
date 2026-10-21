@@ -98,8 +98,10 @@ test("a dependency's Health says why it is down and how to fix it, and can be ch
   const onCheck = vi.fn();
   const ollama = DEPS.nodes.find((n) => n.id === "llm-ollama")!;
   render(<StepPanel node={ollama} flow={DEPS} tile={null} state="idle" cap="" waiting={false} connectors={[]} tipShown
-    layer="mine" actions={actions()} health={CHECKS.items[0]} onCheck={onCheck} />);
+    layer="mine" actions={actions()} health={CHECKS.items[0]} othersUp={3} onCheck={onCheck} />);
   expect(screen.getByText("Down: Nothing answers at localhost:11434")).toBeInTheDocument();
+  // it isn't your connection: other dependencies answered in the same check
+  expect(screen.getByText("Your internet works: 3 others answered in the last check.")).toBeInTheDocument();
   expect(screen.getByText("[Errno 111] Connection refused")).toBeInTheDocument();
   expect(screen.getByText("Start Ollama (`ollama serve`).")).toBeInTheDocument();
   expect(await screen.findByRole("img", { name: "last 2 checks" })).toBeInTheDocument();

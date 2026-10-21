@@ -541,6 +541,7 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
         {selected && (
           <StepPanel key={selected.id} node={selected} flow={flow} tile={tileFor(selected)}
             health={deps ? health[selected.id] : undefined} example={meta.example} checking={checks.running}
+            othersUp={checks.items.filter((i) => i.status === "up" && i.id !== selected.id).length}
             onCheck={(id) => void checks.checkNow([id])}
             state={frame?.nodes[selected.id] ?? "idle"} cap={frame?.caps[selected.id] ?? ""} waiting={frame?.waiting === selected.id}
             connectors={connectors} tipShown={!dismissed.has(selected.id)} layer={layer}

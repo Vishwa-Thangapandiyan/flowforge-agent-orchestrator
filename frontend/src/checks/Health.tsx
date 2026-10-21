@@ -47,6 +47,12 @@ export function Dot({ status, style }: { status: LiveStatus; style?: CSSProperti
   return <span className={`hdot ${status}`} style={style} aria-hidden="true" />;
 }
 
+/** When a service that is called over the network is down but others answered, it isn't your connection. */
+export function InternetWorks({ item, othersUp }: { item: { status: LiveStatus; kind: string }; othersUp?: number }) {
+  if (item.status !== "down" || !["api", "llm"].includes(item.kind) || !othersUp) return null;
+  return <p className="hc-net">{Icons.check(14)}Your internet works: {othersUp} other{othersUp === 1 ? "" : "s"} answered in the last check.</p>;
+}
+
 /** Under a block on the map: its latency, or a few words when there is none. */
 export function caption(status: LiveStatus, summary: string, latency: number | null | undefined): string {
   if (status === "checking") return "checking…";

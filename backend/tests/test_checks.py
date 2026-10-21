@@ -5,10 +5,23 @@ import asyncio
 from datetime import UTC, datetime, timedelta
 
 import httpx
+import pytest
 
 from flowforge import checks
 from flowforge.checks import CheckTarget, check
 from flowforge.scan.models import EnvName
+
+
+@pytest.fixture(autouse=True)
+def no_real_network(monkeypatch):
+    """When a request can't connect, the check looks into why (DNS, then each address). Here that network is fake:
+    every name resolves to one documentation address, and every knock is refused, unless a test says otherwise."""
+    async def lookup(host, port):
+        return ["192.0.2.10"]
+    async def knock(ip, port):
+        return "refused"
+    monkeypatch.setattr(checks.probes, "lookup", lookup)
+    monkeypatch.setattr(checks.probes, "knock", knock)
 
 
 def client(handler):
@@ -51,10 +64,10 @@ async def test_a_server_error_or_no_answer_is_down(tmp_path):
         assert (await check(api("https://api.flaky.test/"), tmp_path, http=http)).status == "down"
 
     def refuse(request):
-        raise httpx.ConnectError("connection refused")
+        raise httpx.ConnectError("All connection attempts failed")
     async with client(refuse) as http:
         result = await check(api("https://api.gone.test/v1"), tmp_path, http=http)
-    assert result.status == "down" and result.summary == "Can't connect" and "refused" in result.reason
+    assert result.status == "down" and result.summary == "Refused the connection"
 
     def hang(request):
         raise httpx.ReadTimeout("timed out")
@@ -261,3 +274,73 @@ async def test_no_cookie_is_kept_or_sent(tmp_path):
         await check(api("https://api.cookies.test/v1"), tmp_path, http=http)
         await check(api("https://api.cookies.test/v1"), tmp_path, http=http)
     assert seen == [None, None]
+
+
+# --- why it can't connect: the name, then each address, then the request -----------------------------------------
+
+def refuse(request):
+    raise httpx.ConnectError("All connection attempts failed")
+
+
+async def test_why_it_cant_connect_every_address_refuses(tmp_path, monkeypatch):
+    async def lookup(host, port):
+        return ["162.55.144.139", "65.109.112.52"]
+    monkeypatch.setattr(checks.probes, "lookup", lookup)
+    async with client(refuse) as http:
+        result = await check(api("https://overpass.test/api/interpreter"), tmp_path, http=http)
+    assert result.summary == "Refused the connection"
+    assert result.reason == "Both of its addresses (162.55.144.139, 65.109.112.52) refused connections on port 443."
+    assert "blocking this computer" in result.fix and result.detail["network"] == "refused"
+
+
+async def test_why_it_cant_connect_the_name_does_not_resolve(tmp_path, monkeypatch):
+    import socket
+    async def lookup(host, port):
+        raise socket.gaierror(-2, "Name or service not known")
+    monkeypatch.setattr(checks.probes, "lookup", lookup)
+    async with client(refuse) as http:
+        result = await check(api("https://api.typo.test/v1"), tmp_path, http=http)
+    assert result.summary == "Its name doesn't resolve"
+    assert result.reason == "api.typo.test has no address (DNS): Name or service not known"
+    assert result.detail["network"] == "dns"
+
+
+async def test_why_it_cant_connect_the_servers_stay_silent_or_the_port_is_open(tmp_path, monkeypatch):
+    async def silent(ip, port):
+        return "silent"
+    monkeypatch.setattr(checks.probes, "knock", silent)
+    async with client(refuse) as http:
+        result = await check(api("http://api.quiet.test:8080/v1"), tmp_path, http=http)
+    assert result.summary == "No answer from its server"
+    assert result.reason == "Its address (192.0.2.10) didn't answer on port 8080."
+
+    async def open_(ip, port):
+        return "open"
+    monkeypatch.setattr(checks.probes, "knock", open_)
+    def tls(request):
+        raise httpx.ConnectError("[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed")
+    async with client(tls) as http:
+        result = await check(api("https://api.selfsigned.test/v1"), tmp_path, http=http)
+    assert result.summary == "Its server answers, but the secure connection failed"
+    assert "CERTIFICATE_VERIFY_FAILED" in result.reason
+
+
+async def test_a_local_llm_not_running_is_still_said_plainly(tmp_path):
+    async with client(refuse) as http:
+        result = await check(CheckTarget(id="llm-ollama", kind="llm", name="Ollama", catalog="ollama",
+                                         target="localhost:11434"), tmp_path, http=http)
+    assert result.summary == "Nothing answers at localhost:11434" and result.fix == "Start Ollama (`ollama serve`)."
+
+
+async def test_some_addresses_refuse_and_the_rest_are_out_of_reach(tmp_path, monkeypatch):
+    """Overpass from a network without IPv6: two addresses refuse, two can't be reached."""
+    async def lookup(host, port):
+        return ["2a01:4f9::2", "65.109.112.52", "2a01:4f8::2", "162.55.144.139"]
+    async def knock(ip, port):
+        return "unreachable" if ":" in ip else "refused"
+    monkeypatch.setattr(checks.probes, "lookup", lookup)
+    monkeypatch.setattr(checks.probes, "knock", knock)
+    async with client(refuse) as http:
+        result = await check(api("https://overpass.test/api/interpreter"), tmp_path, http=http)
+    assert result.reason == ("2 of its 4 addresses (65.109.112.52, 162.55.144.139) refused connections on port 443. "
+                             "The other 2 are unreachable from this network.")

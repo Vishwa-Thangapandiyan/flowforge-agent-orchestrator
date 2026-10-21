@@ -8,7 +8,7 @@ import { BrandTile } from "../brand/BrandTile";
 import { clock, when } from "../components/format";
 import { Icons } from "../components/icons";
 import { EmptyState, ErrorBox } from "../components/ui";
-import { byProblem, CheckConfirm, countOf, countsText, Dot, isProblem, Squares, took, WORD } from "./Health";
+import { byProblem, CheckConfirm, countOf, countsText, Dot, InternetWorks, isProblem, Squares, took, WORD } from "./Health";
 import { useChecks, type LiveItem } from "./useChecks";
 
 const TILE: Partial<Record<NodeKind, ConnectorType>> = { llm: "llm", api: "http", mcp: "mcp", local: "local" };
@@ -18,7 +18,7 @@ function Tile({ item, size = 26 }: { item: LiveItem; size?: number }) {
   return <BrandTile c={{ id: item.catalog ?? item.id, type: TILE[item.kind] ?? "http", name: item.name }} size={size} />;
 }
 
-function History({ item }: { item: LiveItem }) {
+function History({ item, othersUp }: { item: LiveItem; othersUp: number }) {
   const history = useApi<CheckRecord[]>(`/checks/${encodeURIComponent(item.id)}`);
   const fix = history.data?.find((h) => h.fix)?.fix ?? item.fix;
   return (
@@ -35,6 +35,7 @@ function History({ item }: { item: LiveItem }) {
         ))}
       </ul>
       {fix && history.data?.[0]?.status !== "up" && <p className="hc-fix"><span>Likely fix</span>{fix}</p>}
+      <div style={{ padding: "0 16px" }}><InternetWorks item={item} othersUp={othersUp} /></div>
     </section>
   );
 }
@@ -124,7 +125,8 @@ export function ChecksPage() {
             </tbody>
           </table>
         </div>
-        {selected && <History key={selected.id} item={selected} />}
+        {selected && <History key={selected.id} item={selected}
+          othersUp={sorted.filter((i) => i.status === "up" && i.id !== selected.id).length} />}
       </div>
       <div className="ck-foot">
         <span>Checks use no keys. Results stay on this computer.</span>

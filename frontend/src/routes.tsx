@@ -1,4 +1,5 @@
 import { createBrowserRouter, Link, Navigate } from "react-router-dom";
+import { ChecksPage } from "./checks/ChecksPage";
 import { Shell } from "./components/Shell";
 import { FlowMapPage } from "./flowmap/FlowMapPage";
 import { HowDrawn } from "./flowmap/HowDrawn";
@@ -31,6 +32,7 @@ export const routes = [
       { path: "/connectors/:id", element: <ConnectorPage /> },
       { path: "/connectors/:id/edit", element: <AddConnector /> },
       { path: "/plans", element: <Navigate to="/" replace /> },  // the plan is the map now (D17)
+      { path: "/checks", element: <ChecksPage /> },
       { path: "/live", element: <LiveRunLatest /> },
       { path: "/runs", element: <RunHistory /> },
       { path: "/runs/:id", element: <LiveRun /> },

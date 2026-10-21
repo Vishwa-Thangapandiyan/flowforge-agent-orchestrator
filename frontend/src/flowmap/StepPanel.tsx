@@ -1,8 +1,13 @@
 // The step panel (D17): what a block does, its app, the Planner's tip, the evidence, recent runs and your edits.
+// On a dependency map its health comes first: the verdict, why, and the likely fix (D24).
 // Edits are saved on top of the Planner's version and never touch your code.
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import type { Connector, Evidence, FlowNode, FlowView } from "../api/types";
+import { useApi } from "../api/client";
+import type { CheckRecord, Connector, Evidence, FlowNode, FlowView } from "../api/types";
 import { BrandTile } from "../brand/BrandTile";
+import { Dot, took, WORD } from "../checks/Health";
+import type { LiveItem } from "../checks/useChecks";
+import { when } from "../components/format";
 import { Icons } from "../components/icons";
 import type { TileSource } from "./nodes";
 import type { NodeState } from "./replay";
@@ -39,6 +44,49 @@ interface Props {
   tipShown: boolean;
   layer: "mine" | "planner";
   actions: PanelActions;
+  /** a dependency's latest check (D24) */
+  health?: LiveItem;
+  example?: boolean;
+  checking?: boolean;
+  onCheck?: (id: string) => void;
+}
+
+const HISTORY_BARS = 8;
+
+/** The verdict first, in the dependency's own words, then a likely fix and the last checks (D24). */
+function Health({ item, example, checking, onCheck }: { item: LiveItem; example?: boolean; checking?: boolean;
+  onCheck?: (id: string) => void }) {
+  const checked = !["unchecked", "unconfirmed", "checking"].includes(item.status);
+  const history = useApi<CheckRecord[]>(checked ? `/checks/${encodeURIComponent(item.id)}?limit=${HISTORY_BARS}` : null);
+  const bars = [...(history.data ?? [])].reverse();
+  const max = Math.max(1, ...bars.map((b) => b.latency_ms ?? 0));
+  const verdict = item.status === "down" ? `${WORD.down}: ${item.summary}` : item.summary;
+  return (
+    <div className="sp-sec">
+      <span className="sp-sh">Health</span>
+      <div className="sp-verdict"><Dot status={item.status} style={{ width: 12, height: 12 }} />
+        <span>{verdict}
+          {checked && <small>{[example ? "example result" : null, item.at ? `checked ${when(item.at)}` : null,
+            item.latency_ms ? `took ${took(item.latency_ms)}` : null].filter(Boolean).join(" · ")}</small>}
+        </span>
+      </div>
+      {item.reason && <p className={`sp-reason ${item.status}`}>{item.reason}</p>}
+      {item.fix && <p className="hc-fix"><span>Likely fix</span>{item.fix}</p>}
+      {bars.length > 1 && (
+        <div className="sp-bars" role="img" aria-label={`last ${bars.length} checks`}>
+          {bars.map((b) => <i key={`${b.run_id}-${b.at}`} className={b.status}
+            style={{ height: b.latency_ms ? `${Math.max(14, (b.latency_ms / max) * 100)}%` : undefined }} title={`${b.summary} · ${when(b.at)}`} />)}
+        </div>
+      )}
+      {onCheck && item.status !== "unconfirmed" && (
+        <div className="sp-row">
+          <button className="btn" type="button" onClick={() => onCheck(item.id)} disabled={checking}>
+            {Icons.activity(16)} {item.status === "checking" ? "Checking…" : "Check this one"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function EvidenceItem({ ev }: { ev: Evidence }) {
@@ -68,7 +116,8 @@ function EvidenceItem({ ev }: { ev: Evidence }) {
   );
 }
 
-export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, tipShown, layer, actions }: Props) {
+export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, tipShown, layer, actions, health, example,
+  checking, onCheck }: Props) {
   const [name, setName] = useState(node.title);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -118,6 +167,7 @@ export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, t
         <button className="fm-ib" type="button" aria-label="Close details" onClick={actions.close}>{Icons.close(18)}</button>
       </div>
       {runText && state !== "idle" && <div className={`sp-run ${state}`} role="status">{runText}</div>}
+      {health && <Health item={health} example={example} checking={checking} onCheck={onCheck} />}
 
       <div className="sp-sec">
         <span className="sp-sh">{what}</span>

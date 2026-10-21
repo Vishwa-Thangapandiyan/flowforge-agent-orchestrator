@@ -275,3 +275,22 @@
 .scan-form small { color: var(--muted); font-size: 13px; }
 .scan-form code { padding: 8px 10px; border-radius: var(--r-md); background: var(--surface-2); overflow-wrap: anywhere; }
 .fm-scan { position: relative; z-index: 5; padding: 14px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+
+/* health on a dependency map (D24, docs/design/checks-artboards): a dot, a coloured left edge, the latency below */
+.ff-hdot { position: absolute; top: 50%; right: 11px; margin-top: -4.5px; }
+.ff-block[class*=" h-"] .ff-card { padding-right: 26px; }
+.ff-block.h-up .ff-card { box-shadow: inset 3px 0 0 var(--h-up), var(--shadow-2); }
+.ff-block.h-warn .ff-card { box-shadow: inset 3px 0 0 var(--h-warn), var(--shadow-2); }
+.ff-block.h-down .ff-card { box-shadow: inset 3px 0 0 var(--h-down), var(--shadow-2); border-color: color-mix(in srgb, var(--coral) 55%, var(--line)); }
+.ff-block.h-checking .ff-card { box-shadow: inset 3px 0 0 var(--h-run), var(--shadow-2); }
+.ff-h { font-style: normal; color: var(--fg); }
+.ff-h.down { color: var(--coral); } .ff-h.warn { color: var(--amber); } .ff-h.checking { color: var(--blue); }
+.sp-verdict { display: flex; align-items: flex-start; gap: 10px; font: 600 16px/1.3 var(--display); }
+.sp-verdict .hdot { margin-top: 5px; }
+.sp-verdict small { display: block; margin-top: 3px; font: 400 12px/1.3 var(--mono); color: var(--muted); }
+.sp-reason { margin: 12px 0 0; padding: 10px 12px; border-radius: var(--r-md); background: var(--slate-bg); font: 500 12.5px/1.45 var(--mono); overflow-wrap: anywhere; white-space: pre-wrap; }
+.sp-reason.down { background: var(--coral-bg); } .sp-reason.warn { background: var(--amber-bg); }
+.sp-sec .hc-fix { margin-top: 10px; }
+.sp-bars { display: flex; align-items: flex-end; gap: 4px; height: 36px; margin-top: 14px; }
+.sp-bars i { flex: 0 0 22px; height: 30%; border-radius: 4px 4px 2px 2px; background: var(--h-none); }
+.sp-bars i.up { background: var(--h-up); } .sp-bars i.warn { background: var(--h-warn); } .sp-bars i.down { background: var(--h-down); height: 22%; }

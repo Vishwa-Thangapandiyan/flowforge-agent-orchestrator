@@ -246,7 +246,7 @@ export function AddConnector() {
             )}
             <Field label={type.needsKey ? "Key: the name of the variable in your .env file" : "Key variable passed to the program (optional)"}
               error={show("keyVar")}
-              hint={<>Put <code>{form.keyVar || "NAME"}=your-key</code> in <code>.env</code>. FlowForge saves only the name, never the key. The vault arrives in Phase 4.</>}>
+              hint={<>Put <code>{form.keyVar || "NAME"}=your-key</code> in <code>.env</code>. FlowForge saves only the name, never the key.</>}>
               <input value={form.keyVar} onChange={(e) => set("keyVar", e.target.value.toUpperCase())} placeholder="GEMINI_API_KEY"
                 className="mono" spellCheck={false} autoComplete="off" />
             </Field>

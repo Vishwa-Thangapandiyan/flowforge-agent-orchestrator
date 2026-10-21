@@ -1,6 +1,6 @@
 // A small flow map for tests: a webhook, an API read, a decision, an LLM with a fallback, a gate before an
 // email, an unconfirmed SMS step, and a traced test order that falls back, waits at the gate and finishes.
-import type { Catalog, Evidence, FlowEdge, FlowNode, FlowView, PendingVersion, Trace } from "../api/types";
+import type { Catalog, CheckPlan, ChecksView, Evidence, FlowEdge, FlowNode, FlowView, PendingVersion, Trace } from "../api/types";
 
 const code = (ref: string): Evidence => ({ type: "code", ref, text: null, first_line: 10, lines: ["def f():", "    call()"], highlight: 11 });
 
@@ -107,4 +107,33 @@ export const DEPS: FlowView = {
     edge("app", "api-www-mysite-test", "unconfirmed"), edge("tools", "mcp-github")],
   hidden: [], critical_path: { path: [], length_ms: 0, bottleneck: null }, positions: {}, apps: {},
   counts: { steps: 8, unconfirmed: 1, gates: 0, edits: 0 }, pending: null,
+};
+
+// Check results for DEPS (D24): Ollama down with a fix, fetch slow, the rest up, the unconfirmed link not checked.
+export const CHECKS: ChecksView = {
+  run_id: "chk1", checked_at: "2026-10-21T10:44:00Z", example: false,
+  summary: { up: 3, warn: 1, down: 1, skipped: 0, unchecked: 0, unconfirmed: 1 },
+  items: [
+    { id: "llm-ollama", name: "Ollama", kind: "llm", catalog: "ollama", status: "down", latency_ms: null,
+      summary: "Nothing answers at localhost:11434", reason: "[Errno 111] Connection refused",
+      fix: "Start Ollama (`ollama serve`).", at: "2026-10-21T10:44:00Z", history: ["up", "up", "down"] },
+    { id: "api-nominatim", name: "Nominatim", kind: "api", catalog: "nominatim", status: "up", latency_ms: 420,
+      summary: "Up", at: "2026-10-21T10:44:00Z", history: ["up", "up", "up"] },
+    { id: "mcp-fetch", name: "fetch", kind: "mcp", status: "warn", latency_ms: 6800,
+      summary: "Up: 1 tool, but slow to start: 6.8 s", at: "2026-10-21T10:44:00Z", history: ["up", "warn"] },
+    { id: "api-wikipedia", name: "Wikipedia", kind: "api", catalog: "wikipedia", status: "up", latency_ms: 310,
+      summary: "Up", at: "2026-10-21T10:44:00Z", history: ["up"] },
+    { id: "api-www-mysite-test", name: "www.mysite.test", kind: "api", status: "unconfirmed",
+      summary: "Not checked: unconfirmed", history: [] },
+    { id: "mcp-github", name: "github", kind: "mcp", status: "up", latency_ms: 2100, summary: "Up: 26 tools",
+      at: "2026-10-21T10:44:00Z", history: ["up", "up"] },
+  ],
+};
+
+export const PLAN: CheckPlan = {
+  checks: 5, kinds: { llm: 1, api: 2, mcp: 2, local: 0 }, confirmed: false, example: false,
+  starts: [
+    { id: "mcp-fetch", name: "fetch", command: "uvx mcp-server-fetch", origin: "downloads from PyPI, any version", source: ".mcp.json:7" },
+    { id: "mcp-github", name: "github", command: "npx github-mcp", origin: "downloads from npm, any version", source: ".cursor/mcp.json:3" },
+  ],
 };

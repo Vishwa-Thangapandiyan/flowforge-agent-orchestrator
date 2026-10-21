@@ -3,7 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { expect, test, vi } from "vitest";
 import type { Connector } from "../api/types";
 import { CONNECTORS } from "../test/fixtures";
-import { DEPS, FLOW } from "../test/flowFixture";
+import { mockApi } from "../test/api";
+import { CHECKS, DEPS, FLOW } from "../test/flowFixture";
 import { StepPanel, type PanelActions } from "./StepPanel";
 
 function actions(): PanelActions {
@@ -87,4 +88,22 @@ test("a scanned dependency shows the address it will be checked at, not an app t
     connectors={[]} tipShown layer="mine" actions={actions()} />);
   expect(screen.getByText(/only mentions it/)).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Keep it" })).toBeInTheDocument();
+});
+
+test("a dependency's Health says why it is down and how to fix it, and can be checked alone", async () => {
+  mockApi({ "/checks/llm-ollama": [
+    { run_id: "chk1", status: "down", latency_ms: null, summary: "Nothing answers at localhost:11434",
+      reason: "[Errno 111] Connection refused", fix: "Start Ollama (`ollama serve`).", at: "2026-10-21T10:44:00Z" },
+    { run_id: "chk0", status: "up", latency_ms: 300, summary: "Up", reason: null, fix: null, at: "2026-10-21T09:10:00Z" }] });
+  const onCheck = vi.fn();
+  const ollama = DEPS.nodes.find((n) => n.id === "llm-ollama")!;
+  render(<StepPanel node={ollama} flow={DEPS} tile={null} state="idle" cap="" waiting={false} connectors={[]} tipShown
+    layer="mine" actions={actions()} health={CHECKS.items[0]} onCheck={onCheck} />);
+  expect(screen.getByText("Down: Nothing answers at localhost:11434")).toBeInTheDocument();
+  expect(screen.getByText("[Errno 111] Connection refused")).toBeInTheDocument();
+  expect(screen.getByText("Start Ollama (`ollama serve`).")).toBeInTheDocument();
+  expect(await screen.findByRole("img", { name: "last 2 checks" })).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: /Check this one/ }));
+  expect(onCheck).toHaveBeenCalledWith("llm-ollama");
+  vi.unstubAllGlobals();
 });

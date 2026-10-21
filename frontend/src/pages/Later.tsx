@@ -10,7 +10,7 @@ export function Approvals() {
           <span className="eyebrow">Paused until you decide</span>
           <h1>Approvals</h1>
         </div>
-        <Chip tone="amber">Arrives in Phase 5</Chip>
+        <Chip tone="amber">Arrives in V2</Chip>
       </header>
       <EmptyState tone="amber" icon={Icons.check(30)} title="Nothing is waiting for you">
         When approval gates arrive, any payment, code change or other step with side effects pauses here
@@ -29,7 +29,7 @@ export function Security() {
           <span className="eyebrow">Keys stay out of reach</span>
           <h1>Security</h1>
         </div>
-        <Chip tone="teal">Vault arrives in Phase 4</Chip>
+        <Chip tone="teal">Findings arrive in Phase 7</Chip>
       </header>
       <section className="card raised">
         <h2>What protects your keys today</h2>
@@ -39,9 +39,9 @@ export function Security() {
         <div className="row"><span>HTTP connectors</span><b>Send their key only to their own address</b></div>
         <p className="card-note">This catches known key formats and the keys you configured, not everything.</p>
       </section>
-      <EmptyState tone="teal" icon={Icons.lock(30)} title="The vault and the full redaction pipeline">
-        Phase 4 adds an encrypted vault (paste a key once, never see it again), redaction of keys found in
-        your code before any AI sees it, and checks that the AI's changes keep every placeholder intact.
+      <EmptyState tone="teal" icon={Icons.lock(30)} title="What the scan finds">
+        Phase 7 lists hard-coded keys, plain http:// APIs and risky MCP setups, each with its file and line and a
+        fix. A key's value is never stored or shown.
       </EmptyState>
     </>
   );

@@ -326,3 +326,57 @@ export interface MockTest {
   stats: string;
   learns: string[];
 }
+
+// --- health checks (D24) ----------------------------------------------------------------------------------
+
+/** up/warn/down/skipped come from a check; unchecked and unconfirmed are blocks no check has covered. */
+export type HealthStatus = "up" | "warn" | "down" | "skipped" | "unchecked" | "unconfirmed";
+
+export interface CheckItem {
+  id: string;
+  name: string;
+  kind: NodeKind;
+  catalog?: string | null;
+  status: HealthStatus;
+  latency_ms?: number | null;
+  summary: string;
+  reason?: string | null;
+  fix?: string | null;
+  at?: string | null;
+  /** oldest first: the squares of the last checks */
+  history: HealthStatus[];
+}
+
+export interface ChecksView {
+  run_id: string | null;
+  checked_at: string | null;
+  summary: Record<HealthStatus, number>;
+  items: CheckItem[];
+  example: boolean;
+}
+
+export interface CheckStart {
+  id: string;
+  name: string;
+  command: string;
+  origin: string;
+  source: string | null;
+}
+
+export interface CheckPlan {
+  checks: number;
+  kinds: Record<string, number>;
+  starts: CheckStart[];
+  confirmed: boolean;
+  example: boolean;
+}
+
+export interface CheckRecord {
+  run_id: string;
+  status: HealthStatus;
+  latency_ms: number | null;
+  summary: string;
+  reason: string | null;
+  fix: string | null;
+  at: string;
+}

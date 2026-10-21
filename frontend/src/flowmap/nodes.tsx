@@ -5,6 +5,8 @@ import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import type { ReactNode } from "react";
 import type { ConnectorType, FlowNode } from "../api/types";
 import { BrandTile } from "../brand/BrandTile";
+import { caption as healthCaption } from "../checks/Health";
+import type { LiveStatus } from "../checks/useChecks";
 import { Icons } from "../components/icons";
 import { sizeOf } from "./layout";
 import type { NodeState } from "./replay";
@@ -20,6 +22,8 @@ export interface BlockData extends Record<string, unknown> {
   tile: TileSource | null;
   /** on a dependency map (D21) */
   deps?: boolean;
+  /** its latest health check, or "checking" while one runs (D24) */
+  health?: { status: LiveStatus; summary: string; latency_ms?: number | null };
   state: NodeState;
   cap: string;
   search: "hit" | "miss" | null;
@@ -61,7 +65,7 @@ function classes(d: BlockData, selected: boolean): string {
   return [
     "ff-block", `kind-${n.kind}`, d.state !== "idle" && `st-${d.state}`, selected && "selected",
     n.status === "unconfirmed" && "unconf", d.search, d.cp && d.state === "idle" && "cp",
-    d.diff && !d.diffOff && `diff-${d.diff}`, d.diffOff && "diff-off",
+    d.diff && !d.diffOff && `diff-${d.diff}`, d.diffOff && "diff-off", d.health && `h-${d.health.status}`,
   ].filter(Boolean).join(" ");
 }
 
@@ -77,13 +81,15 @@ function Status({ d }: { d: BlockData }) {
 
 function Caption({ d, evidence }: { d: BlockData; evidence: boolean }) {
   if (d.cap) return <span className={`ff-cap ${d.state}`}>{d.cap}</span>;
-  if (!evidence) return null;
+  const h = d.health ? healthCaption(d.health.status, d.health.summary, d.health.latency_ms) : "";
+  if (!evidence) return h ? <span className="ff-cap"><em className={`ff-h ${d.health?.status}`}>{h}</em></span> : null;
   const first = d.node.evidence[0];
   if (!first || ["fork", "join"].includes(d.node.kind)) return null;
   const text = first.type === "code" && first.ref ? first.ref.split("/").pop()
     : first.type === "policy" ? "policy · D14" : first.type === "user" ? "added by you"
       : d.node.status === "unconfirmed" ? "no call found" : "";
-  return text ? <span className="ff-cap">{text}</span> : null;
+  if (!text && !h) return null;
+  return <span className="ff-cap">{text}{h && <em className={`ff-h ${d.health?.status}`}>{h}</em>}</span>;
 }
 
 function Shell({ d, selected, children }: { d: BlockData; selected: boolean; children: ReactNode }) {
@@ -98,6 +104,7 @@ function Shell({ d, selected, children }: { d: BlockData; selected: boolean; chi
         : n.yours.length > 0 && <span className="ff-flag yours">Yours</span>}
       {d.showTip && n.tip && n.yours.length === 0 && <span className="ff-flag tip">{Icons.spark(11)} Tip</span>}
       <Status d={d} />
+      {d.health && n.kind !== "start" && <span className={`hdot ff-hdot ${d.health.status}`} aria-hidden="true" />}
       <Handles />
     </div>
   );

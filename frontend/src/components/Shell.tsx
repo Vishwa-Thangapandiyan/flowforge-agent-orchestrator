@@ -53,10 +53,10 @@ interface Item {
 
 const ITEMS: Item[] = [
   { to: "/", label: "Flow map", icon: Icons.map(20), active: /^\/($|map(\/|$))/ },
-  { to: "/runs", label: "Runs", icon: Icons.activity(20), active: /^\/(runs|live)(\/|$)/ },
+  // Runs became Checks (D19, D24); workflow runs stay one link away. Approvals waits for V2 (D19).
+  { to: "/checks", label: "Checks", icon: Icons.activity(20), active: /^\/(checks|runs|live)(\/|$)/ },
   { to: "/connectors", label: "Connectors", icon: Icons.plug(20), active: /^\/connectors(\/|$)/ },
-  { to: "/approvals", label: "Approvals", icon: Icons.check(20), active: /^\/approvals/, soon: "Phase 5" },
-  { to: "/security", label: "Security", icon: Icons.shield(20), active: /^\/security/, soon: "Phase 4" },
+  { to: "/security", label: "Security", icon: Icons.shield(20), active: /^\/security/, soon: "Phase 7" },
 ];
 
 /** A route with `handle: { bleed: true }` (the flow map) fills the page edge to edge. */

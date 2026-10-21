@@ -8,6 +8,8 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, ApiError, useApi } from "../api/client";
+import { CheckConfirm, countsText, Squares } from "../checks/Health";
+import { useChecks } from "../checks/useChecks";
 import type { Connector, ConnectorType, FlowNode, FlowResponse, FlowView, NodeKind, Trace } from "../api/types";
 import { when } from "../components/format";
 import { Icons } from "../components/icons";
@@ -124,6 +126,23 @@ function ScanHint() {
   );
 }
 
+/** The whole app at a glance: one square per dependency, in map order, and the counts in plain words (D24). */
+function HealthRow({ checks }: { checks: ReturnType<typeof useChecks> }) {
+  const statuses = checks.items.map((i) => i.status);
+  const checked = checks.view?.checked_at;
+  return (
+    <div className="fm-health" role="status">
+      <Squares statuses={statuses} label={countsText(statuses)} />
+      <span>{countsText(statuses).split(", ").map((part, i) => (
+        <span key={part} className={part.endsWith("down") ? "bad" : undefined}>{i > 0 && ", "}{i === 0 ? <b>{part}</b> : part}</span>
+      ))}</span>
+      <span className="sep" />
+      <span>{checks.progress ? `checking… ${checks.progress.done} of ${checks.progress.total}`
+        : checked ? `checked ${when(checked)}${checks.view?.example ? " · example results" : ""}` : "not checked yet"}</span>
+    </div>
+  );
+}
+
 interface ViewProps {
   map: MapId;
   flow: FlowView;
@@ -151,6 +170,8 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
   const [nodes, setNodes, onNodesChangeBase] = useNodesState<BlockNode>([]);
   const [sel, setSel] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
+  const checks = useChecks(deps);   // health on a dependency map (D24)
+  const health = useMemo(() => Object.fromEntries(checks.items.map((i) => [i.id, i])), [checks.items]);
   const [find, setFind] = useState("");
   const [cp, setCp] = useState(false);
   const [showEvidence, setShowEvidence] = useState(true);
@@ -196,8 +217,9 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
       node: n, tile: tileFor(n), deps, state: frame?.nodes[id] ?? "idle",
       cap: frame?.caps[id] ?? "", search: query ? (hits.has(id) ? "hit" : "miss") : null, cp: cp && n.on_critical_path,
       showTip: !dismissed.has(id) && !frame, showEvidence, retryMax: retry?.max ?? null,
+      health: deps && health[id] ? health[id] : undefined,
     };
-  }, [flow.nodes, flow.edges, tileFor, deps, frame, query, hits, cp, dismissed, showEvidence]);
+  }, [flow.nodes, flow.edges, tileFor, deps, frame, query, hits, cp, dismissed, showEvidence, health]);
 
   useEffect(() => {
     const placed = placeAll(flow.nodes, flow.edges, flow.positions);
@@ -414,6 +436,11 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
               ? (flow.pending ? "Review the re-scan" : rechecking ? "Re-scanning…" : "Re-scan the repo")
               : (flow.pending ? "Review the re-check" : rechecking ? "Re-checking…" : "Re-check the repo")}
           </button>
+          {deps && checks.items.length > 0 && (
+            <button className="btn primary" type="button" onClick={() => void checks.checkNow()} disabled={checks.running}>
+              {Icons.activity(18)} {checks.running ? "Checking…" : "Check now"}
+            </button>
+          )}
           {!deps && (
             <button className="btn primary" type="button" onClick={startReplay} disabled={!trace || busy}>
               {Icons.play(18)} {busy ? "Running…" : "Test run"}
@@ -421,6 +448,13 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
           )}
         </div>
       </header>
+      {deps && checks.items.length > 0 && <HealthRow checks={checks} />}
+      {checks.asking && (
+        <CheckConfirm asking={checks.asking}
+          others={checks.items.filter((i) => i.status !== "unconfirmed").length - checks.asking.plan.starts.length}
+          onStart={checks.confirm} onWithout={checks.withoutStarts} onCancel={checks.cancel} />
+      )}
+      {checks.error && <div className="notice" role="alert" style={{ margin: "8px 16px 0" }}>{checks.error}</div>}
       {scanning && (
         <section className="fm-scan" aria-label="Scan a folder">
           {meta.example ? <ScanHint /> : <ScanForm current={appName} onDone={() => { setScanning(false); reload(); }} />}
@@ -508,6 +542,8 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
         </div>
         {selected && (
           <StepPanel key={selected.id} node={selected} flow={flow} tile={tileFor(selected)}
+            health={deps ? health[selected.id] : undefined} example={meta.example} checking={checks.running}
+            onCheck={(id) => void checks.checkNow([id])}
             state={frame?.nodes[selected.id] ?? "idle"} cap={frame?.caps[selected.id] ?? ""} waiting={frame?.waiting === selected.id}
             connectors={connectors} tipShown={!dismissed.has(selected.id)} layer={layer}
             actions={{ close: () => { setSel(null); setNodes((ns) => ns.map((n) => ({ ...n, selected: false }))); }, approve, reject, edit, reset, dismissTip }} />

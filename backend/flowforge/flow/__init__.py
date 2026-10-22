@@ -1,5 +1,6 @@
-"""Flow order from code (D25): `flow_of(root)` reads a repo's Python and draws the order its entry points call
-their dependencies, with the critical path's weights and advice on what could run together.
+"""Flow order from code (D25, D32): `flow_of(root)` reads a repo's Python (by `ast`) and Dart, JavaScript and
+TypeScript (by patterns, `curly`) and draws the order its entry points call their dependencies, with the critical
+path's weights and advice on what could run together.
 
 Plain code, read-only: nothing in the repo is imported or run, nothing is sent anywhere, no LLM (D20).
 """
@@ -11,6 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from flowforge.flow import curly
 from flowforge.flow.advice import advise, written_ms
 from flowforge.flow.index import Func, Index
 from flowforge.flow.order import Body, Stmt, flatten, label, preds, reduce
@@ -21,8 +23,8 @@ from flowforge.scan.models import Dependency, ScanResult
 from flowforge.scan.scanner import Places, scan_with_places
 from flowforge.security.logfilter import Redactor, redact_code
 
-PYTHON_ONLY = "Flow order needs Python for now; Dart and JS/TS are next."
-NO_ENTRY = "No Python function here calls a dependency yet."
+NO_CODE = "Flow order reads Python, Dart, JavaScript and TypeScript."
+NO_ENTRY = "No function here calls a dependency yet."
 UNWRAP_DEPTH = 5
 _redactor = Redactor()
 
@@ -76,6 +78,36 @@ def _entries(index: Index, reach: Reach, bodies: dict[str, Body]) -> list[Func]:
     return out
 
 
+class _Python:
+    """What the builder asks of a Python function, from its `ast` (D25)."""
+
+    name = "python"
+
+    def __init__(self, index: Index):
+        self.index = index
+
+    def start_line(self, func: Func) -> int:
+        return func.node.lineno
+
+    def is_async(self, func: Func) -> bool:
+        return isinstance(func.node, ast.AsyncFunctionDef)
+
+    def end_line(self, func: Func, s: Stmt) -> int:
+        return getattr(s.node, "end_lineno", None) or s.line
+
+    def awaited(self, func: Func, s: Stmt) -> bool:
+        return any(isinstance(n, ast.Await) for n in ast.walk(s.node))
+
+    def label(self, func: Func, s: Stmt) -> str:
+        return label(s, self.index, func.module)
+
+    def condition(self, func: Func, s: Stmt) -> str:
+        return ast.unparse(s.node)
+
+    def question(self, func: Func, body: Body, s: Stmt) -> str:
+        return _question(func, body, s, self.index)
+
+
 class _Builder:
     """Blocks and lines for every entry point of one repo, with ids unique across the map."""
 
@@ -93,22 +125,23 @@ class _Builder:
         self._counters[base] = self._counters.get(base, 0) + 1
         return f"{base}-{self._counters[base]}"[:64]
 
-    def entry(self, func: Func, body: Body) -> None:
+    def entry(self, func: Any, body: Body, lang: Any) -> None:
+        self.lang = lang
         lines = self.sources[func.path].splitlines()
         start = f"start-{func.name.replace('.', '-')}"[:64]
         self.nodes.append(FlowNode(id=start, kind="start", title=f"{func.name}()"[:80],
                                    what=f"An entry point in {func.path}.",
-                                   evidence=[_evidence(func.path, lines, func.node.lineno, "starts here")]))
+                                   evidence=[_evidence(func.path, lines, lang.start_line(func), "starts here")]))
         decisions = {s.idx for s in body.stmts if s.is_if and (s.stops or any(
             t.hits for t in body.stmts[s.idx + 1: s.block_end + 1]))}
         enters: dict[int, list[str]] = {}   # statement -> the blocks a line into it lands on
         leaves: dict[int, list[str]] = {}   # statement -> the blocks a line out of it leaves from
-        is_async = isinstance(func.node, ast.AsyncFunctionDef)
+        is_async = lang.is_async(func)
         for s in body.stmts:
             ev = _evidence(func.path, lines, s.line, "in your code")
             steps = self._steps(func, lines, s, ev, start, is_async)
             if s.idx in decisions:
-                dec = self._decision(func, lines, s, ev, _question(func, body, s, self.index))
+                dec = self._decision(func, lines, s, ev, lang.question(func, body, s))
                 for step in steps:
                     self.edges.add((step, dec))
                 enters[s.idx], leaves[s.idx] = (steps or [dec]), [dec]
@@ -129,13 +162,14 @@ class _Builder:
             node_id = self._id(dep.id)
             measured = dep.kind != "llm" and self.latencies.get(dep.id) is not None
             self.nodes.append(FlowNode(
-                id=node_id, kind=dep.kind, title=dep.name[:80], what=_masked(label(s, self.index, func.module))[:300],
+                id=node_id, kind=dep.kind, title=dep.name[:80], what=_masked(self.lang.label(func, s))[:300],
                 catalog=dep.catalog, op=_op(dep, hit), repeats=s.loop, evidence=[ev],
                 estimate_ms=float(self.latencies[dep.id]) if measured else DEFAULT_MS.get(dep.kind, 0.0),
                 estimate_source="measured" if measured else "estimate"))
             self.meta[node_id] = {"stmt": s.idx, "entry": start, "async": is_async, "line": s.line, "ref": ev.ref,
-                                  "awaited": is_async and any(isinstance(n, ast.Await) for n in ast.walk(s.node)),
-                                  "node": s.node, "func": func,
+                                  "awaited": is_async and self.lang.awaited(func, s),
+                                  "node": s.node if self.lang.name == "python" else s, "func": func,
+                                  "lang": self.lang,
                                   "name": dep.name, "gathered": s.gathered, "loop": s.loop, "ifs": bool(s.ifs),
                                   "write": (dep.kind == "api" and hit.method not in (None, "GET", "HEAD"))
                                   or (dep.kind == "mcp" and writes(hit.tool))}
@@ -147,7 +181,7 @@ class _Builder:
 
     def _through(self, func: Func, lines: list[str], s: Stmt, server: Dependency, server_id: str) -> None:
         """What this server reaches for the app, named inside the same statement (D21's via): its own block."""
-        end = getattr(s.node, "end_lineno", None) or s.line
+        end = self.lang.end_line(func, s)
         for via in self.deps.values():
             if via.via != server.id:
                 continue
@@ -163,7 +197,7 @@ class _Builder:
 
     def _decision(self, func: Func, lines: list[str], s: Stmt, ev: Evidence, question: str) -> str:
         dec = f"if-{sum(1 for n in self.nodes if n.kind == 'decision') + 1}"
-        cond = _masked(ast.unparse(s.node))
+        cond = _masked(self.lang.condition(func, s))
         self.nodes.append(FlowNode(id=dec, kind="decision", title=_masked(question)[:80], condition=cond[:200],
                                    what=f"if {cond}:"[:300], evidence=[ev]))
         if s.stops:
@@ -264,16 +298,27 @@ def flow_of(root: str | Path, latencies: dict[str, float] | None = None) -> Flow
     """The flow of every entry point in `root`. `latencies`: dependency id → its last measured check (D24)."""
     root = Path(root).resolve()
     result, places = scan_with_places(root)
-    sources = {path: (root / path).read_text(encoding="utf-8", errors="replace") for path in places.facts}
-    if not sources:
-        return FlowResult(None, PYTHON_ONLY, result)
+    read = lambda path: (root / path).read_text(encoding="utf-8", errors="replace")   # noqa: E731
+    sources = {path: read(path) for path in places.facts}
+    braced = {path: (lang, read(path)) for path, lang in places.code.items() if lang in curly.LANGUAGES}
+    if not sources and not braced:
+        return FlowResult(None, NO_CODE, result)
     index = Index(sources)
     reach = Reach(index, places)
     bodies: dict[str, Body] = {}
-    entries = _entries(index, reach, bodies)
-    if not entries:
+    entries = _entries(index, reach, bodies) if sources else []
+    c_index = curly.Index(braced)
+    c_reach = curly.Reach(c_index, places, {d.id for d in result.dependencies})
+    c_entries = curly.entries(c_index, c_reach) if braced else []
+    if not entries and not c_entries:
         return FlowResult(None, NO_ENTRY, result)
-    builder = _Builder(index, reach, places, {d.id: d for d in result.dependencies}, sources, latencies or {})
+    all_sources = {**sources, **{path: text for path, (_, text) in braced.items()}}
+    builder = _Builder(index, reach, places, {d.id: d for d in result.dependencies}, all_sources, latencies or {})
+    python, c_lang = _Python(index), curly.Lang(c_index)
     for func in entries:
-        builder.entry(func, bodies.setdefault(func.key, flatten(func, index, reach)))
-    return FlowResult(builder.flow(), None, result, [f.key for f in entries])
+        builder.entry(func, bodies.setdefault(func.key, flatten(func, index, reach)), python)
+    for func in c_entries:
+        builder.entry(func, c_lang.read(func, c_reach), c_lang)
+    flow = builder.flow()
+    flow.patterns = sorted({f.language for f in c_entries})
+    return FlowResult(flow, None, result, [f.key for f in entries] + [f.key for f in c_entries])

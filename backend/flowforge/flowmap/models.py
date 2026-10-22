@@ -111,6 +111,7 @@ class Change(_Model):
     saved_ms: float = Field(ge=0)
     by_hand: list[str] = Field(default_factory=list)
     needs_import: bool = False
+    import_text: str | None = None   # the import to add for the change, when the file lacks it (D32)
 
 
 class Advice(_Model):
@@ -135,6 +136,7 @@ class Flow(_Model):
     suggestions: list[Suggestion] = Field(default_factory=list)
     advice: list[Advice] = Field(default_factory=list)
     written_ms: float | None = None   # code flows: every call one after another, as the code is written (D25)
+    patterns: list[str] = Field(default_factory=list)   # code flows: languages read by patterns, less exact (D32)
 
     @model_validator(mode="after")
     def _structure(self) -> Flow:

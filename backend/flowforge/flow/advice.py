@@ -60,13 +60,21 @@ def advise(flow: Flow, meta: dict[str, dict], sources: dict[str, str] | None = N
         caveat = _caveat(flow, ids, meta, names)
         advice = Advice(nodes=ids, refs=[meta[i]["ref"] for i in ids], text=text, saved_ms=round(saved, 1),
                         caveat=caveat)
-        if sources is not None and modules is not None and all("node" in meta[i] for i in ids):
-            func = meta[ids[0]]["func"]
-            calls = [Call(stmt=meta[i]["node"], func=meta[i]["func"].node, path=meta[i]["func"].path,
-                          words=by_id[i].what or by_id[i].title, ref=meta[i]["ref"], weight=by_id[i].estimate_ms or 0.0)
-                     for i in ids]
-            if all(isinstance(c.stmt, ast.stmt) for c in calls):
-                advice.change = change(calls, sources[func.path], modules[func.path])
+        lang = meta[ids[0]].get("lang")
+        if sources is not None and lang is not None and all(meta[i].get("lang") is lang for i in ids):
+            calls = [Call(stmt=meta[i]["node"], func=meta[i]["func"], path=meta[i]["func"].path,
+                          words=by_id[i].what or by_id[i].title, ref=meta[i]["ref"], weight=by_id[i].estimate_ms or 0.0,
+                          line=meta[i]["line"]) for i in ids]
+            if lang.name == "python":
+                func = meta[ids[0]]["func"]
+                py = [Call(c.stmt, c.func.node, c.path, c.words, c.ref, c.weight, c.line) for c in calls]
+                if modules is not None and all(isinstance(c.stmt, ast.stmt) for c in py):
+                    advice.change = change(py, sources[func.path], modules[func.path])
+            else:
+                gather = lang.gather(meta[ids[0]]["func"])
+                hint = f"for example with {gather}"
+                advice.text = f"None of these uses another's result: start them together with {gather}."
+                advice.change = lang.change(calls)
             advice.prompt = prompt(calls, by_id[meta[ids[0]]["entry"]].title, advice.saved_ms, caveat, hint)
         out.append(advice)
     return sorted(out, key=lambda a: -a.saved_ms)
@@ -96,14 +104,17 @@ def _caveat(flow: Flow, ids: list[str], meta: dict[str, dict], names: list[str])
 
 
 def written_ms(flow: Flow, meta: dict[str, dict]) -> float:
-    """Every call one after another, as the code is written; calls the code already gathers count once, at the
-    slowest."""
+    """The slowest entry point as the code is written: its calls one after another, those it already gathers
+    counting once, at the slowest. Entry points are separate actions, so they are never added together (D32)."""
     by_id = {n.id: n for n in flow.nodes}
-    total, gathered = 0.0, defaultdict(list)
+    totals: dict[str, float] = defaultdict(float)
+    gathered: dict[tuple[str, int], list[float]] = defaultdict(list)
     for node_id, m in meta.items():
         w = by_id[node_id].estimate_ms or 0.0
         if m["gathered"]:
             gathered[(m["entry"], m["stmt"])].append(w)
         else:
-            total += w
-    return round(total + sum(max(ws) for ws in gathered.values()), 1)
+            totals[m["entry"]] += w
+    for (entry, _), ws in gathered.items():
+        totals[entry] += max(ws)
+    return round(max(totals.values(), default=0.0), 1)

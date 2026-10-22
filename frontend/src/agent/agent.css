@@ -1,0 +1,26 @@
+/* Connect your coding agent (D29) */
+.ca-last { display: flex; align-items: center; gap: 10px; margin: 20px 0 16px; padding: 12px 16px; border-radius: var(--r-md);
+  border: 1px solid var(--line); background: var(--surface); color: var(--muted); }
+.ca-last i { width: 10px; height: 10px; border-radius: 50%; background: var(--line-2); flex: none; }
+.ca-last.on { color: var(--fg); border-color: color-mix(in srgb, var(--teal) 45%, var(--line)); }
+.ca-last.on i { background: var(--teal); box-shadow: 0 0 0 4px color-mix(in srgb, var(--teal) 20%, transparent); }
+.ca-last code, .ca-panel code, .ca-tools code { font-family: var(--mono); font-size: .92em; }
+.ca-setup, .ca-tools { padding: 18px; margin-bottom: 16px; }
+.ca-tabs { margin-bottom: 14px; flex-wrap: wrap; }
+.ca-steps { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 0 0 12px; padding: 0; list-style: none; }
+.ca-steps li { display: flex; align-items: center; gap: 8px; }
+.ca-steps b { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--teal-bg);
+  color: var(--teal-ink); font: 650 12px var(--mono); }
+.ca-box { display: grid; gap: 8px; }
+.ca-box pre { margin: 0; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2);
+  font: 12.5px/1.6 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ca-copy { display: flex; align-items: center; gap: 10px; }
+.ca-said { color: var(--teal); font-weight: 600; font-size: 14px; }
+.ca-or { margin: 14px 0 6px; color: var(--muted); font-size: 14px; }
+.ca-note { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; color: var(--muted); font-size: 13.5px; overflow-wrap: anywhere; }
+.ca-tools h2 { margin-bottom: 10px; }
+.ca-tools ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.ca-tools li { display: grid; grid-template-columns: 130px 1fr; gap: 12px; align-items: baseline; }
+.ca-tools li code { color: var(--teal-ink); font-weight: 600; }
+.ca-safe { display: flex; align-items: center; gap: 8px; margin: 14px 0 0; color: var(--muted); font-size: 13.5px; }
+@media (max-width: 560px) { .ca-tools li { grid-template-columns: 1fr; gap: 2px; } }

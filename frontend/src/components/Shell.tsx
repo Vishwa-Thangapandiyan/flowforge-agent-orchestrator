@@ -91,6 +91,10 @@ export function Shell() {
             {Icons.plus(20)}
             <span>Add app</span>
           </Link>
+          <Link to="/connect" className="rail-item rail-add" title="Connect your coding agent">
+            {Icons.code(20)}
+            <span>Connect agent</span>
+          </Link>
           <ThemeToggle />
         </nav>
         <main className="main" id="main" tabIndex={-1}>

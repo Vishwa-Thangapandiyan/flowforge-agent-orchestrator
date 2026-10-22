@@ -68,7 +68,7 @@ FlowForge is also an **MCP server**, so Claude Code, Codex or Antigravity can as
 claude mcp add flowforge -- uv --directory /path/to/flowforge run flowforge mcp --repo /path/to/your/app
 ```
 
-Your agent gets five read-only tools: `get_map`, `get_flow`, `get_advice`, `check_health` and `what_changed`. Every answer is masked (key values never appear), FlowForge never edits your code, and a check starts an MCP server only after you said yes to it on the Checks page. FlowForge needs no AI of its own for any of this.
+Your agent gets six read-only tools: `get_map`, `get_flow`, `get_advice`, `check_health`, `get_security_findings` and `what_changed`. Every answer is masked (key values never appear), FlowForge never edits your code, and a check starts an MCP server only after you said yes to it on the Checks page. FlowForge needs no AI of its own for any of this.
 
 ### Send someone the map
 
@@ -121,7 +121,7 @@ To use real LLM steps, `cp .env.example .env` and add a free `NVIDIA_API_KEY` fr
 | **Connector page** | One app's connection (keys shown only as *configured*, *missing* or *example*), what it has done, and its recent activity |
 | **Add an app** | LLM, MCP server, HTTP API or local command; colour and logo; a live preview; and exactly what gets saved, with no secrets |
 | **Workflow runs** (under Checks, advanced) | Money and time saved, and every scheduled run: live bars with the slowest chain outlined, outputs, and why a failed run failed |
-| Security | A placeholder until security findings (Phase 7) |
+| Security | What the scan found unsafe, by level: keys written in code or MCP configs, APIs on plain `http://`, MCP servers with no pinned version or given the whole disk. Each with the masked lines, the fix, a prompt for your coding agent, and **Show on map**. Blocks with findings wear a badge on the map |
 
 Both maps are drawn by plain code from your repo, with no AI, and nothing on them is drawn by hand. Edits on the map change how FlowForge maps your app, never your code.
 
@@ -166,7 +166,7 @@ Ready-made presets: NVIDIA NIM, Gemini, Claude, Ollama, Razorpay, Stripe and the
 | 5 | Health checks: Check now, why it's down, the Checks page | **Done** |
 | 6 | Flow order from Python code, the critical path, "run these together" with the change written out, map styles, the MCP Map export | **Done** |
 | 6b | Flow order from Dart and JS/TS | Next |
-| 7 | Security findings: hard-coded keys, `http://` APIs, risky MCP configs | Planned |
+| 7 | Security findings: hard-coded keys, `http://` APIs, risky MCP configs | **Done** |
 | 8 | Launch: docs, demo, `pip install` | Planned |
 | 9 | CLI agent and a desktop app (Tauri) | Planned |
 | 10 | V2: a local coding agent adds a dependency on a branch, for you to approve | Later |
@@ -174,9 +174,11 @@ Ready-made presets: NVIDIA NIM, Gemini, Claude, Ollama, Razorpay, Stripe and the
 
 The full roadmap with acceptance criteria is in [CLAUDE.md](CLAUDE.md) §5.
 
-### Security (Phase 4, not built yet)
+### Security
 
-The promise, once Phase 4 ships: API keys and other recognised secrets are never sent to an LLM, never written to logs, run history, cache, workflow JSON or the dashboard, and never committed to git. Detection catches **known key formats** plus high-entropy values in key-like names, not everything. The rest of your code and data still goes to whichever LLM you choose; for private code, use a local model. **Until then, keys live only in your `.env`** (git-ignored).
+The scan looks for keys written in your code or MCP configs (**known key formats**, plus long random-looking values given to key-like names), APIs called over plain `http://`, and MCP servers with no pinned version or given the whole disk. It catches these patterns, not everything. A key's value is never stored, shown, logged or sent: findings hold the place, a masked excerpt and the fix. Test and fake-data files aren't searched.
+
+FlowForge itself keeps keys out of its runs, events, cache, logs and the dashboard (known key formats and the keys you configured are masked), and the scan sends nothing to any LLM. Your own app's calls are outside FlowForge; for private code or data, a local model is the safe choice.
 
 ## API
 
@@ -193,6 +195,7 @@ The promise, once Phase 4 ships: API keys and other recognised secrets are never
 | `POST /connectors/{id}/logo`, `GET /connectors/{id}/logo` | PNG, JPEG or WebP logo, up to 1 MB |
 | `POST /connectors/{id}/test` | One harmless check (MCP and local apps) |
 | `GET /connectors/{id}/activity`, `GET /connectors/{id}/tools` | What an app has done; an MCP server's tools |
+| `GET /security` | The scan's security findings, by level, with the fix and a prompt for each (D31) |
 | `GET /health/tools`, `GET /stats/savings`, `GET /meta`, `GET /presets` | Tool health, money and time, app info, ready-made apps |
 | `GET /workflows`, `GET /workflows/{name}` | The example workflows |
 | `GET /flow?layer=mine\|planner` | The flow map: blocks, lines, positions, critical path, your edits |

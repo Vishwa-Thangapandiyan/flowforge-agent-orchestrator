@@ -40,7 +40,8 @@ NOT_STARTED = "Not started: say yes in the dashboard first (Check now)"
 INSTRUCTIONS = (
     "FlowForge maps the dependencies of the repo you are working in (LLMs, MCP servers, HTTP APIs, local programs), "
     "each with the file:line it comes from, checks their health, and shows the order the code calls them, the "
-    "critical path and which calls could run together. It reads code without running it and sends nothing to any "
+    "critical path and which calls could run together, and what is unsafe (keys in code, plain http, risky MCP "
+    "servers). It reads code without running it and sends nothing to any "
     "LLM. Answers are masked: key values never appear. It never edits code: you make the change, then call "
     "what_changed to confirm."
 )
@@ -156,6 +157,9 @@ def headline(tool: str, data: dict[str, Any]) -> str | None:
         if not n:
             return "Nothing to start together"
         return f"{_plural(n, 'way')} to be faster · saves ~{_seconds(data['saved_ms'])}"
+    if tool == "get_security_findings":
+        counts = data["summary"]
+        return " · ".join(f"{counts[k]} {k}" for k in ("high", "medium", "low") if counts.get(k)) or "Nothing found"
     if tool == "what_changed":
         if not data["saved"]:
             return "No saved map yet"
@@ -169,6 +173,12 @@ def _map_data(r: _Repo) -> dict[str, Any]:
     deps = [_dependency(d, latest.get(d.id)) for d in result.dependencies]
     counts = Counter(d.kind for d in result.dependencies)
     return {"dependencies": deps, "counts": dict(counts), "files_read": result.files_scanned}
+
+
+def _security_data(result: ScanResult) -> dict[str, Any]:
+    findings = [f.model_dump(mode="json") for f in result.findings]
+    return {"findings": findings, "summary": dict(Counter(f["level"] for f in findings)),
+            "note": "Catches known key formats and these patterns, not everything. Values are never shown."}
 
 
 def _flow_data(result: Any) -> dict[str, Any]:
@@ -208,11 +218,16 @@ def preview(repo: Path, storage: Storage) -> dict[str, Any]:
     tone = "bad" if "down" in checked else "warn" if "warn" in checked else "ok" if checked else "plain"
     read = r.flow()
     flow, advice = _flow_data(read), _advice_data(read)
+    security = _security_data(read.scan or r.scan())
+    worst = next((lv for lv in ("high", "medium", "low") if security["summary"].get(lv)), None)
     cards = [
         {"tool": "get_map", "headline": headline("get_map", deps), "sub": kinds, "tone": "plain"},
         {"tool": "check_health", "headline": headline("check_health", health) if checked else "Not checked yet",
          "sub": f"{_plural(len(checked), 'last check')} stored" if checked else "Your agent can run the checks",
          "tone": tone},
+        {"tool": "get_security_findings", "headline": headline("get_security_findings", security),
+         "sub": "keys in code, plain http, risky MCP servers",
+         "tone": {"high": "bad", "medium": "warn"}.get(worst or "", "ok")},
         {"tool": "get_flow", "headline": headline("get_flow", flow) if flow["available"] else None,
          "sub": "as written → could be" if flow["available"] else flow["message"], "tone": "plain"},
         {"tool": "get_advice", "headline": (_plural(len(advice["advice"]), "way") + " to be faster")
@@ -288,6 +303,14 @@ def build_server(repo: Path, storage: Storage, *, transport: httpx.AsyncBaseTran
         summary = dict(Counter(row["status"] for row in rows))
         return r.answer("check_health", {"results": rows, "summary": summary,
                                          "kept": r.shared, "waiting_for_yes": [t.id for t in waiting]})
+
+    @server.tool(annotations=READ)
+    def get_security_findings() -> dict[str, Any]:
+        """What in the repo is unsafe, read from the code now: keys written in code or MCP configs, APIs called over
+        plain http, MCP servers with no pinned version or given the whole disk. Each finding has its file:line, the
+        dependency it belongs to, a masked excerpt, the fix, and a prompt describing the change. Values are never
+        shown. Catches known key formats and these patterns, not everything."""
+        return r.answer("get_security_findings", _security_data(r.scan()))
 
     @server.tool(annotations=READ)
     def what_changed() -> dict[str, Any]:

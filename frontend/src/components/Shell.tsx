@@ -56,7 +56,7 @@ const ITEMS: Item[] = [
   // Runs became Checks (D19, D24); workflow runs stay one link away. Approvals waits for V2 (D19).
   { to: "/checks", label: "Checks", icon: Icons.activity(20), active: /^\/(checks|runs|live)(\/|$)/ },
   { to: "/connectors", label: "Connectors", icon: Icons.plug(20), active: /^\/connectors(\/|$)/ },
-  { to: "/security", label: "Security", icon: Icons.shield(20), active: /^\/security/, soon: "Phase 7" },
+  { to: "/security", label: "Security", icon: Icons.shield(20), active: /^\/security/ },
 ];
 
 /** A route with `handle: { bleed: true }` (the flow map) fills the page edge to edge. */

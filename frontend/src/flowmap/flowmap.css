@@ -413,3 +413,13 @@
 @media (prefers-reduced-motion: reduce) {
   .fm.drawing .ff-edge .ff-line { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; }
 }
+
+/* security findings on a dependency map (D31): a badge at the block's corner, the worst level's colour */
+.ff-risk { position: absolute; top: -8px; right: -8px; z-index: 2; display: grid; place-items: center; width: 20px; height: 20px;
+  border-radius: 50%; border: 2px solid var(--canvas); font: 800 12px/1 var(--sans, inherit); }
+.ff-risk.lv-high { background: var(--coral); color: #2a0d08; }
+.ff-risk.lv-medium { background: var(--amber); color: #2a1d02; }
+.ff-risk.lv-low { background: var(--blue); color: #0b1733; }
+.sp-security ul { display: grid; gap: 8px; margin: 6px 0 0; padding: 0; list-style: none; }
+.sp-security li { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: start; font-size: 13.5px; }
+.sp-security code { font: 12px var(--mono); color: var(--muted); }

@@ -1,6 +1,7 @@
 """MCP servers from config files (D21): .mcp.json, mcp.json, .vscode/.cursor mcp.json, claude_desktop_config.json.
 
-Only the command, its arguments (redacted) and env var *names* are kept. Env values are never read out.
+Only the command, its arguments (redacted) and env var *names* are kept. Env values are never read out; a key-like
+name whose value is written in the file rather than referenced is noted by name and line (D31).
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ class Server:
     line: int
     command: list[str] = field(default_factory=list)
     env_names: list[str] = field(default_factory=list)
+    env_literals: list[tuple[str, int]] = field(default_factory=list)   # (key-like name, line): a value written in
 
 
 def is_config(rel: str) -> bool:
@@ -39,6 +41,10 @@ def safe_args(args: list[str]) -> list[str]:
         else:
             out.append(redact_code(arg, _redactor))
     return out
+
+
+def _line_of(lines: list[str], key: str, after: int) -> int:
+    return next((i for i, raw in enumerate(lines, 1) if i > after and raw.lstrip().startswith(key)), after)
 
 
 def parse(text: str) -> list[Server]:
@@ -62,5 +68,8 @@ def parse(text: str) -> list[Server]:
             url = clean_url(str(spec["url"]))
             command = [url] if url else []
         env = spec.get("env") if isinstance(spec.get("env"), dict) else {}
-        servers.append(Server(name=name, line=line, command=safe_args(command), env_names=sorted(env)))
+        literals = [(n, _line_of(lines, f'"{n}"', line)) for n, v in env.items()
+                    if SECRET_NAME.search(n) and isinstance(v, str) and v.strip() and not v.strip().startswith("$")]
+        servers.append(Server(name=name, line=line, command=safe_args(command), env_names=sorted(env),
+                              env_literals=literals))
     return servers

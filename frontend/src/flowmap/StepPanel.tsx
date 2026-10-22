@@ -2,10 +2,13 @@
 // On a dependency map its health comes first: the verdict, why, and the likely fix (D24).
 // Edits are saved on top of the Planner's version and never touch your code.
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { useApi } from "../api/client";
 import type { CheckRecord, Connector, Evidence, FlowNode, FlowView } from "../api/types";
 import { BrandTile } from "../brand/BrandTile";
 import { Dot, InternetWorks, took, WORD } from "../checks/Health";
+import type { Finding } from "../security/Security";
+import "../security/security.css";
 import type { LiveItem } from "../checks/useChecks";
 import { when } from "../components/format";
 import { Icons } from "../components/icons";
@@ -51,6 +54,8 @@ interface Props {
   example?: boolean;
   checking?: boolean;
   onCheck?: (id: string) => void;
+  /** its security findings (D31) */
+  findings?: Finding[];
 }
 
 const HISTORY_BARS = 8;
@@ -120,7 +125,7 @@ function EvidenceItem({ ev }: { ev: Evidence }) {
 }
 
 export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, tipShown, layer, actions, health, othersUp,
-  example, checking, onCheck }: Props) {
+  example, checking, onCheck, findings }: Props) {
   const [name, setName] = useState(node.title);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -172,6 +177,19 @@ export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, t
       </div>
       {runText && state !== "idle" && <div className={`sp-run ${state}`} role="status">{runText}</div>}
       {health && <Health item={health} othersUp={othersUp} example={example} checking={checking} onCheck={onCheck} />}
+      {findings && findings.length > 0 && (
+        <div className="sp-sec sp-security">
+          <span className="sp-sh">Security</span>
+          <ul>
+            {findings.map((f) => (
+              <li key={f.id}>
+                <span className={`sec-level lv-${f.level}`}>{f.level}</span>
+                <span><b>{f.title}</b> <code>{f.ref}</code> <Link to={`/security#${f.id}`}>The fix</Link></span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="sp-sec">
         <span className="sp-sh">{what}</span>

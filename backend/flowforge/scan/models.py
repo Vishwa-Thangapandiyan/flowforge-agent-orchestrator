@@ -41,6 +41,22 @@ class Dependency(_Model):
     env_names: list[str] = Field(default_factory=list)
 
 
+class Finding(_Model):
+    """Something unsafe the scan saw (D31). Never holds the value it found: `excerpt` is masked like evidence."""
+
+    id: str                        # stable: <kind>-<path>-<line>
+    kind: Literal["key_in_code", "key_in_config", "plain_http", "unpinned_server", "broad_files"]
+    level: Literal["high", "medium", "low"]
+    title: str
+    ref: str                       # "config.py:23"
+    line: int
+    dep_id: str | None = None      # the dependency it belongs to, when one does
+    first_line: int | None = None
+    excerpt: list[str] = Field(default_factory=list, max_length=5)
+    fix: str                       # one sentence
+    prompt: str                    # the whole change, for a coding agent (D27's rule)
+
+
 class EnvName(_Model):
     name: str
     ref: str
@@ -53,4 +69,5 @@ class ScanResult(_Model):
     languages: dict[str, int] = Field(default_factory=dict)
     dependencies: list[Dependency] = Field(default_factory=list)
     env_names: list[EnvName] = Field(default_factory=list)
-    findings: list[dict[str, str]] = Field(default_factory=list)   # security findings arrive in Phase 6
+    findings: list[Finding] = Field(default_factory=list)   # D31
+    findings_checked: bool = False   # the finders ran: a scan stored before D31 has an empty list that means nothing

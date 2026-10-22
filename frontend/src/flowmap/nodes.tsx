@@ -30,6 +30,8 @@ export interface BlockData extends Record<string, unknown> {
   theme?: GraphTheme;
   /** its latest health check, or "checking" while one runs (D24) */
   health?: { status: LiveStatus; summary: string; latency_ms?: number | null };
+  /** the worst level of its security findings (D31) */
+  risk?: "high" | "medium" | "low";
   state: NodeState;
   cap: string;
   search: "hit" | "miss" | null;
@@ -103,7 +105,7 @@ function Shell({ d, selected, children }: { d: BlockData; selected: boolean; chi
   const n = d.node;
   return (
     <div className={classes(d, selected)} style={{ width: size.w, height: size.h }}
-      aria-label={`${n.title}, ${KIND_WORD[n.kind] ?? n.kind}${d.tile ? `, ${d.tile.name}` : ""}${n.status === "unconfirmed" ? ", unconfirmed" : ""}`}>
+      aria-label={`${n.title}, ${KIND_WORD[n.kind] ?? n.kind}${d.tile ? `, ${d.tile.name}` : ""}${n.status === "unconfirmed" ? ", unconfirmed" : ""}${d.risk ? `, ${d.risk} security finding` : ""}`}>
       <span className="ff-focus" />
       {children}
       {d.diffTag ? <span className={`ff-dtag ${d.diffOff ? "off" : d.diff}`}>{d.diffTag}</span>
@@ -111,6 +113,7 @@ function Shell({ d, selected, children }: { d: BlockData; selected: boolean; chi
       {d.showTip && n.tip && n.yours.length === 0 && <span className="ff-flag tip">{Icons.spark(11)} Tip</span>}
       <Status d={d} />
       {d.health && n.kind !== "start" && <span className={`hdot ff-hdot ${d.health.status}`} aria-hidden="true" />}
+      {d.risk && <span className={`ff-risk lv-${d.risk}`} aria-hidden="true">!</span>}
       <Handles />
     </div>
   );

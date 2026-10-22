@@ -995,6 +995,33 @@ D23's rule holds: nothing drawn by hand. Vishwa chose Python first, with Dart an
 
 ---
 
+## D31. Security findings from the scan (Vishwa, 2026-10-22)
+
+**Context.** Phase 7. The scan already reads every file the map comes from; it should also say what in them is unsafe. CLAUDE.md §6.4 step 1 gives the finders (known key shapes, entropy, the AST), and §6.5 the rule that a value is never kept or shown.
+
+**Choice:**
+- **Five findings in V1,** found by plain code in the same pass as the scan (D20: nothing sent anywhere):
+
+  | Kind | Level | Found when |
+  |---|---|---|
+  | `key_in_code` | high | a known key shape (the `KEY_PATTERNS` of `security/logfilter.py`, each with a name) on any line, comments included; or a string of 16+ characters with high entropy (≥ 3.5 bits a character) given to a key/token/secret/password name (Python by the AST, JS/TS/Dart by patterns). Placeholders (`your-…`, `<…>`, `xxx`, `changeme`, `example`…) and env lookups are not keys |
+  | `key_in_config` | high | an MCP config's `env` holds a literal value under a key-like name, rather than a reference (`${VAR}`) |
+  | `plain_http` | medium | an API or LLM the app calls over `http://` on a host that isn't local |
+  | `unpinned_server` | medium | an MCP server started by `npx`/`uvx` whose package has no version (`pkg@1.2.3`, `pkg==1.2.3`) |
+  | `broad_files` | medium | a filesystem MCP server given `/`, `~`, `$HOME` or a drive root |
+
+  Files the scan skips (tests, fake data, vendored code: D21, D23) are not searched. `low` exists for later kinds; none uses it yet.
+- **A finding is** `{id, kind, level, title, ref, dep_id, excerpt, first_line, fix, prompt}`. `id` is stable (`kind-path-line`). `excerpt` is the masked lines around `ref`, like evidence. `fix` is one sentence; `prompt` is the whole change for a coding agent, built by code (D27's rule). **The matched value is never kept**: it lives only in the scan's memory while the file is read.
+- **The dependency it belongs to:** the dependency with a place on the same line; for a key, else the dependency with a place within three lines of a line that uses the key's name. Otherwise none, and the finding stands alone.
+- **Where it shows:** `ScanResult.findings` (stored with the map's scan, so a re-scan updates it); `GET /security`; the Security page (counts by level, one card per finding with its excerpt, fix, Copy prompt and Show on map); a badge on the map's blocks that have findings and a list in their step panel; a sixth read-only MCP tool `get_security_findings` and its card on the Connect page (D30).
+- **Honest wording:** "catches known key formats and these patterns, not everything" (§6.1). The fix for a key always says to replace it, because it may be in git history; FlowForge doesn't read the history.
+
+**Why:** the same pass and the same masking as the scan keep one source of truth and one privacy rule. Findings are data with a fix and a prompt, never actions: FlowForge doesn't edit code (D28).
+
+**Code:** `security/finders.py`, `security/findings.py` (new), `scan/models.py` (`Finding`), `scan/scanner.py`, `scan/mcp_config.py`, `api/security.py`, `agent/server.py`, `frontend/src/security/`.
+
+---
+
 ## Step JSON schema (reference)
 
 ```json

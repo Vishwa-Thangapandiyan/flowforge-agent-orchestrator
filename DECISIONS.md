@@ -975,7 +975,23 @@ D23's rule holds: nothing drawn by hand. Vishwa chose Python first, with Dart an
 
 **Why:** a server the agent starts by itself, reading the same saved data, is one config line for the user and keeps one source of truth. Read-only tools and the existing yes-before-start rule keep FlowForge's promises when an agent, not a person, is asking.
 
-**Code:** `backend/flowforge/agent/` (new), `cli.py` (`mcp`), `api/agent.py` (`GET /agent/connect`), `frontend/src/pages/ConnectAgent.tsx`.
+**Code:** `backend/flowforge/agent/` (new), `cli.py` (`mcp`), `api/agent.py` (`GET /agent/connect`), `frontend/src/agent/ConnectAgent.tsx`.
+
+---
+
+## D30. The Connect page: what your agent gets, and what it asked (Vishwa, 2026-10-22)
+
+**Context.** D29's Connect page was a long command, a text list of tool names and a thin "last call" line. Vishwa found it hard to read and chose a layout from mock-ups: set-up on the left; on the right, what the agent will get from this repo, and, once it has called, what it asked. A sample chat was rejected: FlowForge has no chat, and a made-up conversation would mislead.
+
+**Choice:**
+- **Left, set-up:** the three agents as cards (brand marks per D15; a monogram where `simple-icons` has none), one Copy button, the command itself behind "Show the command", three numbered moves, the connection state.
+- **Right, top: "What your agent gets".** One card per tool with the question it answers and its answer for this repo now: the dependencies and their kinds, the latest health (from stored checks; nothing is run), as written vs could be, the advice's count and time saved. `GET /agent/preview` builds them with the same code as the tools, through the same masking. `what_changed` has no number before an edit, so its card only says what it is for.
+- **Right, below, after the first call: "What your agent asked".** Each tool call stores `{tool, repo, at, got}`, newest first, the last 20 (replacing D29's single last call). `got` is a one-line answer made from counts and times only (for example "11 dependencies", "9 up · 1 down"), never names, addresses or code, and it is masked too.
+- The headlines on the cards and in the list come from one function, so the two can't disagree.
+
+**Why:** the page should show what connecting gives you before you connect, and prove it worked after, without a paragraph or a fake screenshot.
+
+**Code:** `agent/server.py` (`headline`, `preview`, the call list), `api/agent.py` (`GET /agent/preview`, `calls`), `frontend/src/agent/ConnectAgent.tsx`.
 
 ---
 

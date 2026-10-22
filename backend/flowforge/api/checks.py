@@ -64,11 +64,20 @@ def _address(what: str | None) -> str | None:
     return clean_url(what) if "://" in what else (what if "." in what or ":" in what else None)
 
 
+def target_for(dep: Dependency, scan: ScanResult, name: str | None = None) -> CheckTarget:
+    """What a check of a scanned dependency reaches (D24); shared by Check now and the MCP server (D29)."""
+    return CheckTarget(id=dep.id, kind=dep.kind, name=name or dep.name, target=dep.target, command=dep.command,
+                       model=dep.model, catalog=dep.catalog, env_names=dep.env_names, reads_env=_reads_env(dep, scan))
+
+
+def confirmed_commands(storage: Any) -> set[str]:
+    """The MCP commands the user said yes to starting (D24)."""
+    return set(json.loads(storage.setting(CONFIRMED_SETTING) or "[]"))
+
+
 def _target(node: dict[str, Any], dep: Dependency | None, scan: ScanResult | None) -> CheckTarget:
     if dep is not None and scan is not None:
-        return CheckTarget(id=dep.id, kind=dep.kind, name=node["title"], target=dep.target, command=dep.command,
-                           model=dep.model, catalog=dep.catalog, env_names=dep.env_names,
-                           reads_env=_reads_env(dep, scan))
+        return target_for(dep, scan, node["title"])
     what = (node.get("what") or "").strip()   # a dependency the user added on the map: its address or command
     address = _address(what)
     if node["kind"] in ("mcp", "local") and what and "://" not in what:
@@ -105,12 +114,12 @@ def _origin(command: list[str], root: Path | None) -> str:
     return f"runs {program} from your PATH"
 
 
-def _command(t: CheckTarget) -> str:
+def command_text(t: CheckTarget) -> str:
     return " ".join(t.command or [])
 
 
 def _confirmed(s: AppState) -> set[str]:
-    return set(json.loads(s.storage.setting(CONFIRMED_SETTING) or "[]"))
+    return confirmed_commands(s.storage)
 
 
 def _unconfirmed(s: AppState, targets: list[CheckTarget]) -> list[CheckTarget]:
@@ -119,7 +128,7 @@ def _unconfirmed(s: AppState, targets: list[CheckTarget]) -> list[CheckTarget]:
     if s.example:
         return []
     yes = _confirmed(s)
-    return [t for t in targets if starts_process(t) and _command(t) not in yes]
+    return [t for t in targets if starts_process(t) and command_text(t) not in yes]
 
 
 def check_workflow(targets: list[CheckTarget], root: str) -> Workflow:
@@ -198,7 +207,7 @@ async def start_checks(req: CheckRequest) -> dict[str, Any]:
             raise HTTPException(409, f"Checking would start {n} MCP server{'s' if n != 1 else ''} on this computer. "
                                      "See what starts in GET /checks/plan, then send confirm: true.")
         # the yes covers exactly the servers this check starts, nothing else on the map
-        s.storage.set_setting(CONFIRMED_SETTING, json.dumps(sorted(_confirmed(s) | {_command(t) for t in asking})))
+        s.storage.set_setting(CONFIRMED_SETTING, json.dumps(sorted(_confirmed(s) | {command_text(t) for t in asking})))
     workflow = check_workflow(chosen, str(root))
     run_id = start_run(workflow, use_cache=False)
     task = asyncio.create_task(_record(s, run_id, workflow))

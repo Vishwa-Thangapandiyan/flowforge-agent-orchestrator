@@ -114,7 +114,7 @@ To use real LLM steps, `cp .env.example .env` and add a free `NVIDIA_API_KEY` fr
 | **Flow map** (home) | Your app's dependency map on a canvas: pan, zoom, drag, search, minimap. Every block is something the code uses (an LLM, an MCP server, an API, a local program), with its evidence (`file:line` with the code). Dashed blocks were only mentioned, never called. **Scan a folder** maps another folder; **Re-scan the repo** shows what changed. "As scanned / With my edits" switches between the scan and your edits. **Flow** shows the order the code calls them, the critical path and the **Faster** panel; **Style** picks one of five looks |
 | **MCP Map** (Export) | The map to send: SVG, PNG, PDF, Mermaid or Flow JSON |
 | **Checks** | Check now, each dependency's verdict, why it's down and the likely fix, and the history |
-| **Connect agent** | The set-up for Claude Code, Codex or Antigravity, the tools your agent gets, and its last call |
+| **Connect agent** | The set-up for Claude Code, Codex or Antigravity; what your agent gets from this repo (dependencies, health, time, ways to be faster); and, once connected, what it asked |
 | **How the Planner drew it** | The analysis replayed: read the repo, run the app in test mode, trace the calls, draft, check. What it read, what it dropped and why |
 | **Re-check** | What changed in your repo since the last map: added, changed, removed, and conflicts with your edits. You pick what to take; the old version stays listed |
 | **Connectors** | A catalog of 56 apps with search and categories, honest **Live** / **Demo only** badges, and a mock test run for every one. Apps you connected but your code doesn't call wait here, off the map |

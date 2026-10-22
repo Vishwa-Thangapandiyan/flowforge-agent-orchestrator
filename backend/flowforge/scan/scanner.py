@@ -254,6 +254,7 @@ class Places:
     by_dep: dict[str, list[tuple[str, int, str]]]
     app_servers: set[str]
     facts: dict[str, FileFacts]
+    code: dict[str, str] = field(default_factory=dict)   # every code file read -> its language (D32)
 
 
 def scan(root: str | Path) -> ScanResult:
@@ -338,5 +339,6 @@ def scan_with_places(root: str | Path) -> tuple[ScanResult, Places]:
                         languages=languages, dependencies=dependencies,
                         env_names=[EnvName(name=n, ref=r) for n, r in sorted(seen.items())], findings=findings,
                         findings_checked=True)
-    places = Places(by_dep=by_dep, app_servers=app_servers, facts={f.path: f for f in facts if f.language == "python"})
+    places = Places(by_dep=by_dep, app_servers=app_servers, facts={f.path: f for f in facts if f.language == "python"},
+                    code={f.path: f.language for f in facts})
     return result, places

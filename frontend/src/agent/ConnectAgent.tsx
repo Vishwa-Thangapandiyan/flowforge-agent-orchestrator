@@ -33,6 +33,7 @@ interface Card { tool: string; headline: string | null; sub: string | null; tone
 const TOOLS: Record<string, { ask: string; icon: (s?: number) => ReactNode }> = {
   get_map: { ask: "What does it call?", icon: Icons.map },
   check_health: { ask: "Is anything down?", icon: Icons.activity },
+  get_security_findings: { ask: "Is anything unsafe?", icon: Icons.shield },
   get_flow: { ask: "What waits for what?", icon: Icons.route },
   get_advice: { ask: "What could run together?", icon: Icons.bolt },
   what_changed: { ask: "What did the edit change?", icon: Icons.refresh },

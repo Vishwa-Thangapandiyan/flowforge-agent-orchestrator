@@ -52,7 +52,8 @@ def test_the_page_shows_the_agents_calls_newest_first(example):
 def test_the_preview_is_this_repos_answers(example):
     got = example.get("/agent/preview").json()
     assert got["repo"] == "trip-planner"
-    assert [c["tool"] for c in got["cards"]] == ["get_map", "check_health", "get_flow", "get_advice", "what_changed"]
+    assert [c["tool"] for c in got["cards"]] == ["get_map", "check_health", "get_security_findings", "get_flow", "get_advice",
+                                                  "what_changed"]
 
 
 def test_no_preview_before_a_folder_is_mapped(tmp_path, monkeypatch):

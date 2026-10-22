@@ -17,7 +17,7 @@ from flowforge.storage import Storage
 ROOT = Path(__file__).resolve().parents[2]
 TRIP_PLANNER = ROOT / "examples" / "trip-planner"
 FAKE_KEY = "sk_test_FAKEFAKE12345678"
-TOOLS = {"get_map", "get_flow", "get_advice", "check_health", "what_changed"}
+TOOLS = {"get_map", "get_flow", "get_advice", "check_health", "get_security_findings", "what_changed"}
 
 
 def write(root: Path, files: dict[str, str]) -> Path:
@@ -43,7 +43,7 @@ def storage_for(tmp_path: Path, repo: Path | None = None) -> Storage:
     return storage
 
 
-async def test_an_agent_sees_five_tools_and_only_one_reaches_out(tmp_path):
+async def test_an_agent_sees_six_tools_and_only_one_reaches_out(tmp_path):
     server = build_server(TRIP_PLANNER, storage_for(tmp_path))
     async with Client(server) as client:
         tools = {t.name: t for t in (await client.list_tools()).tools}
@@ -207,7 +207,8 @@ def test_the_preview_shows_what_each_tool_answers_for_this_repo_without_recordin
     storage = storage_for(tmp_path)
     got = preview(TRIP_PLANNER, storage)
     cards = {c["tool"]: c for c in got["cards"]}
-    assert list(cards) == ["get_map", "check_health", "get_flow", "get_advice", "what_changed"]
+    assert list(cards) == ["get_map", "check_health", "get_security_findings", "get_flow", "get_advice", "what_changed"]
+    assert cards["get_security_findings"]["headline"] == "1 high · 2 medium"
     assert cards["get_map"]["headline"] == "12 dependencies"
     assert cards["get_map"]["sub"] == "1 LLM · 4 MCP servers · 6 APIs · 1 program"
     assert cards["check_health"]["headline"] == "Not checked yet"

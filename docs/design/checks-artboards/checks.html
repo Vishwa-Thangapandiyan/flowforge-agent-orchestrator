@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Health checks artboards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Phase 5 artboards (D24). Tokens copied from docs/design/flow-map-artboards (D17, D18). Example data: the trip planner. */
+:root{--app:#EEF3F5;--canvas:#F2F6F7;--dot:rgba(15,29,38,.12);--surface:#FFFFFF;--surface-2:#F5F8F9;--raised:#FFFFFF;--fg:#0F1D26;--muted:#4A5E6A;--faint:#8A9BA5;--line:#D6DFE4;--line-2:#BFCCD3;--edge:#93A5AF;--rail:#0F1D26;--rail-fg:#C9D6DC;--rail-active:#1D3340;
+--teal:#0B7A70;--teal-bg:#DDF2EF;--blue:#2457C5;--blue-bg:#E1EAFB;--amber:#8A5A00;--amber-bg:#FCEFD0;--amber-strong:#E3A535;--coral:#B93C2B;--coral-bg:#FBE4DF;--violet:#6B46C1;--violet-bg:#EEE8FB;--slate:#3A4756;--slate-bg:#E6EBEF;--on-teal:#FFFFFF;
+--up:#0B7A70;--warn:#E3A535;--down:#D2513E;--none:#BFCCD3;
+--shadow:0 1px 2px rgb(15 29 38 / 6%),0 8px 22px -12px rgb(15 29 38 / 22%);--shadow-lg:0 2px 6px rgb(15 29 38 / 6%),0 18px 44px -18px rgb(15 29 38 / 34%);
+--sans:'Geist',ui-sans-serif,system-ui,'Segoe UI',sans-serif;--mono:'Geist Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;color-scheme:light}
+:root[data-theme="dark"]{--app:#0A1216;--canvas:#081014;--dot:rgba(147,168,179,.12);--surface:#0F1A20;--surface-2:#0C161B;--raised:#132229;--fg:#E8F0F3;--muted:#98ADB8;--faint:#5E7482;--line:#1F3039;--line-2:#2C424D;--edge:#46606D;--rail:#060C0F;--rail-fg:#9FB3BD;--rail-active:#13232B;
+--teal:#4FD1C0;--teal-bg:#10302C;--blue:#7FA8FF;--blue-bg:#14264A;--amber:#F2B84B;--amber-bg:#33270B;--amber-strong:#F2B84B;--coral:#FF8C7A;--coral-bg:#3D1E19;--violet:#B79CFF;--violet-bg:#231C3E;--slate:#B6C3CC;--slate-bg:#1B2930;--on-teal:#062320;
+--up:#4FD1C0;--warn:#F2B84B;--down:#FF8C7A;--none:#2C424D;
+--shadow:0 1px 2px rgb(0 0 0 / 40%),0 10px 26px -14px rgb(0 0 0 / 75%);--shadow-lg:0 2px 8px rgb(0 0 0 / 40%),0 22px 56px -20px rgb(0 0 0 / 85%);color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:#0A1216;font:14px/1.45 var(--sans);color:var(--fg);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer}
+.sheet{display:flex;flex-direction:column;gap:56px;padding:40px;min-width:1520px}
+.note{max-width:1440px;color:#C9D6DC;font-size:15px}
+.note h2{margin:0 0 6px;font:600 20px/1.2 var(--sans);color:#fff}
+.note p{margin:0;max-width:78ch}
+.theme{position:fixed;top:16px;right:16px;z-index:50;padding:8px 14px;border-radius:999px;border:1px solid #2C424D;background:#13232B;color:#E8F0F3}
+.board{width:1440px;height:900px;display:flex;overflow:hidden;border-radius:14px;background:var(--app);box-shadow:0 30px 80px -30px rgb(0 0 0 / 60%)}
+.board.short{height:560px}
+/* rail */
+.rail{flex:0 0 76px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 8px;background:var(--rail)}
+.logo{width:40px;height:40px;display:grid;place-items:center;margin-bottom:12px;color:#4FD1C0}
+.navi{width:62px;min-height:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border-radius:12px;color:var(--rail-fg);font:500 10.5px/1.1 var(--sans)}
+.navi.on{background:var(--rail-active);color:#fff;box-shadow:inset 3px 0 0 #4FD1C0}
+.navi svg{width:20px;height:20px}
+svg.i{fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+/* top bar */
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--line)}
+.proj{margin-right:auto;min-width:0}
+.proj h1{margin:0;font:650 17px/1.15 var(--sans);letter-spacing:-.015em}
+.proj small{display:flex;align-items:center;gap:8px;margin-top:5px;font:500 11.5px/1 var(--mono);color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:10px;padding:6px 14px 6px 6px;border-radius:999px;background:var(--violet-bg);border:1px solid color-mix(in srgb,var(--violet) 35%,transparent);color:var(--fg)}
+.chip .spark{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--violet) 30%,transparent);color:var(--violet)}
+.chip .k{display:block;font:600 10.5px/1 var(--mono);letter-spacing:.06em;color:var(--violet)}
+.chip .v{display:block;margin-top:4px;font:600 13px/1 var(--sans)}
+.chip .v span{margin-left:6px;font:500 11.5px/1 var(--mono);color:var(--muted)}
+.btn{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 14px;border-radius:10px;border:1px solid var(--line-2);background:var(--surface);font-weight:550;font-size:14px}
+.btn.primary{background:var(--teal);border-color:var(--teal);color:var(--on-teal)}
+.btn.ai{background:transparent;color:var(--violet);border-color:color-mix(in srgb,var(--violet) 45%,transparent)}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+.btn svg{width:18px;height:18px}
+.seg{display:inline-flex;padding:3px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line)}
+.seg b{padding:7px 12px;border-radius:8px;font-weight:500;color:var(--muted)}
+.seg b.on{background:var(--surface);color:var(--fg);box-shadow:var(--shadow)}
+.seg b .n{margin-left:6px;padding:1px 6px;border-radius:9px;background:var(--fg);color:var(--surface);font:600 11px/1 var(--mono)}
+/* the health strip: one square per dependency, in map order */
+.strip{display:inline-flex;align-items:center;gap:3px}
+.sq{width:10px;height:10px;border-radius:3px;background:var(--none)}
+.sq.up{background:var(--up)}.sq.warn{background:var(--warn)}.sq.down{background:var(--down)}.sq.run{background:var(--blue);animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.sq.run{animation:none}}
+.health{display:flex;align-items:center;gap:12px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--line);font-size:13px;color:var(--muted)}
+.health b{color:var(--fg);font-weight:600}
+.health .sep{width:1px;height:16px;background:var(--line)}
+/* canvas */
+.stage{position:relative;flex:1;min-height:0;display:flex}
+.canvas{position:relative;flex:1;background-color:var(--canvas);background-image:radial-gradient(var(--dot) 1.1px,transparent 1.4px);background-size:22px 22px;overflow:hidden}
+.edges{position:absolute;inset:0;width:100%;height:100%}
+.edges path{fill:none;stroke:var(--edge);stroke-width:1.4}
+.blk{position:absolute;width:196px;padding:9px 10px 9px 13px;border-radius:11px;background:var(--raised);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;align-items:center;gap:9px}
+.blk::before{content:"";position:absolute;left:-1px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--none)}
+.blk.up::before{background:var(--up)}.blk.warn::before{background:var(--warn)}.blk.down::before{background:var(--down)}
+.blk.down{border-color:color-mix(in srgb,var(--down) 55%,var(--line))}
+.blk.sel{outline:2px solid var(--teal);outline-offset:2px}
+.tag{position:absolute;top:-9px;left:12px;padding:1px 5px;border-radius:5px;background:var(--surface-2);border:1px solid var(--line);font:600 8.5px/1.3 var(--mono);letter-spacing:.06em;color:var(--muted)}
+.tile{flex:0 0 28px;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font:600 11px/1 var(--mono);color:#fff}
+.t-mcp{background:#2E8B57}.t-api{background:#2F6FDB}.t-llm{background:#1F2328}.t-local{background:#4A5E6A}
+.blk .tt{min-width:0;flex:1}
+.blk .tt b{display:block;font:600 12.5px/1.2 var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.blk .tt span{display:block;margin-top:3px;font:400 10.5px/1.2 var(--mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dot{flex:0 0 9px;width:9px;height:9px;border-radius:50%;background:var(--none)}
+.dot.up{background:var(--up)}.dot.warn{background:var(--warn)}.dot.down{background:var(--down)}
+.under{position:absolute;display:flex;gap:10px;font:500 10.5px/1 var(--mono);color:var(--muted);white-space:nowrap}
+.under em{font-style:normal;color:var(--fg)}
+.under .bad{color:var(--coral)}.under .meh{color:var(--amber)}
+.start{position:absolute;display:flex;align-items:center;gap:8px;padding:8px 14px 8px 8px;border-radius:999px;background:var(--raised);border:1px solid var(--line);box-shadow:var(--shadow)}
+.start i{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--slate-bg);font:600 11px/1 var(--mono);font-style:normal}
+.start b{font:600 12.5px/1.1 var(--sans)}.start span{display:block;font:400 10.5px/1.2 var(--mono);color:var(--muted)}
+/* step panel */
+.sp{flex:0 0 400px;background:var(--surface);border-left:1px solid var(--line);overflow:hidden;display:flex;flex-direction:column}
+.sp-head{display:flex;gap:12px;align-items:center;padding:18px 18px 16px;border-bottom:1px solid var(--line)}
+.sp-head .tile{width:44px;height:44px;flex-basis:44px;border-radius:12px;font-size:15px}
+.kind{display:inline-block;padding:2px 7px;border-radius:6px;background:var(--surface-2);border:1px solid var(--line);font:600 10.5px/1.3 var(--mono);letter-spacing:.05em;color:var(--muted)}
+.sp-head h2{margin:5px 0 0;font:650 19px/1.15 var(--sans)}
+.sec{padding:16px 18px;border-bottom:1px solid var(--line)}
+.sh{display:block;margin-bottom:10px;font:600 11px/1 var(--mono);letter-spacing:.07em;color:var(--muted)}
+.verdict{display:flex;align-items:center;gap:10px;font:600 16px/1.25 var(--sans)}
+.verdict .dot{width:12px;height:12px;flex-basis:12px}
+.verdict small{display:block;margin-top:3px;font:400 12px/1.2 var(--mono);color:var(--muted)}
+.reason{margin:12px 0 0;padding:10px 12px;border-radius:10px;background:var(--coral-bg);font:500 12.5px/1.45 var(--mono);color:var(--fg)}
+.fix{margin:10px 0 0;padding:10px 12px;border-radius:10px;border:1px dashed var(--line-2);font-size:13px;color:var(--fg)}
+.fix code{font:500 12px/1 var(--mono);padding:1px 5px;border-radius:5px;background:var(--surface-2);border:1px solid var(--line)}
+.fix .ref{font:500 11.5px/1 var(--mono);color:var(--muted)}
+.hist{display:flex;align-items:flex-end;gap:4px;height:36px;margin-top:4px}
+.hist .bar{width:22px;border-radius:4px 4px 2px 2px;background:var(--up)}
+.hist .bar.down{height:8px!important;background:var(--down)}.hist .bar.warn{background:var(--warn)}
+.hist-l{display:flex;justify-content:space-between;margin-top:6px;font:500 10.5px/1 var(--mono);color:var(--faint)}
+.row{display:flex;gap:8px;margin-top:14px}
+.mono{font-family:var(--mono)}
+.ev{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.ev header{display:flex;justify-content:space-between;padding:8px 10px;font:500 12px/1.2 var(--mono);background:var(--surface-2)}
+.ev header span{color:var(--violet)}
+.ev pre{margin:0;padding:8px 10px;font:400 12px/1.6 var(--mono);color:var(--muted)}
+.ev pre b{display:block;margin:0 -10px;padding:0 10px;color:var(--fg);font-weight:500;background:color-mix(in srgb,var(--teal) 12%,transparent)}
+/* confirm panel */
+.confirm{padding:18px 20px 20px;background:var(--surface);border-bottom:1px solid var(--line);box-shadow:var(--shadow-lg);position:relative;z-index:4}
+.confirm h3{margin:0;font:650 17px/1.25 var(--sans)}
+.confirm p{margin:6px 0 0;max-width:86ch;color:var(--muted)}
+.cmds{display:grid;grid-template-columns:auto 1fr auto auto;gap:0;margin-top:14px;border:1px solid var(--line);border-radius:12px;overflow:hidden;max-width:1100px}
+.cmds>div{padding:10px 14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.cmds>div:nth-child(-n+4){border-top:0}
+.cmds .src{font:500 12px/1 var(--mono);color:var(--muted)}
+.cmds code{font:500 13px/1.3 var(--mono)}
+.from{font-size:12.5px;padding:3px 8px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.from.repo{background:var(--amber-bg);border-color:color-mix(in srgb,var(--amber) 35%,transparent);color:var(--amber)}
+.promise{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:14px;font-size:13px;color:var(--muted)}
+.promise span{display:inline-flex;align-items:center;gap:7px}
+.promise svg{width:16px;height:16px;color:var(--teal)}
+/* checks page */
+.page{flex:1;overflow:hidden;padding:26px 32px;display:flex;flex-direction:column;gap:18px}
+.page-h{display:flex;align-items:flex-end;gap:16px}
+.page-h h1{margin:0;font:650 26px/1.1 var(--sans);letter-spacing:-.02em}
+.page-h p{margin:6px 0 0;color:var(--muted)}
+.page-h .grow{flex:1}
+.overview{display:flex;align-items:center;gap:22px;padding:18px 20px;border-radius:14px;background:var(--surface);border:1px solid var(--line)}
+.overview .strip{gap:5px}.overview .sq{width:30px;height:30px;border-radius:8px}
+.counts{display:flex;gap:22px;font-size:15px}
+.counts span{display:inline-flex;align-items:center;gap:8px}
+.counts b{font:650 22px/1 var(--sans)}
+.split{display:flex;gap:18px;min-height:0;flex:1}
+.table{flex:1;min-width:0;border-radius:14px;background:var(--surface);border:1px solid var(--line);overflow:hidden}
+.table-h{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line)}
+.grid{display:grid;grid-template-columns:minmax(220px,1.3fr) minmax(220px,1.6fr) 90px 150px 100px}
+.grid>*{padding:10px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;min-width:0}
+.grid .hd{padding:9px 16px;font:600 11px/1 var(--mono);letter-spacing:.06em;color:var(--muted);background:var(--surface-2)}
+.grid .name b{font-weight:600;white-space:nowrap}
+.grid .name .tile{width:26px;height:26px;flex-basis:26px;font-size:10px}
+.grid .k{font:500 10.5px/1 var(--mono);color:var(--muted)}
+.grid .res{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grid .res.bad{color:var(--coral)}.grid .res.meh{color:var(--amber)}
+.grid .lat{justify-content:flex-end;font:500 13px/1 var(--mono)}
+.grid .when{font:500 12px/1 var(--mono);color:var(--muted)}
+.grid .sel{background:color-mix(in srgb,var(--teal) 8%,transparent)}
+.grid .strip .sq{width:9px;height:14px;border-radius:2px}
+.side{flex:0 0 380px;border-radius:14px;background:var(--surface);border:1px solid var(--line);overflow:hidden}
+.tl{list-style:none;margin:0;padding:6px 0}
+.tl li{display:grid;grid-template-columns:14px 1fr auto;gap:10px;padding:10px 16px;align-items:start}
+.tl li .dot{margin-top:5px}
+.tl li b{font-weight:550}
+.tl li p{margin:3px 0 0;font:400 12px/1.4 var(--mono);color:var(--muted)}
+.tl li time{font:500 12px/1 var(--mono);color:var(--muted)}
+.foot{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted)}
+.foot a{color:var(--fg)}
+</style>
+</head>
+<body>
+<button class="theme" type="button" onclick="const r=document.documentElement;r.dataset.theme=r.dataset.theme==='dark'?'light':'dark'">Light / dark</button>
+<div class="sheet">
+
+<section class="note">
+  <h2>1 · The map after Check now</h2>
+  <p>Every block gets a dot and a coloured edge: teal up, amber slow or not encrypted, coral down, grey not checked. Under each block, its latency sits next to the line it came from. The strip under the header is the whole app at a glance, one square per dependency, in map order. Clicking a block opens its Health first: the verdict, the reason in the server's own words, and a likely fix when the code shows one.</p>
+</section>
+
+<div class="board" id="b1">
+  <nav class="rail" aria-label="Main">
+    <div class="logo"><svg class="i" width="26" height="26" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></svg></div>
+    <div class="navi on"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/><path d="M10 6.5h4a3 3 0 0 1 3 3V14"/></svg>Flow map</div>
+    <div class="navi"><svg class="i" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Checks</div>
+    <div class="navi"><svg class="i" viewBox="0 0 24 24"><path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0zM12 18v4"/></svg>Connectors</div>
+    <div class="navi"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>Security</div>
+  </nav>
+  <div class="main">
+    <header class="top">
+      <div class="proj"><h1>trip-planner</h1><small>12 dependencies</small></div>
+      <span class="chip"><span class="spark"><svg class="i" width="16" height="16" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></span><span><span class="k">SCANNED FROM YOUR CODE · NO AI</span><span class="v">Map v2<span>today 10:42</span></span></span></span>
+      <span class="btn"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>Scan a folder</span>
+      <span class="seg"><b>As scanned</b><b class="on">With my edits<span class="n">0</span></b></span>
+      <span class="btn ai"><svg class="i" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>Re-scan the repo</span>
+      <span class="btn primary"><svg class="i" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Check now</span>
+    </header>
+    <div class="health">
+      <span class="strip" aria-label="Health of 12 dependencies"><i class="sq up"></i><i class="sq up"></i><i class="sq warn"></i><i class="sq down"></i><i class="sq up"></i><i class="sq down"></i><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq warn"></i><i class="sq up"></i><i class="sq up"></i></span>
+      <span><b>8 up</b>, 2 need a look, <b style="color:var(--coral)">2 down</b></span><span class="sep"></span><span>checked just now · 12 of 12</span>
+    </div>
+    <div class="stage">
+      <div class="canvas">
+        <svg class="edges" viewBox="0 0 964 800" preserveAspectRatio="xMinYMin meet" style="width:964px;height:800px"><path d="M228 392 C 330 392, 330 36, 452 36"/><path d="M228 392 C 330 392, 330 108, 452 108"/><path d="M228 392 C 330 392, 330 180, 452 180"/><path d="M228 392 C 330 392, 330 252, 452 252"/><path d="M228 392 C 330 392, 330 324, 452 324"/><path d="M228 392 C 330 392, 330 396, 452 396"/><path d="M228 392 C 330 392, 330 468, 452 468"/><path d="M228 392 C 330 392, 330 540, 452 540"/><path d="M228 392 C 330 392, 330 612, 452 612"/><path d="M228 392 C 330 392, 330 684, 452 684"/><path d="M228 392 C 330 392, 330 756, 452 756"/><path d="M648 180 L 700 180"/></svg>
+        <div class="start" style="left:110px;top:372px"><i>&lt;&gt;</i><span><b>trip-planner</b><span>your app</span></span></div>
+        <!-- column of dependencies, map order -->
+        <div class="blk up" style="left:452px;top:12px"><span class="tag">MCP</span><span class="tile t-mcp">Ti</span><span class="tt"><b>time</b><span>uvx mcp-server-time@…</span></span><span class="dot up"></span></div>
+        <div class="under" style="left:454px;top:63px">.mcp.json:3<em>1.9 s · 2 tools</em></div>
+        <div class="blk up" style="left:452px;top:84px"><span class="tag">MCP</span><span class="tile t-mcp">Fi</span><span class="tt"><b>files</b><span>npx -y @modelcontext…</span></span><span class="dot up"></span></div>
+        <div class="under" style="left:454px;top:135px">.mcp.json:11<em>2.4 s · 14 tools</em></div>
+        <div class="blk warn" style="left:452px;top:156px"><span class="tag">MCP</span><span class="tile t-mcp">Fe</span><span class="tt"><b>fetch</b><span>uvx mcp-server-fetch</span></span><span class="dot warn"></span></div>
+        <div class="under" style="left:454px;top:207px">.mcp.json:7<em class="meh">6.8 s · slow start</em></div>
+        <div class="blk up" style="left:700px;top:156px"><span class="tag">API</span><span class="tile t-api">Wi</span><span class="tt"><b>Wikipedia</b><span>en.wikipedia.org/wiki/</span></span><span class="dot up"></span></div>
+        <div class="under" style="left:702px;top:207px">planner.py:67<em>310 ms</em></div>
+        <div class="blk down sel" style="left:452px;top:228px"><span class="tag">MCP</span><span class="tile t-mcp">Cu</span><span class="tt"><b>currency</b><span>python mcp_servers/cu…</span></span><span class="dot down"></span></div>
+        <div class="under" style="left:454px;top:279px">.mcp.json:15<em class="bad">didn't start</em></div>
+        <div class="blk up" style="left:452px;top:300px"><span class="tag">LOCAL</span><span class="tile t-local">Pl</span><span class="tt"><b>packing list</b><span>python tools/packing_…</span></span><span class="dot up"></span></div>
+        <div class="under" style="left:454px;top:351px">planner.py:37<em>found, not run</em></div>
+        <div class="blk down" style="left:452px;top:372px"><span class="tag">LLM</span><span class="tile t-llm">Ol</span><span class="tt"><b>Ollama</b><span>llama3.1:8b · localhost…</span></span><span class="dot down"></span></div>
+        <div class="under" style="left:454px;top:423px">config.py:11<em class="bad">not running</em></div>
+        <div class="blk up" style="left:452px;top:444px"><span class="tag">API</span><span class="tile t-api">Os</span><span class="tt"><b>OSRM</b><span>router.project-osrm.org</span></span><span class="dot up"></span></div>
+        <div class="under" style="left:454px;top:495px">config.py:17<em>640 ms</em></div>
+        <div class="blk up" style="left:452px;top:516px"><span class="tag">API</span><span class="tile t-api">Op</span><span class="tt"><b>Open-Meteo</b><span>api.open-meteo.com</span></span><span class="dot up"></span></div>
+        <div class="under" style="left:454px;top:567px">config.py:16<em>180 ms</em></div>
+        <div class="blk up" style="left:452px;top:588px"><span class="tag">API</span><span class="tile t-api">No</span><span class="tt"><b>Nominatim</b><span>nominatim.openstreetm…</span></span><span class="dot up"></span></div>
+        <div class="under" style="left:454px;top:639px">config.py:15<em>420 ms</em></div>
+        <div class="blk warn" style="left:452px;top:660px"><span class="tag">API</span><span class="tile t-api">Ip</span><span class="tt"><b>ip-api.com</b><span>http://ip-api.com/json/</span></span><span class="dot warn"></span></div>
+        <div class="under" style="left:454px;top:711px">config.py:18<em class="meh">210 ms · not encrypted</em></div>
+        <div class="blk up" style="left:452px;top:732px"><span class="tag">API</span><span class="tile t-api">GM</span><span class="tt"><b>Google Maps</b><span>maps.googleapis.com</span></span><span class="dot up"></span></div>
+        <div class="under" style="left:454px;top:783px">config.py:24<em>230 ms · needs a key</em></div>
+      </div>
+      <aside class="sp" aria-label="Step: currency">
+        <div class="sp-head"><span class="tile t-mcp">Cu</span><div style="flex:1"><span class="kind">MCP SERVER</span><h2>currency</h2></div><svg class="i" width="18" height="18" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></div>
+        <div class="sec">
+          <span class="sh">HEALTH</span>
+          <div class="verdict"><span class="dot down"></span><span>Down: it stopped while starting<small>checked just now · after 0.4 s</small></span></div>
+          <p class="reason">currency server: CURRENCY_API_URL is not set</p>
+          <div class="fix">Its own code reads <code>CURRENCY_API_URL</code>, but <code>.mcp.json</code> gives it no <code>env</code>.<br><span class="ref">mcp_servers/currency.py:9</span></div>
+          <div class="row"><span class="btn"><svg class="i" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Check this one</span></div>
+        </div>
+        <div class="sec">
+          <span class="sh">LAST 8 CHECKS</span>
+          <div class="hist"><i class="bar down"></i><i class="bar down"></i><i class="bar down"></i><i class="bar down"></i><i class="bar down"></i><i class="bar down"></i><i class="bar down"></i><i class="bar down"></i></div>
+          <div class="hist-l"><span>Mon 09:10</span><span>never up</span><span>now</span></div>
+        </div>
+        <div class="sec"><span class="sh">STARTS WITH</span><p class="mono" style="margin:0">python mcp_servers/currency.py</p></div>
+        <div class="sec" style="border:0"><span class="sh">EVIDENCE</span>
+          <div class="ev"><header>.mcp.json:15<span>found in your code</span></header><pre>    },
+<b>    "currency": {</b>      "command": "python",</pre></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<section class="note">
+  <h2>2 · The first Check now: what will start</h2>
+  <p>Checking an MCP server means starting it, and that runs code: a script in your repo, or a package fetched from npm or PyPI. So the first time, FlowForge lists exactly what will start and waits for you. You confirm once per map version; a re-scan that changes a command asks again. "Check without them" checks everything else and leaves the servers grey.</p>
+</section>
+
+<div class="board short" id="b2">
+  <nav class="rail" aria-label="Main">
+    <div class="logo"><svg class="i" width="26" height="26" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></svg></div>
+    <div class="navi on"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/><path d="M10 6.5h4a3 3 0 0 1 3 3V14"/></svg>Flow map</div>
+    <div class="navi"><svg class="i" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Checks</div>
+  </nav>
+  <div class="main">
+    <header class="top">
+      <div class="proj"><h1>trip-planner</h1><small>12 dependencies · never checked</small></div>
+      <span class="btn ai"><svg class="i" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>Re-scan the repo</span>
+      <span class="btn primary" style="opacity:.55"><svg class="i" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Check now</span>
+    </header>
+    <section class="confirm" aria-label="Before checking">
+      <h3>Checking starts 4 MCP servers on this computer</h3>
+      <p>Each one starts in the repo folder, lists its tools, and stops. They get none of your environment variables or keys.</p>
+      <div class="cmds">
+        <div><b>time</b></div><div><code>uvx mcp-server-time@2026.10.19</code></div><div><span class="from">downloads from PyPI</span></div><div class="src">.mcp.json:3</div>
+        <div><b>fetch</b></div><div><code>uvx mcp-server-fetch</code></div><div><span class="from">downloads from PyPI, any version</span></div><div class="src">.mcp.json:7</div>
+        <div><b>files</b></div><div><code>npx -y @modelcontextprotocol/server-filesystem@2.0.0 trips</code></div><div><span class="from">downloads from npm</span></div><div class="src">.mcp.json:11</div>
+        <div><b>currency</b></div><div><code>python mcp_servers/currency.py</code></div><div><span class="from repo">runs a script in this repo</span></div><div class="src">.mcp.json:15</div>
+      </div>
+      <div class="promise">
+        <span><svg class="i" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>7 APIs and LLMs get one request each, without keys</span>
+        <span><svg class="i" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>1 local program is only looked for, never run</span>
+        <span><svg class="i" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>No code or key leaves this computer</span>
+      </div>
+      <div class="row" style="margin-top:16px">
+        <span class="btn primary">Start them and check</span>
+        <span class="btn">Check without them</span>
+        <span class="btn ghost">Cancel</span>
+      </div>
+    </section>
+    <div class="canvas" style="flex:1"></div>
+  </div>
+</div>
+
+<section class="note">
+  <h2>3 · The Checks page (Runs becomes Checks)</h2>
+  <p>The same squares, bigger: the app's health first, then one row per dependency with its result in plain words, its latency, and its last 12 checks. Problems sort to the top. Selecting a row shows its history on the right. The old workflow runs stay one link away.</p>
+</section>
+
+<div class="board" id="b3">
+  <nav class="rail" aria-label="Main">
+    <div class="logo"><svg class="i" width="26" height="26" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></svg></div>
+    <div class="navi"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/><path d="M10 6.5h4a3 3 0 0 1 3 3V14"/></svg>Flow map</div>
+    <div class="navi on"><svg class="i" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Checks</div>
+    <div class="navi"><svg class="i" viewBox="0 0 24 24"><path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0zM12 18v4"/></svg>Connectors</div>
+    <div class="navi"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>Security</div>
+  </nav>
+  <div class="main">
+    <div class="page">
+      <div class="page-h">
+        <div class="grow"><h1>Checks</h1><p>Is everything trip-planner depends on up, fast and safe to call?</p></div>
+        <span class="btn primary"><svg class="i" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Check now</span>
+      </div>
+      <div class="overview">
+        <span class="strip"><i class="sq down"></i><i class="sq down"></i><i class="sq warn"></i><i class="sq warn"></i><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i></span>
+        <span class="counts"><span><b style="color:var(--coral)">2</b> down</span><span><b style="color:var(--amber)">2</b> need a look</span><span><b>8</b> up</span></span>
+        <span style="margin-left:auto;font:500 12.5px/1 var(--mono);color:var(--muted)">last check 10:44, took 7.1 s</span>
+      </div>
+      <div class="split">
+        <div class="table">
+          <div class="table-h"><span class="seg"><b>All 12</b><b class="on">Problems 4</b></span><span style="font-size:13px;color:var(--muted)">Problems first, then by name</span></div>
+          <div class="grid">
+            <div class="hd">DEPENDENCY</div><div class="hd">RESULT</div><div class="hd" style="justify-content:flex-end">LATENCY</div><div class="hd">LAST 12 CHECKS</div><div class="hd">CHECKED</div>
+            <div class="name sel"><span class="dot down"></span><span class="tile t-mcp">Cu</span><span><b>currency</b><br><span class="k">MCP server</span></span></div>
+            <div class="res bad sel">Stopped while starting: CURRENCY_API_URL is not set</div><div class="lat sel">–</div>
+            <div class="sel"><span class="strip"><i class="sq down"></i><i class="sq down"></i><i class="sq down"></i><i class="sq down"></i><i class="sq down"></i><i class="sq down"></i><i class="sq down"></i><i class="sq down"></i><i class="sq"></i><i class="sq"></i><i class="sq"></i><i class="sq"></i></span></div><div class="when sel">10:44</div>
+            <div class="name"><span class="dot down"></span><span class="tile t-llm">Ol</span><span><b>Ollama</b><br><span class="k">LLM · llama3.1:8b</span></span></div>
+            <div class="res bad">Nothing answers at localhost:11434. Is Ollama running?</div><div class="lat">–</div>
+            <div><span class="strip"><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq down"></i><i class="sq down"></i><i class="sq"></i><i class="sq"></i><i class="sq"></i><i class="sq"></i></span></div><div class="when">10:44</div>
+            <div class="name"><span class="dot warn"></span><span class="tile t-mcp">Fe</span><span><b>fetch</b><br><span class="k">MCP server</span></span></div>
+            <div class="res meh">Up, but slow to start: 6.8 s</div><div class="lat">6.8 s</div>
+            <div><span class="strip"><i class="sq warn"></i><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq warn"></i><i class="sq"></i><i class="sq"></i><i class="sq"></i><i class="sq"></i></span></div><div class="when">10:44</div>
+            <div class="name"><span class="dot warn"></span><span class="tile t-api">Ip</span><span><b>ip-api.com</b><br><span class="k">API</span></span></div>
+            <div class="res meh">Up, but plain http://: not encrypted</div><div class="lat">210 ms</div>
+            <div><span class="strip"><i class="sq warn"></i><i class="sq warn"></i><i class="sq warn"></i><i class="sq warn"></i><i class="sq warn"></i><i class="sq warn"></i><i class="sq warn"></i><i class="sq warn"></i><i class="sq"></i><i class="sq"></i><i class="sq"></i><i class="sq"></i></span></div><div class="when">10:44</div>
+            <div class="name"><span class="dot up"></span><span class="tile t-mcp">Fi</span><span><b>files</b><br><span class="k">MCP server</span></span></div>
+            <div class="res">Up: 14 tools</div><div class="lat">2.4 s</div>
+            <div><span class="strip"><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq"></i><i class="sq"></i><i class="sq"></i><i class="sq"></i></span></div><div class="when">10:44</div>
+            <div class="name"><span class="dot up"></span><span class="tile t-api">GM</span><span><b>Google Maps</b><br><span class="k">API</span></span></div>
+            <div class="res">Up, needs a key (403)</div><div class="lat">230 ms</div>
+            <div><span class="strip"><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq"></i><i class="sq"></i><i class="sq"></i><i class="sq"></i></span></div><div class="when">10:44</div>
+            <div class="name"><span class="dot up"></span><span class="tile t-api">No</span><span><b>Nominatim</b><br><span class="k">API</span></span></div>
+            <div class="res">Up</div><div class="lat">420 ms</div>
+            <div><span class="strip"><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq warn"></i><i class="sq up"></i><i class="sq up"></i><i class="sq up"></i><i class="sq"></i><i class="sq"></i><i class="sq"></i><i class="sq"></i></span></div><div class="when">10:44</div>
+          </div>
+        </div>
+        <aside class="side">
+          <div class="table-h"><span style="display:flex;align-items:center;gap:10px"><span class="tile t-mcp" style="width:26px;height:26px;font-size:10px">Cu</span><b>currency</b></span><span class="btn" style="min-height:34px">Check this one</span></div>
+          <ul class="tl">
+            <li><span class="dot down"></span><span><b>Down</b><p>CURRENCY_API_URL is not set</p></span><time>10:44</time></li>
+            <li><span class="dot down"></span><span><b>Down</b><p>CURRENCY_API_URL is not set</p></span><time>10:31</time></li>
+            <li><span class="dot down"></span><span><b>Down</b><p>CURRENCY_API_URL is not set</p></span><time>Mon 16:02</time></li>
+            <li><span class="dot down"></span><span><b>Down</b><p>CURRENCY_API_URL is not set</p></span><time>Mon 09:10</time></li>
+          </ul>
+          <div class="sec" style="border-top:1px solid var(--line);border-bottom:0"><span class="sh">LIKELY FIX</span><div class="fix" style="margin:0">Give it <code>CURRENCY_API_URL</code> under <code>env</code> in <code>.mcp.json</code>. Its code reads it at <span class="ref">mcp_servers/currency.py:9</span>.</div></div>
+        </aside>
+      </div>
+      <div class="foot"><span>Checks use no keys. Results stay on this computer.</span><a href="#">Workflow runs (advanced)</a></div>
+    </div>
+  </div>
+</div>
+
+<section class="note">
+  <h2>Phone width</h2>
+  <p>The table becomes one card per dependency (dot, name, result, latency, squares), problems first. The map keeps its dots; the strip wraps under the title. The step panel becomes a sheet from the bottom, with Health at the top.</p>
+</section>
+</div>
+</body>
+</html>

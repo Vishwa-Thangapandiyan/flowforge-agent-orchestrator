@@ -1,4 +1,4 @@
-"""Benchmark runner (D6). Owner: Person C.
+"""Benchmark runner (D6).
 
 Simulated track (free, no network):
     uv run python benchmarks/run_benchmark.py sim --graphs 500 --k 4
@@ -32,11 +32,11 @@ from flowforge.nodes.http_node import HTTPNode
 from flowforge.nodes.llm_node import LLMNode
 from flowforge.nodes.mcp_node import MCPNode
 from flowforge.nodes.mock_node import MockNode
-from flowforge.schema import Workflow
 from flowforge.scheduler import graph
 from flowforge.scheduler.critical_path import critical_path, lower_bound_ms
 from flowforge.scheduler.executor import POLICIES, RunResult, StepState, run_workflow
 from flowforge.scheduler.rate_limit import TokenBucket
+from flowforge.schema import Workflow
 
 sys.path.insert(0, str(Path(__file__).parent))
 from random_dag import LatencyModel, generate  # noqa: E402
@@ -90,7 +90,7 @@ async def simulate(args: argparse.Namespace) -> list[dict[str, Any]]:
         shape = {
             "graph": g, "n_steps": n, "edge_prob": edge_prob,
             "n_edges": sum(len(p) for p in dag.parents.values()),
-            "depth": len(layers), "width": max(len(l) for l in layers),
+            "depth": len(layers), "width": max(len(layer) for layer in layers),
             "cp_ms": critical_path(dag, weights).length_ms, "work_ms": sum(weights.values()),
         }
         rng.shuffle(variants)  # no systematic warm-up advantage for any policy
@@ -166,11 +166,11 @@ def summarize_sim(rows: list[dict[str, Any]], k: int) -> str:
 async def real(args: argparse.Namespace) -> list[dict[str, Any]]:
     if not os.getenv("NVIDIA_API_KEY"):
         sys.exit("NVIDIA_API_KEY is not set — get a free key at build.nvidia.com and add it to .env")
-    wf = Workflow.model_validate(json.loads(Path(args.workflow).read_text()))
+    wf = Workflow.model_validate(json.loads(Path(args.workflow).read_text(encoding="utf-8")))
     types = {s.id: s.type for s in wf.steps}
     bucket = {"nim": TokenBucket(float(os.getenv("NIM_RPM", "40")))}
     nodes = {"llm": LLMNode(), "http": HTTPNode(), "mcp": MCPNode(), "mock": MockNode()}
-    latencies: dict[str, list[float]] = json.loads(LATENCIES.read_text()) if LATENCIES.exists() else {}
+    latencies: dict[str, list[float]] = json.loads(LATENCIES.read_text(encoding="utf-8")) if LATENCIES.exists() else {}
 
     rows = []
     variants = [(p, c) for p in POLICIES for c in (False, True)]
@@ -190,14 +190,19 @@ async def real(args: argparse.Namespace) -> list[dict[str, Any]]:
         for node in nodes.values():
             await node.aclose()
     RESULTS.mkdir(exist_ok=True)
-    LATENCIES.write_text(json.dumps(latencies, indent=1))
+    LATENCIES.write_text(json.dumps(latencies, indent=1), encoding="utf-8")
     print(f"saved {sum(map(len, latencies.values()))} measured latencies to {LATENCIES}")
     return rows
 
 
-def real_row(rep: int, policy: str, cache: bool, result: RunResult, wf: Workflow, types: dict[str, str]) -> dict[str, Any]:
+def real_row(
+    rep: int, policy: str, cache: bool, result: RunResult, wf: Workflow, types: dict[str, str]
+) -> dict[str, Any]:
+    def usage(r: Any) -> dict[str, Any]:
+        return (r.output or {}).get("usage", {})
+
     tokens = sum(
-        (r.output or {}).get("usage", {}).get("prompt_tokens", 0) + (r.output or {}).get("usage", {}).get("completion_tokens", 0)
+        usage(r).get("prompt_tokens", 0) + usage(r).get("completion_tokens", 0)
         for sid, r in result.steps.items() if types[sid] == "llm" and r.state == StepState.SUCCEEDED and not r.cache_hit
     )
     return {"repeat": rep, "workflow": wf.id, "policy": policy, "cache": cache, "status": result.status,
@@ -214,7 +219,8 @@ def summarize_real(rows: list[dict[str, Any]]) -> str:
     for (policy, cache), rs in groups.items():
         lines.append(
             f"| {policy} | {'on' if cache else 'off'} | {fmt(*mean_ci([r['makespan_ms'] / 1000 for r in rs]), 1)} | "
-            f"{statistics.fmean(r['api_calls'] for r in rs):.1f} | {statistics.fmean(r['llm_tokens'] for r in rs):.0f} | "
+            f"{statistics.fmean(r['api_calls'] for r in rs):.1f} | "
+            f"{statistics.fmean(r['llm_tokens'] for r in rs):.0f} | "
             f"{', '.join(sorted({r['status'] for r in rs}))} |"
         )
     return "\n".join(lines)
@@ -226,16 +232,18 @@ def write(rows: list[dict[str, Any]], summary: str, name: str) -> None:
     RESULTS.mkdir(exist_ok=True)
     stamp = time.strftime("%Y%m%d-%H%M%S")
     csv_path = RESULTS / f"{name}_{stamp}.csv"
-    with csv_path.open("w", newline="") as f:
+    with csv_path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)
-    (RESULTS / f"{name}_{stamp}.md").write_text(summary + "\n")
+    (RESULTS / f"{name}_{stamp}.md").write_text(summary + "\n", encoding="utf-8")
     print(f"\n{summary}\n\nwrote {csv_path} and {csv_path.with_suffix('.md')}")
 
 
 def main(argv: list[str] | None = None) -> None:
     load_dotenv()
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")  # summaries contain → and ±; Windows consoles default to cp1252
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="track", required=True)
 

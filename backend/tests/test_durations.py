@@ -1,5 +1,5 @@
-from flowforge.schema import Workflow
 from flowforge.scheduler.durations import estimate_weights, ewma
+from flowforge.schema import Workflow
 from flowforge.storage import Storage
 
 WF = Workflow.model_validate(

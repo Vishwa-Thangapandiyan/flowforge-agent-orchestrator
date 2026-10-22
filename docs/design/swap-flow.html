@@ -1,0 +1,514 @@
+<title>FlowForge Swap Flow</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: verdict first, then three figures that go zoomed-out, zoomed-in, then behind-the-curtain (secrets), then setup. Same topic colours as the plan page. */
+:root{
+  --bg:#EEF3F5; --surface:#FFFFFF; --fg:#0F1D26; --muted:#4A5E6A; --line:#D3DDE3; --idle:#9AAAB4;
+  --teal:#0B7A70;  --teal-bg:#DDF2EF;
+  --blue:#2457C5;  --blue-bg:#E1EAFB;
+  --amber:#8A5A00; --amber-bg:#FCEFD0;
+  --coral:#B93C2B; --coral-bg:#FBE4DF;
+  --green:#1F7A45; --green-bg:#DCF2E4;
+  --violet:#6B46C1;--violet-bg:#ECE6FA;
+  --display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --body:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0B1418; --surface:#122128; --fg:#E8F0F3; --muted:#93A8B3; --line:#25363F; --idle:#5C7280;
+    --teal:#4FD1C0;  --teal-bg:#12332F;
+    --blue:#7FA8FF;  --blue-bg:#16284A;
+    --amber:#F2B84B; --amber-bg:#3A2D0E;
+    --coral:#FF8C7A; --coral-bg:#40201B;
+    --green:#66D18F; --green-bg:#133423;
+    --violet:#B79CFF;--violet-bg:#2A2147;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0B1418; --surface:#122128; --fg:#E8F0F3; --muted:#93A8B3; --line:#25363F; --idle:#5C7280;
+  --teal:#4FD1C0;  --teal-bg:#12332F;
+  --blue:#7FA8FF;  --blue-bg:#16284A;
+  --amber:#F2B84B; --amber-bg:#3A2D0E;
+  --coral:#FF8C7A; --coral-bg:#40201B;
+  --green:#66D18F; --green-bg:#133423;
+  --violet:#B79CFF;--violet-bg:#2A2147;
+  color-scheme:dark;
+}
+body{background:var(--bg);color:var(--fg);font:400 17px/1.5 var(--body);padding-inline:clamp(16px,4vw,32px);padding-block:28px 72px}
+.wrap{max-width:940px;margin-inline:auto;display:flex;flex-direction:column;gap:56px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;line-height:1.1}
+h1{font-size:clamp(2.2rem,6.4vw,3.6rem);font-weight:800;letter-spacing:-.02em}
+h2{font-size:clamp(1.55rem,4vw,2.2rem);font-weight:800;letter-spacing:-.01em}
+h3{font-size:1.2rem;font-weight:700}
+p{margin:0}
+code,.mono{font-family:var(--mono);font-size:.82em}
+.eyebrow{font:500 .75rem/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.sec{display:flex;flex-direction:column;gap:20px}
+.lead{font-size:1.15rem;max-width:36em}
+.hero{display:flex;flex-direction:column;gap:18px}
+.hero .big{font-size:clamp(1.2rem,3.2vw,1.6rem);line-height:1.3;max-width:26em}
+.hl-v{color:var(--violet)} .hl-t{color:var(--teal)} .hl-g{color:var(--green)}
+.state{font-size:.88rem;color:var(--muted)}
+
+/* verdict */
+.verdicts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.verdicts li{display:grid;grid-template-columns:84px 1fr;gap:14px;align-items:start;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.verdicts b{font-family:var(--display);font-size:1.08rem;display:block}
+.verdicts span.why{color:var(--muted);font-size:.95rem}
+.chip{font:500 .72rem/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:8px 10px;border-radius:999px;text-align:center}
+.c-keep{background:var(--green-bg);color:var(--green)}
+.c-change{background:var(--coral-bg);color:var(--coral)}
+.c-care{background:var(--amber-bg);color:var(--amber)}
+@media (max-width:520px){.verdicts li{grid-template-columns:1fr}.chip{justify-self:start}}
+
+/* demo cards */
+.demo{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:clamp(14px,3vw,24px);display:flex;flex-direction:column;gap:16px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.stat{border-radius:12px;padding:14px 16px;background:var(--bg);display:flex;flex-direction:column;gap:4px}
+.stat .k{font:500 .72rem/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.stat .v{font:800 2rem/1 var(--display);font-variant-numeric:tabular-nums}
+.stat.fast .v{color:var(--green)} .stat.slow .v{color:var(--muted)}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+button{font:600 1rem/1 var(--body);padding:13px 18px;border-radius:10px;border:0;cursor:pointer;color:var(--surface);background:var(--fg)}
+button.approve{background:var(--amber)}
+button.swap{background:var(--violet)}
+button:disabled{opacity:.35;cursor:not-allowed}
+button:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.say{font:500 .9rem/1.4 var(--mono);color:var(--muted);min-height:2.6em;flex:1 1 260px}
+.scroll{overflow-x:auto}
+figure{margin:0}
+figcaption{font-size:.92rem;color:var(--muted);margin-top:10px}
+svg{display:block;width:100%;min-width:640px;height:auto}
+.legend{display:flex;flex-wrap:wrap;gap:8px}
+.lg{font:500 .74rem/1 var(--mono);padding:7px 10px;border-radius:999px}
+.l-mcp{background:var(--teal-bg);color:var(--teal)} .l-http{background:var(--blue-bg);color:var(--blue)}
+.l-llm{background:var(--violet-bg);color:var(--violet)} .l-gate{background:var(--amber-bg);color:var(--amber)}
+.l-out{background:var(--green-bg);color:var(--green)} .l-crit{background:var(--coral-bg);color:var(--coral)}
+
+/* svg parts */
+.edge{fill:none;stroke:var(--idle);stroke-width:1.6;marker-end:url(#arr)}
+.edge.crit{stroke:var(--coral);stroke-width:2.8;marker-end:url(#arrc)}
+.edge.dash{stroke-dasharray:6 5;stroke:var(--green);stroke-width:2;marker-end:url(#arrg)}
+.ah{fill:var(--idle)} .ahc{fill:var(--coral)} .ahg{fill:var(--green)}
+.node .box{fill:var(--surface);stroke:var(--tc);stroke-width:1.6}
+.node .nm{fill:var(--fg);font:600 13px var(--body)}
+.node .meta{fill:var(--muted);font:500 11px var(--mono)}
+.node .dot{fill:var(--idle)}
+.t-mcp{--tc:var(--teal);--tb:var(--teal-bg)} .t-http{--tc:var(--blue);--tb:var(--blue-bg)}
+.t-llm{--tc:var(--violet);--tb:var(--violet-bg)} .t-gate{--tc:var(--amber);--tb:var(--amber-bg)}
+.t-out{--tc:var(--green);--tb:var(--green-bg)}
+.node.dashed .box{stroke-dasharray:5 4}
+.node.tinted .box{fill:var(--tb)}
+.node[data-state="running"] .box{fill:var(--tb)}
+.node[data-state="running"] .dot{fill:var(--tc);animation:pulse .9s ease-in-out infinite}
+.node[data-state="done"] .box{fill:var(--tb)}
+.node[data-state="done"] .dot{fill:var(--green)}
+.node[data-state="wait"] .box{fill:var(--tb);stroke-width:2.6}
+.node[data-state="wait"] .dot{fill:var(--amber);animation:pulse .9s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.node .dot{animation:none!important}}
+.band-a{fill:var(--violet-bg)} .band-b{fill:var(--green-bg)}
+.bandlabel{font:500 11px var(--mono);letter-spacing:.1em}
+.bl-a{fill:var(--violet)} .bl-b{fill:var(--green)}
+.bound{stroke:var(--muted);stroke-width:1.2;stroke-dasharray:4 5}
+.note{fill:var(--muted);font:500 11px var(--mono)}
+.note.g{fill:var(--green)}
+
+/* setup */
+.chain{display:flex;flex-wrap:wrap;align-items:stretch;gap:10px}
+.chain .step{flex:1 1 190px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.chain .step b{font-family:var(--display);font-size:1.1rem}
+.chain .step span{color:var(--muted);font-size:.95rem}
+.chain .num{font:800 1.3rem/1 var(--display);color:var(--violet)}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
+.tile{border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.tile .tag{font:500 .72rem/1 var(--mono);letter-spacing:.1em;text-transform:uppercase}
+.tile p{font-size:1rem}
+.t-blue{background:var(--blue-bg)} .t-blue .tag,.t-blue h3{color:var(--blue)}
+.t-amber{background:var(--amber-bg)} .t-amber .tag,.t-amber h3{color:var(--amber)}
+.t-teal{background:var(--teal-bg)} .t-teal .tag,.t-teal h3{color:var(--teal)}
+.rule{border-radius:14px;padding:16px 18px;background:var(--coral-bg);font-size:1rem}
+.rule b{color:var(--coral)}
+.next{border-radius:16px;padding:22px;background:var(--violet-bg);display:flex;flex-direction:column;gap:12px}
+.next h2{color:var(--violet)}
+.mini{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.mini span{font:500 .8rem/1 var(--mono);padding:8px 11px;border-radius:999px;background:var(--surface);border:1px solid var(--line)}
+.mini span.now{background:var(--violet);color:var(--surface);border-color:var(--violet)}
+
+.walk{display:flex;flex-direction:column;gap:8px}
+.wrow{display:grid;grid-template-columns:116px 1fr;gap:12px;align-items:start}
+.wtag{font:500 .72rem/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:9px 10px;border-radius:8px;text-align:center}
+.w-g{background:var(--green-bg);color:var(--green)} .w-v{background:var(--violet-bg);color:var(--violet)} .w-t{background:var(--teal-bg);color:var(--teal)}
+.wcode{font:500 .85rem/1.45 var(--mono);background:var(--bg);border-radius:8px;padding:8px 12px;overflow-x:auto;white-space:pre;min-width:0}
+@media (max-width:560px){.wrow{grid-template-columns:1fr}.wtag{justify-self:start}}
+.seg{display:flex;flex-wrap:wrap;gap:8px}
+.seg button{background:var(--bg);color:var(--fg);border:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--teal);color:var(--surface);border-color:var(--teal)}
+.hint{font-size:.92rem;color:var(--muted);min-height:2.8em}
+.take{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.take div{background:var(--bg);border-radius:12px;padding:14px 16px;font-size:.98rem}
+.take b{display:block;font-family:var(--display);margin-bottom:4px}
+</style>
+
+<div class="wrap">
+
+<header class="hero">
+  <span class="eyebrow">Idea check · swap an app</span>
+  <h1>Change one box.<br>FlowForge plans the rest.</h1>
+  <p class="big">Form in. <span class="hl-v">LLM writes the code.</span> <span class="hl-t">The app handles everything else.</span> <span class="hl-g">Secrets never reach the LLM.</span></p>
+</header>
+
+<section class="sec">
+  <span class="eyebrow">Your idea, checked</span>
+  <h2>Yes. One tweak.</h2>
+  <ul class="verdicts">
+    <li><span class="chip c-keep">Keep</span><div><b>Give them a form first</b><span class="why">Clear answers (Checkout or Elements? test or live?) beat a vague prompt.</span></div></li>
+    <li><span class="chip c-keep">Keep</span><div><b>LLM only handles the non-secret parts</b><span class="why">The LLM writes code. Plain scripts do the mechanical work.</span></div></li>
+    <li><span class="chip c-keep">Keep</span><div><b>Redact the key, let the LLM edit, swap it back</b><span class="why">The AST finds the key in the code and swaps it for <code>&lt;REDACTED_STRIPE_KEY_1&gt;</code>. A vault remembers the real value. After the LLM edits, FlowForge swaps it back. One tweak: restore it as an env var by default, so keys don't land in git.</span></div></li>
+    <li><span class="chip c-keep">Keep</span><div><b>Pick tools one by one, link your accounts</b><span class="why">That's the n8n-style setup. Three kinds of linking, shown at the bottom.</span></div></li>
+    <li><span class="chip c-care">Careful</span><div><b>"Just change Razorpay to Stripe"</b><span class="why">It produces a git branch plus tests for you to review. It never edits live code. Use test-mode keys first.</span></div></li>
+  </ul>
+  <p class="state">The Razorpay-to-Stripe list you pasted came from another AI. Treat it as sample data and check it against both providers' docs. One item looks off to me: <code>contact_id</code> is a RazorpayX payouts term, and payments use <code>customer_id</code>.</p>
+</section>
+
+<section class="sec">
+  <span class="eyebrow">Zoomed out</span>
+  <h2>One box per app</h2>
+  <div class="demo">
+    <div class="controls">
+      <button id="swap" class="swap" type="button">Swap Razorpay → Stripe</button>
+      <p class="say" id="say1" aria-live="polite">Five apps and your dashboard. Press swap.</p>
+    </div>
+    <figure>
+      <div class="scroll">
+      <svg viewBox="0 0 700 310" role="img" aria-label="Zoomed-out graph with one box per app. Sirius scan and Payments feed Gemini reasoning. Payments and Stock models feed Charts. Gemini and Charts feed your dashboard. The Payments box currently uses Razorpay and can be swapped to Stripe.">
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><polygon class="ah" points="0,0 10,5 0,10"/></marker>
+          <marker id="arrc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><polygon class="ahc" points="0,0 10,5 0,10"/></marker>
+          <marker id="arrg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><polygon class="ahg" points="0,0 10,5 0,10"/></marker>
+        </defs>
+        <path class="edge" d="M160 48 C210 48,210 75,260 75"/>
+        <path class="edge" d="M160 153 C210 153,210 100,260 100"/>
+        <path class="edge" d="M160 153 C210 153,210 210,260 210"/>
+        <path class="edge" d="M160 258 C210 258,210 236,260 236"/>
+        <path class="edge" d="M410 88 C460 88,460 145,510 145"/>
+        <path class="edge" d="M410 223 C460 223,460 165,510 165"/>
+
+        <g class="node t-mcp" data-state="idle">
+          <rect class="box" x="10" y="20" width="150" height="56" rx="10"/>
+          <text class="nm" x="22" y="43">Security scan</text><text class="meta" x="22" y="61">Sirius</text>
+          <circle class="dot" cx="146" cy="34" r="5"/>
+        </g>
+        <g class="node t-http" id="payBox" data-state="idle">
+          <rect class="box" x="10" y="125" width="150" height="56" rx="10"/>
+          <text class="nm" x="22" y="148">Payments</text><text class="meta" id="paySub" x="22" y="166">Razorpay</text>
+          <circle class="dot" cx="146" cy="139" r="5"/>
+        </g>
+        <text class="note" x="22" y="198">6 tasks inside (next figure)</text>
+        <g class="node t-http" data-state="idle">
+          <rect class="box" x="10" y="230" width="150" height="56" rx="10"/>
+          <text class="nm" x="22" y="253">Stock updates</text><text class="meta" x="22" y="271">your models</text>
+          <circle class="dot" cx="146" cy="244" r="5"/>
+        </g>
+        <g class="node t-llm" data-state="idle">
+          <rect class="box" x="260" y="60" width="150" height="56" rx="10"/>
+          <text class="nm" x="272" y="83">Reasoning</text><text class="meta" x="272" y="101">Gemini or NIM</text>
+          <circle class="dot" cx="396" cy="74" r="5"/>
+        </g>
+        <g class="node t-http" data-state="idle">
+          <rect class="box" x="260" y="195" width="150" height="56" rx="10"/>
+          <text class="nm" x="272" y="218">Charts</text><text class="meta" x="272" y="236">chart service</text>
+          <circle class="dot" cx="396" cy="209" r="5"/>
+        </g>
+        <g class="node t-out" data-state="idle">
+          <rect class="box" x="510" y="125" width="170" height="56" rx="10"/>
+          <text class="nm" x="522" y="148">Your dashboard</text><text class="meta" x="522" y="166">boards + reports</text>
+          <circle class="dot" cx="666" cy="139" r="5"/>
+        </g>
+      </svg>
+      </div>
+      <figcaption>Zoomed out you see five apps, not dozens of tasks. Swapping Payments only changes the one box. Everything it touches is planned for you.</figcaption>
+    </figure>
+    <div class="legend"><span class="lg l-mcp">mcp tool</span><span class="lg l-http">http call</span><span class="lg l-llm">llm call</span><span class="lg l-out">output</span></div>
+  </div>
+</section>
+
+<section class="sec">
+  <span class="eyebrow">Zoomed in</span>
+  <h2>What "swap to Stripe" really means</h2>
+  <p class="lead">The migration is itself a FlowForge workflow. Independent tasks run together, and a human approves before anything is applied. Durations are example numbers.</p>
+  <div class="demo">
+    <div class="stats">
+      <div class="stat fast"><span class="k">FlowForge (parallel)</span><span class="v" id="elapsed">12s</span></div>
+      <div class="stat slow"><span class="k">One task at a time</span><span class="v">18s</span></div>
+    </div>
+    <div class="controls">
+      <button id="run" type="button">▶ Run migration</button>
+      <button id="approve" class="approve" type="button" disabled>Approve diff</button>
+      <p class="say" id="say2" aria-live="polite">Six tasks, one review gate.</p>
+    </div>
+    <figure>
+      <div class="scroll">
+      <svg viewBox="0 0 900 270" role="img" aria-label="Task graph for swapping Razorpay to Stripe. SDK and env vars come first. Then payment flow and database renames run together. Checkout frontend follows payment flow. Webhook handler needs payment flow and database renames. Tests need webhook handler and checkout frontend. Then you review the diff. The slowest chain is SDK, payment flow, webhook handler, tests, review.">
+        <path class="edge crit" d="M150 140 C172 140,172 65,195 65"/>
+        <path class="edge" d="M150 140 C172 140,172 215,195 215"/>
+        <path class="edge" d="M335 65 C357 65,357 45,380 45"/>
+        <path class="edge crit" d="M335 65 C357 65,357 150,380 150"/>
+        <path class="edge" d="M335 215 C357 215,357 170,380 170"/>
+        <path class="edge" d="M520 45 C542 45,542 125,565 125"/>
+        <path class="edge crit" d="M520 160 C542 160,542 155,565 155"/>
+        <path class="edge crit" d="M705 140 L750 140"/>
+
+        <g class="node t-mcp" data-id="t1" data-state="idle">
+          <rect class="box" x="10" y="115" width="140" height="50" rx="10"/>
+          <text class="nm" x="22" y="136">SDK + env vars</text><text class="meta" x="22" y="153">app · 2s</text>
+          <circle class="dot" cx="136" cy="129" r="5"/>
+        </g>
+        <g class="node t-llm" data-id="t3" data-state="idle">
+          <rect class="box" x="195" y="40" width="140" height="50" rx="10"/>
+          <text class="nm" x="207" y="61">Payment flow</text><text class="meta" x="207" y="78">llm · 4s</text>
+          <circle class="dot" cx="321" cy="54" r="5"/>
+        </g>
+        <g class="node t-llm" data-id="t4" data-state="idle">
+          <rect class="box" x="195" y="190" width="140" height="50" rx="10"/>
+          <text class="nm" x="207" y="211">Database renames</text><text class="meta" x="207" y="228">llm · 3s</text>
+          <circle class="dot" cx="321" cy="204" r="5"/>
+        </g>
+        <g class="node t-llm" data-id="t5" data-state="idle">
+          <rect class="box" x="380" y="20" width="140" height="50" rx="10"/>
+          <text class="nm" x="392" y="41">Checkout frontend</text><text class="meta" x="392" y="58">llm · 3s</text>
+          <circle class="dot" cx="506" cy="34" r="5"/>
+        </g>
+        <g class="node t-llm" data-id="t2" data-state="idle">
+          <rect class="box" x="380" y="135" width="140" height="50" rx="10"/>
+          <text class="nm" x="392" y="156">Webhook handler</text><text class="meta" x="392" y="173">llm · 4s</text>
+          <circle class="dot" cx="506" cy="149" r="5"/>
+        </g>
+        <g class="node t-mcp" data-id="t6" data-state="idle">
+          <rect class="box" x="565" y="115" width="140" height="50" rx="10"/>
+          <text class="nm" x="577" y="136">Run tests</text><text class="meta" x="577" y="153">app · 2s</text>
+          <circle class="dot" cx="691" cy="129" r="5"/>
+        </g>
+        <g class="node t-gate dashed" data-id="rev" data-state="idle">
+          <rect class="box" x="750" y="115" width="140" height="50" rx="10"/>
+          <text class="nm" x="762" y="136">You review</text><text class="meta" x="762" y="153">gate · human</text>
+          <circle class="dot" cx="876" cy="129" r="5"/>
+        </g>
+      </svg>
+      </div>
+      <figcaption>Payment flow and database renames run side by side. Only the red chain sets the total time. The purple tasks are the only ones the LLM touches.</figcaption>
+    </figure>
+    <div class="legend"><span class="lg l-llm">LLM writes code</span><span class="lg l-mcp">app does it, no LLM</span><span class="lg l-gate">waits for you</span><span class="lg l-crit">slowest chain</span></div>
+  </div>
+</section>
+
+<section class="sec">
+  <span class="eyebrow">Behind the curtain</span>
+  <h2>Redact, edit, restore</h2>
+  <p class="lead">Your hackathon trick, inside FlowForge. The AST finds the key, a vault remembers it, and the LLM only ever sees a placeholder.</p>
+  <div class="demo">
+    <figure>
+      <div class="scroll">
+      <svg viewBox="0 0 980 340" role="img" aria-label="Two lanes. Bottom lane, only FlowForge sees it: your code with the real key goes to an AST step that finds the key and saves it in a vault map, and replaces it with a placeholder. Top lane, the LLM can see it: the redacted code goes to the LLM, which returns redacted output that still holds placeholders. The placeholders go back down to a restore and check step, which looks up the real values in the vault, then you approve. Real values never cross the line between the lanes.">
+        <rect class="band-a" x="0" y="8" width="980" height="126" rx="12"/>
+        <rect class="band-b" x="0" y="170" width="980" height="162" rx="12"/>
+        <text class="bandlabel bl-a" x="16" y="28">THE LLM CAN SEE THIS</text>
+        <text class="bandlabel bl-b" x="16" y="190">ONLY FLOWFORGE SEES THIS</text>
+        <line class="bound" x1="0" y1="152" x2="980" y2="152"/>
+        <text class="note" x="16" y="147">real values never cross this line</text>
+
+        <path class="edge" d="M375 76 L425 76"/>
+        <path class="edge" d="M585 76 L635 76"/>
+        <path class="edge" d="M295 214 L295 104"/>
+        <path class="edge" d="M715 104 L715 214"/>
+        <path class="edge" d="M170 242 L220 242"/>
+        <path class="edge dash" d="M370 242 L430 242"/>
+        <path class="edge dash" d="M580 242 L640 242"/>
+        <path class="edge" d="M790 242 L830 242"/>
+        <text class="note g" x="400" y="234" text-anchor="middle">saves</text>
+        <text class="note g" x="610" y="234" text-anchor="middle">looks up</text>
+
+        <g class="node t-llm tinted">
+          <rect class="box" x="215" y="48" width="160" height="56" rx="10"/>
+          <text class="nm" x="227" y="71">Redacted code</text><text class="meta" x="227" y="89">placeholders only</text>
+        </g>
+        <g class="node t-llm tinted">
+          <rect class="box" x="425" y="48" width="160" height="56" rx="10"/>
+          <text class="nm" x="437" y="71">LLM rewrites</text><text class="meta" x="437" y="89">sees names only</text>
+        </g>
+        <g class="node t-llm tinted">
+          <rect class="box" x="635" y="48" width="160" height="56" rx="10"/>
+          <text class="nm" x="647" y="71">Redacted output</text><text class="meta" x="647" y="89">placeholders intact</text>
+        </g>
+        <text class="note" x="305" y="124">"&lt;REDACTED_RAZORPAY_KEY_1&gt;"</text>
+        <text class="note" x="723" y="124">"&lt;REDACTED_STRIPE_KEY_1&gt;"</text>
+
+        <g class="node t-out tinted">
+          <rect class="box" x="20" y="214" width="150" height="56" rx="10"/>
+          <text class="nm" x="32" y="237">Your code</text><text class="meta" x="32" y="255">real key inside</text>
+        </g>
+        <g class="node t-mcp tinted">
+          <rect class="box" x="220" y="214" width="150" height="56" rx="10"/>
+          <text class="nm" x="232" y="237">AST finds key</text><text class="meta" x="232" y="255">parses the code</text>
+        </g>
+        <g class="node t-out tinted">
+          <rect class="box" x="430" y="214" width="150" height="56" rx="10"/>
+          <text class="nm" x="442" y="237">Vault map</text><text class="meta" x="442" y="255">name → value</text>
+        </g>
+        <g class="node t-mcp tinted">
+          <rect class="box" x="640" y="214" width="150" height="56" rx="10"/>
+          <text class="nm" x="652" y="237">Restore + check</text><text class="meta" x="652" y="255">swap back, verify</text>
+        </g>
+        <g class="node t-gate dashed tinted">
+          <rect class="box" x="830" y="214" width="130" height="56" rx="10"/>
+          <text class="nm" x="842" y="237">You approve</text><text class="meta" x="842" y="255">diff + tests</text>
+        </g>
+        <text class="note" x="20" y="292">key_id: "rzp_live_aj9391…"</text>
+        <text class="note g" x="430" y="292">&lt;REDACTED_RAZORPAY_KEY_1&gt; → ••••••</text>
+        <text class="note g" x="430" y="310">&lt;REDACTED_STRIPE_KEY_1&gt; → ••••••</text>
+      </svg>
+      </div>
+      <figcaption>The AST finds the key even when it's buried in a function or config object. The vault is a small map from placeholder to real value, kept in memory or encrypted on disk. The Stripe key comes from your Connect step, never from the LLM.</figcaption>
+    </figure>
+
+    <div class="walk">
+      <div class="wrow"><span class="wtag w-g">Your code</span><span class="wcode">const rz = new Razorpay({ key_id: "rzp_live_aj9391…" });</span></div>
+      <div class="wrow"><span class="wtag w-v">LLM sees</span><span class="wcode">const rz = new Razorpay({ key_id: "&lt;REDACTED_RAZORPAY_KEY_1&gt;" });</span></div>
+      <div class="wrow"><span class="wtag w-v">LLM writes</span><span class="wcode">const stripe = new Stripe("&lt;REDACTED_STRIPE_KEY_1&gt;");</span></div>
+      <div class="wrow"><span class="wtag w-t">After restore</span><span class="wcode" id="after">const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);</span></div>
+    </div>
+
+    <div class="seg" role="group" aria-label="How the key is restored">
+      <button id="modeEnv" type="button" aria-pressed="true">Restore as env var (recommended)</button>
+      <button id="modeLit" type="button" aria-pressed="false">Restore as literal</button>
+    </div>
+    <p class="hint" id="hint">The real value goes into <code>.env</code>, which stays out of git. Your code only names it.</p>
+
+    <div class="take">
+      <div><b>Every placeholder comes back once</b>If the LLM drops, edits or invents one, the run stops.</div>
+      <div><b>Scan the result for key-shaped strings</b>This catches an LLM that makes up a plausible key.</div>
+      <div><b>Logs show placeholders only</b>The dashboard and run history never see the real value.</div>
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <span class="eyebrow">First-time setup, n8n style</span>
+  <h2>Add apps one by one</h2>
+  <div class="chain">
+    <div class="step"><span class="num">1</span><b>Add an app</b><span>Pick Stripe from the list. A box appears on the canvas.</span></div>
+    <div class="step"><span class="num">2</span><b>Fill its form</b><span>Account name, test or live, options like Checkout or Elements.</span></div>
+    <div class="step"><span class="num">3</span><b>Connect</b><span>Click to log in, or paste a key once.</span></div>
+    <div class="step"><span class="num">4</span><b>Test it</b><span>One harmless call. The box turns green.</span></div>
+  </div>
+  <div class="grid3">
+    <div class="tile t-blue"><span class="tag">Log in</span><h3>OAuth</h3><p>GitHub, Google, Slack. Click Connect and approve in their window.</p></div>
+    <div class="tile t-amber"><span class="tag">Paste once</span><h3>API key</h3><p>Stripe, Razorpay, Gemini, NIM. Stored in the secret store. The screen only says "configured".</p></div>
+    <div class="tile t-teal"><span class="tag">On your machine</span><h3>Local tool</h3><p>Sirius CLI and MCP servers. Point FlowForge at the command to run.</p></div>
+  </div>
+  <p class="rule"><b>Default rule:</b> payment apps start in test mode. Live keys only after you flip a switch.</p>
+</section>
+
+<section class="next">
+  <span class="eyebrow">Where it fits in the roadmap</span>
+  <h2>Flagship demo, built in this order</h2>
+  <div class="mini"><span>1 Any LLM, any MCP</span><span>2 Dashboard v1</span><span>3 Connectors: forms, secrets, accounts</span><span class="now">4 Swap an app</span><span>5 Server + ROG</span></div>
+  <p>Swap needs connectors (forms and secrets) and approval gates first. That's why it comes fourth.</p>
+</section>
+
+</div>
+
+<script>
+(function(){
+  var SCALE = 420; // ms of real time per simulated second
+  var ids = ['t1','t2','t3','t4','t5','t6','rev'];
+  var n = {};
+  ids.forEach(function(id){ n[id] = document.querySelector('[data-id="'+id+'"]'); });
+  var pay = document.getElementById('payBox'), paySub = document.getElementById('paySub');
+  var swapBtn = document.getElementById('swap'), runBtn = document.getElementById('run'), apBtn = document.getElementById('approve');
+  var say1 = document.getElementById('say1'), say2 = document.getElementById('say2'), elapsed = document.getElementById('elapsed');
+  var phase = 'idle', timers = [], tick = null, start = 0;
+
+  function set(id, s){ n[id].setAttribute('data-state', s); }
+  function at(t, fn){ timers.push(setTimeout(fn, t * SCALE)); }
+  function clearAll(){ timers.forEach(clearTimeout); timers = []; clearInterval(tick); }
+
+  function resetAll(){
+    clearAll(); phase = 'idle';
+    ids.forEach(function(id){ set(id, 'idle'); });
+    pay.setAttribute('data-state', 'idle'); paySub.textContent = 'Razorpay';
+    swapBtn.textContent = 'Swap Razorpay → Stripe'; swapBtn.disabled = false;
+    runBtn.textContent = '▶ Run migration'; runBtn.disabled = false; apBtn.disabled = true;
+    elapsed.textContent = '12s';
+    say1.textContent = 'Five apps and your dashboard. Press swap.';
+    say2.textContent = 'Six tasks, one review gate.';
+  }
+  function plan(){
+    if (phase !== 'idle') return;
+    phase = 'planned';
+    pay.setAttribute('data-state', 'wait'); paySub.textContent = 'Razorpay → Stripe';
+    swapBtn.textContent = 'Plan ready below'; swapBtn.disabled = true;
+    say1.textContent = 'Payments is marked for swap. Its 6 tasks are in the next figure.';
+  }
+
+  swapBtn.addEventListener('click', plan);
+
+  runBtn.addEventListener('click', function(){
+    if (phase === 'done') resetAll();
+    if (phase === 'idle') plan();
+    if (phase !== 'planned') return;
+    phase = 'running';
+    ids.forEach(function(id){ set(id, 'idle'); });
+    runBtn.disabled = true; apBtn.disabled = true;
+    start = Date.now();
+    tick = setInterval(function(){
+      elapsed.textContent = Math.min(12, (Date.now() - start) / SCALE).toFixed(1) + 's';
+    }, 80);
+
+    at(0,  function(){ set('t1','running'); say2.textContent = 'Swapping the SDK and adding env var names.'; });
+    at(2,  function(){ set('t1','done'); set('t3','running'); set('t4','running');
+                       say2.textContent = 'Payment flow and database renames run side by side.'; });
+    at(5,  function(){ set('t4','done'); });
+    at(6,  function(){ set('t3','done'); set('t5','running'); set('t2','running');
+                       say2.textContent = 'Checkout and webhook start. The webhook needed both flow and DB.'; });
+    at(9,  function(){ set('t5','done'); });
+    at(10, function(){ set('t2','done'); set('t6','running'); say2.textContent = 'Running your tests on the new branch.'; });
+    at(12, function(){
+      set('t6','done'); set('rev','wait');
+      clearInterval(tick); elapsed.textContent = '12.0s';
+      say2.textContent = 'Paused. Nothing is applied until you approve the diff.';
+      apBtn.disabled = false; apBtn.focus();
+    });
+  });
+
+  apBtn.addEventListener('click', function(){
+    apBtn.disabled = true;
+    set('rev','done'); phase = 'done';
+    pay.setAttribute('data-state', 'done'); paySub.textContent = 'Stripe';
+    say2.textContent = 'Approved. 12s of waiting instead of 18s.';
+    say1.textContent = 'Payments now runs on Stripe. Everything else is untouched.';
+    swapBtn.textContent = 'Reset demo'; swapBtn.disabled = false;
+    swapBtn.onclick = function(){ swapBtn.onclick = null; resetAll(); };
+    runBtn.textContent = '▶ Run again'; runBtn.disabled = false;
+  });
+})();
+
+(function(){
+  var env = document.getElementById('modeEnv'), lit = document.getElementById('modeLit');
+  var after = document.getElementById('after'), hint = document.getElementById('hint');
+  function mode(isEnv){
+    env.setAttribute('aria-pressed', isEnv ? 'true' : 'false');
+    lit.setAttribute('aria-pressed', isEnv ? 'false' : 'true');
+    after.textContent = isEnv
+      ? 'const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);'
+      : 'const stripe = new Stripe("sk_test_••••••");';
+    hint.innerHTML = isEnv
+      ? 'The real value goes into <code>.env</code>, which stays out of git. Your code only names it.'
+      : 'This works for a local run, but the key now sits in your source and would stay in git history if committed.';
+  }
+  env.addEventListener('click', function(){ mode(true); });
+  lit.addEventListener('click', function(){ mode(false); });
+})();
+</script>

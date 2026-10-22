@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Connector catalog</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#EEF3F5}
+a{color:inherit}
+.ff{--app:#EEF3F5;--surface:#FFFFFF;--surface-2:#F5F8F9;--raised:#FFFFFF;--fg:#0F1D26;--muted:#4A5E6A;--line:#D6DFE4;--line-2:#BFCCD3;--rail:#0F1D26;--rail-fg:#C9D6DC;--rail-active:#1D3340;
+--teal:#0B7A70;--teal-bg:#DDF2EF;--blue:#2457C5;--blue-bg:#E1EAFB;--amber:#8A5A00;--amber-bg:#FCEFD0;--amber-strong:#E3A535;--coral:#B93C2B;--coral-bg:#FBE4DF;--violet:#6B46C1;--violet-bg:#EEE8FB;--slate:#3A4756;--slate-bg:#E6EBEF;--on-teal:#FFFFFF;--on-violet:#FFFFFF;
+--shadow:0 1px 2px rgb(15 29 38 / 6%),0 8px 22px -12px rgb(15 29 38 / 22%);--shadow-lg:0 2px 6px rgb(15 29 38 / 6%),0 18px 44px -18px rgb(15 29 38 / 34%);
+--sans:'Geist',ui-sans-serif,system-ui,'Segoe UI',sans-serif;--mono:'Geist Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;--ease:cubic-bezier(.2,.7,.2,1);
+color-scheme:light;display:flex;min-height:100vh;background:var(--app);color:var(--fg);font-family:var(--sans);font-size:14px;-webkit-font-smoothing:antialiased}
+.ff[data-theme="dark"]{--app:#0A1216;--surface:#0F1A20;--surface-2:#0C161B;--raised:#132229;--fg:#E8F0F3;--muted:#98ADB8;--line:#1F3039;--line-2:#2C424D;--rail:#060C0F;--rail-fg:#9FB3BD;--rail-active:#13232B;
+--teal:#4FD1C0;--teal-bg:#10302C;--blue:#7FA8FF;--blue-bg:#14264A;--amber:#F2B84B;--amber-bg:#33270B;--amber-strong:#F2B84B;--coral:#FF8C7A;--coral-bg:#3D1E19;--violet:#B79CFF;--violet-bg:#231C3E;--slate:#B6C3CC;--slate-bg:#1B2930;--on-teal:#062320;--on-violet:#1A1033;
+--shadow:0 1px 2px rgb(0 0 0 / 40%),0 10px 26px -14px rgb(0 0 0 / 75%);--shadow-lg:0 2px 8px rgb(0 0 0 / 40%),0 22px 56px -20px rgb(0 0 0 / 85%);color-scheme:dark}
+.ff *{box-sizing:border-box}
+.ff button,.ff input,.ff select{font-family:inherit;color:inherit}
+.ff svg.i{width:18px;height:18px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.ff-rail{flex:0 0 76px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 8px;background:var(--rail)}
+.ff-logo{width:40px;height:40px;display:grid;place-items:center;margin-bottom:12px}
+.ff-navi{position:relative;width:62px;min-height:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border:0;border-radius:12px;background:none;color:var(--rail-fg);font:500 10.5px/1.1 var(--sans);text-decoration:none;cursor:pointer}
+.ff-navi:hover,.ff-navi[aria-current="page"]{background:var(--rail-active);color:#fff}
+.ff-navi svg.i{width:20px;height:20px}
+.ff-main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+.ff-wrap{width:100%;max-width:1480px;display:flex;flex-direction:column;gap:18px;padding:22px 24px 40px}
+.ff-head{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 18px}
+.ff-head h1{margin:0;font:650 30px/1.1 var(--sans);letter-spacing:-.025em}
+.ff-head p{margin:6px 0 0;font:500 14px/1.4 var(--sans);color:var(--muted)}
+.ff-head .sp{margin-right:auto}
+.ff-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:0 14px;border-radius:11px;border:1px solid var(--line-2);background:var(--raised);color:var(--fg);font:600 13px/1 var(--sans);text-decoration:none;white-space:nowrap;cursor:pointer}
+.ff-btn:hover{border-color:var(--muted)}
+.ff-btn-go{background:var(--teal);border-color:var(--teal);color:var(--on-teal)}
+.ff-btn-ai{background:transparent;color:var(--violet);border-color:color-mix(in srgb,var(--violet) 45%,transparent)}
+.ff-btn:focus-visible,.ff-navi:focus-visible,.ff-chip:focus-visible,.ff-ib:focus-visible,.ff-search input:focus-visible,.ff-switch:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.ff-ib{width:40px;height:40px;display:grid;place-items:center;border:0;border-radius:10px;background:none;cursor:pointer}
+.ff-ib:hover{background:var(--surface-2)}
+.ff-tile{flex:0 0 auto;width:40px;height:40px;border-radius:11px;display:grid;place-items:center;font:700 13.5px/1 var(--sans);letter-spacing:.01em;box-shadow:inset 0 0 0 1px rgb(255 255 255 / 12%),inset 0 -8px 14px -10px rgb(0 0 0 / 25%)}
+.ff-tile img{width:21px;height:21px;display:block}
+.ff-tile.icon{background:var(--slate-bg);color:var(--fg)}
+.ff-hero{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:18px;padding:20px;border-radius:20px;background:var(--surface);border:1px solid color-mix(in srgb,var(--violet) 35%,transparent);box-shadow:var(--shadow)}
+.ff-hero-l{display:flex;gap:16px;align-items:flex-start}
+.ff-hero-l .ff-tile{width:56px;height:56px;border-radius:16px}
+.ff-hero-l .ff-tile img{width:30px;height:30px}
+.ff-kick{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border-radius:7px;background:var(--violet-bg);color:var(--violet);font:600 10.5px/1.3 var(--mono);letter-spacing:.07em;text-transform:uppercase}
+.ff-hero h2{margin:8px 0 4px;font:650 22px/1.2 var(--sans);letter-spacing:-.02em}
+.ff-hero p{margin:0;font:450 14px/1.5 var(--sans);color:var(--fg)}
+.ff-hero-r{display:flex;flex-direction:column;gap:10px;justify-content:center}
+.ff-stat{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);font:500 13px/1.3 var(--sans)}
+.ff-stat span{color:var(--muted)}
+.ff-stat b{font:600 12.5px/1.3 var(--mono)}
+.ff-field{display:flex;flex-direction:column;gap:6px}
+.ff-field label{font:600 12px/1 var(--sans);color:var(--muted)}
+.ff-select{height:42px;padding:0 12px;border-radius:10px;border:1px solid var(--line-2);background:var(--raised);font:500 14px/1 var(--sans)}
+.ff-proj{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 14px;border-radius:16px;background:var(--surface);border:1px solid var(--line)}
+.ff-proj .lbl{font:600 10.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-right:6px}
+.ff-pt{display:inline-flex;align-items:center;gap:8px;padding:4px 10px 4px 4px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);font:600 12.5px/1 var(--sans)}
+.ff-pt .ff-tile{width:26px;height:26px;border-radius:999px;font-size:10px}
+.ff-pt .ff-tile img{width:14px;height:14px}
+.ff-pt .ff-tile svg.i{width:13px;height:13px}
+.ff-pt i{width:7px;height:7px;border-radius:50%;background:var(--teal);display:inline-block}
+.ff-pt.idle{background:transparent;border-style:dashed;color:var(--muted)}
+.ff-pt.idle i{background:transparent;border:1.5px solid var(--muted)}
+.inproj.idle{color:var(--muted)}
+.inproj.idle i{background:transparent;border:1.5px solid var(--muted)}
+.ff-controls{position:sticky;top:0;z-index:4;display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 0;background:var(--app)}
+.ff-search{flex:1 1 320px;display:flex;align-items:center;gap:10px;height:46px;padding:0 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line-2);color:var(--muted)}
+.ff-search input{flex:1;min-width:0;height:100%;border:0;outline:none;background:none;color:var(--fg);font:500 14.5px/1 var(--sans)}
+.ff-search input::placeholder{color:var(--muted)}
+.ff-chips{display:flex;flex-wrap:wrap;gap:6px}
+.ff-chip{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 12px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface);font:600 13px/1 var(--sans);cursor:pointer}
+.ff-chip span{font:600 11px/1 var(--mono);color:var(--muted)}
+.ff-chip[aria-pressed="true"]{background:var(--fg);border-color:var(--fg);color:var(--app)}
+.ff-chip[aria-pressed="true"] span{color:var(--app);opacity:.75}
+.ff-switch{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 12px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface);font:600 13px/1 var(--sans);cursor:pointer}
+.ff-switch i{width:30px;height:18px;border-radius:9px;background:var(--line-2);position:relative;transition:background .2s}
+.ff-switch i::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .2s var(--ease)}
+.ff-switch[aria-pressed="true"] i{background:var(--teal)}
+.ff-switch[aria-pressed="true"] i::after{transform:translateX(12px)}
+.ff-sec{display:flex;flex-direction:column;gap:12px}
+.ff-sech{display:flex;align-items:baseline;gap:10px}
+.ff-sech h2{margin:0;font:650 18px/1.2 var(--sans);letter-spacing:-.012em}
+.ff-sech span{font:500 12.5px/1 var(--mono);color:var(--muted)}
+.ff-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(272px,100%),1fr));gap:12px}
+.cc{position:relative;display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:16px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);transition:border-color .2s,transform .2s var(--ease),box-shadow .2s;animation:ff-in .4s var(--ease) backwards}
+.cc:hover{border-color:var(--line-2);transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.cc-h{display:flex;align-items:center;gap:12px}
+.cc-h b{display:block;font:650 15px/1.2 var(--sans)}
+.cc-h small{display:block;margin-top:3px;font:500 11.5px/1 var(--mono);color:var(--muted)}
+.cc-h .sp{flex:1;min-width:0}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:999px;font:600 11px/1.2 var(--sans);white-space:nowrap}
+.badge i{width:6px;height:6px;border-radius:50%;display:inline-block;background:currentColor}
+.badge.live{background:var(--teal-bg);color:var(--teal)}
+.badge.demo{background:var(--slate-bg);color:var(--slate)}
+.cc p{margin:0;font:450 13.5px/1.45 var(--sans)}
+.cc-meta{font:500 11.5px/1.3 var(--mono);color:var(--muted)}
+.cc-a{display:flex;align-items:center;gap:8px;margin-top:auto}
+.cc-a .ff-btn{min-height:38px}
+.inproj{display:inline-flex;align-items:center;gap:6px;margin-left:auto;font:600 12.5px/1 var(--sans);color:var(--teal)}
+.inproj i{width:7px;height:7px;border-radius:50%;background:var(--teal);display:inline-block}
+.cc-a .add{margin-left:auto}
+.pl{position:absolute;top:-9px;right:14px;padding:2px 8px;border-radius:999px;background:var(--violet);color:var(--on-violet);font:600 10px/1.4 var(--mono);letter-spacing:.06em;text-transform:uppercase}
+.ff-empty{padding:40px 20px;text-align:center;border:1.5px dashed var(--line-2);border-radius:16px;font:500 14px/1.5 var(--sans);color:var(--muted)}
+.ff-note{font:500 12.5px/1.5 var(--sans);color:var(--muted)}
+.ff-scrim{position:fixed;inset:0;z-index:20;background:rgb(6 12 15 / 45%);animation:ff-fade .25s ease backwards}
+.ff-drawer{position:fixed;top:0;right:0;bottom:0;z-index:21;width:440px;max-width:100%;display:flex;flex-direction:column;overflow-y:auto;background:var(--surface);border-left:1px solid var(--line);box-shadow:var(--shadow-lg);animation:ff-slide .35s var(--ease) backwards}
+.ff-dh{display:flex;align-items:flex-start;gap:12px;padding:18px 14px 16px 18px;border-bottom:1px solid var(--line)}
+.ff-dh h2{margin:6px 0 0;font:650 20px/1.2 var(--sans);letter-spacing:-.015em}
+.ff-dsec{display:flex;flex-direction:column;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line)}
+.ff-sh{font:600 10.5px/1 var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.ff-tl{display:flex;flex-direction:column;gap:2px}
+.ff-ts{display:grid;grid-template-columns:26px minmax(0,1fr);gap:10px;align-items:start;padding:7px 0;animation:ff-in .3s var(--ease) backwards}
+.ff-ts .d{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;border:1.5px solid var(--line-2)}
+.ff-ts.done .d{background:var(--teal);border-color:var(--teal);color:var(--on-teal)}
+.ff-ts.doing .d{border-color:var(--blue);color:var(--blue)}
+.ff-ts.doing .d svg.i{animation:ff-spin 1s linear infinite}
+.ff-ts .d svg.i{width:13px;height:13px;stroke-width:2.6}
+.ff-ts b{display:block;font:600 13.5px/1.3 var(--sans)}
+.ff-ts code{display:block;margin-top:3px;font:500 12px/1.45 var(--mono);color:var(--muted);white-space:pre-wrap;word-break:break-word}
+.ff-res{padding:12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line);font:500 12.5px/1.55 var(--mono);white-space:pre-wrap;word-break:break-word}
+.ff-mode{display:flex;align-items:flex-start;gap:9px;padding:11px 12px;border-radius:12px;font:500 13px/1.45 var(--sans)}
+.ff-mode.live{background:var(--teal-bg)}
+.ff-mode.demo{background:var(--slate-bg)}
+.ff-mode svg.i{margin-top:1px}
+.ff-learn{display:flex;flex-direction:column;gap:6px}
+.ff-learn span{display:flex;align-items:center;gap:8px;font:500 12.5px/1.3 var(--mono)}
+.ff-learn span::before{content:"";width:6px;height:6px;border-radius:2px;background:var(--violet);flex:0 0 auto}
+.ff-row{display:flex;flex-wrap:wrap;gap:8px}
+@keyframes ff-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes ff-slide{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
+@keyframes ff-fade{from{opacity:0}to{opacity:1}}
+@keyframes ff-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.cc,.ff-drawer,.ff-scrim,.ff-ts{animation:none}.cc:hover{transform:none}.ff-ts.doing .d svg.i{animation:none}}
+@media (max-width: 760px){
+.ff{flex-direction:column}
+.ff-rail{flex:0 0 auto;flex-direction:row;width:100%;padding:6px 8px;overflow-x:auto}
+.ff-logo{margin:0 6px 0 2px}
+.ff-wrap{padding:16px 16px 32px}
+.ff-hero{grid-template-columns:minmax(0,1fr)}
+.ff-drawer{top:auto;left:0;width:auto;max-height:82%;border-left:0;border-top:1px solid var(--line);border-radius:18px 18px 0 0}
+}
+</style>
+</helmet>
+<div class="ff" data-theme="{{theme}}">
+<nav class="ff-rail" aria-label="Main">
+<span class="ff-logo" aria-hidden="true"><svg width="36" height="36" viewBox="0 0 36 36"><rect width="36" height="36" rx="11" fill="#0B7A70"></rect><path d="M10 24 C 17 24, 16 12, 25 12" stroke="#FFFFFF" stroke-width="2.6" fill="none" stroke-linecap="round"></path><circle cx="10" cy="24" r="3.6" fill="#FFFFFF"></circle><circle cx="25.5" cy="12" r="3.6" fill="#B79CFF"></circle></svg></span>
+<a class="ff-navi" href="Main.dc.html"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><path d="M6.5 10v2a4 4 0 0 0 4 4H14"></path></svg><span>Flow map</span></a>
+<button class="ff-navi" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"></path></svg><span>Runs</span></button>
+<a class="ff-navi" href="Catalog.dc.html" aria-current="page"><svg class="i" viewBox="0 0 24 24"><path d="M9 2v5M15 2v5M6 7h12v4a6 6 0 0 1-12 0zM12 17v5"></path></svg><span>Connectors</span></a>
+<button class="ff-navi" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"></path></svg><span>Security</span></button>
+</nav>
+<div class="ff-main">
+<div class="ff-wrap">
+<div class="ff-head">
+<div class="sp"><h1>Connectors</h1><p>{{total}} apps. {{liveCount}} work for real today; every one has a test run on example data.</p></div>
+<button class="ff-btn" type="button" onClick="{{goCustom}}"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>Add your own</button>
+<button class="ff-ib" type="button" aria-label="Switch light or dark" onClick="{{toggleTheme}}"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></button>
+</div>
+<section class="ff-hero" aria-label="How the map is built">
+<div class="ff-hero-l">
+<span class="ff-tile" style="background: var(--violet); color: var(--on-violet)"><svg viewBox="0 0 24 24" width="28" height="28" style="fill: currentColor"><path d="M12 2l2.2 6.3L20.5 10.5l-6.3 2.2L12 19l-2.2-6.3L3.5 10.5l6.3-2.2z"></path></svg></span>
+<div>
+<span class="ff-kick">How the map stays honest</span>
+<h2>Connect as many apps as you like</h2>
+<p>The map only shows apps your code already calls. Anything else you connect waits here, off the map, until your code uses it.</p>
+</div>
+</div>
+<div class="ff-hero-r">
+<div class="ff-stat"><span>On the map</span><b>7 apps your code calls</b></div>
+<div class="ff-stat"><span>Connected, not in your code</span><b>{{idleNames}}</b></div>
+<div class="ff-stat"><span>Keys</span><b>names only, never values</b></div>
+</div>
+</section>
+<div class="ff-proj" aria-label="On the map">
+<span class="lbl">On the map</span>
+<sc-for list="{{inProject}}" as="c" hint-placeholder-count="8"><span class="ff-pt"><span class="ff-tile {{c.tcls}}" style="background: {{c.bg}}; color: {{c.ink}}"><sc-if value="{{c.hasImg}}" hint-placeholder-val="{{true}}"><img src="{{c.img}}" alt=""></sc-if><sc-if value="{{c.hasMono}}" hint-placeholder-val="{{false}}">{{c.mono}}</sc-if><sc-if value="{{c.hasIcon}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="{{c.icon}}"></path></svg></sc-if></span>{{c.name}}<i></i></span></sc-for>
+<span class="lbl" style="margin-left: 12px">Connected, not in your code</span>
+<sc-for list="{{idle}}" as="c" hint-placeholder-count="3"><span class="ff-pt idle"><span class="ff-tile {{c.tcls}}" style="background: {{c.bg}}; color: {{c.ink}}"><sc-if value="{{c.hasImg}}" hint-placeholder-val="{{true}}"><img src="{{c.img}}" alt=""></sc-if><sc-if value="{{c.hasMono}}" hint-placeholder-val="{{false}}">{{c.mono}}</sc-if><sc-if value="{{c.hasIcon}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="{{c.icon}}"></path></svg></sc-if></span>{{c.name}}<i></i></span></sc-for>
+</div>
+<div class="ff-controls">
+<label class="ff-search"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Search connectors</span><input type="search" placeholder="Search 56 apps: Stripe, Postgres, voice…" value="{{q}}" onChange="{{onQ}}"></label>
+<div class="ff-chips" role="group" aria-label="Category">
+<sc-for list="{{cats}}" as="k" hint-placeholder-count="7"><button class="ff-chip" type="button" aria-pressed="{{k.on}}" onClick="{{k.pick}}">{{k.label}}<span>{{k.n}}</span></button></sc-for>
+</div>
+<button class="ff-switch" type="button" aria-pressed="{{liveOnly}}" onClick="{{toggleLive}}"><i></i>Live only</button>
+</div>
+<sc-for list="{{sections}}" as="sec" hint-placeholder-count="3">
+<section class="ff-sec" id="{{sec.anchor}}">
+<div class="ff-sech"><h2>{{sec.title}}</h2><span>{{sec.count}}</span></div>
+<div class="ff-grid">
+<sc-for list="{{sec.items}}" as="c" hint-placeholder-count="6">
+<article class="cc" style="animation-delay: {{c.delay}}ms">
+<div class="cc-h">
+<span class="ff-tile {{c.tcls}}" style="background: {{c.bg}}; color: {{c.ink}}"><sc-if value="{{c.hasImg}}" hint-placeholder-val="{{true}}"><img src="{{c.img}}" alt=""></sc-if><sc-if value="{{c.hasMono}}" hint-placeholder-val="{{false}}">{{c.mono}}</sc-if><sc-if value="{{c.hasIcon}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="{{c.icon}}"></path></svg></sc-if></span>
+<span class="sp"><b>{{c.name}}</b><small>{{c.kind}}</small></span>
+<span class="badge {{c.badgeCls}}"><i></i>{{c.badge}}</span>
+</div>
+<p>{{c.desc}}</p>
+<span class="cc-meta">{{c.meta}}</span>
+<div class="cc-a">
+<button class="ff-btn" type="button" onClick="{{c.test}}"><svg class="i" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z"></path></svg>Test run</button>
+<sc-if value="{{c.inProj}}" hint-placeholder-val="{{false}}"><span class="inproj {{c.projCls}}"><i></i>{{c.projLabel}}</span></sc-if>
+<sc-if value="{{c.canAdd}}" hint-placeholder-val="{{true}}"><button class="ff-btn ff-btn-go add" type="button" onClick="{{c.add}}">Add</button></sc-if>
+</div>
+</article>
+</sc-for>
+</div>
+</section>
+</sc-for>
+<sc-if value="{{noResults}}" hint-placeholder-val="{{false}}"><div class="ff-empty">Nothing matches “{{q}}”. Any app with an API, an MCP server or a command line can be added as your own.</div></sc-if>
+<p class="ff-note">Live means FlowForge can call it today with your own key (or on your machine). Demo only means the test run uses example data; the real integration comes per connector. Logos are Simple Icons marks used only to name the app; apps without one get letters.</p>
+</div>
+</div>
+<sc-if value="{{hasTest}}" hint-placeholder-val="{{false}}">
+<div class="ff-scrim" onClick="{{closeTest}}"></div>
+<aside class="ff-drawer" role="dialog" aria-modal="true" aria-label="Test run" onKeyDown="{{drawerKey}}">
+<div class="ff-dh">
+<span class="ff-tile {{t.tcls}}" style="background: {{t.bg}}; color: {{t.ink}}"><sc-if value="{{t.hasImg}}" hint-placeholder-val="{{true}}"><img src="{{t.img}}" alt=""></sc-if><sc-if value="{{t.hasMono}}" hint-placeholder-val="{{false}}">{{t.mono}}</sc-if><sc-if value="{{t.hasIcon}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="{{t.icon}}"></path></svg></sc-if></span>
+<div style="flex: 1; min-width: 0"><span class="badge {{t.badgeCls}}"><i></i>{{t.badge}}</span><h2>Test run: {{t.name}}</h2></div>
+<button class="ff-ib" type="button" aria-label="Close test run" onClick="{{closeTest}}"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+</div>
+<div class="ff-dsec">
+<div class="ff-mode {{t.modeCls}}"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"></path></svg><span>{{t.modeText}}</span></div>
+</div>
+<div class="ff-dsec">
+<span class="ff-sh">What happens</span>
+<div class="ff-tl">
+<sc-for list="{{t.steps}}" as="s" hint-placeholder-count="3">
+<div class="ff-ts {{s.cls}}"><span class="d"><sc-if value="{{s.done}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"></path></svg></sc-if><sc-if value="{{s.doing}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"></path></svg></sc-if></span><span><b>{{s.title}}</b><code>{{s.text}}</code></span></div>
+</sc-for>
+</div>
+</div>
+<sc-if value="{{t.done}}" hint-placeholder-val="{{false}}">
+<div class="ff-dsec">
+<span class="ff-sh">Result · {{t.stats}}</span>
+<div class="ff-res">{{t.res}}</div>
+</div>
+<div class="ff-dsec">
+<span class="ff-sh">What the Planner learns from it</span>
+<div class="ff-learn"><sc-for list="{{t.learns}}" as="l" hint-placeholder-count="3"><span>{{l.text}}</span></sc-for></div>
+</div>
+<div class="ff-dsec">
+<div class="ff-row">
+<sc-if value="{{t.canAdd}}" hint-placeholder-val="{{true}}"><button class="ff-btn ff-btn-go" type="button" onClick="{{t.add}}">Add to project</button></sc-if>
+<button class="ff-btn" type="button" onClick="{{t.again}}">Run again</button>
+</div>
+</div>
+</sc-if>
+</aside>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"$preview":{"width":1440,"height":1320}}'>
+const B = '/_blob/';
+const ICON = {
+  folder: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+  globe: 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3',
+  link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
+  term: 'M4 5h16v14H4zM7 9l3 3-3 3M12 15h5'
+};
+const CATS = [['all', 'All'], ['llm', 'LLMs'], ['pay', 'Payments'], ['dev', 'Dev tools'], ['data', 'Data and apps'], ['media', 'Media and AI'], ['custom', 'Your own']];
+const CAT_TITLE = { llm: 'LLMs', pay: 'Payments', dev: 'Dev tools', data: 'Data and apps', media: 'Media and AI services', custom: 'Your own' };
+// [id, name, cat, live, kind, desc, meta, logo, bg, planner?]
+const C = [
+  ['nim', 'NVIDIA NIM', 'llm', 1, 'LLM', 'Fast open models on a free tier.', 'openai-compatible · 40 rpm free', B + '1e2654fb3d48388dedf245b977768396', '#76B900', 1],
+  ['gemini', 'Google Gemini', 'llm', 1, 'LLM', 'Quick general model with a generous free tier.', 'openai-compatible · 15 rpm free', B + '0f82863cf3a140d98683f584542db625', '#4285F4', 1],
+  ['claude', 'Claude', 'llm', 1, 'LLM', 'Careful writing, code and long documents.', 'anthropic · your key', B + '7acfa64235c5f716407c4a48fc851019', '#D97757', 1],
+  ['openai', 'OpenAI', 'llm', 1, 'LLM', 'GPT models through the standard API.', 'openai-compatible · your key', 'OA', '#10A37F', 1],
+  ['ollama', 'Ollama', 'llm', 1, 'LLM', 'Models on your own machine. Nothing leaves it.', 'local · port 11434', B + 'e0302ff5b358793526df55a762acfa6b', '#1F2328', 1],
+  ['mistral', 'Mistral', 'llm', 1, 'LLM', 'European models, from small to large.', 'openai-compatible · your key', B + 'decb9cb9b754855b8795cf722c2056ca', '#FA520F', 1],
+  ['groq', 'Groq', 'llm', 1, 'LLM', 'Very fast answers from open models.', 'openai-compatible · free tier', 'Gq', '#F55036', 1],
+  ['openrouter', 'OpenRouter', 'llm', 1, 'LLM', 'One key for hundreds of models.', 'openai-compatible · your key', B + '5285dd3a116c4eb6f3da1808d1912c05', '#94A3B8', 1],
+  ['deepseek', 'DeepSeek', 'llm', 1, 'LLM', 'Strong reasoning at a low price.', 'openai-compatible · your key', B + 'ccf76ba14d0efb787467d4358eeb7b0d', '#5786FE', 1],
+  ['perplexity', 'Perplexity', 'llm', 0, 'LLM', 'Answers with web sources attached.', 'HTTP · search', B + 'ba1faa604899cb1e76fc177706df67d2', '#1FB8CD', 0],
+  ['huggingface', 'Hugging Face', 'llm', 0, 'LLM', 'Inference for thousands of open models.', 'HTTP · inference', B + 'a4feeefa36a637e8bf11e5004fdd4966', '#FFD21E', 0],
+  ['together', 'Together AI', 'llm', 0, 'LLM', 'Hosted open models and fine-tunes.', 'openai-compatible', 'TA', '#0F6FFF', 0],
+  ['cohere', 'Cohere', 'llm', 0, 'LLM', 'Embeddings and reranking for search.', 'HTTP · embed, rerank', 'Co', '#39594D', 0],
+  ['razorpay', 'Razorpay', 'pay', 0, 'Payments API', 'Payments in India. Starts in test mode.', 'HTTP · always behind a gate', B + 'ade37c3be8a35758432154560e7cae43', '#3395FF', 0],
+  ['stripe', 'Stripe', 'pay', 0, 'Payments API', 'Global payments. Starts in test mode.', 'HTTP · always behind a gate', B + '9c85995726b24ef4e6d1facd8271f47a', '#635BFF', 0],
+  ['paypal', 'PayPal', 'pay', 0, 'Payments API', 'PayPal wallets and cards.', 'HTTP · always behind a gate', B + '4d1c4b6e6ee86afd1b765192afcae25a', '#002991', 0],
+  ['square', 'Square', 'pay', 0, 'Payments API', 'In-person and online payments.', 'HTTP · always behind a gate', B + 'bd5b77d5a93f00c5b6211d2c5b0af85f', '#3E4348', 0],
+  ['adyen', 'Adyen', 'pay', 0, 'Payments API', 'Payments for large shops.', 'HTTP · always behind a gate', B + 'e40086b3a24cb71a23e53e40a54568bb', '#0ABF53', 0],
+  ['github', 'GitHub', 'dev', 1, 'MCP server', 'Issues, pull requests and code search.', 'MCP · 26 tools', B + '1d0ae5b5c8e87a7a7e619886496f7ee2', '#181717', 0],
+  ['sirius', 'Sirius', 'dev', 1, 'Local command', 'Your security scanner, run on this machine.', 'local · no shell · one folder', 'Si', '#0B7A70', 0],
+  ['playwright', 'Playwright', 'dev', 1, 'MCP server', 'Drives a real browser to test pages.', 'MCP · 21 tools', 'Pw', '#2EAD33', 0],
+  ['filesystem', 'Filesystem', 'dev', 1, 'MCP server', 'Reads and writes files in one folder.', 'MCP · 11 tools', 'icon:folder', '', 0],
+  ['gitlab', 'GitLab', 'dev', 0, 'MCP server', 'Merge requests, pipelines and issues.', 'MCP · demo', B + '727d0b7b4e9c21a885a92763dbbb94f9', '#FC6D26', 0],
+  ['docker', 'Docker', 'dev', 0, 'MCP server', 'Start, stop and inspect containers.', 'MCP · demo', B + '10824b226b613f273fd26cfc8c65bc73', '#2496ED', 0],
+  ['sentry', 'Sentry', 'dev', 0, 'MCP server', 'Errors and traces from production.', 'MCP · demo', B + 'fe0ef416eab5b1f83a4c5d5d52f58532', '#362D59', 0],
+  ['vercel', 'Vercel', 'dev', 0, 'MCP server', 'Deploys, domains and logs.', 'MCP · demo', B + 'd8163f849893755c5298cb58cbbcd57c', '#16191D', 0],
+  ['linear', 'Linear', 'dev', 0, 'MCP server', 'Issues and projects.', 'MCP · demo', B + '3e4759460dc9202683b5cfba596803d5', '#5E6AD2', 0],
+  ['jira', 'Jira', 'dev', 0, 'HTTP API', 'Tickets and sprints.', 'HTTP · demo', B + '8fe240a5b3871442f2f52ffffe126415', '#0052CC', 0],
+  ['fetch', 'Fetch', 'data', 1, 'MCP server', 'Fetches any web page as clean text.', 'MCP · uvx mcp-server-fetch', 'icon:globe', '', 0],
+  ['postgres', 'PostgreSQL', 'data', 1, 'MCP server', 'Asks your database questions, read-only.', 'MCP · 3 tools · read-only', B + 'ff4023c79bf407397374253c11b55084', '#4169E1', 0],
+  ['supabase', 'Supabase', 'data', 0, 'MCP server', 'Postgres, auth and storage in one.', 'MCP · demo', B + '2a3e07fdfb10fd92eba1b4ebc001d6ec', '#3FCF8E', 0],
+  ['mongodb', 'MongoDB', 'data', 0, 'MCP server', 'Document database queries.', 'MCP · demo', B + '8d30bce4550a5802206e8c3e393b77ac', '#47A248', 0],
+  ['redis', 'Redis', 'data', 0, 'HTTP API', 'Fast key-value cache.', 'HTTP · demo', B + '80c12074de562a0442c48d9e326e2406', '#FF4438', 0],
+  ['notion', 'Notion', 'data', 0, 'MCP server', 'Pages and databases in your workspace.', 'MCP · demo', B + '85e43e871129b6d98b4b6e032f561ea9', '#16191D', 0],
+  ['slack', 'Slack', 'data', 0, 'MCP server', 'Post and read messages in channels.', 'MCP · demo', 'Sl', '#4A154B', 0],
+  ['gmail', 'Gmail', 'data', 0, 'MCP server', 'Send and read email.', 'MCP · demo · sending is gated', B + 'd85c060ca3fdb1b4c535ef2131b74b91', '#EA4335', 0],
+  ['gdrive', 'Google Drive', 'data', 0, 'MCP server', 'Find and read files in Drive.', 'MCP · demo', B + 'b3ddbd3e32876d9490230a880e3bc2de', '#4285F4', 0],
+  ['gsheets', 'Google Sheets', 'data', 0, 'HTTP API', 'Read and append rows.', 'HTTP · demo', B + '22d781e454dc9e85b74b971562ba6682', '#34A853', 0],
+  ['airtable', 'Airtable', 'data', 0, 'HTTP API', 'Tables your team already uses.', 'HTTP · demo', B + '625ea9533707b272dcf37a330c828498', '#18BFFF', 0],
+  ['discord', 'Discord', 'data', 0, 'HTTP API', 'Messages and webhooks.', 'HTTP · demo', B + 'b7f8c50749ff1f6203537b61aecc7c1f', '#5865F2', 0],
+  ['telegram', 'Telegram', 'data', 0, 'HTTP API', 'Bots and chat messages.', 'HTTP · demo', B + '5652b70465aeb4619b35ad4d10c3d2a4', '#26A5E4', 0],
+  ['whatsapp', 'WhatsApp', 'data', 0, 'HTTP API', 'Business messages to customers.', 'HTTP · demo · sending is gated', B + '136213a923ada5ecb4fc80c88fe46013', '#25D366', 0],
+  ['twilio', 'Twilio', 'data', 0, 'HTTP API', 'SMS and voice calls.', 'HTTP · demo · sending is gated', 'Tw', '#F22F46', 0],
+  ['resend', 'Resend', 'data', 0, 'HTTP API', 'Email from your app.', 'HTTP · demo', B + '1c9b318d6c624cde2156eb33a83bcb6f', '#16191D', 0],
+  ['shopify', 'Shopify', 'data', 0, 'HTTP API', 'Products, orders and customers.', 'HTTP · demo', B + '0732bc810b3b9cb667726c4f257adf00', '#7AB55C', 0],
+  ['firebase', 'Firebase', 'data', 0, 'HTTP API', 'App data and auth.', 'HTTP · demo', B + '9344546bb5fc442f51ff6c613dfcef2e', '#DD2C00', 0],
+  ['higgsfield', 'Higgsfield', 'media', 0, 'HTTP API', 'Images and video from a prompt.', 'HTTP · demo', 'Hf', '#2A2A30', 0],
+  ['elevenlabs', 'ElevenLabs', 'media', 0, 'HTTP API', 'Natural voices and speech.', 'HTTP · demo', B + 'f40256978eb500400f1f37eb84bfe982', '#16191D', 0],
+  ['replicate', 'Replicate', 'media', 0, 'HTTP API', 'Run open models by API.', 'HTTP · demo', B + '67789ba2f69378fce2c2e9eb1d0bbead', '#16191D', 0],
+  ['stability', 'Stability AI', 'media', 0, 'HTTP API', 'Image generation and editing.', 'HTTP · demo', 'SA', '#5B3FD1', 0],
+  ['runway', 'Runway', 'media', 0, 'HTTP API', 'Video generation and editing.', 'HTTP · demo', 'Rw', '#16191D', 0],
+  ['deepgram', 'Deepgram', 'media', 0, 'HTTP API', 'Speech to text, fast.', 'HTTP · demo', B + 'a3aeaa07164624e16809b873a8bf19e7', '#13EF93', 0],
+  ['assemblyai', 'AssemblyAI', 'media', 0, 'HTTP API', 'Speech to text and audio insights.', 'HTTP · demo', 'AA', '#2545D3', 0],
+  ['c_mcp', 'Any MCP server', 'custom', 1, 'MCP server', 'A command and its arguments. Tools are found for you.', 'MCP · your colour and logo', B + '53583eae977bad9b940b721e30abf7cf', '#16191D', 0],
+  ['c_http', 'Any HTTP API', 'custom', 1, 'HTTP API', 'A base URL and the name of its key.', 'HTTP · OpenAPI optional', 'icon:link', '', 0],
+  ['c_local', 'Local command', 'custom', 1, 'Local command', 'Any script on your machine. No shell, one folder.', 'local · your colour and logo', 'icon:term', '', 0]
+];
+// 'map' = your code calls it, so it is on the map; 'idle' = connected, but no code calls it yet
+const IN_PROJECT = { nim: 'map', gemini: 'map', claude: 'map', razorpay: 'map', higgsfield: 'map', gmail: 'map', ollama: 'idle', slack: 'idle', sirius: 'idle', fetch: 'idle' };
+const MODEL = { nim: 'meta/llama-3.3-70b-instruct', gemini: 'gemini-2.0-flash', claude: 'claude-sonnet-5-5', openai: 'gpt (your pick)', ollama: 'llama3.2 · local', mistral: 'mistral-large', groq: 'llama-3.3-70b', openrouter: 'openrouter/auto', deepseek: 'deepseek-chat' };
+const TOOLS = {
+  github: ['search_code', 'get_file_contents', 'create_issue (gated)'], playwright: ['browser_navigate', 'browser_snapshot', 'browser_click (gated)'],
+  filesystem: ['read_file', 'list_directory', 'write_file (gated)'], fetch: ['fetch(url, max_length)'], postgres: ['query (read-only)', 'list_tables', 'describe_table'],
+  c_mcp: ['every tool the server lists', 'its JSON input schema', 'read-only or not']
+};
+function inkOn(hex) {
+  const n = parseInt(String(hex).replace('#', '').slice(0, 6), 16);
+  if (isNaN(n)) return '#0F1D26';
+  const ch = function (c) { const v = c / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  const L = 0.2126 * ch((n >> 16) & 255) + 0.7152 * ch((n >> 8) & 255) + 0.0722 * ch(n & 255);
+  return (L + 0.05) / (0.0122 + 0.05) > 1.05 / (L + 0.05) ? '#0F1D26' : '#FFFFFF';
+}
+function card(r) {
+  const logo = r[7], isImg = logo.indexOf('/_blob/') === 0, isIcon = logo.indexOf('icon:') === 0;
+  return {
+    id: r[0], name: r[1], cat: r[2], live: !!r[3], kind: r[4], desc: r[5], meta: r[6], planner: !!r[9],
+    img: isImg ? logo : '', mono: !isImg && !isIcon ? logo : '', icon: isIcon ? ICON[logo.slice(5)] : '',
+    hasImg: isImg, hasMono: !isImg && !isIcon, hasIcon: isIcon, tcls: isIcon ? 'icon' : '', bg: r[8], ink: r[8] ? inkOn(r[8]) : ''
+  };
+}
+const ALL = C.map(card);
+function testFor(c) {
+  const env = c.id.toUpperCase().replace(/^C_/, 'MY_') + '_API_KEY';
+  let mode = c.live ? 'Live: uses your key from env:' + env + ' (set). The value is never shown, logged or sent to an LLM.' : 'Demo only: example data, no network, no key needed.';
+  if (c.cat === 'llm' && c.id === 'ollama') mode = 'Live: talks to Ollama on this machine. Nothing leaves it.';
+  if (c.kind === 'Local command') mode = 'Live: runs on this machine with no shell, inside one folder, with a timeout.';
+  if (c.id === 'fetch' || c.id === 'filesystem' || c.id === 'playwright' || c.id === 'c_mcp') mode = 'Live: starts the MCP server on this machine. No key needed.';
+  let steps, res, stats, learns;
+  if (c.cat === 'llm') {
+    steps = [['Connect', (c.live ? 'POST ' : 'mock ') + 'chat/completions'], ['Send a tiny prompt', '"Say hello from FlowForge in one line."'], ['Read the answer', 'check the reply and the token count']];
+    res = '"Hello from FlowForge. Test run OK."'; stats = c.live ? '0.6 s · 18 tokens' : '0.4 s · example data';
+    learns = ['provider: ' + (c.meta.indexOf('anthropic') === 0 ? 'anthropic' : 'openai_compatible'), 'model: ' + (MODEL[c.id] || 'default'), 'rate limit: ' + (c.meta.indexOf('free') >= 0 ? 'free tier' : 'from your plan')];
+  } else if (c.cat === 'pay') {
+    steps = [['Connect in test mode', 'live keys are refused on a test connector'], ['Create a test order', 'POST /v1/orders · ₹499.00'], ['Read it back', 'GET /v1/orders/{id}']];
+    res = '{ "id": "order_FAKE7Qx", "amount": 49900, "status": "created" }'; stats = '0.3 s · test mode, no money moves';
+    learns = ['create order', 'fetch payment', 'refund · always behind a gate'];
+  } else if (c.kind === 'MCP server') {
+    const tools = TOOLS[c.id] || ['list of tools', 'their input schemas'];
+    steps = [['Start the server', c.id === 'fetch' ? 'uvx mcp-server-fetch' : c.live ? 'npx ' + c.id + '-mcp' : 'mock server'], ['List its tools', 'tools/list'], ['Check the schemas', 'arguments are validated before any run']];
+    res = tools.length + ' tools found\n' + tools.join('\n'); stats = c.live ? '0.8 s · server stopped after' : '0.2 s · example data';
+    learns = tools.map(function (x) { return 'tool: ' + x; });
+  } else if (c.kind === 'Local command') {
+    steps = [['Check the command', c.id === 'sirius' ? 'sirius --version' : 'your command'], ['Run it in its folder', 'no shell · env passed explicitly'], ['Read the output', 'stdout, stderr, exit code']];
+    res = c.id === 'sirius' ? 'sirius 2.4.1\nscan: 0 high · 2 medium · 5 low\nexit 0' : 'exit 0'; stats = '1.9 s';
+    learns = ['command and its arguments', 'folder it may use', 'always behind a gate'];
+  } else if (c.cat === 'media') {
+    steps = [['Connect', 'mock ' + c.name + ' API'], ['Make one sample', '"a soft blue baby blanket"'], ['Save the file', 'kept on disk, not in the run log']];
+    res = '{ "file": "artifacts/test/sample.png", "width": 1024 }'; stats = '0.5 s · example output';
+    learns = ['makes images, audio or video', 'returns a file', 'cost per call (when it reports one)'];
+  } else {
+    steps = [['Connect', c.live ? 'GET {base_url}/health' : 'mock ' + c.name + ' API'], ['Read its endpoints', 'from OpenAPI when you give it'], ['One harmless call', 'GET only']];
+    res = '{ "ok": true }'; stats = '0.2 s';
+    learns = ['endpoints and their parameters', 'which calls write data (gated)', 'key name only, never the value'];
+  }
+  return { mode: mode, steps: steps, res: res, stats: stats, learns: learns };
+}
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { theme: null, q: '', cat: 'all', liveOnly: false, test: null, phase: 0, added: {}, planner: 'nim' };
+    const self = this;
+    this.timers = [];
+    this.toggleTheme = function () { self.setState({ theme: self.theme() === 'dark' ? 'light' : 'dark' }); };
+    this.onQ = function (e) { self.setState({ q: e.target.value }); };
+    this.toggleLive = function () { self.setState({ liveOnly: !self.state.liveOnly }); };
+    this.goCustom = function () { self.setState({ cat: 'custom', q: '', liveOnly: false }); };
+    this.closeTest = function () { self.clear(); self.setState({ test: null }); };
+    this.drawerKey = function (e) { if (e.key === 'Escape') self.closeTest(); };
+    this.onPlanner = function (e) { self.setState({ planner: e.target.value }); };
+    this.testPlanner = function () { self.startTest(self.state.planner); };
+  }
+  componentWillUnmount() { this.clear(); }
+  theme() { return this.state.theme || this.props.theme || 'light'; }
+  clear() { this.timers.forEach(clearTimeout); this.timers = []; }
+  startTest(id) {
+    const self = this;
+    this.clear();
+    let reduce = false;
+    try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (err) { reduce = false; }
+    if (reduce) { this.setState({ test: id, phase: 3 }); return; }
+    this.setState({ test: id, phase: 0 });
+    [500, 1100, 1700].forEach(function (ms, i) { self.timers.push(setTimeout(function () { self.setState({ phase: i + 1 }); }, ms)); });
+  }
+  renderVals() {
+    const s = this.state, self = this, q = s.q.trim().toLowerCase();
+    const match = function (c) {
+      if (s.liveOnly && !c.live) return false;
+      if (s.cat !== 'all' && c.cat !== s.cat) return false;
+      if (q && (c.name + ' ' + c.desc + ' ' + c.kind + ' ' + c.meta).toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    };
+    const view = function (c, i) {
+      const st = IN_PROJECT[c.id] || (s.added[c.id] ? 'idle' : '');
+      return Object.assign({}, c, {
+        badge: c.live ? 'Live' : 'Demo only', badgeCls: c.live ? 'live' : 'demo',
+        inProj: !!st, canAdd: !st, projLabel: st === 'map' ? 'On the map' : 'Connected · not in code', projCls: st === 'map' ? '' : 'idle',
+        delay: Math.min(i, 12) * 30,
+        test: function () { self.startTest(c.id); },
+        add: function () { const a = Object.assign({}, s.added); a[c.id] = true; self.setState({ added: a }); }
+      });
+    };
+    const hits = ALL.filter(match);
+    let sections;
+    if (s.cat === 'all' && !q && !s.liveOnly) {
+      sections = ['llm', 'pay', 'dev', 'data', 'media', 'custom'].map(function (k) {
+        const items = ALL.filter(function (c) { return c.cat === k; });
+        return { title: CAT_TITLE[k], anchor: 'cat-' + k, count: items.length + ' · ' + items.filter(function (c) { return c.live; }).length + ' live', items: items.map(view) };
+      });
+    } else {
+      sections = hits.length ? [{ title: s.cat === 'all' ? 'Results' : CAT_TITLE[s.cat], anchor: 'results', count: hits.length + ' · ' + hits.filter(function (c) { return c.live; }).length + ' live', items: hits.map(view) }] : [];
+    }
+    const cats = CATS.map(function (k) {
+      const n = k[0] === 'all' ? ALL.length : ALL.filter(function (c) { return c.cat === k[0]; }).length;
+      return { label: k[1], n: String(n), on: s.cat === k[0], pick: function () { self.setState({ cat: k[0] }); } };
+    });
+    const inProject = ALL.filter(function (c) { return IN_PROJECT[c.id] === 'map'; });
+    const idle = ALL.filter(function (c) { return IN_PROJECT[c.id] === 'idle' || (s.added[c.id] && !IN_PROJECT[c.id]); });
+    let t = { steps: [], learns: [] };
+    const tc = s.test ? ALL.filter(function (c) { return c.id === s.test; })[0] : null;
+    if (tc) {
+      const spec = testFor(tc), inProj = !!IN_PROJECT[tc.id] || !!s.added[tc.id];
+      t = Object.assign({}, tc, {
+        badge: tc.live ? 'Live' : 'Demo only', badgeCls: tc.live ? 'live' : 'demo', modeCls: tc.live ? 'live' : 'demo', modeText: spec.mode,
+        steps: spec.steps.map(function (st, i) {
+          const done = s.phase > i, doing = s.phase === i;
+          return { title: st[0], text: st[1], cls: done ? 'done' : doing ? 'doing' : '', done: done, doing: doing };
+        }),
+        done: s.phase >= 3, res: spec.res, stats: spec.stats, learns: spec.learns.map(function (x) { return { text: x }; }),
+        canAdd: !inProj,
+        add: function () { const a = Object.assign({}, s.added); a[tc.id] = true; self.setState({ added: a }); },
+        again: function () { self.startTest(tc.id); }
+      });
+    }
+    return {
+      theme: this.theme(), toggleTheme: this.toggleTheme, total: ALL.length, liveCount: ALL.filter(function (c) { return c.live; }).length,
+      q: s.q, onQ: this.onQ, cats: cats, liveOnly: s.liveOnly, toggleLive: this.toggleLive, goCustom: this.goCustom,
+      sections: sections, noResults: !hits.length && !(s.cat === 'all' && !q && !s.liveOnly), inProject: inProject,
+      hasTest: !!tc, t: t, closeTest: this.closeTest, drawerKey: this.drawerKey,
+      idle: idle, idleNames: idle.map(function (c) { return c.name; }).join(', ') || 'none'
+    };
+  }
+}
+</script>
+</body>
+</html>

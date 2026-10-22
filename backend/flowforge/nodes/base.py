@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
+from contextvars import ContextVar
+from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
-from typing import Any, ClassVar
+from typing import Any
+
+# The run a node call belongs to, for naming artifact folders (D12). Set by the API before
+# run_workflow; step tasks inherit it. None outside a run.
+current_run_id: ContextVar[str | None] = ContextVar("current_run_id", default=None)
 
 
 class NodeError(Exception):
@@ -24,9 +29,21 @@ class TransientNodeError(NodeError):
 
 
 class Node(ABC):
-    type: ClassVar[str]
-    # Name of the rate-limit bucket this node draws from (None = unlimited).
-    rate_limit_key: ClassVar[str | None] = None
+    type: str
+    # Name of the rate-limit bucket this node draws from (None = unlimited). Per instance
+    # when built from a connector (D10).
+    rate_limit_key: str | None = None
+    # Set when built from a connector (D10). Nodes built without one keep V1 behaviour.
+    connector_id: str | None = None
+    fallback: str | None = None  # connector id tried after transient exhaustion (D10)
+    default_for_type: bool = False  # the type's default connector keeps the V1 cache namespace
+
+    @property
+    def cache_namespace(self) -> str:
+        """Prefix of this node's cache keys: two connectors never share an answer (D10)."""
+        if self.connector_id is None or self.default_for_type:
+            return self.type
+        return f"{self.type}:{self.connector_id}"
 
     @abstractmethod
     async def run(self, params: dict[str, Any]) -> Any:
@@ -36,7 +53,7 @@ class Node(ABC):
         """Per-type default for the persistent cache (D3). Overridden by step.cache."""
         return False
 
-    async def aclose(self) -> None:
+    async def aclose(self) -> None:  # noqa: B027 — optional hook; most nodes hold nothing
         """Release connections/processes held across calls."""
 
 
@@ -53,5 +70,5 @@ def parse_retry_after(value: str | None) -> float | None:
     except (TypeError, ValueError):
         return None
     if when.tzinfo is None:
-        when = when.replace(tzinfo=timezone.utc)
-    return max(0.0, (when - datetime.now(timezone.utc)).total_seconds())
+        when = when.replace(tzinfo=UTC)
+    return max(0.0, (when - datetime.now(UTC)).total_seconds())

@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Security</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;color:#0F1D26;background:#EEF3F5}
+a{color:#2457C5}a:hover{color:#0B7A70}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="display:flex;flex-wrap:wrap;min-height:1180px;background:#EEF3F5">
+<nav style="flex:1 1 220px;box-sizing:border-box;padding:24px 16px;background:#0F1D26;display:flex;flex-direction:column;gap:6px;align-self:stretch">
+<div style="font-family:'Bricolage Grotesque','Segoe UI',sans-serif;font-size:24px;font-weight:700;color:#fff;padding:0 12px 18px">FlowForge</div>
+<a href="Main.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Overview</a>
+<a href="Connector.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Connectors</a>
+<a href="PlanReview.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Plan review</a>
+<a href="Run.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Live run</a>
+<a href="Approvals.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px"><span>Approvals</span><span style="background:#F2B84B;color:#3A2D0E;border-radius:10px;padding:1px 8px;font-size:12px;font-weight:600">2</span></a>
+<a href="History.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Run history</a>
+<a href="Security.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;background:#1D3340;color:#fff;font-weight:600;text-decoration:none;font-size:15px">Security</a>
+<a href="AddConnector.dc.html" style="margin-top:14px;padding:11px 12px;border-radius:8px;border:1px dashed #4A5E6A;color:#E8F0F3;text-decoration:none;font-size:15px;text-align:center">+ Add app</a>
+</nav>
+
+<main style="flex:999 1 560px;min-width:0;box-sizing:border-box;padding:32px;display:flex;flex-direction:column;gap:24px">
+<header style="display:flex;flex-direction:column;gap:6px">
+<span style="font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#0B7A70">Keys stay in the vault</span>
+<h1 style="margin:0;font-family:'Bricolage Grotesque','Segoe UI',sans-serif;font-size:36px;line-height:1.1">Security</h1>
+<p style="margin:0;color:#4A5E6A;max-width:680px">Two doors, one vault. A key you type in a form goes straight to the vault. A key found in your code is swapped for a placeholder before any AI sees it.</p>
+</header>
+
+<section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:16px">
+<div style="background:#fff;border:1px solid #D3DDE3;border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:10px">
+<b>1. What the AI sees</b>
+<div style="font:500 13px/1.6 'IBM Plex Mono',monospace;background:#0F1D26;color:#E8F0F3;border-radius:10px;padding:12px;overflow-x:auto;white-space:pre">const key =
+  "__FF_SECRET_1__";</div>
+<span style="font-size:14px;color:#4A5E6A">Only a placeholder. The real key never leaves your machine.</span>
+</div>
+<div style="background:#fff;border:1px solid #D3DDE3;border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:10px">
+<b>2. What the vault holds</b>
+<div style="font:500 13px/1.6 'IBM Plex Mono',monospace;background:#DDF2EF;color:#0B7A70;border-radius:10px;padding:12px;overflow-x:auto;white-space:pre">__FF_SECRET_1__
+  = encrypted (Fernet)
+  shown as "configured"</div>
+<span style="font-size:14px;color:#4A5E6A">Write-only. No page or API can read a key back.</span>
+</div>
+<div style="background:#fff;border:1px solid #D3DDE3;border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:10px">
+<b>3. What your code gets back</b>
+<div style="font:500 13px/1.6 'IBM Plex Mono',monospace;background:#0F1D26;color:#E8F0F3;border-radius:10px;padding:12px;overflow-x:auto;white-space:pre">const key =
+  process.env.STRIPE_KEY;</div>
+<span style="font-size:14px;color:#4A5E6A">Restored as an environment variable. Verified and scanned again first.</span>
+</div>
+</section>
+
+<section style="background:#fff;border:1px solid #D3DDE3;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px">
+<h2 style="margin:0;font-family:'Bricolage Grotesque','Segoe UI',sans-serif;font-size:22px">Seven guards</h2>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:10px">
+<div style="background:#EEF3F5;border-radius:10px;padding:12px"><b>Scan</b><div style="font-size:14px;color:#4A5E6A">Code is read as a syntax tree, with pattern matching as a backup, to find keys.</div></div>
+<div style="background:#EEF3F5;border-radius:10px;padding:12px"><b>Redact</b><div style="font-size:14px;color:#4A5E6A">Each key becomes a placeholder before any model call.</div></div>
+<div style="background:#EEF3F5;border-radius:10px;padding:12px"><b>Verify</b><div style="font-size:14px;color:#4A5E6A">The edited code must still parse and keep every placeholder.</div></div>
+<div style="background:#EEF3F5;border-radius:10px;padding:12px"><b>Re-scan</b><div style="font-size:14px;color:#4A5E6A">The result is scanned again so no new key sneaks in.</div></div>
+<div style="background:#EEF3F5;border-radius:10px;padding:12px"><b>Restore</b><div style="font-size:14px;color:#4A5E6A">Placeholders become env vars by default, never hard-coded keys.</div></div>
+<div style="background:#EEF3F5;border-radius:10px;padding:12px"><b>Log filter</b><div style="font-size:14px;color:#4A5E6A">Logs and run events are redacted before they are stored.</div></div>
+<div style="background:#EEF3F5;border-radius:10px;padding:12px"><b>Gates</b><div style="font-size:14px;color:#4A5E6A">Payments and code changes always wait for your approval.</div></div>
+</div>
+</section>
+
+<section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:16px">
+<div style="background:#fff;border:1px solid #D3DDE3;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:8px">
+<h2 style="margin:0;font-family:'Bricolage Grotesque','Segoe UI',sans-serif;font-size:22px">Six privacy rules</h2>
+<span>1. Keys are write-only and show as "configured".</span>
+<span>2. Nothing leaves your machine except calls you set up.</span>
+<span>3. Only connector names and tool lists reach the Planner, never keys.</span>
+<span>4. Stored runs are redacted.</span>
+<span>5. You can delete a connector and its key at any time.</span>
+<span>6. No telemetry.</span>
+</div>
+<div style="background:#FCEFD0;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:8px">
+<h2 style="margin:0;font-family:'Bricolage Grotesque','Segoe UI',sans-serif;font-size:22px;color:#8A5A00">Honest limits</h2>
+<span>Scanning finds known key shapes. An unusual custom secret could be missed, so name it in the form to protect it.</span>
+<span>A model you connect still sees the task text you send it.</span>
+<span>Local use only for now. Running it on a server needs its own hardening.</span>
+</div>
+</section>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1180}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

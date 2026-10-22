@@ -2,12 +2,11 @@
 
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
+from test_graph_properties import random_dags
 
 from flowforge.nodes.mock_node import MockNode
-from flowforge.schema import Workflow
 from flowforge.scheduler.executor import POLICIES, StepState, run_workflow
-
-from test_graph_properties import random_dags
+from flowforge.schema import Workflow
 
 
 def mock_workflow(edges, durations, k):

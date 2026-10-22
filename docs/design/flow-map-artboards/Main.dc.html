@@ -1,0 +1,1256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Flow map</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0A1216}
+a{color:inherit}
+.ff{--app:#EEF3F5;--canvas:#F2F6F7;--dot:rgba(15,29,38,.12);--surface:#FFFFFF;--surface-2:#F5F8F9;--raised:#FFFFFF;--fg:#0F1D26;--muted:#4A5E6A;--faint:#8A9BA5;--line:#D6DFE4;--line-2:#BFCCD3;--edge:#93A5AF;--rail:#0F1D26;--rail-fg:#C9D6DC;--rail-active:#1D3340;
+--teal:#0B7A70;--teal-bg:#DDF2EF;--blue:#2457C5;--blue-bg:#E1EAFB;--amber:#8A5A00;--amber-bg:#FCEFD0;--amber-strong:#E3A535;--coral:#B93C2B;--coral-bg:#FBE4DF;--violet:#6B46C1;--violet-bg:#EEE8FB;--slate:#3A4756;--slate-bg:#E6EBEF;--on-teal:#FFFFFF;--on-violet:#FFFFFF;
+--shadow:0 1px 2px rgb(15 29 38 / 6%),0 8px 22px -12px rgb(15 29 38 / 22%);--shadow-lg:0 2px 6px rgb(15 29 38 / 6%),0 18px 44px -18px rgb(15 29 38 / 34%);
+--sans:'Geist',ui-sans-serif,system-ui,'Segoe UI',sans-serif;--mono:'Geist Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;--ease:cubic-bezier(.2,.7,.2,1);
+color-scheme:light;display:flex;height:100vh;min-height:640px;background:var(--app);color:var(--fg);font-family:var(--sans);font-size:14px;overflow:hidden;-webkit-font-smoothing:antialiased}
+.ff[data-theme="dark"]{--app:#0A1216;--canvas:#081014;--dot:rgba(147,168,179,.12);--surface:#0F1A20;--surface-2:#0C161B;--raised:#132229;--fg:#E8F0F3;--muted:#98ADB8;--faint:#5E7482;--line:#1F3039;--line-2:#2C424D;--edge:#46606D;--rail:#060C0F;--rail-fg:#9FB3BD;--rail-active:#13232B;
+--teal:#4FD1C0;--teal-bg:#10302C;--blue:#7FA8FF;--blue-bg:#14264A;--amber:#F2B84B;--amber-bg:#33270B;--amber-strong:#F2B84B;--coral:#FF8C7A;--coral-bg:#3D1E19;--violet:#B79CFF;--violet-bg:#231C3E;--slate:#B6C3CC;--slate-bg:#1B2930;--on-teal:#062320;--on-violet:#1A1033;
+--shadow:0 1px 2px rgb(0 0 0 / 40%),0 10px 26px -14px rgb(0 0 0 / 75%);--shadow-lg:0 2px 8px rgb(0 0 0 / 40%),0 22px 56px -20px rgb(0 0 0 / 85%);color-scheme:dark}
+.ff *{box-sizing:border-box}
+.ff button,.ff input,.ff select{font-family:inherit;color:inherit}
+.ff svg.i{width:18px;height:18px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.ff-rail{flex:0 0 76px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 8px;background:var(--rail)}
+.ff-logo{width:40px;height:40px;display:grid;place-items:center;margin-bottom:12px}
+.ff-navi{position:relative;width:62px;min-height:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border:0;border-radius:12px;background:none;color:var(--rail-fg);font:500 10.5px/1.1 var(--sans);text-decoration:none;cursor:pointer}
+.ff-navi:hover{background:var(--rail-active);color:#fff}
+.ff-navi[aria-current="page"]{background:var(--rail-active);color:#fff}
+.ff-navi svg.i{width:20px;height:20px}
+.ff-count{position:absolute;top:6px;right:10px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#F2B84B;color:#2A1E05;font:600 10px/16px var(--sans);text-align:center}
+.ff-rail-gap{flex:1}
+.ff-main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;height:100%}
+.ff-top{position:relative;z-index:6;display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--line)}
+.ff-proj{display:flex;align-items:center;gap:12px;min-width:0;margin-right:auto}
+.ff-proj h1{margin:0;font:650 17px/1.15 var(--sans);letter-spacing:-.015em;white-space:nowrap}
+.ff-proj-sub{display:flex;align-items:center;gap:6px;margin-top:5px;font:500 11.5px/1 var(--mono);color:var(--muted);white-space:nowrap}
+.ff-mt{width:16px;height:16px;border-radius:4px;display:grid;place-items:center;background:#181717}
+.ff-mt img{width:10px;height:10px;display:block}
+.ff-planner{display:inline-flex;align-items:center;gap:10px;min-height:46px;padding:5px 16px 5px 5px;border-radius:999px;background:var(--violet-bg);border:1px solid color-mix(in srgb,var(--violet) 40%,transparent);color:var(--fg);text-decoration:none;transition:border-color .2s}
+.ff-planner:hover{border-color:var(--violet)}
+.ff-planner .ff-tile{width:36px;height:36px;border-radius:999px}
+.ff-planner-k{display:flex;align-items:center;gap:6px;font:600 10px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--violet)}
+.ff-planner-v{margin-top:4px;font:650 13.5px/1.1 var(--sans);white-space:nowrap}
+.ff-planner-v span{font:500 11.5px/1 var(--mono);color:var(--muted);margin-left:6px}
+.ff-live{width:7px;height:7px;border-radius:50%;background:var(--violet);box-shadow:0 0 0 3px color-mix(in srgb,var(--violet) 25%,transparent)}
+.ff-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.ff-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:0 14px;border-radius:11px;border:1px solid var(--line-2);background:var(--raised);color:var(--fg);font:600 13px/1 var(--sans);text-decoration:none;white-space:nowrap;cursor:pointer;transition:border-color .2s,background .2s,filter .2s}
+.ff-btn:hover{border-color:var(--muted)}
+.ff-btn-go{background:var(--teal);border-color:var(--teal);color:var(--on-teal)}
+.ff-btn-go:hover{border-color:var(--teal);filter:brightness(1.07)}
+.ff-btn-ai{background:transparent;color:var(--violet);border-color:color-mix(in srgb,var(--violet) 45%,transparent)}
+.ff-btn-ai:hover{background:var(--violet-bg);border-color:var(--violet)}
+.ff-btn-warn{background:var(--amber-strong);border-color:var(--amber-strong);color:#2A1E05}
+.ff-btn-ghost{background:transparent}
+.ff-btn-danger{background:transparent;color:var(--coral);border-color:color-mix(in srgb,var(--coral) 45%,transparent)}
+.ff-btn[disabled]{opacity:.5;cursor:not-allowed}
+.ff-btn:focus-visible,.ff-ib:focus-visible,.ff-tbtn:focus-visible,.ff-navi:focus-visible,.ff-seg button:focus-visible,.ff-planner:focus-visible,.ff-note:focus-visible,.ff-input:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.ff-seg{display:inline-flex;padding:3px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line)}
+.ff-seg button{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px;border:0;border-radius:9px;background:none;color:var(--muted);font:600 12.5px/1 var(--sans);cursor:pointer}
+.ff-seg button[aria-pressed="true"]{background:var(--raised);color:var(--fg);box-shadow:var(--shadow)}
+.ff-seg .n{min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--fg);color:var(--app);font:600 10.5px/18px var(--mono);text-align:center}
+.ff-ib{width:40px;height:40px;display:grid;place-items:center;flex:0 0 auto;border:0;border-radius:10px;background:none;color:var(--fg);cursor:pointer}
+.ff-ib:hover{background:var(--surface-2)}
+.ff-stage{position:relative;flex:1;min-height:0;display:flex}
+.ff-canvas{position:relative;flex:1;min-width:0;overflow:hidden;touch-action:none;cursor:grab;background-color:var(--canvas);background-image:radial-gradient(var(--dot) 1.1px,transparent 1.4px);user-select:none;-webkit-user-select:none}
+.ff-canvas.panning{cursor:grabbing}
+.ff-world{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0}
+.ff-edge{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}
+.ff-edge path{fill:none}
+.ff-under{stroke:transparent;stroke-width:14;stroke-linecap:round}
+.ff-line{stroke:var(--edge);stroke-width:2;stroke-linecap:round;transition:stroke .3s,opacity .3s}
+.ff-edge.cp .ff-under{stroke:color-mix(in srgb,var(--fg) 12%,transparent)}
+.ff-edge.cp .ff-line{stroke:var(--fg)}
+.ff-edge.fb .ff-line{stroke:var(--coral);stroke-dasharray:7 6}
+.ff-edge.unc .ff-line{stroke:var(--faint);stroke-dasharray:2 6}
+.ff-edge.loop .ff-line{stroke:var(--muted);stroke-dasharray:4 4}
+.ff-edge.active .ff-line{stroke:var(--blue);stroke-width:2.6;filter:drop-shadow(0 0 5px var(--blue))}
+.ff-edge.active .ff-under{stroke:color-mix(in srgb,var(--blue) 18%,transparent)}
+.ff-edge.done .ff-line{stroke:var(--teal);stroke-width:2.4;filter:drop-shadow(0 0 3px color-mix(in srgb,var(--teal) 70%,transparent))}
+.ff-edge.skipped .ff-line{opacity:.28;stroke-dasharray:3 6;filter:none}
+.ff-edge.dim{opacity:.25}
+.ff-dot{fill:var(--blue);display:none}
+.ff-edge.active .ff-dot{display:inline}
+.ff-dot-glow{fill:color-mix(in srgb,var(--blue) 30%,transparent);display:none}
+.ff-edge.active .ff-dot-glow{display:inline}
+.ff-elabel{position:absolute;transform:translate(-50%,-50%);display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:999px;background:var(--surface);border:1px solid var(--line-2);color:var(--muted);font:600 11px/1.2 var(--sans);white-space:nowrap;pointer-events:none;transition:opacity .3s}
+.ff-elabel.br{color:var(--fg);font-family:var(--mono);font-size:10.5px;letter-spacing:.04em}
+.ff-elabel.fb{color:var(--coral);border-color:color-mix(in srgb,var(--coral) 45%,transparent)}
+.ff-elabel.unc{border-style:dashed}
+.ff-elabel.guard{width:24px;height:24px;padding:0;justify-content:center;color:var(--teal);border-color:color-mix(in srgb,var(--teal) 50%,transparent)}
+.ff-elabel.guard svg.i{width:13px;height:13px}
+.ff-elabel.off{opacity:.3}
+.ff-node{position:absolute;margin:0;padding:0;border:0;background:none;color:var(--fg);font-family:var(--sans);text-align:left;cursor:pointer;animation:ff-pop .6s var(--ease) backwards;transition:opacity .3s}
+.ff-node:focus-visible{outline:2px solid var(--teal);outline-offset:5px;border-radius:16px}
+.ff-node.miss{opacity:.22}
+.ff-node.st-skipped{opacity:.3}
+.ff-card{position:absolute;inset:0;display:flex;align-items:center;gap:10px;padding:0 12px 0 10px;border-radius:14px;background:var(--raised);border:1px solid var(--line-2);box-shadow:var(--shadow);transition:border-color .25s,box-shadow .3s,background .3s}
+.ff-node:hover .ff-card{border-color:var(--muted)}
+.ff-tile{flex:0 0 auto;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font:700 13px/1 var(--sans);letter-spacing:.01em;box-shadow:inset 0 0 0 1px rgb(255 255 255 / 12%),inset 0 -8px 14px -10px rgb(0 0 0 / 25%)}
+.ff-tile img{width:19px;height:19px;display:block}
+.ff-tile svg.i{width:18px;height:18px}
+.ff-tile.code{background:var(--slate-bg);color:var(--slate)}
+.ff-tile.lock{background:var(--amber-strong);color:#2A1E05}
+.ff-tile.flag{background:var(--slate-bg);color:var(--fg)}
+.ff-ctext{display:flex;flex-direction:column;gap:5px;min-width:0;flex:1}
+.ff-ctitle{font:600 15px/1.1 var(--sans);letter-spacing:-.012em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ff-csub{font:500 11.5px/1.1 var(--mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ff-tag{position:absolute;top:-9px;left:12px;padding:2px 6px;border-radius:6px;background:var(--surface-2);border:1px solid var(--line);color:var(--muted);font:600 9.5px/1.25 var(--mono);letter-spacing:.07em;text-transform:uppercase}
+.ff-tag.llm{background:var(--violet-bg);border-color:color-mix(in srgb,var(--violet) 35%,transparent);color:var(--violet)}
+.ff-tag.gate{background:var(--amber-strong);border-color:var(--amber-strong);color:#2A1E05}
+.kind-gate .ff-card{background:var(--amber-bg);border:1.5px dashed var(--amber-strong)}
+.unconf .ff-card{background:transparent;border:1.5px dashed var(--line-2);box-shadow:none}
+.unconf .ff-ctext,.unconf .ff-tile{opacity:.55}
+.ff-pill{position:absolute;inset:0;display:flex;align-items:center;gap:9px;padding:0 16px 0 7px;border-radius:999px;background:var(--raised);border:1px solid var(--line-2);box-shadow:var(--shadow);transition:border-color .25s,box-shadow .3s}
+.ff-pill .ff-tile{width:34px;height:34px;border-radius:999px}
+.ff-ptitle{font:600 14px/1.1 var(--sans);white-space:nowrap}
+.ff-psub{display:block;margin-top:3px;font:500 10.5px/1 var(--mono);color:var(--muted)}
+.ff-dia{position:absolute;inset:0;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:var(--line-2);transition:background .3s}
+.ff-dia::after{content:"";position:absolute;inset:2px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:var(--raised)}
+.k-dia{filter:drop-shadow(0 6px 10px rgb(0 0 0 / 16%))}
+.ff-dtext{position:absolute;inset:0;z-index:1;display:grid;place-items:center;padding:0 28px;text-align:center;font:600 12.5px/1.2 var(--sans)}
+.ff-barline{position:absolute;inset:0;border-radius:6px;background:var(--fg);transition:background .3s,box-shadow .3s}
+.ff-barlabel{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:10px;font:600 10px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.ff-cap{position:absolute;top:calc(100% + 7px);left:4px;display:flex;align-items:center;gap:5px;font:500 10.5px/1 var(--mono);color:var(--muted);white-space:nowrap;pointer-events:none}
+.ff-cap.run{color:var(--blue)}.ff-cap.ok{color:var(--teal)}.ff-cap.failed{color:var(--coral)}.ff-cap.waiting{color:var(--amber)}.ff-cap.skipped{color:var(--faint)}
+.k-dia .ff-cap{left:50%;transform:translateX(-50%)}
+.ff-flag{position:absolute;top:-11px;right:18px;display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font:600 10px/1.4 var(--sans);white-space:nowrap}
+.ff-flag.yours{background:var(--fg);color:var(--app);font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase;font-size:9.5px}
+.ff-flag.tip{background:var(--violet);color:var(--on-violet)}
+.ff-flag svg.i{width:11px;height:11px}
+.ff-flag.tip svg.i{fill:currentColor;stroke:none}
+.ff-st{position:absolute;top:-10px;right:-10px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;gap:4px;font:700 10px/1 var(--sans);box-shadow:0 0 0 3px var(--canvas)}
+.ff-st svg.i{width:12px;height:12px;stroke-width:2.6}
+.ff-st.ok{background:var(--teal);color:var(--on-teal)}
+.ff-st.failed{background:var(--coral);color:#2A0D08}
+.ff-st.waiting{background:var(--amber-strong);color:#2A1E05}
+.ff-st.cached{background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal)}
+.ff-st.retry{background:var(--blue);color:var(--surface)}
+.ff-retry{position:absolute;right:12px;bottom:-9px;display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:6px;background:var(--surface);border:1px solid var(--line-2);color:var(--muted);font:600 10px/1.4 var(--mono)}
+.ff-retry svg.i{width:10px;height:10px}
+.sel .ff-card,.sel .ff-pill{outline:2px solid var(--fg);outline-offset:3px}
+.sel.k-dia .ff-dia{background:var(--fg)}
+.sel.k-bar .ff-barline{box-shadow:0 0 0 3px var(--canvas),0 0 0 5px var(--fg)}
+.hit .ff-card,.hit .ff-pill{outline:2px dashed var(--violet);outline-offset:4px}
+.cp .ff-card,.cp .ff-pill{box-shadow:var(--shadow),0 0 0 4px color-mix(in srgb,var(--fg) 14%,transparent)}
+.st-running .ff-card,.st-running .ff-pill,.st-retry .ff-card{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue),0 0 30px -4px var(--blue)}
+.st-running::after,.st-retry::after{content:"";position:absolute;inset:-7px;border-radius:20px;border:2px solid var(--blue);opacity:0;animation:ff-ring 1.25s ease-out infinite;pointer-events:none}
+.k-pill.st-running::after{border-radius:999px}
+.k-dia.st-running::after,.k-bar.st-running::after{display:none}
+.st-ok .ff-card,.st-ok .ff-pill,.st-cached .ff-card{border-color:var(--teal);box-shadow:0 0 0 1px var(--teal),0 0 22px -8px var(--teal)}
+.st-failed .ff-card{border-color:var(--coral);box-shadow:0 0 0 1px var(--coral),0 0 22px -8px var(--coral)}
+.st-waiting .ff-card{border-style:solid;border-color:var(--amber-strong);animation:ff-breathe 1.6s ease-in-out infinite}
+.k-dia.st-running .ff-dia{background:var(--blue)}.k-dia.st-ok .ff-dia{background:var(--teal)}
+.k-bar.st-running .ff-barline{background:var(--blue);box-shadow:0 0 16px var(--blue)}.k-bar.st-ok .ff-barline{background:var(--teal)}
+.ff-float{position:absolute;z-index:5;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-lg)}
+.ff-tl{position:absolute;z-index:5;top:14px;left:14px;max-width:calc(100% - 300px);display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.ff-tools{position:static;display:flex;flex-wrap:wrap;align-items:center;gap:2px;padding:4px}
+.ff-zoomv{min-width:48px;text-align:center;font:600 12px/1 var(--mono);color:var(--muted)}
+.ff-sep{width:1px;height:24px;margin:0 4px;background:var(--line)}
+.ff-tbtn{display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 12px;border:0;border-radius:10px;background:none;color:var(--fg);font:600 12.5px/1 var(--sans);white-space:nowrap;cursor:pointer}
+.ff-tbtn:hover{background:var(--surface-2)}
+.ff-tbtn[aria-pressed="true"]{background:var(--slate-bg)}
+.ff-note{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:0 13px;border-radius:999px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);color:var(--fg);font:600 12.5px/1 var(--sans);cursor:pointer}
+.ff-note.unc{border:1.5px dashed var(--line-2)}
+.ff-note.cpn{cursor:default}
+.ff-note b{font-weight:650}
+.ff-note .m{font:500 11.5px/1 var(--mono);color:var(--muted)}
+.ff-search{top:14px;right:14px;width:262px;height:48px;display:flex;align-items:center;gap:8px;padding:0 6px 0 14px;color:var(--muted)}
+.ff-search input{flex:1;min-width:0;height:100%;border:0;outline:none;background:none;color:var(--fg);font:500 13.5px/1 var(--sans)}
+.ff-search input::placeholder{color:var(--muted)}
+.ff-search .c{font:600 11px/1 var(--mono);color:var(--muted);padding-right:8px;white-space:nowrap}
+.ff-legend{left:14px;bottom:14px;width:244px;padding:6px 6px 10px}
+.ff-lh{display:flex;width:100%;align-items:center;justify-content:space-between;height:36px;padding:0 8px;border:0;background:none;font:600 10.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);cursor:pointer}
+.ff-lrow{display:flex;align-items:center;gap:10px;padding:4px 10px;font:500 12.5px/1.25 var(--sans)}
+.ff-lg{flex:0 0 28px;display:grid;place-items:center}
+.lg-card{width:22px;height:13px;border-radius:4px;border:1.5px solid var(--line-2);background:var(--raised)}
+.lg-llm{border-color:var(--violet);background:var(--violet-bg)}
+.lg-dia{width:13px;height:13px;transform:rotate(45deg);border:1.5px solid var(--line-2);background:var(--raised)}
+.lg-bar{width:5px;height:16px;border-radius:2px;background:var(--fg)}
+.lg-gate{border:1.5px dashed var(--amber-strong);background:var(--amber-bg)}
+.lg-unc{border:1.5px dashed var(--line-2);background:transparent}
+.ff-ldiv{height:1px;margin:6px 10px;background:var(--line)}
+.ff-ldots{display:flex;flex-wrap:wrap;gap:6px 10px;padding:4px 10px;font:500 11.5px/1 var(--sans);color:var(--muted)}
+.ff-ldots span{display:inline-flex;align-items:center;gap:5px}
+.ff-ldots i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.ff-lhint{padding:6px 10px 0;font:500 11px/1.35 var(--mono);color:var(--muted)}
+.ff-mini{right:14px;bottom:14px;width:208px;height:124px;overflow:hidden;cursor:pointer;background:var(--surface)}
+.ff-mn{position:absolute;border-radius:2px;background:var(--line-2)}
+.ff-mn.llm{background:var(--violet)}.ff-mn.gate{background:var(--amber-strong)}.ff-mn.ok{background:var(--teal)}.ff-mn.run{background:var(--blue)}.ff-mn.sel{outline:1.5px solid var(--fg)}
+.ff-mv{position:absolute;border:1.5px solid var(--fg);border-radius:4px;background:color-mix(in srgb,var(--fg) 7%,transparent);pointer-events:none}
+.ff-hud{left:50%;bottom:14px;transform:translateX(-50%);display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;width:max-content;max-width:calc(100% - 28px);padding:8px 8px 8px 16px;animation:ff-up .35s var(--ease) backwards}
+.ff-hs{display:flex;align-items:center;gap:8px;font:650 13.5px/1.2 var(--sans);white-space:nowrap}
+.ff-hd{width:10px;height:10px;border-radius:50%}
+.ff-hm{font:500 12px/1.3 var(--mono);color:var(--muted);white-space:nowrap}
+.ff-prog{width:120px;height:6px;border-radius:3px;overflow:hidden;background:var(--surface-2);border:1px solid var(--line)}
+.ff-prog span{display:block;height:100%;background:var(--teal);transition:width .35s var(--ease)}
+.ff-panel{flex:0 0 404px;width:404px;max-width:100%;display:flex;flex-direction:column;overflow-y:auto;background:var(--surface);border-left:1px solid var(--line);z-index:7;animation:ff-slide .35s var(--ease) backwards}
+.ff-ph{position:sticky;top:0;z-index:2;display:flex;align-items:flex-start;gap:12px;padding:16px 12px 14px 16px;background:var(--surface);border-bottom:1px solid var(--line)}
+.ff-ph .ff-tile{width:44px;height:44px;border-radius:12px}
+.ff-ph .ff-tile img{width:23px;height:23px}
+.ff-ph h2{margin:6px 0 0;font:650 19px/1.2 var(--sans);letter-spacing:-.018em}
+.ff-kchip{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border-radius:7px;background:var(--slate-bg);color:var(--slate);font:600 10.5px/1.3 var(--mono);letter-spacing:.07em;text-transform:uppercase}
+.ff-kchip.llm{background:var(--violet-bg);color:var(--violet)}
+.ff-kchip.gate{background:var(--amber-bg);color:var(--amber)}
+.ff-sec{display:flex;flex-direction:column;gap:10px;padding:16px;border-bottom:1px solid var(--line)}
+.ff-sh{font:600 10.5px/1 var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.ff-what{margin:0;font:450 15px/1.45 var(--sans)}
+.ff-chips{display:flex;flex-wrap:wrap;gap:6px}
+.ff-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;border:1px solid var(--line-2);font:600 11.5px/1.2 var(--sans);color:var(--muted)}
+.ff-chip.cp{color:var(--fg)}
+.ff-chip.side{color:var(--amber);border-color:color-mix(in srgb,var(--amber-strong) 60%,transparent)}
+.ff-chip.yours{background:var(--fg);border-color:var(--fg);color:var(--app)}
+.ff-chip svg.i{width:12px;height:12px}
+.ff-runline{display:flex;align-items:center;gap:8px;padding:10px 16px;font:600 13px/1.3 var(--sans);border-bottom:1px solid var(--line)}
+.ff-runline.run{background:var(--blue-bg);color:var(--blue)}.ff-runline.ok,.ff-runline.cached{background:var(--teal-bg);color:var(--teal)}.ff-runline.failed,.ff-runline.rejected{background:var(--coral-bg);color:var(--coral)}.ff-runline.waiting{background:var(--amber-bg);color:var(--amber)}.ff-runline.skipped{background:var(--surface-2);color:var(--muted)}
+.ff-conn{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line)}
+.ff-conn b{display:block;font:650 14px/1.2 var(--sans)}
+.ff-conn small{display:flex;align-items:center;gap:6px;margin-top:4px;font:500 11.5px/1 var(--mono);color:var(--muted)}
+.ff-ok-dot{width:7px;height:7px;border-radius:50%;background:var(--teal)}
+.ff-field{display:flex;flex-direction:column;gap:6px}
+.ff-field label{font:600 12px/1 var(--sans);color:var(--muted)}
+.ff-input{height:42px;padding:0 12px;border-radius:10px;border:1px solid var(--line-2);background:var(--raised);font:500 14px/1 var(--sans);width:100%}
+.ff-tipcard{display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:12px;background:var(--violet-bg);border:1px solid color-mix(in srgb,var(--violet) 35%,transparent)}
+.ff-tipcard p{margin:0;font:500 13.5px/1.45 var(--sans)}
+.ff-tiph{display:flex;align-items:center;gap:8px;font:650 13px/1 var(--sans);color:var(--violet)}
+.ff-tiph svg.i{fill:currentColor;stroke:none;width:14px;height:14px}
+.ff-row{display:flex;flex-wrap:wrap;gap:8px}
+.ff-ev{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface-2)}
+.ff-evh{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line);font:600 12px/1 var(--mono)}
+.ff-evh svg.i{width:14px;height:14px;color:var(--muted)}
+.ff-evh em{margin-left:auto;font:500 10.5px/1 var(--mono);font-style:normal;color:var(--violet)}
+.ff-code{padding:7px 0;overflow-x:auto;font:500 11.5px/1.7 var(--mono)}
+.ff-cl{display:flex;gap:12px;padding:0 12px;white-space:pre}
+.ff-cl b{flex:0 0 22px;text-align:right;font-weight:500;color:var(--muted)}
+.ff-cl.hl{background:color-mix(in srgb,var(--violet) 16%,transparent)}
+.ff-evl{display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);font:500 13px/1.4 var(--sans)}
+.ff-evl svg.i{width:15px;height:15px;margin-top:1px;color:var(--muted)}
+.ff-evl.policy{border-color:color-mix(in srgb,var(--amber-strong) 55%,transparent)}
+.ff-evl.missing{border-style:dashed}
+.ff-bars{display:flex;align-items:flex-end;gap:4px;height:48px}
+.ff-bars span{flex:1;border-radius:3px 3px 1px 1px;background:var(--teal);opacity:.85}
+.ff-bars span.fail{background:var(--coral)}
+.ff-hist{font:500 12px/1.3 var(--mono);color:var(--muted)}
+.ff-lock{display:flex;gap:10px;padding:12px;border-radius:12px;background:var(--amber-bg);border:1.5px dashed var(--amber-strong);font:500 13.5px/1.45 var(--sans)}
+.ff-lock svg.i{color:var(--amber);margin-top:1px}
+.ff-unc{display:flex;gap:10px;padding:12px;border-radius:12px;border:1.5px dashed var(--line-2);font:500 13.5px/1.45 var(--sans)}
+.ff-br{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line);font:500 13px/1.3 var(--sans)}
+.ff-br code{min-width:30px;font:600 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.ff-cond{padding:9px 12px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line);font:500 12px/1.5 var(--mono);white-space:pre-wrap}
+@keyframes ff-pop{from{opacity:0;transform:translateY(10px) scale(.94)}to{opacity:1;transform:none}}
+@keyframes ff-ring{0%{opacity:.75;transform:scale(1)}100%{opacity:0;transform:scale(1.1)}}
+@keyframes ff-slide{from{opacity:0;transform:translateX(26px)}to{opacity:1;transform:none}}
+@keyframes ff-up{from{opacity:0;transform:translate(-50%,14px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes ff-breathe{0%,100%{box-shadow:0 0 0 1px var(--amber-strong),0 0 0 0 color-mix(in srgb,var(--amber-strong) 0%,transparent)}50%{box-shadow:0 0 0 1px var(--amber-strong),0 0 0 8px color-mix(in srgb,var(--amber-strong) 26%,transparent)}}
+@media (prefers-reduced-motion: reduce){.ff-node,.ff-panel,.ff-hud{animation:none}.st-running::after,.st-retry::after{display:none}.st-waiting .ff-card{animation:none}.ff-dot,.ff-dot-glow{display:none!important}}
+@media (max-width: 760px){
+.ff{flex-direction:column}
+.ff-rail{flex:0 0 auto;flex-direction:row;width:100%;padding:6px 8px;gap:2px;overflow-x:auto}
+.ff-logo{margin:0 6px 0 2px}
+.ff-rail-gap{display:none}
+.ff-main{flex:1 1 auto;min-height:0}
+.ff-planner-v span{display:none}
+.ff-tl{right:14px;max-width:none}
+.ff-search{top:auto;bottom:14px;left:14px;right:14px;width:auto}
+.ff-legend,.ff-mini{display:none}
+.ff-hud{bottom:72px}
+.ff-panel{position:absolute;left:0;right:0;bottom:0;width:auto;max-height:66%;border-left:0;border-top:1px solid var(--line);border-radius:18px 18px 0 0;box-shadow:var(--shadow-lg);animation-name:ff-pop}
+}
+</style>
+</helmet>
+<div class="ff" data-theme="{{theme}}">
+<svg width="0" height="0" aria-hidden="true" style="position: absolute; width: 0; height: 0; overflow: hidden">
+<defs>
+<marker id="ffa-edge" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1 1.4 L9.2 5 L1 8.6 Z" style="fill: var(--edge)"></path></marker>
+<marker id="ffa-fg" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1 1.4 L9.2 5 L1 8.6 Z" style="fill: var(--fg)"></path></marker>
+<marker id="ffa-blue" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path d="M1 1.4 L9.2 5 L1 8.6 Z" style="fill: var(--blue)"></path></marker>
+<marker id="ffa-teal" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path d="M1 1.4 L9.2 5 L1 8.6 Z" style="fill: var(--teal)"></path></marker>
+<marker id="ffa-coral" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1 1.4 L9.2 5 L1 8.6 Z" style="fill: var(--coral)"></path></marker>
+<marker id="ffa-faint" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1 1.4 L9.2 5 L1 8.6 Z" style="fill: var(--faint)"></path></marker>
+<marker id="ffa-muted" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1 1.4 L9.2 5 L1 8.6 Z" style="fill: var(--muted)"></path></marker>
+</defs>
+</svg>
+<nav class="ff-rail" aria-label="Main">
+<span class="ff-logo" aria-hidden="true"><svg width="36" height="36" viewBox="0 0 36 36"><rect width="36" height="36" rx="11" fill="#0B7A70"></rect><path d="M10 24 C 17 24, 16 12, 25 12" stroke="#FFFFFF" stroke-width="2.6" fill="none" stroke-linecap="round"></path><circle cx="10" cy="24" r="3.6" fill="#FFFFFF"></circle><circle cx="25.5" cy="12" r="3.6" fill="#B79CFF"></circle></svg></span>
+<a class="ff-navi" href="Main.dc.html" aria-current="page"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><path d="M6.5 10v2a4 4 0 0 0 4 4H14"></path></svg><span>Flow map</span></a>
+<button class="ff-navi" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"></path></svg><span>Runs</span></button>
+<a class="ff-navi" href="Catalog.dc.html"><svg class="i" viewBox="0 0 24 24"><path d="M9 2v5M15 2v5M6 7h12v4a6 6 0 0 1-12 0zM12 17v5"></path></svg><span>Connectors</span></a>
+<button class="ff-navi" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"></path><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"></path></svg><span>Approvals</span><sc-if value="{{hasApprovals}}" hint-placeholder-val="{{false}}"><span class="ff-count">1</span></sc-if></button>
+<button class="ff-navi" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"></path></svg><span>Security</span></button>
+<span class="ff-rail-gap"></span>
+<button class="ff-navi" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"></path><circle cx="15" cy="6" r="2"></circle><circle cx="9" cy="12" r="2"></circle><circle cx="17" cy="18" r="2"></circle></svg><span>Settings</span></button>
+</nav>
+<div class="ff-main">
+<header class="ff-top">
+<div class="ff-proj">
+<div>
+<h1>Baby-care shop</h1>
+<div class="ff-proj-sub"><span class="ff-mt"><img src="/_blob/1d0ae5b5c8e87a7a7e619886496f7ee2" alt=""></span><span>you/baby-care-shop</span><span>·</span><span>main @ a1b2c3f</span></div>
+</div>
+</div>
+<a class="ff-planner" href="Planner.dc.html" aria-label="The Planner drew this map. See how">
+<span class="ff-tile" style="background: var(--violet); color: var(--on-violet)"><svg class="i" viewBox="0 0 24 24" style="fill: currentColor; stroke: none"><path d="M12 2l2.2 6.3L20.5 10.5l-6.3 2.2L12 19l-2.2-6.3L3.5 10.5l6.3-2.2z"></path></svg></span>
+<span>
+<span class="ff-planner-k"><span class="ff-live"></span>Planner · drew this map</span>
+<span class="ff-planner-v">Map v4<span>19 steps from your code · 3 min ago</span></span>
+</span>
+</a>
+<div class="ff-actions">
+<div class="ff-seg" role="group" aria-label="Which version of the map">
+<button type="button" aria-pressed="{{layerNim}}" onClick="{{showNim}}">Planner's map</button>
+<button type="button" aria-pressed="{{layerMine}}" onClick="{{showMine}}">With my edits<span class="n">{{editCount}}</span></button>
+</div>
+<a class="ff-btn ff-btn-ai" href="Recheck.dc.html"><svg class="i" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"></path><path d="M21 4v5h-5"></path></svg>Re-check the repo</a>
+<button class="ff-btn ff-btn-go" type="button" onClick="{{startRun}}" disabled="{{runBusy}}"><svg class="i" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z"></path></svg>{{runLabel}}</button>
+<button class="ff-ib" type="button" aria-label="Switch light or dark" onClick="{{toggleTheme}}"><sc-if value="{{isDark}}" hint-placeholder-val="{{true}}"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></sc-if><sc-if value="{{isLight}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"></path></svg></sc-if></button>
+</div>
+</header>
+<div class="ff-stage">
+<div class="ff-canvas {{canvasCls}}" ref="{{canvasRef}}" style="background-position: {{gridX}}px {{gridY}}px; background-size: {{gridS}}px {{gridS}}px" onPointerDown="{{onCanvasDown}}" onPointerMove="{{onCanvasMove}}" onPointerUp="{{onCanvasUp}}" onPointerCancel="{{onCanvasUp}}">
+<div class="ff-world" style="transform: translate({{vx}}px, {{vy}}px) scale({{vk}})">
+<sc-for list="{{edges}}" as="e" hint-placeholder-count="0">
+<svg class="ff-edge {{e.cls}}" width="1" height="1"><path class="ff-under" d="{{e.d}}"></path><path class="ff-line" d="{{e.d}}" style="marker-end: url(#{{e.marker}})"></path><circle class="ff-dot-glow" r="8"><animateMotion dur="1.1s" repeatCount="indefinite" path="{{e.d}}"></animateMotion></circle><circle class="ff-dot" r="3.6"><animateMotion dur="1.1s" repeatCount="indefinite" path="{{e.d}}"></animateMotion></circle><circle class="ff-dot" r="3"><animateMotion dur="1.1s" begin="0.37s" repeatCount="indefinite" path="{{e.d}}"></animateMotion></circle><circle class="ff-dot" r="2.4"><animateMotion dur="1.1s" begin="0.74s" repeatCount="indefinite" path="{{e.d}}"></animateMotion></circle></svg>
+</sc-for>
+<sc-for list="{{labels}}" as="l" hint-placeholder-count="0">
+<span class="ff-elabel {{l.cls}}" title="{{l.title}}" style="left: {{l.x}}px; top: {{l.y}}px"><sc-if value="{{l.shield}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"></path><path d="M9 12l2 2 4-4"></path></svg></sc-if>{{l.text}}</span>
+</sc-for>
+<sc-for list="{{nodes}}" as="n" hint-placeholder-count="0">
+<button type="button" class="ff-node {{n.cls}}" aria-label="{{n.aria}}" style="left: {{n.x}}px; top: {{n.y}}px; width: {{n.w}}px; height: {{n.h}}px; animation-delay: {{n.delay}}ms" onPointerDown="{{n.down}}" onClick="{{n.click}}" onKeyDown="{{n.key}}">
+<sc-if value="{{n.isCard}}" hint-placeholder-val="{{true}}">
+<span class="ff-card">
+<span class="ff-tile {{n.t.cls}}" style="background: {{n.t.bg}}; color: {{n.t.ink}}"><sc-if value="{{n.t.hasImg}}" hint-placeholder-val="{{false}}"><img src="{{n.t.img}}" alt=""></sc-if><sc-if value="{{n.t.hasMono}}" hint-placeholder-val="{{false}}">{{n.t.mono}}</sc-if><sc-if value="{{n.t.code}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4"></path></svg></sc-if><sc-if value="{{n.t.lock}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg></sc-if></span>
+<span class="ff-ctext"><span class="ff-ctitle">{{n.title}}</span><span class="ff-csub">{{n.sub}}</span></span>
+</span>
+<span class="ff-tag {{n.tagCls}}">{{n.tag}}</span>
+</sc-if>
+<sc-if value="{{n.isPill}}" hint-placeholder-val="{{false}}">
+<span class="ff-pill">
+<span class="ff-tile {{n.t.cls}}" style="background: {{n.t.bg}}; color: {{n.t.ink}}"><sc-if value="{{n.t.hasImg}}" hint-placeholder-val="{{false}}"><img src="{{n.t.img}}" alt=""></sc-if><sc-if value="{{n.t.flag}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"></path></svg></sc-if></span>
+<span><span class="ff-ptitle">{{n.title}}</span><span class="ff-psub">{{n.sub}}</span></span>
+</span>
+</sc-if>
+<sc-if value="{{n.isDia}}" hint-placeholder-val="{{false}}"><span class="ff-dia"></span><span class="ff-dtext">{{n.title}}</span></sc-if>
+<sc-if value="{{n.isBar}}" hint-placeholder-val="{{false}}"><span class="ff-barline"></span><span class="ff-barlabel">{{n.title}}</span></sc-if>
+<sc-if value="{{n.showCap}}" hint-placeholder-val="{{false}}"><span class="ff-cap {{n.capCls}}">{{n.cap}}</span></sc-if>
+<sc-if value="{{n.yours}}" hint-placeholder-val="{{false}}"><span class="ff-flag yours">Yours</span></sc-if>
+<sc-if value="{{n.tip}}" hint-placeholder-val="{{false}}"><span class="ff-flag tip"><svg class="i" viewBox="0 0 24 24"><path d="M12 2l2.2 6.3L20.5 10.5l-6.3 2.2L12 19l-2.2-6.3L3.5 10.5l6.3-2.2z"></path></svg>Tip</span></sc-if>
+<sc-if value="{{n.retry}}" hint-placeholder-val="{{false}}"><span class="ff-retry"><svg class="i" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"></path><path d="M20 4v7h-7"></path></svg>{{n.retryText}}</span></sc-if>
+<sc-if value="{{n.hasSt}}" hint-placeholder-val="{{false}}"><span class="ff-st {{n.stCls}}"><sc-if value="{{n.stOk}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"></path></svg></sc-if>{{n.stText}}</span></sc-if>
+</button>
+</sc-for>
+</div>
+<div class="ff-tl">
+<div class="ff-float ff-tools" role="toolbar" aria-label="Map tools">
+<button class="ff-ib" type="button" aria-label="Zoom out" onClick="{{zoomOut}}"><svg class="i" viewBox="0 0 24 24"><path d="M5 12h14"></path></svg></button>
+<span class="ff-zoomv">{{zoomPct}}%</span>
+<button class="ff-ib" type="button" aria-label="Zoom in" onClick="{{zoomIn}}"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg></button>
+<span class="ff-sep"></span>
+<button class="ff-tbtn" type="button" onClick="{{fitView}}"><svg class="i" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"></path></svg>Fit</button>
+<button class="ff-tbtn" type="button" onClick="{{retidy}}"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="6" rx="1.5"></rect><rect x="14" y="4" width="7" height="6" rx="1.5"></rect><rect x="8.5" y="14" width="7" height="6" rx="1.5"></rect></svg>Re-tidy</button>
+<span class="ff-sep"></span>
+<button class="ff-tbtn" type="button" aria-pressed="{{cpOn}}" onClick="{{toggleCp}}"><svg class="i" viewBox="0 0 24 24"><circle cx="6" cy="19" r="2.5"></circle><circle cx="18" cy="5" r="2.5"></circle><path d="M8.5 19H16a3.5 3.5 0 0 0 0-7H8a3.5 3.5 0 0 1 0-7h7.5"></path></svg>Critical path</button>
+<button class="ff-tbtn" type="button" aria-pressed="{{evOn}}" onClick="{{toggleEv}}"><svg class="i" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><path d="M14 3v6h6M10 13l-2 2 2 2M14 13l2 2-2 2"></path></svg>Evidence</button>
+<span class="ff-sep"></span>
+<button class="ff-tbtn" type="button" onClick="{{addStep}}"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"></rect><path d="M12 8v8M8 12h8"></path></svg>Add step</button>
+</div>
+<sc-if value="{{showUnc}}" hint-placeholder-val="{{true}}"><button class="ff-note unc" type="button" onClick="{{goUnc}}"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.4c-.6.3-1 .8-1 1.5v.5M12 17v.01"></path></svg><b>{{uncCount}} step unconfirmed</b><span class="m">no evidence in the repo</span></button></sc-if>
+<sc-if value="{{cpOn}}" hint-placeholder-val="{{false}}"><span class="ff-note cpn"><svg class="i" viewBox="0 0 24 24"><circle cx="6" cy="19" r="2.5"></circle><circle cx="18" cy="5" r="2.5"></circle><path d="M8.5 19H16a3.5 3.5 0 0 0 0-7H8a3.5 3.5 0 0 1 0-7h7.5"></path></svg><span>Bottleneck: <b>Score fraud risk</b></span><span class="m">2.1 s of 4.6 s</span></span></sc-if>
+</div>
+<label class="ff-float ff-search"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Find a step</span><input type="search" placeholder="Find a step, tool or file" value="{{q}}" onChange="{{onQ}}" onKeyDown="{{onQKey}}"><sc-if value="{{hasQ}}" hint-placeholder-val="{{false}}"><span class="c">{{hitCount}} found</span></sc-if></label>
+<div class="ff-float ff-legend">
+<button class="ff-lh" type="button" aria-expanded="{{legendOpen}}" onClick="{{toggleLegend}}"><span>Legend</span><svg class="i" viewBox="0 0 24 24" style="width: 15px; height: 15px; transform: rotate({{legendRot}}deg)"><path d="M6 9l6 6 6-6"></path></svg></button>
+<sc-if value="{{legendOpen}}" hint-placeholder-val="{{true}}">
+<div class="ff-lrow"><span class="ff-lg"><span class="lg-card"></span></span>App code, API or MCP call</div>
+<div class="ff-lrow"><span class="ff-lg"><span class="lg-card lg-llm"></span></span>LLM call</div>
+<div class="ff-lrow"><span class="ff-lg"><span class="lg-dia"></span></span>Decision (yes / no)</div>
+<div class="ff-lrow"><span class="ff-lg"><span class="lg-bar"></span></span>Run together / wait for all</div>
+<div class="ff-lrow"><span class="ff-lg"><span class="lg-card lg-gate"></span></span>You approve (always on payments)</div>
+<div class="ff-lrow"><span class="ff-lg"><span class="lg-card lg-unc"></span></span>Unconfirmed: no evidence</div>
+<div class="ff-ldiv"></div>
+<div class="ff-lrow"><span class="ff-lg"><svg width="28" height="8" viewBox="0 0 28 8"><path d="M1 4h26" style="stroke: var(--edge); stroke-width: 2"></path></svg></span>Data flows this way</div>
+<div class="ff-lrow"><span class="ff-lg"><svg width="28" height="8" viewBox="0 0 28 8"><path d="M1 4h26" style="stroke: var(--coral); stroke-width: 2; stroke-dasharray: 5 4"></path></svg></span>Fallback when a call fails</div>
+<div class="ff-lrow"><span class="ff-lg"><svg class="i" viewBox="0 0 24 24" style="color: var(--teal); width: 16px; height: 16px"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"></path></svg></span>Keys and PII removed first</div>
+<div class="ff-ldiv"></div>
+<div class="ff-ldots"><span><i style="background: var(--teal)"></i>done</span><span><i style="background: var(--blue)"></i>running</span><span><i style="background: var(--amber-strong)"></i>waits for you</span><span><i style="background: var(--coral)"></i>failed</span><span><i style="background: var(--violet)"></i>Planner</span></div>
+<div class="ff-lhint">Drag to pan · scroll to zoom · drag a step to move it</div>
+</sc-if>
+</div>
+<div class="ff-float ff-mini" aria-hidden="true" onPointerDown="{{miniDown}}" onPointerMove="{{miniMove}}" onPointerUp="{{miniUp}}">
+<sc-for list="{{mini.nodes}}" as="m" hint-placeholder-count="0"><span class="ff-mn {{m.cls}}" style="left: {{m.x}}px; top: {{m.y}}px; width: {{m.w}}px; height: {{m.h}}px"></span></sc-for>
+<span class="ff-mv" style="left: {{mini.vx}}px; top: {{mini.vy}}px; width: {{mini.vw}}px; height: {{mini.vh}}px"></span>
+</div>
+<sc-if value="{{hasRun}}" hint-placeholder-val="{{false}}">
+<div class="ff-float ff-hud" role="status" aria-live="polite">
+<span class="ff-hs"><span class="ff-hd" style="background: {{hud.color}}"></span>{{hud.label}}</span>
+<span class="ff-hm">{{hud.meta}}</span>
+<span class="ff-prog" aria-hidden="true"><span style="width: {{hud.pct}}%"></span></span>
+<span class="ff-hm">{{hud.counts}}</span>
+<sc-if value="{{hud.waiting}}" hint-placeholder-val="{{false}}"><button class="ff-btn ff-btn-warn" type="button" onClick="{{approve}}">Approve: {{hud.gate}}</button><button class="ff-btn ff-btn-ghost" type="button" onClick="{{reject}}">Reject</button></sc-if>
+<sc-if value="{{hud.running}}" hint-placeholder-val="{{false}}"><button class="ff-btn ff-btn-ghost" type="button" onClick="{{stopRun}}">Stop</button></sc-if>
+<sc-if value="{{hud.finished}}" hint-placeholder-val="{{false}}"><button class="ff-btn ff-btn-ghost" type="button" onClick="{{clearRun}}">Clear</button></sc-if>
+</div>
+</sc-if>
+</div>
+<sc-if value="{{hasPanel}}" hint-placeholder-val="{{false}}">
+<aside class="ff-panel" aria-label="Step details" onKeyDown="{{panelKey}}">
+<div class="ff-ph">
+<span class="ff-tile {{p.t.cls}}" style="background: {{p.t.bg}}; color: {{p.t.ink}}"><sc-if value="{{p.t.hasImg}}" hint-placeholder-val="{{false}}"><img src="{{p.t.img}}" alt=""></sc-if><sc-if value="{{p.t.hasMono}}" hint-placeholder-val="{{false}}">{{p.t.mono}}</sc-if><sc-if value="{{p.t.code}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4"></path></svg></sc-if><sc-if value="{{p.t.lock}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg></sc-if><sc-if value="{{p.t.flag}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"></path></svg></sc-if></span>
+<div style="flex: 1; min-width: 0">
+<span class="ff-kchip {{p.kindCls}}">{{p.kindLabel}}</span>
+<h2>{{p.title}}</h2>
+</div>
+<button class="ff-ib" type="button" aria-label="Close details" onClick="{{closePanel}}"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+</div>
+<sc-if value="{{p.hasRun}}" hint-placeholder-val="{{false}}"><div class="ff-runline {{p.runCls}}">{{p.runText}}</div></sc-if>
+<div class="ff-sec">
+<span class="ff-sh">What it does</span>
+<p class="ff-what">{{p.what}}</p>
+<sc-if value="{{p.hasChips}}" hint-placeholder-val="{{false}}">
+<div class="ff-chips">
+<sc-if value="{{p.cp}}" hint-placeholder-val="{{false}}"><span class="ff-chip cp"><svg class="i" viewBox="0 0 24 24"><circle cx="6" cy="19" r="2.5"></circle><circle cx="18" cy="5" r="2.5"></circle><path d="M8.5 19H16a3.5 3.5 0 0 0 0-7H8a3.5 3.5 0 0 1 0-7h7.5"></path></svg>On the critical path</span></sc-if>
+<sc-if value="{{p.side}}" hint-placeholder-val="{{false}}"><span class="ff-chip side">Side effect · behind a gate</span></sc-if>
+<sc-if value="{{p.guard}}" hint-placeholder-val="{{false}}"><span class="ff-chip"><svg class="i" viewBox="0 0 24 24" style="color: var(--teal)"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"></path></svg>Keys and PII removed first</span></sc-if>
+<sc-if value="{{p.yours}}" hint-placeholder-val="{{false}}"><span class="ff-chip yours">Your edit</span></sc-if>
+</div>
+</sc-if>
+</div>
+<sc-if value="{{p.isGate}}" hint-placeholder-val="{{false}}">
+<div class="ff-sec">
+<div class="ff-lock"><svg class="i" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg><span>Always gated. Money and messages never move without you. The Planner can add gates but never remove them.</span></div>
+<sc-if value="{{p.gateWaiting}}" hint-placeholder-val="{{false}}"><div class="ff-row"><button class="ff-btn ff-btn-warn" type="button" onClick="{{approve}}">Approve</button><button class="ff-btn ff-btn-ghost" type="button" onClick="{{reject}}">Reject</button></div></sc-if>
+</div>
+</sc-if>
+<sc-if value="{{p.isUnconf}}" hint-placeholder-val="{{false}}">
+<div class="ff-sec">
+<div class="ff-unc"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.4c-.6.3-1 .8-1 1.5v.5M12 17v.01"></path></svg><span>Unconfirmed. It won't run until you confirm it or the Planner finds code that calls it.</span></div>
+<div class="ff-row"><button class="ff-btn" type="button" onClick="{{p.onConfirm}}">Keep as my step</button><button class="ff-btn ff-btn-danger" type="button" onClick="{{p.onDelete}}">Remove</button></div>
+</div>
+</sc-if>
+<sc-if value="{{p.isDecision}}" hint-placeholder-val="{{false}}">
+<div class="ff-sec">
+<span class="ff-sh">Condition, from the code</span>
+<div class="ff-cond">{{p.cond}}</div>
+<sc-for list="{{p.branches}}" as="b" hint-placeholder-count="2"><div class="ff-br"><code>{{b.k}}</code><span>{{b.to}}</span></div></sc-for>
+</div>
+</sc-if>
+<sc-if value="{{p.hasConn}}" hint-placeholder-val="{{false}}">
+<div class="ff-sec">
+<span class="ff-sh">Connector</span>
+<div class="ff-conn"><span class="ff-tile" style="background: {{p.t.bg}}; color: {{p.t.ink}}"><sc-if value="{{p.t.hasImg}}" hint-placeholder-val="{{false}}"><img src="{{p.t.img}}" alt=""></sc-if><sc-if value="{{p.t.hasMono}}" hint-placeholder-val="{{false}}">{{p.t.mono}}</sc-if></span><span><b>{{p.connName}}</b><small><span class="ff-ok-dot"></span>{{p.connMeta}}</small></span></div>
+<sc-if value="{{p.canSwap}}" hint-placeholder-val="{{false}}">
+<div class="ff-field"><label for="ff-swap">Use another LLM for this step</label><select id="ff-swap" class="ff-input" value="{{p.brand}}" onChange="{{p.onSwap}}"><sc-for list="{{p.swapOpts}}" as="o" hint-placeholder-count="3"><option value="{{o.id}}">{{o.name}}</option></sc-for></select></div>
+</sc-if>
+</div>
+</sc-if>
+<sc-if value="{{p.hasTip}}" hint-placeholder-val="{{false}}">
+<div class="ff-sec">
+<div class="ff-tipcard">
+<span class="ff-tiph"><svg class="i" viewBox="0 0 24 24"><path d="M12 2l2.2 6.3L20.5 10.5l-6.3 2.2L12 19l-2.2-6.3L3.5 10.5l6.3-2.2z"></path></svg>Better fit, found in the test run</span>
+<p>{{p.tipText}}</p>
+<div class="ff-row"><button class="ff-btn" type="button" onClick="{{p.onApplyTip}}">Use NVIDIA NIM</button><button class="ff-btn ff-btn-ghost" type="button" onClick="{{p.onDismissTip}}">Keep Gemini</button></div>
+</div>
+</div>
+</sc-if>
+<div class="ff-sec">
+<span class="ff-sh">Evidence</span>
+<sc-for list="{{p.ev}}" as="ev" hint-placeholder-count="2">
+<sc-if value="{{ev.isCode}}" hint-placeholder-val="{{true}}"><div class="ff-ev"><div class="ff-evh"><svg class="i" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><path d="M14 3v6h6"></path></svg><span>{{ev.ref}}</span><em>found in your code</em></div><div class="ff-code"><sc-for list="{{ev.lines}}" as="ln" hint-placeholder-count="3"><div class="ff-cl {{ln.cls}}"><b>{{ln.n}}</b><span>{{ln.s}}</span></div></sc-for></div></div></sc-if>
+<sc-if value="{{ev.isLine}}" hint-placeholder-val="{{false}}"><div class="ff-evl {{ev.t}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ev.icon}}"></path></svg><span>{{ev.text}}</span></div></sc-if>
+</sc-for>
+</div>
+<sc-if value="{{p.hasHist}}" hint-placeholder-val="{{false}}">
+<div class="ff-sec">
+<span class="ff-sh">Last 14 runs</span>
+<div class="ff-bars" aria-hidden="true"><sc-for list="{{p.hist}}" as="b" hint-placeholder-count="14"><span class="{{b.cls}}" style="height: {{b.h}}"></span></sc-for></div>
+<span class="ff-hist">{{p.histText}}</span>
+</div>
+</sc-if>
+<div class="ff-sec">
+<span class="ff-sh">Edit</span>
+<div class="ff-field"><label for="ff-name">Name</label><input id="ff-name" class="ff-input" value="{{p.title}}" onChange="{{p.onName}}"></div>
+<sc-if value="{{p.isUser}}" hint-placeholder-val="{{false}}"><div class="ff-field"><label for="ff-after">Runs after</label><select id="ff-after" class="ff-input" value="{{p.after}}" onChange="{{p.onAfter}}"><option value="">Nothing yet</option><sc-for list="{{p.afterOpts}}" as="o" hint-placeholder-count="3"><option value="{{o.id}}">{{o.name}}</option></sc-for></select></div></sc-if>
+<div class="ff-row">
+<sc-if value="{{p.overridden}}" hint-placeholder-val="{{false}}"><button class="ff-btn" type="button" onClick="{{p.onReset}}">Back to the Planner's version</button></sc-if>
+<button class="ff-btn ff-btn-danger" type="button" onClick="{{p.onDelete}}" disabled="{{p.noDelete}}">{{p.deleteLabel}}</button>
+</div>
+<span class="ff-hist">{{p.editNote}}</span>
+</div>
+</aside>
+</sc-if>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":900}}'>
+const POS_KEY = 'ff-flowmap-pos-v1';
+const TRAVEL = 460;
+const MK = {
+  razorpay: { img: '/_blob/ade37c3be8a35758432154560e7cae43', bg: '#3395FF', name: 'Razorpay' },
+  gemini: { img: '/_blob/0f82863cf3a140d98683f584542db625', bg: '#4285F4', name: 'Google Gemini' },
+  nim: { img: '/_blob/1e2654fb3d48388dedf245b977768396', bg: '#76B900', name: 'NVIDIA NIM' },
+  claude: { img: '/_blob/7acfa64235c5f716407c4a48fc851019', bg: '#D97757', name: 'Claude' },
+  ollama: { img: '/_blob/e0302ff5b358793526df55a762acfa6b', bg: '#1F2328', name: 'Ollama' },
+  mistral: { img: '/_blob/decb9cb9b754855b8795cf722c2056ca', bg: '#FA520F', name: 'Mistral' },
+  deepseek: { img: '/_blob/ccf76ba14d0efb787467d4358eeb7b0d', bg: '#5786FE', name: 'DeepSeek' },
+  openrouter: { img: '/_blob/5285dd3a116c4eb6f3da1808d1912c05', bg: '#94A3B8', name: 'OpenRouter' },
+  gmail: { img: '/_blob/d85c060ca3fdb1b4c535ef2131b74b91', bg: '#EA4335', name: 'Gmail MCP' },
+  inventory: { mono: 'IA', bg: '#2F6FD6', name: 'Inventory API' },
+  higgsfield: { mono: 'Hf', bg: '#2A2A30', name: 'Higgsfield' },
+  slack: { mono: 'Sl', bg: '#4A154B', name: 'Slack' },
+  twilio: { mono: 'Tw', bg: '#F22F46', name: 'Twilio' }
+};
+const MODEL = { nim: 'llama-3.1-8b-instruct', gemini: 'gemini-2.0-flash', claude: 'claude-haiku-5-5', ollama: 'llama3.2 · local', mistral: 'mistral-small', deepseek: 'deepseek-chat', openrouter: 'openrouter/auto' };
+const CONN_META = { razorpay: 'test mode · 60 rpm', gemini: 'free tier · 15 rpm', nim: 'free tier · 40 rpm', claude: 'your key · 50 rpm', ollama: 'on this machine', mistral: 'your key', deepseek: 'your key', openrouter: 'your key', gmail: 'MCP · 6 tools', inventory: 'HTTP · your API', higgsfield: 'demo only', slack: 'demo only', twilio: 'not connected' };
+const LLMS = ['nim', 'gemini', 'claude', 'ollama', 'mistral', 'deepseek', 'openrouter'];
+const ICON = {
+  trace: 'M3 12h4l3 8 4-16 3 8h4',
+  policy: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z',
+  env: 'M15 7a4 4 0 1 0-3.5 6L5 19.5V21h3v-2h2v-2h2l1.5-1.5A4 4 0 0 0 15 7z',
+  missing: 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M9.6 9.4a2.5 2.5 0 1 1 3.4 2.4c-.6.3-1 .8-1 1.5v.5M12 17v.01',
+  user: 'M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4'
+};
+function code(ref, first, hl, lines) {
+  return { t: 'code', ref: ref, lines: lines.map(function (s, i) { return { n: String(first + i), s: s, cls: first + i === hl ? 'hl' : '' }; }) };
+}
+function line(t, text) { return { t: t, text: text }; }
+const NODES = [
+  { id: 'start', kind: 'start', title: 'Payment captured', sub: 'Razorpay webhook', brand: 'razorpay', x: 32, y: 386, w: 176, h: 48,
+    what: 'Razorpay calls this route when a customer pays.',
+    ev: [code('api/webhooks.py:41', 40, 41, ['@router.post("/webhooks/razorpay")', 'async def payment_captured(req):', '    event = verify_signature(req)']), line('trace', 'Seen 40 times in the test run')] },
+  { id: 'fetch', kind: 'api', title: 'Fetch order', sub: 'GET /v1/orders/{id}', brand: 'razorpay', x: 252, y: 378, w: 176, h: 64,
+    what: 'Loads the order and the customer for this payment.', hist: 'p50 180 ms · no failures',
+    ev: [code('services/orders.py:18', 17, 18, ['def load_order(order_id):', '    data = rzp.order.fetch(order_id)', '    return Order.from_razorpay(data)']), line('trace', '40 calls in the test run · p50 180 ms')] },
+  { id: 'risky', kind: 'decision', title: 'New customer or ₹5,000+?', x: 472, y: 366, w: 144, h: 88,
+    what: 'Only risky orders get a fraud score. The rest go straight to fulfilment.', cond: 'order.is_first or order.amount >= 500_000',
+    branches: [{ k: 'yes', to: 'Score fraud risk' }, { k: 'no', to: 'Run together' }],
+    ev: [code('services/risk.py:27', 26, 27, ['def needs_fraud_check(order):', '    return order.is_first or order.amount >= 500_000'])] },
+  { id: 'score', kind: 'llm', title: 'Score fraud risk', brand: 'gemini', x: 660, y: 158, w: 188, h: 64, guard: true,
+    what: 'Asks an LLM how likely this order is to be fraud, from 0 to 1.', hist: 'p50 2.1 s · 2 rate-limited in 40', histFails: 2,
+    tip: { to: 'nim', text: 'In the test run NVIDIA NIM answered 3.4× faster (0.6 s vs 2.1 s) and gave the same verdict on 40 of 40 orders. Gemini also hit its rate limit twice.' },
+    ev: [code('services/risk.py:44', 43, 44, ['    prompt = render("fraud.txt", order=redact(order))', '    reply = gemini.generate(prompt, temperature=0)', '    return float(reply.text)']), line('trace', '40 calls · p50 2.1 s · 2 rate-limited')] },
+  { id: 'score_nim', kind: 'llm', title: 'Score fraud risk', brand: 'nim', fallback: true, x: 660, y: 38, w: 188, h: 64, guard: true,
+    what: 'Answers instead when Gemini fails or runs out of rate limit.', hist: 'p50 0.6 s · used twice',
+    ev: [code('config/llm.py:12', 11, 12, ['PRIMARY_LLM = "gemini"', 'FALLBACK_LLM = "nim"   # when Gemini fails'])] },
+  { id: 'high', kind: 'decision', title: 'Risk ≥ 0.7?', x: 892, y: 146, w: 128, h: 88,
+    what: 'High-risk orders are held until a person looks at them.', cond: 'score >= 0.7',
+    branches: [{ k: 'yes', to: 'Hold the payment' }, { k: 'no', to: 'Run together' }],
+    ev: [code('services/risk.py:57', 56, 57, ['    score = score_fraud(order)', '    if score >= 0.7:', '        return hold_payment(order)'])] },
+  { id: 'gate_hold', kind: 'gate', title: 'Hold the payment', sub: 'you approve · always', x: 1068, y: 158, w: 180, h: 64, locked: true, side: true,
+    what: 'Nothing happens to the money until you approve it.',
+    ev: [line('policy', 'Payments are always gated (D11). The Planner cannot remove this gate.'), code('services/payments.py:76', 76, 76, ['def hold_payment(order):'])] },
+  { id: 'refund', kind: 'api', title: 'Refund payment', sub: 'POST /payments/{id}/refund', brand: 'razorpay', x: 1292, y: 158, w: 196, h: 64, side: true,
+    what: 'Refunds the payment. In test mode no real money moves.', hist: 'p50 240 ms · ran once',
+    ev: [code('services/payments.py:77', 76, 77, ['def hold_payment(order):', '    rzp.payment.refund(order.payment_id)', '    order.mark_held()'])] },
+  { id: 'end_held', kind: 'end', title: 'Order held', sub: 'end', x: 1532, y: 166, w: 140, h: 48,
+    what: 'The order stops here and waits for a person.', ev: [code('services/payments.py:78', 78, 78, ['    order.mark_held()'])] },
+  { id: 'fork', kind: 'fork', title: 'Run together', x: 1068, y: 280, w: 12, h: 260,
+    what: 'These three steps do not depend on each other, so the scheduler runs them at the same time.',
+    ev: [code('services/fulfil.py:12', 11, 12, ['async def fulfil(order):', '    await asyncio.gather(thank_you(order), check_stock(order), recap(order))'])] },
+  { id: 'note', kind: 'llm', title: 'Write thank-you note', brand: 'claude', x: 1124, y: 268, w: 196, h: 64, guard: true,
+    what: 'Writes a short, warm note to the customer.', hist: 'p50 1.3 s · no failures',
+    ev: [code('services/email.py:30', 29, 30, ['async def thank_you(order):', '    return await llm.write(NOTE_PROMPT, order=redact(order))']), line('trace', '40 calls · p50 1.3 s')] },
+  { id: 'stock', kind: 'api', title: 'Check stock', sub: 'GET /stock/{sku}', brand: 'inventory', x: 1124, y: 378, w: 196, h: 64, retry: 3,
+    what: 'Checks every item is still in stock. Retries up to 3 times on a server error.', hist: 'p50 300 ms · 3 retries in 40', histFails: 1,
+    ev: [code('services/inventory.py:22', 21, 22, ['@retry(times=3, on=ServerError)', 'async def check_stock(order):', '    return await inv.get(f"/stock/{order.sku}")'])] },
+  { id: 'recap', kind: 'api', title: 'Render recap image', sub: 'POST /v1/images', brand: 'higgsfield', x: 1124, y: 488, w: 196, h: 64,
+    what: 'Makes a picture of the order for the email. Repeat orders hit the cache.', hist: 'p50 1.8 s · 31 of 40 from cache',
+    ev: [code('services/media.py:40', 39, 40, ['async def recap(order):', '    return await higgsfield.image(prompt=recap_prompt(order))']), line('trace', '9 calls, 31 cache hits')] },
+  { id: 'join', kind: 'join', title: 'Wait for all', x: 1384, y: 280, w: 12, h: 260,
+    what: 'Waits until all three are done, then carries on.', ev: [code('services/fulfil.py:12', 12, 12, ['    await asyncio.gather(thank_you(order), check_stock(order), recap(order))'])] },
+  { id: 'gate_send', kind: 'gate', title: 'Send to customer', sub: 'you approve · email', x: 1444, y: 378, w: 180, h: 64, locked: true, side: true,
+    what: 'Sending email is a side effect, so you approve it first.',
+    ev: [line('policy', 'Side effects are always gated (D11). The Planner can add gates but never remove them.')] },
+  { id: 'sms', kind: 'api', title: 'SMS receipt', sub: 'Twilio · no call found', brand: 'twilio', x: 1444, y: 598, w: 180, h: 64, unconf: true,
+    what: 'The Planner found a Twilio key name, but no code that calls Twilio.',
+    ev: [line('env', '.env.example:7 · TWILIO_SID (name only, values are never read)'), line('missing', 'No call site in the repo, so it is marked unconfirmed instead of guessed.')] },
+  { id: 'send', kind: 'mcp', title: 'Send email', sub: 'gmail · send_message', brand: 'gmail', x: 1668, y: 330, w: 196, h: 64, side: true,
+    what: 'Sends the note and the picture through the Gmail MCP server.', hist: 'p50 400 ms · no failures',
+    ev: [code('services/email.py:52', 51, 52, ['async def send(order, note, image):', '    await mcp.call("gmail", "send_message", to=order.email, body=note)'])] },
+  { id: 'slack', kind: 'mcp', title: 'Post to #orders', sub: 'slack · chat.postMessage', brand: 'slack', x: 1668, y: 436, w: 196, h: 64, user: true, side: true,
+    what: 'Tells the team about each new order.',
+    ev: [line('user', 'Added by you on 8 Oct. Your code has no Slack call yet, so it runs only in FlowForge test runs.')] },
+  { id: 'end', kind: 'end', title: 'Order done', sub: 'end', x: 1908, y: 386, w: 140, h: 48,
+    what: 'The order is paid, checked and the customer has their note.', ev: [code('services/fulfil.py:15', 15, 15, ['    order.mark_done()'])] }
+];
+const EDGES = [
+  { id: 'e1', from: 'start', to: 'fetch' },
+  { id: 'e2', from: 'fetch', to: 'risky' },
+  { id: 'e3', from: 'risky', to: 'score', fs: 'T', branch: 'yes', guard: true },
+  { id: 'e4', from: 'risky', to: 'fork', branch: 'no' },
+  { id: 'e5', from: 'score', to: 'high' },
+  { id: 'e6', from: 'score', to: 'score_nim', fs: 'T', ts: 'B', kind: 'fallback', label: 'if Gemini fails' },
+  { id: 'e7', from: 'score_nim', to: 'high', ts: 'T', look: 'fb' },
+  { id: 'e8', from: 'high', to: 'gate_hold', branch: 'yes' },
+  { id: 'e9', from: 'high', to: 'fork', fs: 'B', branch: 'no' },
+  { id: 'e10', from: 'gate_hold', to: 'refund' },
+  { id: 'e11', from: 'refund', to: 'end_held' },
+  { id: 'e12', from: 'fork', to: 'note', guard: true },
+  { id: 'e13', from: 'fork', to: 'stock' },
+  { id: 'e14', from: 'fork', to: 'recap' },
+  { id: 'e15', from: 'stock', to: 'stock', kind: 'loop' },
+  { id: 'e16', from: 'note', to: 'join' },
+  { id: 'e17', from: 'stock', to: 'join' },
+  { id: 'e18', from: 'recap', to: 'join' },
+  { id: 'e19', from: 'join', to: 'gate_send' },
+  { id: 'e20', from: 'join', to: 'sms', kind: 'unconfirmed', label: 'unconfirmed' },
+  { id: 'e21', from: 'gate_send', to: 'send' },
+  { id: 'e22', from: 'gate_send', to: 'slack' },
+  { id: 'e23', from: 'send', to: 'end' },
+  { id: 'e24', from: 'slack', to: 'end' }
+];
+const CP_N = { start: 1, fetch: 1, risky: 1, score: 1, high: 1, fork: 1, recap: 1, join: 1, gate_send: 1, send: 1, end: 1 };
+const CP_E = { e1: 1, e2: 1, e3: 1, e5: 1, e9: 1, e14: 1, e18: 1, e19: 1, e21: 1, e23: 1 };
+const SIM = {
+  start: { ms: 380 }, fetch: { ms: 700, calls: 1 }, risky: { ms: 320, choose: 'yes' },
+  score: { ms: 1300, fail: true, calls: 3, err: '429 rate-limited · 3 tries' }, score_nim: { ms: 650, calls: 1, tokens: 410 },
+  high: { ms: 320, choose: 'no' }, gate_hold: { gate: true }, refund: { ms: 500, calls: 1 }, end_held: { ms: 200 },
+  fork: { ms: 160 }, note: { ms: 1600, calls: 1, tokens: 620 }, stock: { ms: 420, calls: 2, retryOnce: true }, recap: { ms: 200, cached: true },
+  join: { ms: 160 }, gate_send: { gate: true }, sms: { ms: 300 }, send: { ms: 650, calls: 1 }, slack: { ms: 460, calls: 1 }, end: { ms: 260 }
+};
+const KIND_LABEL = { start: 'Start', end: 'End', api: 'API call', mcp: 'MCP tool', llm: 'LLM call', code: 'Your code', decision: 'Decision', fork: 'Run together', join: 'Wait for all', gate: 'You approve' };
+const TAG = { api: 'API', mcp: 'MCP', llm: 'LLM', code: 'Code', gate: 'Gate' };
+
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+function inkOn(hex) {
+  const n = parseInt(String(hex).replace('#', '').slice(0, 6), 16);
+  if (isNaN(n)) return '#FFFFFF';
+  const ch = function (c) { const v = c / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  const L = 0.2126 * ch((n >> 16) & 255) + 0.7152 * ch((n >> 8) & 255) + 0.0722 * ch(n & 255);
+  return (L + 0.05) / (0.0122 + 0.05) > 1.05 / (L + 0.05) ? '#0F1D26' : '#FFFFFF';
+}
+function tileFor(n) {
+  const t = { cls: '', bg: '', ink: '', img: '', mono: '', hasImg: false, hasMono: false, code: false, lock: false, flag: false };
+  if (n.kind === 'gate') { t.cls = 'lock'; t.lock = true; return t; }
+  if (n.kind === 'end') { t.cls = 'flag'; t.flag = true; return t; }
+  if (n.kind === 'code' || !n.brand || !MK[n.brand]) { t.cls = 'code'; t.code = true; return t; }
+  const m = MK[n.brand];
+  t.bg = m.bg; t.ink = inkOn(m.bg);
+  if (m.img) { t.img = m.img; t.hasImg = true; } else { t.mono = m.mono; t.hasMono = true; }
+  return t;
+}
+function anchor(n, side, otherY) {
+  if (n.kind === 'fork' || n.kind === 'join') {
+    const yy = clamp(otherY, n.y + 14, n.y + n.h - 14);
+    return side === 'L' ? [n.x, yy] : [n.x + n.w, yy];
+  }
+  if (side === 'R') return [n.x + n.w, n.y + n.h / 2];
+  if (side === 'L') return [n.x, n.y + n.h / 2];
+  if (side === 'T') return [n.x + n.w / 2, n.y];
+  return [n.x + n.w / 2, n.y + n.h];
+}
+function edgePts(e, a, b) {
+  if (e.kind === 'loop') {
+    const x0 = a.x + a.w - 34, x1 = a.x + a.w - 96, y = a.y;
+    return [[x0, y], [x0, y - 46], [x1, y - 46], [x1, y - 1]];
+  }
+  const fs = e.fs || 'R', ts = e.ts || 'L';
+  const p0 = anchor(a, fs, b.y + b.h / 2), p3 = anchor(b, ts, a.y + a.h / 2);
+  const dx = Math.max(36, Math.abs(p3[0] - p0[0]) * 0.5), dy = Math.max(36, Math.abs(p3[1] - p0[1]) * 0.55);
+  if (e.kind === 'fallback') return [p0, [p0[0] + 70, p0[1] - dy], [p3[0] + 70, p3[1] + dy], p3];
+  const c1 = fs === 'R' ? [p0[0] + dx, p0[1]] : fs === 'T' ? [p0[0], p0[1] - dy] : fs === 'B' ? [p0[0], p0[1] + dy] : [p0[0] - dx, p0[1]];
+  const c2 = ts === 'L' ? [p3[0] - dx, p3[1]] : ts === 'T' ? [p3[0], p3[1] - dy] : ts === 'B' ? [p3[0], p3[1] + dy] : [p3[0] + dx, p3[1]];
+  return [p0, c1, c2, p3];
+}
+function pathD(p) {
+  const f = function (v) { return Math.round(v * 10) / 10; };
+  return 'M ' + f(p[0][0]) + ' ' + f(p[0][1]) + ' C ' + f(p[1][0]) + ' ' + f(p[1][1]) + ', ' + f(p[2][0]) + ' ' + f(p[2][1]) + ', ' + f(p[3][0]) + ' ' + f(p[3][1]);
+}
+function bez(p, t) {
+  const u = 1 - t;
+  return [u * u * u * p[0][0] + 3 * u * u * t * p[1][0] + 3 * u * t * t * p[2][0] + t * t * t * p[3][0],
+    u * u * u * p[0][1] + 3 * u * u * t * p[1][1] + 3 * u * t * t * p[2][1] + t * t * t * p[3][1]];
+}
+function hist(id, fails) {
+  let h = 7;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 9973;
+  const out = [];
+  for (let i = 0; i < 14; i++) {
+    h = (h * 1103 + 12345) % 9973;
+    const f = fails && (i === 5 || (fails > 1 && i === 11));
+    out.push({ h: Math.round(42 + (h % 50)) + '%', cls: f ? 'fail' : '' });
+  }
+  return out;
+}
+function layoutPos() {
+  const p = {};
+  NODES.forEach(function (n) { p[n.id] = { x: n.x, y: n.y }; });
+  return p;
+}
+function shortRef(ref) {
+  const parts = ref.split('/');
+  return parts[parts.length - 1];
+}
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    let saved = null;
+    try { const raw = window.localStorage.getItem(POS_KEY); if (raw) saved = JSON.parse(raw); } catch (err) { saved = null; }
+    this.state = {
+      theme: null, pos: Object.assign(layoutPos(), saved || {}), view: { x: 30, y: 60, k: 0.66 }, cw: 1300, ch: 800,
+      sel: null, q: '', layer: 'mine', cp: false, ev: true, legend: true, panning: false, tick: 0,
+      swap: { note: 'ollama' }, renamed: {}, removed: {}, confirmed: {}, tipsDone: {}, extra: [], extraEdges: []
+    };
+    this.R = null; this._timers = []; this._hd = {}; this._hc = {}; this._hk = {};
+    const self = this;
+    this.canvasRef = function (el) {
+      if (!el || el === self._cv) return;
+      self.teardown();
+      self._cv = el;
+      el.addEventListener('wheel', self.onWheel, { passive: false });
+      if (window.ResizeObserver) { self._ro = new ResizeObserver(function () { self.measure(); }); self._ro.observe(el); }
+      self.measure();
+    };
+    this.onWheel = function (e) {
+      if (!self._cv) return;
+      e.preventDefault();
+      const v = self.curView(), r = self._cv.getBoundingClientRect(), sc = self.scaleFix();
+      const mx = (e.clientX - r.left) * sc, my = (e.clientY - r.top) * sc;
+      let dy = e.deltaY, dx = e.deltaX;
+      if (e.deltaMode === 1) { dy *= 16; dx *= 16; }
+      if (e.shiftKey && !e.ctrlKey) { self.setView({ x: v.x - (dx || dy), y: v.y, k: v.k }); return; }
+      const k2 = clamp(v.k * Math.exp(-dy * 0.0022), 0.3, 1.8);
+      const wx = (mx - v.x) / v.k, wy = (my - v.y) / v.k;
+      self.setView({ x: mx - wx * k2, y: my - wy * k2, k: k2 });
+    };
+    this.onCanvasDown = function (e) {
+      if (e.button !== undefined && e.button !== 0) return;
+      const t = e.target;
+      if (t && t.closest && (t.closest('.ff-float') || t.closest('.ff-tl') || t.closest('.ff-node'))) return;
+      const v = self.curView();
+      self._sc = self.scaleFix();
+      self._pan = { sx: e.clientX, sy: e.clientY, vx: v.x, vy: v.y, moved: false };
+      try { self._cv.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      self.setState({ panning: true });
+    };
+    this.onCanvasMove = function (e) {
+      const sc = self._sc || 1;
+      if (self._drag) {
+        const d = self._drag, k = self.curView().k;
+        const dx = (e.clientX - d.sx) * sc / k, dy = (e.clientY - d.sy) * sc / k;
+        if (!d.moved && Math.abs(dx) + Math.abs(dy) < 4 / k) return;
+        d.moved = true;
+        self.setPos(d.id, Math.round(d.ox + dx), Math.round(d.oy + dy));
+      } else if (self._pan) {
+        const p = self._pan, dx = (e.clientX - p.sx) * sc, dy = (e.clientY - p.sy) * sc;
+        if (Math.abs(dx) + Math.abs(dy) > 3) p.moved = true;
+        self.setView({ x: p.vx + dx, y: p.vy + dy, k: self.curView().k });
+      }
+    };
+    this.onCanvasUp = function (e) {
+      try { self._cv.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      if (self._drag) {
+        const d = self._drag; self._drag = null;
+        if (!d.moved) self.select(d.id); else self.savePos();
+      } else if (self._pan) {
+        const p = self._pan; self._pan = null;
+        self.setState(p.moved ? { panning: false } : { panning: false, sel: null });
+      }
+    };
+    this.miniDown = function (e) { e.stopPropagation(); self._mdrag = true; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ } self.miniJump(e); };
+    this.miniMove = function (e) { if (self._mdrag) self.miniJump(e); };
+    this.miniUp = function (e) { self._mdrag = false; try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ } };
+    this.zoomIn = function () { self.zoomBy(1.2); };
+    this.zoomOut = function () { self.zoomBy(1 / 1.2); };
+    this.fitView = function () { self.fit(true); };
+    this.retidy = function () {
+      const from = self.curPos(), to = Object.assign({}, from, layoutPos());
+      self.tween(from, to, null, null, 650, function () { self.savePos(); self.fit(true); });
+    };
+    this.toggleCp = function () { self.setState({ cp: !self.state.cp }); };
+    this.toggleEv = function () { self.setState({ ev: !self.state.ev }); };
+    this.toggleLegend = function () { self.setState({ legend: !self.state.legend }); };
+    this.toggleTheme = function () { self.setState({ theme: self.theme() === 'dark' ? 'light' : 'dark' }); };
+    this.showNim = function () { self.setState({ layer: 'nim' }); };
+    this.showMine = function () { self.setState({ layer: 'mine' }); };
+    this.onQ = function (e) { self.setState({ q: e.target.value }); };
+    this.onQKey = function (e) {
+      if (e.key === 'Enter') { const hits = self.hits(); if (hits.length) { self.select(hits[0]); self.centerOn(hits[0]); } }
+      if (e.key === 'Escape') self.setState({ q: '' });
+    };
+    this.goUnc = function () { self.select('sms'); self.centerOn('sms'); };
+    this.closePanel = function () { self.setState({ sel: null }); };
+    this.panelKey = function (e) { if (e.key === 'Escape') self.setState({ sel: null }); };
+    this.addStep = function () {
+      const v = self.curView(), s = self.state;
+      const id = 'u' + (s.extra.length + 1);
+      const x = Math.round((s.cw / 2 - v.x) / v.k - 98), y = Math.round((s.ch / 2 - v.y) / v.k - 32);
+      const n = { id: id, kind: 'code', title: 'New step', sub: 'your step · no code yet', x: x, y: y, w: 196, h: 64, user: true,
+        what: 'A step you added. Pick what it runs after, then give it a name.', ev: [line('user', 'Added by you just now. The Planner keeps it when it re-checks.')] };
+      const pos = Object.assign({}, s.pos); pos[id] = { x: x, y: y };
+      self.setState({ extra: s.extra.concat([n]), pos: pos, sel: id, layer: 'mine' });
+    };
+    this.startRun = function () { self.runStart(); };
+    this.approve = function () { self.runApprove(); };
+    this.reject = function () { self.runReject(); };
+    this.stopRun = function () {
+      const R = self.R;
+      self.clearTimers();
+      if (R) {
+        Object.keys(R.ns).forEach(function (id) { if (R.ns[id] === 'running' || R.ns[id] === 'retry' || R.ns[id] === 'waiting' || R.ns[id] === 'idle') R.ns[id] = 'skipped'; });
+        Object.keys(R.es).forEach(function (id) { if (R.es[id] === 'active' || R.es[id] === 'idle') R.es[id] = 'skipped'; });
+        R.waiting = null; R.phase = 'stopped'; R.tEnd = Date.now();
+      }
+      self.bump();
+    };
+    this.clearRun = function () { self.clearTimers(); self.R = null; self.bump(); };
+  }
+
+  componentDidMount() { this.measure(); }
+  componentWillUnmount() { this.clearTimers(); this.teardown(); if (this._anim) cancelAnimationFrame(this._anim); }
+  teardown() {
+    if (this._cv) this._cv.removeEventListener('wheel', this.onWheel);
+    if (this._ro) { this._ro.disconnect(); this._ro = null; }
+  }
+  theme() { return this.state.theme || this.props.theme || 'dark'; }
+  scaleFix() {
+    if (!this._cv) return 1;
+    const r = this._cv.getBoundingClientRect();
+    return r.width ? this._cv.clientWidth / r.width : 1;
+  }
+  measure() {
+    const el = this._cv;
+    if (!el) return;
+    const cw = el.clientWidth, ch = el.clientHeight;
+    if (!cw || !ch) return;
+    if (cw !== this.state.cw || ch !== this.state.ch) this.setState({ cw: cw, ch: ch });
+    if (!this._fitted) { this._fitted = true; this.fit(false, cw, ch); }
+  }
+  curView() { return this._pv || this.state.view; }
+  curPos() { return this._pp || this.state.pos; }
+  setView(v) {
+    const self = this;
+    this._pv = v;
+    if (this._rv) return;
+    this._rv = requestAnimationFrame(function () { self._rv = 0; const nv = self._pv; self._pv = null; self.setState({ view: nv }); });
+  }
+  setPos(id, x, y) {
+    const self = this;
+    const p = Object.assign({}, this.curPos()); p[id] = { x: x, y: y };
+    this._pp = p;
+    if (this._rp) return;
+    this._rp = requestAnimationFrame(function () { self._rp = 0; const np = self._pp; self._pp = null; self.setState({ pos: np }); });
+  }
+  savePos() {
+    const self = this;
+    setTimeout(function () { try { window.localStorage.setItem(POS_KEY, JSON.stringify(self.state.pos)); } catch (err) { /* private mode */ } }, 50);
+  }
+  tween(fromPos, toPos, fromView, toView, ms, done) {
+    const self = this;
+    if (this._anim) cancelAnimationFrame(this._anim);
+    let reduce = false;
+    try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (err) { reduce = false; }
+    if (reduce) { const st = {}; if (toPos) st.pos = toPos; if (toView) st.view = toView; this.setState(st); if (done) done(); return; }
+    const t0 = performance.now();
+    const step = function (now) {
+      const t = Math.min(1, (now - t0) / ms), e = 1 - Math.pow(1 - t, 3), st = {};
+      if (toPos) {
+        const p = {};
+        Object.keys(toPos).forEach(function (id) { const a = fromPos[id] || toPos[id], b = toPos[id]; p[id] = { x: a.x + (b.x - a.x) * e, y: a.y + (b.y - a.y) * e }; });
+        st.pos = p;
+      }
+      if (toView) st.view = { x: fromView.x + (toView.x - fromView.x) * e, y: fromView.y + (toView.y - fromView.y) * e, k: fromView.k + (toView.k - fromView.k) * e };
+      self.setState(st);
+      if (t < 1) self._anim = requestAnimationFrame(step); else { self._anim = 0; if (done) done(); }
+    };
+    this._anim = requestAnimationFrame(step);
+  }
+  bounds(g) {
+    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    g.nodes.forEach(function (n) { x0 = Math.min(x0, n.x); y0 = Math.min(y0, n.y - 14); x1 = Math.max(x1, n.x + n.w); y1 = Math.max(y1, n.y + n.h + 22); });
+    if (x0 > x1) { x0 = 0; y0 = 0; x1 = 1000; y1 = 600; }
+    return { x0: x0, y0: y0, x1: x1, y1: y1 };
+  }
+  fit(animated, cw0, ch0) {
+    const cw = cw0 || this.state.cw, ch = ch0 || this.state.ch, b = this.bounds(this.graph());
+    const top = 76, padX = 36, bottom = 30;
+    const k = clamp(Math.min((cw - padX * 2) / (b.x1 - b.x0), (ch - top - bottom) / (b.y1 - b.y0)), 0.3, 1.1);
+    const v = { x: (cw - (b.x1 - b.x0) * k) / 2 - b.x0 * k, y: top + ((ch - top - bottom) - (b.y1 - b.y0) * k) / 2 - b.y0 * k, k: k };
+    if (animated) this.tween(null, null, this.curView(), v, 520); else this.setState({ view: v });
+  }
+  zoomBy(f) {
+    const v = this.curView(), cx = this.state.cw / 2, cy = this.state.ch / 2, k2 = clamp(v.k * f, 0.3, 1.8);
+    const wx = (cx - v.x) / v.k, wy = (cy - v.y) / v.k;
+    this.tween(null, null, v, { x: cx - wx * k2, y: cy - wy * k2, k: k2 }, 220);
+  }
+  centerOn(id) {
+    const g = this.graph(), n = g.byId[id];
+    if (!n) return;
+    const v = this.curView(), k = Math.max(v.k, 0.85);
+    const panelW = this.state.sel ? 0 : 404;
+    const cw = Math.max(300, this.state.cw - (window.innerWidth > 760 ? panelW : 0));
+    this.tween(null, null, v, { x: cw / 2 - (n.x + n.w / 2) * k, y: this.state.ch / 2 - (n.y + n.h / 2) * k, k: k }, 480);
+  }
+  miniJump(e) {
+    const m = this._mini;
+    if (!m) return;
+    const r = e.currentTarget.getBoundingClientRect(), sc = r.width ? e.currentTarget.clientWidth / r.width : 1;
+    const lx = (e.clientX - r.left) * sc - m.ox, ly = (e.clientY - r.top) * sc - m.oy;
+    const wx = lx / m.s + m.x0, wy = ly / m.s + m.y0, v = this.curView();
+    this.setView({ x: this.state.cw / 2 - wx * v.k, y: this.state.ch / 2 - wy * v.k, k: v.k });
+  }
+  select(id) { this.setState({ sel: id }); }
+  hits() {
+    const q = this.state.q.trim().toLowerCase();
+    if (!q) return [];
+    return this.graph().nodes.filter(function (n) {
+      const ref = (n.ev || []).map(function (x) { return x.ref || ''; }).join(' ');
+      return (n.title + ' ' + (n.sub || '') + ' ' + ((MK[n.brand] || {}).name || '') + ' ' + ref).toLowerCase().indexOf(q) >= 0;
+    }).map(function (n) { return n.id; });
+  }
+  graph() {
+    const s = this.state, mine = s.layer === 'mine', pos = this.state.pos;
+    const list = NODES.concat(s.extra).filter(function (n) { return (mine || !n.user) && !(mine && s.removed[n.id]); });
+    const byId = {};
+    const nodes = list.map(function (n) {
+      const p = pos[n.id] || { x: n.x, y: n.y };
+      const brand = (mine && s.swap[n.id]) || n.brand;
+      const unconf = !!n.unconf && !(mine && s.confirmed[n.id]);
+      let sub = n.sub || '';
+      if (n.kind === 'llm') sub = (n.fallback ? 'fallback · ' : '') + MODEL[brand];
+      const e = Object.assign({}, n, { x: p.x, y: p.y, brand: brand, sub: sub, unconf: unconf,
+        title: (mine && s.renamed[n.id]) || n.title, swapped: mine && !!s.swap[n.id], renamedFlag: mine && !!s.renamed[n.id] });
+      byId[n.id] = e;
+      return e;
+    });
+    const edges = EDGES.concat(mine ? s.extraEdges : []).filter(function (e) { return byId[e.from] && byId[e.to]; }).map(function (e) {
+      let kind = e.kind || 'flow';
+      if (kind === 'unconfirmed' && !byId[e.to].unconf) kind = 'flow';
+      return Object.assign({}, e, { kind: kind });
+    });
+    return { nodes: nodes, edges: edges, byId: byId };
+  }
+
+  /* ---------- test run: a small offline simulation of the scheduler ---------- */
+  later(fn, ms) {
+    const self = this;
+    const t = setTimeout(function () { self._timers = self._timers.filter(function (x) { return x !== t; }); fn(); }, ms);
+    this._timers.push(t);
+  }
+  clearTimers() { this._timers.forEach(clearTimeout); this._timers = []; if (this._tick) { clearInterval(this._tick); this._tick = 0; } }
+  bump() { this.setState(function (s) { return { tick: (s.tick + 1) % 100000 }; }); }
+  runStart() {
+    const self = this;
+    this.clearTimers();
+    const g = this.graph(), ns = {}, es = {};
+    g.nodes.forEach(function (n) { ns[n.id] = 'idle'; });
+    g.edges.forEach(function (e) { es[e.id] = 'idle'; });
+    this.R = { phase: 'running', t0: Date.now(), tEnd: 0, ns: ns, es: es, dur: {}, began: {}, calls: 0, cached: 0, tokens: 0, waiting: null, g: g, fallback: false, retried: false, rejected: false };
+    g.nodes.forEach(function (n) {
+      if (n.id === 'start') return;
+      const ins = g.edges.filter(function (e) { return e.to === n.id && e.kind !== 'loop'; });
+      if (!ins.length) ns[n.id] = 'skipped';
+    });
+    this._tick = setInterval(function () { self.bump(); }, 100);
+    this.later(function () { self.startNode('start'); }, 260);
+    this.bump();
+  }
+  startNode(id) {
+    const self = this, R = this.R;
+    if (!R || R.ns[id] !== 'idle') return;
+    const sim = SIM[id] || { ms: 420 };
+    R.ns[id] = 'running'; R.began[id] = Date.now();
+    if (sim.gate) { R.ns[id] = 'waiting'; R.waiting = id; R.phase = 'waiting'; this.bump(); return; }
+    if (sim.cached) { this.later(function () { self.finish(id, 'cached'); }, sim.ms); this.bump(); return; }
+    if (sim.retryOnce) {
+      this.later(function () {
+        R.ns[id] = 'retry'; R.retried = true;
+        if (R.es.e15 !== undefined) R.es.e15 = 'active';
+        self.bump();
+        self.later(function () {
+          if (R.es.e15 !== undefined) R.es.e15 = 'done';
+          R.ns[id] = 'running'; self.bump();
+          self.later(function () { self.finish(id, 'ok'); }, sim.ms);
+        }, 760);
+      }, sim.ms);
+      this.bump();
+      return;
+    }
+    this.later(function () { self.finish(id, sim.fail ? 'failed' : 'ok'); }, sim.ms);
+    this.bump();
+  }
+  finish(id, outcome) {
+    const self = this, R = this.R;
+    if (!R) return;
+    const sim = SIM[id] || {};
+    R.ns[id] = outcome; R.dur[id] = Date.now() - (R.began[id] || Date.now());
+    if (outcome === 'ok' || outcome === 'failed') R.calls += sim.calls || 0;
+    if (outcome === 'ok') R.tokens += sim.tokens || 0;
+    if (outcome === 'cached') R.cached += 1;
+    const node = R.g.byId[id];
+    R.g.edges.forEach(function (e) {
+      if (e.from !== id || e.kind === 'loop') return;
+      let taken;
+      if (e.kind === 'fallback') taken = outcome === 'failed';
+      else if (e.kind === 'unconfirmed') taken = false;
+      else if (outcome === 'failed' || outcome === 'rejected') taken = false;
+      else if (node && node.kind === 'decision') taken = e.branch === sim.choose;
+      else taken = true;
+      if (taken) {
+        if (e.kind === 'fallback') R.fallback = true;
+        R.es[e.id] = 'active';
+        self.later(function () { R.es[e.id] = 'done'; self.arrive(e.to); self.checkDone(); self.bump(); }, TRAVEL);
+      } else {
+        R.es[e.id] = 'skipped';
+        self.arrive(e.to);
+      }
+    });
+    this.checkDone();
+    this.bump();
+  }
+  arrive(id) {
+    const self = this, R = this.R;
+    if (!R || R.ns[id] !== 'idle') return;
+    const ins = R.g.edges.filter(function (e) { return e.to === id && e.kind !== 'loop'; });
+    if (ins.some(function (e) { return R.es[e.id] === 'idle' || R.es[e.id] === 'active'; })) return;
+    if (ins.some(function (e) { return R.es[e.id] === 'done'; })) { this.startNode(id); return; }
+    R.ns[id] = 'skipped';
+    R.g.edges.forEach(function (e) { if (e.from === id && e.kind !== 'loop') { R.es[e.id] = 'skipped'; self.arrive(e.to); } });
+  }
+  checkDone() {
+    const R = this.R;
+    if (!R || R.phase === 'done' || R.phase === 'stopped') return;
+    const vals = Object.keys(R.ns).map(function (k) { return R.ns[k]; });
+    const busy = vals.some(function (v) { return v === 'running' || v === 'waiting' || v === 'retry'; }) ||
+      Object.keys(R.es).some(function (k) { return R.es[k] === 'active'; });
+    if (busy) return;
+    R.phase = 'done'; R.tEnd = Date.now();
+    if (this._tick) { clearInterval(this._tick); this._tick = 0; }
+  }
+  runApprove() {
+    const self = this, R = this.R;
+    if (!R || !R.waiting) return;
+    const id = R.waiting;
+    R.waiting = null; R.phase = 'running'; R.ns[id] = 'running'; R.began[id] = Date.now();
+    this.later(function () { self.finish(id, 'ok'); }, 260);
+    this.bump();
+  }
+  runReject() {
+    const R = this.R;
+    if (!R || !R.waiting) return;
+    const id = R.waiting;
+    R.waiting = null; R.phase = 'running'; R.rejected = true;
+    this.finish(id, 'rejected');
+  }
+
+  /* ---------- view models ---------- */
+  nodeView(n, i, hitSet, q, g) {
+    const s = this.state, R = this.R, self = this, id = n.id, k = n.kind;
+    const isCard = ['llm', 'api', 'mcp', 'code', 'gate'].indexOf(k) >= 0, isPill = k === 'start' || k === 'end';
+    const isDia = k === 'decision', isBar = k === 'fork' || k === 'join';
+    const st = R ? (R.ns[id] || 'idle') : 'idle';
+    let cls = (isCard ? 'k-card' : isPill ? 'k-pill' : isDia ? 'k-dia' : 'k-bar') + ' kind-' + k;
+    if (st !== 'idle') cls += ' st-' + (st === 'rejected' ? 'failed' : st);
+    if (s.sel === id) cls += ' sel';
+    if (n.unconf) cls += ' unconf';
+    if (q) cls += hitSet[id] ? ' hit' : ' miss';
+    if (s.cp && !R && CP_N[id]) cls += ' cp';
+    let cap = '', capCls = '';
+    if (R && st !== 'idle') {
+      const d = R.dur[id];
+      if (st === 'running') { cap = 'running…'; capCls = 'run'; }
+      else if (st === 'retry') { cap = '500 · retry 1 of 3'; capCls = 'run'; }
+      else if (st === 'waiting') { cap = 'waiting for you'; capCls = 'waiting'; }
+      else if (st === 'cached') { cap = 'from cache · 0.2 s'; capCls = 'ok'; }
+      else if (st === 'failed') { cap = (SIM[id] && SIM[id].err) || 'failed'; capCls = 'failed'; }
+      else if (st === 'rejected') { cap = 'rejected by you'; capCls = 'failed'; }
+      else if (st === 'skipped') { cap = n.unconf ? 'not run · unconfirmed' : 'not taken'; capCls = 'skipped'; }
+      else if (st === 'ok') { cap = (isBar || isDia) ? '' : ((d / 1000).toFixed(1) + ' s'); capCls = 'ok'; }
+    } else if (s.ev && n.ev && n.ev.length && !isBar) {
+      const first = n.ev[0];
+      if (first.t === 'code') cap = shortRef(first.ref);
+      else if (first.t === 'policy') cap = 'policy · D11';
+      else if (first.t === 'user') cap = 'added by you';
+      else if (n.unconf) cap = 'no call found';
+    }
+    let hasSt = false, stCls = '', stOk = false, stText = '';
+    if (st === 'ok' && !isBar && !isDia) { hasSt = true; stCls = 'ok'; stOk = true; }
+    else if (st === 'cached') { hasSt = true; stCls = 'cached'; stText = 'cached'; }
+    else if (st === 'failed' || st === 'rejected') { hasSt = true; stCls = 'failed'; stText = '!'; }
+    else if (st === 'waiting') { hasSt = true; stCls = 'waiting'; stText = 'you'; }
+    else if (st === 'retry') { hasSt = true; stCls = 'retry'; stText = 'retry'; }
+    if (!this._hd[id]) {
+      this._hd[id] = function (e) {
+        if (e.button !== undefined && e.button !== 0) return;
+        e.stopPropagation();
+        const p = self.curPos()[id] || { x: n.x, y: n.y };
+        self._sc = self.scaleFix();
+        self._drag = { id: id, sx: e.clientX, sy: e.clientY, ox: p.x, oy: p.y, moved: false };
+        try { self._cv.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      };
+      this._hc[id] = function (e) { if (e.detail === 0) self.select(id); };
+      this._hk[id] = function (e) {
+        const step = e.shiftKey ? 48 : 16, p = self.curPos()[id];
+        if (!p) return;
+        const m = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
+        if (m) { e.preventDefault(); self.setPos(id, p.x + m[0], p.y + m[1]); self.savePos(); }
+      };
+    }
+    const brandName = (MK[n.brand] || {}).name;
+    return {
+      id: id, x: Math.round(n.x * 10) / 10, y: Math.round(n.y * 10) / 10, w: n.w, h: n.h, cls: cls, delay: 80 + i * 55,
+      isCard: isCard, isPill: isPill, isDia: isDia, isBar: isBar, title: n.title, sub: n.sub, t: tileFor(n),
+      tag: TAG[k] || '', tagCls: k === 'llm' ? 'llm' : k === 'gate' ? 'gate' : '',
+      cap: cap, showCap: !!cap, capCls: capCls,
+      yours: !!(n.user || n.swapped || n.renamedFlag), tip: !!(n.tip && !s.tipsDone[id] && s.layer === 'mine' && !n.swapped && !R),
+      retry: !!n.retry && !hasSt, retryText: n.retry ? (n.retry + '×') : '',
+      hasSt: hasSt, stCls: stCls, stOk: stOk, stText: stText,
+      aria: n.title + ', ' + (KIND_LABEL[k] || k) + (brandName ? ', ' + brandName : '') + (n.unconf ? ', unconfirmed' : ''),
+      down: this._hd[id], click: this._hc[id], key: this._hk[id]
+    };
+  }
+  panelView(n, g) {
+    const s = this.state, R = this.R, self = this, id = n.id, k = n.kind;
+    const st = R ? (R.ns[id] || 'idle') : 'idle';
+    const runText = {
+      running: 'Running now', retry: 'Server error. Retrying (1 of 3)', waiting: 'Waiting for you to approve',
+      ok: 'Done in ' + (R && R.dur[id] ? (R.dur[id] / 1000).toFixed(1) : '0') + ' s', cached: 'Answered from cache',
+      failed: 'Failed: ' + ((SIM[id] && SIM[id].err) || 'error') + (id === 'score' ? '. NVIDIA NIM answered instead.' : ''),
+      rejected: 'You rejected this. Everything after it was skipped.', skipped: 'Not taken in this run'
+    }[st] || '';
+    const runCls = st === 'running' || st === 'retry' ? 'run' : st;
+    const conn = ['llm', 'api', 'mcp'].indexOf(k) >= 0 && n.brand && MK[n.brand];
+    const after = (s.extraEdges.filter(function (e) { return e.to === id; })[0] || {}).from || '';
+    const hasTip = !!(n.tip && !s.tipsDone[id] && s.layer === 'mine' && !n.swapped);
+    const overridden = !!(n.swapped || n.renamedFlag);
+    const noDelete = k === 'gate' || k === 'start' || k === 'end';
+    const ev = (n.ev || []).map(function (x) {
+      return { isCode: x.t === 'code', isLine: x.t !== 'code', t: x.t, ref: x.ref || '', lines: x.lines || [], text: x.text || '', icon: ICON[x.t] || ICON.trace };
+    });
+    return {
+      t: tileFor(n), title: n.title, kindLabel: KIND_LABEL[k] || k, kindCls: k === 'llm' ? 'llm' : k === 'gate' ? 'gate' : '',
+      hasRun: !!runText, runText: runText, runCls: runCls, what: n.what || '',
+      cp: !!CP_N[id], side: !!n.side, guard: !!n.guard, yours: !!(n.user || overridden),
+      hasChips: !!(CP_N[id] || n.side || n.guard || n.user || overridden),
+      isGate: k === 'gate', gateWaiting: !!(R && R.waiting === id),
+      isUnconf: !!n.unconf, isDecision: k === 'decision', cond: n.cond || '', branches: n.branches || [],
+      hasConn: !!conn, connName: conn ? conn.name : '', connMeta: conn ? (CONN_META[n.brand] || '') + (k === 'llm' ? ' · ' + MODEL[n.brand] : '') : '',
+      canSwap: k === 'llm' && s.layer === 'mine', brand: n.brand,
+      swapOpts: LLMS.map(function (b) { return { id: b, name: MK[b].name }; }),
+      hasTip: hasTip, tipText: n.tip ? n.tip.text : '',
+      ev: ev, hasHist: !!n.hist, hist: hist(id, n.histFails || 0), histText: n.hist || '',
+      isUser: !!n.user && id !== 'slack', after: after,
+      afterOpts: g.nodes.filter(function (x) { return x.id !== id && x.kind !== 'end'; }).map(function (x) { return { id: x.id, name: x.title }; }),
+      overridden: overridden, noDelete: noDelete,
+      deleteLabel: noDelete ? (k === 'gate' ? 'Gates can\'t be removed' : 'Can\'t remove') : (n.user ? 'Delete step' : 'Hide from my map'),
+      editNote: n.user ? 'Your step. Your code has no call for it yet, so it runs only in FlowForge test runs.' : 'Edits change how FlowForge maps and tests this flow, never your code. The Planner\'s version stays.',
+      onSwap: function (e) { const sw = Object.assign({}, s.swap); const v = e.target.value; if (v === NODES.filter(function (x) { return x.id === id; })[0].brand) delete sw[id]; else sw[id] = v; self.setState({ swap: sw }); },
+      onApplyTip: function () { const sw = Object.assign({}, s.swap); sw[id] = n.tip.to; const td = Object.assign({}, s.tipsDone); td[id] = true; self.setState({ swap: sw, tipsDone: td }); },
+      onDismissTip: function () { const td = Object.assign({}, s.tipsDone); td[id] = true; self.setState({ tipsDone: td }); },
+      onName: function (e) {
+        const v = e.target.value;
+        if (n.user && id !== 'slack') { self.setState({ extra: s.extra.map(function (x) { return x.id === id ? Object.assign({}, x, { title: v }) : x; }) }); return; }
+        const rn = Object.assign({}, s.renamed); rn[id] = v; self.setState({ renamed: rn });
+      },
+      onAfter: function (e) {
+        const v = e.target.value, rest = s.extraEdges.filter(function (x) { return x.to !== id; });
+        self.setState({ extraEdges: v ? rest.concat([{ id: 'x-' + v + '-' + id, from: v, to: id }]) : rest });
+      },
+      onReset: function () { const sw = Object.assign({}, s.swap), rn = Object.assign({}, s.renamed); delete sw[id]; delete rn[id]; self.setState({ swap: sw, renamed: rn }); },
+      onConfirm: function () { const c = Object.assign({}, s.confirmed); c[id] = true; self.setState({ confirmed: c }); },
+      onDelete: function () {
+        if (n.user && id !== 'slack') {
+          self.setState({ extra: s.extra.filter(function (x) { return x.id !== id; }), extraEdges: s.extraEdges.filter(function (x) { return x.to !== id && x.from !== id; }), sel: null });
+          return;
+        }
+        const rm = Object.assign({}, s.removed); rm[id] = true; self.setState({ removed: rm, sel: null });
+      }
+    };
+  }
+  renderVals() {
+    const s = this.state, R = this.R, self = this, theme = this.theme(), g = this.graph(), v = s.view;
+    const q = s.q.trim().toLowerCase(), hitList = this.hits(), hitSet = {};
+    hitList.forEach(function (id) { hitSet[id] = true; });
+    const nodes = g.nodes.map(function (n, i) { return self.nodeView(n, i, hitSet, q, g); });
+    const edges = [], labels = [];
+    g.edges.forEach(function (e) {
+      const a = g.byId[e.from], b = g.byId[e.to], pts = edgePts(e, a, b), st = R ? (R.es[e.id] || 'idle') : 'idle';
+      let cls = '', mk = 'ffa-edge';
+      if (e.kind === 'fallback' || e.look === 'fb') { cls += ' fb'; mk = 'ffa-coral'; }
+      if (e.kind === 'unconfirmed') { cls += ' unc'; mk = 'ffa-faint'; }
+      if (e.kind === 'loop') { cls += ' loop'; mk = 'ffa-muted'; }
+      if (s.cp && !R && CP_E[e.id]) { cls += ' cp'; mk = 'ffa-fg'; }
+      if (st === 'active') { cls += ' active'; mk = 'ffa-blue'; } else if (st === 'done') { cls += ' done'; mk = 'ffa-teal'; } else if (st === 'skipped') cls += ' skipped';
+      if (q && !(hitSet[e.from] && hitSet[e.to])) cls += ' dim';
+      edges.push({ id: e.id, d: pathD(pts), cls: cls, marker: mk });
+      const off = st === 'skipped' || (q && !(hitSet[e.from] || hitSet[e.to]));
+      if (e.branch) { const p = bez(pts, e.fs === 'T' || e.fs === 'B' ? 0.32 : 0.5); labels.push({ x: Math.round(p[0]), y: Math.round(p[1]), text: e.branch, cls: 'br' + (off ? ' off' : ''), shield: false, title: '' }); }
+      if (e.label) { const p = bez(pts, 0.5); labels.push({ x: Math.round(p[0]), y: Math.round(p[1]), text: e.label, cls: (e.kind === 'fallback' ? 'fb' : e.kind === 'unconfirmed' ? 'unc' : '') + (off ? ' off' : ''), shield: false, title: '' }); }
+      if (e.guard) { const p = bez(pts, e.branch ? 0.72 : 0.5); labels.push({ x: Math.round(p[0]), y: Math.round(p[1]), text: '', cls: 'guard' + (off ? ' off' : ''), shield: true, title: 'Keys and PII are removed before the LLM sees anything' }); }
+    });
+    const sel = s.sel && g.byId[s.sel] ? g.byId[s.sel] : null;
+    const b = this.bounds(g), pad = 8, mw = 208, mh = 124;
+    const sMini = Math.min((mw - pad * 2) / (b.x1 - b.x0), (mh - pad * 2) / (b.y1 - b.y0));
+    const ox = (mw - (b.x1 - b.x0) * sMini) / 2, oy = (mh - (b.y1 - b.y0) * sMini) / 2;
+    this._mini = { s: sMini, x0: b.x0, y0: b.y0, ox: ox, oy: oy };
+    const mini = {
+      nodes: g.nodes.map(function (n) {
+        const st = R ? R.ns[n.id] : '';
+        let c = n.kind === 'llm' ? 'llm' : n.kind === 'gate' ? 'gate' : '';
+        if (st === 'ok' || st === 'cached') c = 'ok'; else if (st === 'running' || st === 'retry') c = 'run';
+        if (s.sel === n.id) c += ' sel';
+        return { x: Math.round(ox + (n.x - b.x0) * sMini), y: Math.round(oy + (n.y - b.y0) * sMini), w: Math.max(3, Math.round(n.w * sMini)), h: Math.max(3, Math.round(n.h * sMini)), cls: c };
+      }),
+      vx: Math.round(ox + (-v.x / v.k - b.x0) * sMini), vy: Math.round(oy + (-v.y / v.k - b.y0) * sMini),
+      vw: Math.round(s.cw / v.k * sMini), vh: Math.round(s.ch / v.k * sMini)
+    };
+    let hud = { color: '', label: '', meta: '', pct: 0, counts: '', waiting: false, running: false, finished: false, gate: '' };
+    if (R) {
+      const vals = Object.keys(R.ns).map(function (key) { return R.ns[key]; });
+      const total = vals.length, doneN = vals.filter(function (x) { return x !== 'idle' && x !== 'running' && x !== 'waiting' && x !== 'retry'; }).length;
+      const secs = ((R.tEnd || Date.now()) - R.t0) / 1000;
+      const phase = R.phase;
+      hud = {
+        color: phase === 'waiting' ? 'var(--amber-strong)' : phase === 'done' ? (R.rejected ? 'var(--coral)' : 'var(--teal)') : phase === 'stopped' ? 'var(--muted)' : 'var(--blue)',
+        label: phase === 'waiting' ? 'Waiting for you' : phase === 'done' ? (R.rejected ? 'Stopped at your gate' : 'Test run done') : phase === 'stopped' ? 'Stopped' : 'Test run #129',
+        meta: secs.toFixed(1) + ' s' + (R.fallback ? ' · NVIDIA NIM stood in for Gemini' : ''),
+        pct: Math.round(doneN / Math.max(1, total) * 100),
+        counts: R.calls + ' calls · ' + R.cached + ' cached · ' + (R.tokens / 1000).toFixed(1) + 'k tokens',
+        waiting: phase === 'waiting', running: phase === 'running', finished: phase === 'done' || phase === 'stopped',
+        gate: R.waiting && g.byId[R.waiting] ? g.byId[R.waiting].title : ''
+      };
+    }
+    const userCount = NODES.filter(function (n) { return n.user; }).length + s.extra.length;
+    const editCount = userCount + Object.keys(s.swap).length + Object.keys(s.renamed).length + Object.keys(s.removed).length + Object.keys(s.confirmed).length;
+    const uncCount = g.nodes.filter(function (n) { return n.unconf; }).length;
+    const busy = !!(R && (R.phase === 'running' || R.phase === 'waiting'));
+    return {
+      theme: theme, isDark: theme === 'dark', isLight: theme !== 'dark',
+      hasApprovals: !!(R && R.phase === 'waiting'),
+      layerNim: s.layer === 'nim', layerMine: s.layer === 'mine', editCount: editCount,
+      runBusy: busy, runLabel: busy ? 'Running…' : 'Test run',
+      canvasCls: s.panning ? 'panning' : '',
+      gridX: Math.round(v.x * 10) / 10, gridY: Math.round(v.y * 10) / 10, gridS: Math.round(22 * v.k * 100) / 100,
+      vx: Math.round(v.x * 10) / 10, vy: Math.round(v.y * 10) / 10, vk: Math.round(v.k * 1000) / 1000, zoomPct: Math.round(v.k * 100),
+      edges: edges, labels: labels, nodes: nodes,
+      cpOn: s.cp, evOn: s.ev, legendOpen: s.legend, legendRot: s.legend ? 180 : 0,
+      showUnc: uncCount > 0 && !R, uncCount: uncCount,
+      q: s.q, hasQ: !!q, hitCount: hitList.length,
+      mini: mini, hasRun: !!R, hud: hud,
+      hasPanel: !!sel, p: sel ? this.panelView(sel, g) : { t: tileFor({ kind: 'code' }), ev: [], branches: [], swapOpts: [], hist: [], afterOpts: [] },
+      canvasRef: this.canvasRef, onCanvasDown: this.onCanvasDown, onCanvasMove: this.onCanvasMove, onCanvasUp: this.onCanvasUp,
+      miniDown: this.miniDown, miniMove: this.miniMove, miniUp: this.miniUp,
+      zoomIn: this.zoomIn, zoomOut: this.zoomOut, fitView: this.fitView, retidy: this.retidy,
+      toggleCp: this.toggleCp, toggleEv: this.toggleEv, toggleLegend: this.toggleLegend, toggleTheme: this.toggleTheme,
+      showNim: this.showNim, showMine: this.showMine, onQ: this.onQ, onQKey: this.onQKey, goUnc: this.goUnc,
+      closePanel: this.closePanel, panelKey: this.panelKey, addStep: this.addStep,
+      startRun: this.startRun, approve: this.approve, reject: this.reject, stopRun: this.stopRun, clearRun: this.clearRun
+    };
+  }
+}
+</script>
+</body>
+</html>

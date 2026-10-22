@@ -1,0 +1,29 @@
+.gantt { display: flex; flex-direction: column; gap: 8px; min-width: 560px; }
+.gantt-row { display: grid; grid-template-columns: minmax(170px, 230px) 1fr; gap: 12px; align-items: center; }
+.gantt-label {
+  display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 8px; border-radius: var(--r-sm);
+  border: 1px solid transparent; background: transparent; color: var(--fg); text-align: left; cursor: pointer; min-width: 0;
+}
+.gantt-label:hover { background: var(--surface-2); }
+.is-selected .gantt-label { background: var(--teal-bg); border-color: color-mix(in srgb, var(--teal) 40%, transparent); }
+.gantt-n { font: 500 13px/1 var(--mono); color: var(--muted); width: 18px; flex: none; }
+.gantt-title { flex: 1; min-width: 0; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gantt-track { position: relative; height: 30px; background: var(--surface-2); border-radius: 7px; cursor: pointer; border: 1px solid var(--line); }
+.gantt-bar {
+  position: absolute; top: 3px; bottom: 3px; border-radius: 5px; background: var(--tone, var(--teal));
+  transition: width 140ms linear, left 140ms linear; display: flex; align-items: center; justify-content: flex-end; overflow: hidden;
+}
+.gantt-bar.state-succeeded { background: var(--teal); }
+.gantt-bar.state-running { background: var(--blue); }
+.gantt-bar.state-failed { background: var(--coral); }
+.gantt-bar.is-cache { background: color-mix(in srgb, var(--teal) 45%, var(--surface)); }
+.gantt-bar.is-expected { background: transparent; border: 2px dashed var(--idle); }
+.gantt-bar.is-critical { outline: 3px solid var(--fg); outline-offset: 1px; }
+.gantt-bar.is-expected.is-critical { outline: none; border-color: var(--fg); }
+.gantt-chip { font: 500 11px/1 var(--mono); color: var(--fg); padding: 0 6px; }
+.gantt-skip { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); font: 500 12px/1 var(--mono); color: var(--muted); }
+.gantt-axis { min-height: 18px; }
+.gantt-ticks { position: relative; display: flex; justify-content: space-between; font: 500 12px/1 var(--mono); color: var(--muted); }
+.gantt-now { position: absolute; top: -10px; width: 2px; height: 14px; background: var(--blue); border-radius: 2px; transform: translateX(-1px); }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; color: var(--muted); }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 6px; }

@@ -1,0 +1,41 @@
+/* Motion with a purpose. Everything here is switched off under prefers-reduced-motion (bottom). */
+@keyframes ff-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--blue) 55%, transparent); }
+  70% { box-shadow: 0 0 0 10px color-mix(in srgb, var(--blue) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+@keyframes ff-heartbeat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.35); } }
+@keyframes ff-shimmer { from { background-position: -240px 0; } to { background-position: 240px 0; } }
+@keyframes ff-flow { to { stroke-dashoffset: -28; } }
+@keyframes ff-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes ff-slide-in { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+@keyframes ff-stripes { to { background-position: 28px 0; } }
+
+.pulse { animation: ff-pulse 1.6s var(--ease) infinite; }
+.heartbeat { animation: ff-heartbeat 1.8s ease-in-out infinite; }
+.rise { animation: ff-rise var(--t-slow) var(--ease) both; }
+.rise-1 { animation-delay: 40ms; } .rise-2 { animation-delay: 90ms; } .rise-3 { animation-delay: 140ms; } .rise-4 { animation-delay: 190ms; }
+.slide-in { animation: ff-slide-in var(--t-med) var(--ease) both; }
+.flowing { stroke-dasharray: 6 8; animation: ff-flow .9s linear infinite; }
+.running-stripes {
+  background-image: repeating-linear-gradient(-45deg, rgb(255 255 255 / 18%) 0 7px, transparent 7px 14px);
+  background-size: 28px 28px; animation: ff-stripes .8s linear infinite;
+}
+
+.skeleton {
+  border-radius: 8px; min-height: 14px;
+  background: linear-gradient(90deg, var(--surface-2) 0, color-mix(in srgb, var(--line) 70%, var(--surface)) 120px, var(--surface-2) 240px);
+  background-size: 480px 100%; animation: ff-shimmer 1.3s linear infinite;
+}
+
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: var(--t-med); animation-timing-function: var(--ease); }
+.page-enter { animation: ff-rise var(--t-med) var(--ease) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important; animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important; scroll-behavior: auto !important;
+  }
+  .pulse, .heartbeat, .flowing, .running-stripes, .skeleton { animation: none !important; }
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none !important; }
+}

@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Re-check diff</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#EEF3F5}
+a{color:inherit}
+.ff{--app:#EEF3F5;--canvas:#F2F6F7;--dot:rgba(15,29,38,.12);--surface:#FFFFFF;--surface-2:#F5F8F9;--raised:#FFFFFF;--fg:#0F1D26;--muted:#4A5E6A;--faint:#8A9BA5;--line:#D6DFE4;--line-2:#BFCCD3;--edge:#93A5AF;--rail:#0F1D26;--rail-fg:#C9D6DC;--rail-active:#1D3340;
+--teal:#0B7A70;--teal-bg:#DDF2EF;--blue:#2457C5;--blue-bg:#E1EAFB;--amber:#8A5A00;--amber-bg:#FCEFD0;--amber-strong:#E3A535;--coral:#B93C2B;--coral-bg:#FBE4DF;--violet:#6B46C1;--violet-bg:#EEE8FB;--slate:#3A4756;--slate-bg:#E6EBEF;--on-teal:#FFFFFF;--on-violet:#FFFFFF;
+--shadow:0 1px 2px rgb(15 29 38 / 6%),0 8px 22px -12px rgb(15 29 38 / 22%);--shadow-lg:0 2px 6px rgb(15 29 38 / 6%),0 18px 44px -18px rgb(15 29 38 / 34%);
+--sans:'Geist',ui-sans-serif,system-ui,'Segoe UI',sans-serif;--mono:'Geist Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;--ease:cubic-bezier(.2,.7,.2,1);
+color-scheme:light;display:flex;min-height:100vh;background:var(--app);color:var(--fg);font-family:var(--sans);font-size:14px;-webkit-font-smoothing:antialiased}
+.ff[data-theme="dark"]{--app:#0A1216;--canvas:#081014;--dot:rgba(147,168,179,.12);--surface:#0F1A20;--surface-2:#0C161B;--raised:#132229;--fg:#E8F0F3;--muted:#98ADB8;--faint:#5E7482;--line:#1F3039;--line-2:#2C424D;--edge:#46606D;--rail:#060C0F;--rail-fg:#9FB3BD;--rail-active:#13232B;
+--teal:#4FD1C0;--teal-bg:#10302C;--blue:#7FA8FF;--blue-bg:#14264A;--amber:#F2B84B;--amber-bg:#33270B;--amber-strong:#F2B84B;--coral:#FF8C7A;--coral-bg:#3D1E19;--violet:#B79CFF;--violet-bg:#231C3E;--slate:#B6C3CC;--slate-bg:#1B2930;--on-teal:#062320;--on-violet:#1A1033;
+--shadow:0 1px 2px rgb(0 0 0 / 40%),0 10px 26px -14px rgb(0 0 0 / 75%);--shadow-lg:0 2px 8px rgb(0 0 0 / 40%),0 22px 56px -20px rgb(0 0 0 / 85%);color-scheme:dark}
+.ff *{box-sizing:border-box}
+.ff button{font-family:inherit;color:inherit}
+.ff svg.i{width:18px;height:18px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.ff-rail{flex:0 0 76px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 8px;background:var(--rail)}
+.ff-logo{width:40px;height:40px;display:grid;place-items:center;margin-bottom:12px}
+.ff-navi{position:relative;width:62px;min-height:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border:0;border-radius:12px;background:none;color:var(--rail-fg);font:500 10.5px/1.1 var(--sans);text-decoration:none;cursor:pointer}
+.ff-navi:hover,.ff-navi[aria-current="page"]{background:var(--rail-active);color:#fff}
+.ff-navi svg.i{width:20px;height:20px}
+.ff-main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+.ff-top{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--line)}
+.ff-proj{margin-right:auto;min-width:0}
+.ff-proj h1{margin:0;font:650 17px/1.15 var(--sans);letter-spacing:-.015em}
+.ff-proj-sub{margin-top:5px;font:500 11.5px/1 var(--mono);color:var(--muted)}
+.ff-tile{flex:0 0 auto;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font:700 13px/1 var(--sans);box-shadow:inset 0 0 0 1px rgb(255 255 255 / 12%)}
+.ff-tile img{width:19px;height:19px;display:block}
+.ff-tile.code{background:var(--slate-bg);color:var(--slate)}
+.ff-tile.lock{background:var(--amber-strong);color:#2A1E05}
+.ff-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:0 14px;border-radius:11px;border:1px solid var(--line-2);background:var(--raised);color:var(--fg);font:600 13px/1 var(--sans);text-decoration:none;white-space:nowrap;cursor:pointer}
+.ff-btn:hover{border-color:var(--muted)}
+.ff-btn-go{background:var(--teal);border-color:var(--teal);color:var(--on-teal)}
+.ff-btn-ghost{background:transparent}
+.ff-btn:focus-visible,.ff-navi:focus-visible,.ff-ib:focus-visible,.ff-change:focus-visible,.ff-seg button:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.ff-ib{width:40px;height:40px;display:grid;place-items:center;border:0;border-radius:10px;background:none;cursor:pointer}
+.ff-ib:hover{background:var(--surface-2)}
+.ff-wrap{display:flex;flex-direction:column;gap:16px;padding:16px;max-width:1500px;width:100%}
+.ff-banner{display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px;padding:14px 16px;border-radius:16px;background:var(--violet-bg);border:1px solid color-mix(in srgb,var(--violet) 35%,transparent)}
+.ff-banner .ff-tile{width:44px;height:44px;border-radius:12px}
+.ff-banner .ff-tile img{width:24px;height:24px}
+.ff-banner h2{margin:0;font:650 18px/1.2 var(--sans);letter-spacing:-.015em}
+.ff-banner p{margin:4px 0 0;font:500 12px/1.3 var(--mono);color:var(--muted)}
+.ff-counts{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
+.ff-cnt{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font:600 12px/1 var(--sans)}
+.ff-cnt i{width:9px;height:9px;border-radius:3px;display:inline-block}
+.ff-mapcard{position:relative;height:500px;border-radius:18px;overflow:hidden;border:1px solid var(--line);background-color:var(--canvas);background-image:radial-gradient(var(--dot) 1.1px,transparent 1.4px);background-size:22px 22px}
+.ff-maptools{position:absolute;top:12px;right:12px;z-index:3}
+.ff-seg{display:inline-flex;padding:3px;border-radius:12px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow)}
+.ff-seg button{min-height:36px;padding:0 12px;border:0;border-radius:9px;background:none;color:var(--muted);font:600 12.5px/1 var(--sans);cursor:pointer}
+.ff-seg button[aria-pressed="true"]{background:var(--fg);color:var(--app)}
+.ff-world{position:absolute;left:0;top:0;transform-origin:0 0}
+.ff-edge{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}
+.ff-edge path{fill:none;stroke:var(--edge);stroke-width:2;stroke-linecap:round;transition:opacity .3s}
+.ff-edge.fb path{stroke:var(--coral);stroke-dasharray:7 6}
+.ff-edge.add path{stroke:var(--teal);stroke-width:2.6}
+.ff-edge.rem path{stroke:var(--coral);stroke-dasharray:2 6}
+.ff-edge.hide{opacity:0}
+.ff-edge.dim{opacity:.25}
+.ff-n{position:absolute;display:flex;align-items:center;gap:10px;padding:0 12px 0 10px;border-radius:14px;background:var(--raised);border:1px solid var(--line-2);box-shadow:var(--shadow);font:600 15px/1.1 var(--sans);white-space:nowrap;transition:opacity .3s,border-color .3s,box-shadow .3s}
+.ff-n span.t{overflow:hidden;text-overflow:ellipsis}
+.ff-n small{display:block;margin-top:4px;font:500 11.5px/1 var(--mono);color:var(--muted)}
+.ff-n.pill{border-radius:999px}
+.ff-n.dia{justify-content:center;padding:0 26px;text-align:center;white-space:normal;font-size:12.5px;line-height:1.2;border:0;background:transparent;box-shadow:none}
+.ff-n.dia::before{content:"";position:absolute;inset:0;z-index:-1;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:var(--line-2)}
+.ff-n.dia::after{content:"";position:absolute;inset:2px;z-index:-1;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:var(--raised)}
+.ff-n.dia.chg::before{background:var(--violet)}
+.ff-n.bar{padding:0;border-radius:6px;background:var(--fg);border:0}
+.ff-n.gate{background:var(--amber-bg);border:1.5px dashed var(--amber-strong)}
+.ff-n.add{border:1.5px solid var(--teal);box-shadow:0 0 0 4px color-mix(in srgb,var(--teal) 16%,transparent),var(--shadow)}
+.ff-n.add.off{border-style:dashed;box-shadow:none;opacity:.45}
+.ff-n.chg{border:1.5px solid var(--violet);box-shadow:0 0 0 4px color-mix(in srgb,var(--violet) 14%,transparent),var(--shadow)}
+.ff-n.rem{border:1.5px dashed var(--coral);background:var(--coral-bg);box-shadow:none}
+.ff-n.rem span.t{text-decoration:line-through}
+.ff-n.rem.off{border:1.5px dashed var(--line-2);background:transparent}
+.ff-n.rem.off span.t{text-decoration:none}
+.ff-n.conf{border:1.5px solid var(--amber-strong);box-shadow:0 0 0 4px color-mix(in srgb,var(--amber-strong) 20%,transparent),var(--shadow)}
+.ff-n.sel{outline:2px solid var(--fg);outline-offset:4px}
+.ff-n.dim{opacity:.3}
+.ff-tag{position:absolute;top:-11px;right:10px;padding:2px 7px;border-radius:6px;font:600 9.5px/1.3 var(--mono);letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
+.ff-tag.add{background:var(--teal);color:var(--on-teal)}
+.ff-tag.chg{background:var(--violet);color:var(--on-violet)}
+.ff-tag.rem{background:var(--coral);color:#2A0D08}
+.ff-tag.conf{background:var(--amber-strong);color:#2A1E05}
+.ff-tag.yours{background:var(--fg);color:var(--app)}
+.ff-tag.off{background:var(--surface);color:var(--muted);border:1px solid var(--line-2)}
+.ff-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 14px}
+.ff-h h3{margin:0;font:650 17px/1.2 var(--sans)}
+.ff-h span{font:500 12.5px/1.3 var(--sans);color:var(--muted)}
+.ff-changes{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:12px}
+.ff-change{display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:14px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);text-align:left;cursor:pointer;transition:border-color .2s,box-shadow .2s}
+.ff-change:hover{border-color:var(--muted)}
+.ff-change.sel{border-color:var(--fg);box-shadow:0 0 0 1px var(--fg),var(--shadow)}
+.ff-ct{display:inline-flex;align-self:flex-start;align-items:center;gap:6px;padding:3px 8px;border-radius:7px;font:600 10.5px/1.3 var(--mono);letter-spacing:.06em;text-transform:uppercase}
+.ff-ct.add{background:var(--teal-bg);color:var(--teal)}
+.ff-ct.chg{background:var(--violet-bg);color:var(--violet)}
+.ff-ct.rem{background:var(--coral-bg);color:var(--coral)}
+.ff-ct.conf{background:var(--amber-bg);color:var(--amber)}
+.ff-ct.yours{background:var(--slate-bg);color:var(--fg)}
+.ff-change b{font:650 15px/1.3 var(--sans)}
+.ff-change p{margin:0;font:450 13.5px/1.45 var(--sans);color:var(--fg)}
+.ff-ev{font:500 11.5px/1.3 var(--mono);color:var(--muted)}
+.ff-choose{display:flex;flex-wrap:wrap;gap:6px}
+.ff-choose button{min-height:36px;padding:0 12px;border-radius:10px;border:1px solid var(--line-2);background:var(--raised);font:600 12.5px/1 var(--sans);cursor:pointer}
+.ff-choose button[aria-pressed="true"]{background:var(--fg);border-color:var(--fg);color:var(--app)}
+.ff-choose button:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.ff-foot{position:sticky;bottom:0;z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:12px 16px;background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -10px 30px -20px rgb(0 0 0 / 40%)}
+.ff-foot span{font:500 13px/1.4 var(--sans);color:var(--muted);margin-right:auto}
+.ff-saved{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px;background:var(--teal-bg);color:var(--teal);font:600 13.5px/1.3 var(--sans)}
+@media (max-width: 760px){
+.ff{flex-direction:column}
+.ff-rail{flex:0 0 auto;flex-direction:row;width:100%;padding:6px 8px;overflow-x:auto}
+.ff-logo{margin:0 6px 0 2px}
+.ff-counts{margin-left:0}
+.ff-mapcard{height:380px}
+}
+</style>
+</helmet>
+<div class="ff" data-theme="{{theme}}">
+<nav class="ff-rail" aria-label="Main">
+<span class="ff-logo" aria-hidden="true"><svg width="36" height="36" viewBox="0 0 36 36"><rect width="36" height="36" rx="11" fill="#0B7A70"></rect><path d="M10 24 C 17 24, 16 12, 25 12" stroke="#FFFFFF" stroke-width="2.6" fill="none" stroke-linecap="round"></path><circle cx="10" cy="24" r="3.6" fill="#FFFFFF"></circle><circle cx="25.5" cy="12" r="3.6" fill="#B79CFF"></circle></svg></span>
+<a class="ff-navi" href="Main.dc.html" aria-current="page"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><path d="M6.5 10v2a4 4 0 0 0 4 4H14"></path></svg><span>Flow map</span></a>
+<button class="ff-navi" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"></path></svg><span>Runs</span></button>
+<a class="ff-navi" href="Catalog.dc.html"><svg class="i" viewBox="0 0 24 24"><path d="M9 2v5M15 2v5M6 7h12v4a6 6 0 0 1-12 0zM12 17v5"></path></svg><span>Connectors</span></a>
+<button class="ff-navi" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"></path></svg><span>Security</span></button>
+</nav>
+<div class="ff-main">
+<header class="ff-top">
+<div class="ff-proj"><h1>Baby-care shop</h1><div class="ff-proj-sub">you/baby-care-shop · main @ b7e9d21</div></div>
+<a class="ff-btn" href="Main.dc.html">Back to the map</a>
+<button class="ff-ib" type="button" aria-label="Switch light or dark" onClick="{{toggleTheme}}"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></button>
+</header>
+<div class="ff-wrap">
+<section class="ff-banner" aria-label="Re-check summary">
+<span class="ff-tile" style="background: var(--violet); color: var(--on-violet)"><svg viewBox="0 0 24 24" width="24" height="24" style="fill: currentColor"><path d="M12 2l2.2 6.3L20.5 10.5l-6.3 2.2L12 19l-2.2-6.3L3.5 10.5l6.3-2.2z"></path></svg></span>
+<div><h2>The Planner re-checked your repo</h2><p>main @ b7e9d21 · 2 new commits since map v4 · took 41 s</p></div>
+<div class="ff-counts">
+<span class="ff-cnt"><i style="background: var(--teal)"></i>3 added</span>
+<span class="ff-cnt"><i style="background: var(--violet)"></i>2 changed</span>
+<span class="ff-cnt"><i style="background: var(--coral)"></i>1 removed</span>
+<span class="ff-cnt"><i style="background: var(--amber-strong)"></i>1 needs you</span>
+<span class="ff-cnt"><i style="background: var(--fg)"></i>2 of yours kept</span>
+</div>
+</section>
+<div class="ff-mapcard" ref="{{mapRef}}">
+<div class="ff-maptools">
+<div class="ff-seg" role="group" aria-label="What to show">
+<button type="button" aria-pressed="{{vDiff}}" onClick="{{showDiff}}">Diff</button>
+<button type="button" aria-pressed="{{vOld}}" onClick="{{showOld}}">v4 (now)</button>
+<button type="button" aria-pressed="{{vNew}}" onClick="{{showNew}}">v5 (after)</button>
+</div>
+</div>
+<div class="ff-world" style="transform: translate({{wx}}px, {{wy}}px) scale({{wk}})">
+<sc-for list="{{edges}}" as="e" hint-placeholder-count="0"><svg class="ff-edge {{e.cls}}" width="1" height="1"><path d="{{e.d}}"></path></svg></sc-for>
+<sc-for list="{{nodes}}" as="n" hint-placeholder-count="0">
+<div class="ff-n {{n.cls}}" style="left: {{n.x}}px; top: {{n.y}}px; width: {{n.w}}px; height: {{n.h}}px">
+<sc-if value="{{n.showTile}}" hint-placeholder-val="{{true}}"><span class="ff-tile {{n.tcls}}" style="background: {{n.bg}}; color: {{n.ink}}"><sc-if value="{{n.hasImg}}" hint-placeholder-val="{{false}}"><img src="{{n.img}}" alt=""></sc-if><sc-if value="{{n.hasMono}}" hint-placeholder-val="{{false}}">{{n.mono}}</sc-if><sc-if value="{{n.isCode}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4"></path></svg></sc-if></span></sc-if>
+<sc-if value="{{n.showText}}" hint-placeholder-val="{{true}}"><span class="t">{{n.title}}<sc-if value="{{n.hasSub}}" hint-placeholder-val="{{false}}"><small>{{n.sub}}</small></sc-if></span></sc-if>
+<sc-if value="{{n.hasTag}}" hint-placeholder-val="{{false}}"><span class="ff-tag {{n.tagCls}}">{{n.tag}}</span></sc-if>
+</div>
+</sc-for>
+</div>
+</div>
+<div class="ff-h"><h3>Changes</h3><span>Pick what to take. Nothing changes until you save.</span></div>
+<div class="ff-changes">
+<sc-for list="{{changes}}" as="c" hint-placeholder-count="6">
+<div class="ff-change {{c.selCls}}" role="group" aria-label="{{c.title}}" onClick="{{c.pick}}">
+<span class="ff-ct {{c.type}}">{{c.typeLabel}}</span>
+<b>{{c.title}}</b>
+<p>{{c.detail}}</p>
+<span class="ff-ev">{{c.ev}}</span>
+<div class="ff-choose">
+<sc-for list="{{c.opts}}" as="o" hint-placeholder-count="2"><button type="button" aria-pressed="{{o.on}}" onClick="{{o.choose}}">{{o.label}}</button></sc-for>
+</div>
+</div>
+</sc-for>
+</div>
+<sc-if value="{{saved}}" hint-placeholder-val="{{false}}"><div class="ff-saved" role="status"><svg class="i" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"></path></svg>Map v5 saved. v4 is still runnable from Run history.</div></sc-if>
+</div>
+<div class="ff-foot">
+<span>{{footText}}</span>
+<button class="ff-btn ff-btn-ghost" type="button" onClick="{{keep}}">Keep v4 as it is</button>
+<button class="ff-btn ff-btn-go" type="button" onClick="{{save}}">{{saveLabel}}</button>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"$preview":{"width":1440,"height":900}}'>
+const MK = {
+  razorpay: { img: '/_blob/ade37c3be8a35758432154560e7cae43', bg: '#3395FF' }, gemini: { img: '/_blob/0f82863cf3a140d98683f584542db625', bg: '#4285F4' },
+  nim: { img: '/_blob/1e2654fb3d48388dedf245b977768396', bg: '#76B900' }, claude: { img: '/_blob/7acfa64235c5f716407c4a48fc851019', bg: '#D97757' },
+  ollama: { img: '/_blob/e0302ff5b358793526df55a762acfa6b', bg: '#1F2328' }, gmail: { img: '/_blob/d85c060ca3fdb1b4c535ef2131b74b91', bg: '#EA4335' },
+  inventory: { mono: 'IA', bg: '#2F6FD6' }, higgsfield: { mono: 'Hf', bg: '#2A2A30' }, twilio: { mono: 'Tw', bg: '#F22F46' }, slack: { mono: 'Sl', bg: '#4A154B' }
+};
+const NODES = [
+  { id: 'start', kind: 'start', title: 'Payment captured', brand: 'razorpay', x: 32, y: 386, w: 176, h: 48 },
+  { id: 'fetch', kind: 'api', title: 'Fetch order', brand: 'razorpay', x: 252, y: 378, w: 176, h: 64 },
+  { id: 'risky', kind: 'decision', title: 'New customer or ₹5,000+?', x: 472, y: 366, w: 144, h: 88 },
+  { id: 'score', kind: 'llm', title: 'Score fraud risk', brand: 'gemini', x: 660, y: 158, w: 196, h: 64, sub: 'gemini-2.0-flash', subNew: 'gemini-2.5-flash' },
+  { id: 'score_nim', kind: 'llm', title: 'Score fraud risk', brand: 'nim', x: 660, y: 38, w: 196, h: 64, sub: 'fallback · llama-3.1-8b' },
+  { id: 'high', kind: 'decision', title: 'Risk ≥ 0.7?', titleNew: 'Risk ≥ 0.6?', x: 900, y: 146, w: 128, h: 88 },
+  { id: 'gate_hold', kind: 'gate', title: 'Hold the payment', x: 1068, y: 158, w: 180, h: 64 },
+  { id: 'refund', kind: 'api', title: 'Refund payment', brand: 'razorpay', x: 1292, y: 158, w: 196, h: 64 },
+  { id: 'end_held', kind: 'end', title: 'Order held', x: 1532, y: 166, w: 140, h: 48 },
+  { id: 'fork', kind: 'fork', title: '', x: 1068, y: 280, w: 12, h: 260 },
+  { id: 'note', kind: 'llm', title: 'Write thank-you note', brand: 'ollama', x: 1124, y: 268, w: 196, h: 64, sub: 'llama3.2 · yours' },
+  { id: 'stock', kind: 'api', title: 'Check stock', brand: 'inventory', x: 1124, y: 378, w: 196, h: 64 },
+  { id: 'recap', kind: 'api', title: 'Render recap image', brand: 'higgsfield', x: 1124, y: 488, w: 196, h: 64 },
+  { id: 'join', kind: 'join', title: '', x: 1384, y: 280, w: 12, h: 260 },
+  { id: 'gate_send', kind: 'gate', title: 'Send to customer', x: 1444, y: 378, w: 180, h: 64 },
+  { id: 'sms', kind: 'api', title: 'SMS receipt', brand: 'twilio', x: 1444, y: 598, w: 180, h: 64 },
+  { id: 'send', kind: 'mcp', title: 'Send email', brand: 'gmail', x: 1668, y: 330, w: 196, h: 64 },
+  { id: 'slack', kind: 'mcp', title: 'Post to #orders', brand: 'slack', x: 1668, y: 436, w: 196, h: 64 },
+  { id: 'end', kind: 'end', title: 'Order done', x: 1908, y: 386, w: 140, h: 48 },
+  { id: 'r_start', kind: 'start', title: 'Refund received', brand: 'razorpay', x: 32, y: 596, w: 176, h: 48, added: true },
+  { id: 'r_mark', kind: 'code', title: 'Mark order refunded', x: 252, y: 588, w: 210, h: 64, added: true },
+  { id: 'r_end', kind: 'end', title: 'Refund logged', x: 506, y: 596, w: 150, h: 48, added: true }
+];
+const EDGES = [
+  ['start', 'fetch'], ['fetch', 'risky'], ['risky', 'score', 'T'], ['risky', 'fork'], ['score', 'high'], ['score', 'score_nim', 'T', 'B', 'fb'],
+  ['score_nim', 'high', 'R', 'T', 'fb'], ['high', 'gate_hold'], ['high', 'fork', 'B'], ['gate_hold', 'refund'], ['refund', 'end_held'],
+  ['fork', 'note'], ['fork', 'stock'], ['fork', 'recap'], ['note', 'join'], ['stock', 'join'], ['recap', 'join'], ['join', 'gate_send'],
+  ['join', 'sms', 'R', 'L', 'rem'], ['gate_send', 'send'], ['gate_send', 'slack'], ['send', 'end'], ['slack', 'end'],
+  ['r_start', 'r_mark', 'R', 'L', 'add'], ['r_mark', 'r_end', 'R', 'L', 'add']
+];
+const CHANGES = [
+  { id: 'c1', node: 'r_start', nodes: ['r_start', 'r_mark', 'r_end'], type: 'add', typeLabel: 'Added', title: 'New webhook: refund received',
+    detail: 'Three new steps on a new route. No LLM in it, so nothing is sent out.', ev: 'api/webhooks.py:58 · commit b7e9d21' },
+  { id: 'c2', node: 'score', nodes: ['score'], type: 'chg', typeLabel: 'Changed', title: 'Fraud scoring moved to gemini-2.5-flash',
+    detail: 'The model name changed in config. Your NIM fallback stays as it is.', ev: 'config/llm.py:9' },
+  { id: 'c3', node: 'high', nodes: ['high'], type: 'chg', typeLabel: 'Changed', title: 'Risk threshold 0.7 → 0.6',
+    detail: 'More orders will stop at "Hold the payment" and wait for you.', ev: 'services/risk.py:57' },
+  { id: 'c4', node: 'sms', nodes: ['sms'], type: 'rem', typeLabel: 'Removed', title: 'Drop "SMS receipt"',
+    detail: 'It was unconfirmed, and still no code calls Twilio.', ev: 'no call site · .env.example:7' },
+  { id: 'c5', node: 'note', nodes: ['note'], type: 'conf', typeLabel: 'Needs you', title: 'Thank-you notes are now also in Hindi',
+    detail: 'You moved this step to Ollama. In the test run, llama3.2 wrote 6 of 10 Hindi notes well; Claude wrote 10 of 10.', ev: 'services/email.py:33',
+    choices: [['mine', 'Keep Ollama (yours)'], ['nim', 'Use Claude']] },
+  { id: 'c6', node: 'slack', nodes: ['slack'], type: 'yours', typeLabel: 'Yours, kept', title: '"Post to #orders" stays',
+    detail: 'Your own step. The Planner never removes steps you added.', ev: 'added by you · 8 Oct', info: true }
+];
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+function inkOn(hex) {
+  const n = parseInt(String(hex).replace('#', '').slice(0, 6), 16);
+  const ch = function (c) { const v = c / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  const L = 0.2126 * ch((n >> 16) & 255) + 0.7152 * ch((n >> 8) & 255) + 0.0722 * ch(n & 255);
+  return (L + 0.05) / (0.0122 + 0.05) > 1.05 / (L + 0.05) ? '#0F1D26' : '#FFFFFF';
+}
+function anchor(n, side, otherY) {
+  if (n.kind === 'fork' || n.kind === 'join') { const yy = clamp(otherY, n.y + 14, n.y + n.h - 14); return side === 'L' ? [n.x, yy] : [n.x + n.w, yy]; }
+  if (side === 'R') return [n.x + n.w, n.y + n.h / 2];
+  if (side === 'L') return [n.x, n.y + n.h / 2];
+  if (side === 'T') return [n.x + n.w / 2, n.y];
+  return [n.x + n.w / 2, n.y + n.h];
+}
+function pathFor(a, b, fs, ts) {
+  const p0 = anchor(a, fs, b.y + b.h / 2), p3 = anchor(b, ts, a.y + a.h / 2);
+  const dx = Math.max(36, Math.abs(p3[0] - p0[0]) * 0.5), dy = Math.max(36, Math.abs(p3[1] - p0[1]) * 0.55);
+  let c1, c2;
+  if (fs === 'T' && ts === 'B') { c1 = [p0[0] + 70, p0[1] - dy]; c2 = [p3[0] + 70, p3[1] + dy]; }
+  else {
+    c1 = fs === 'R' ? [p0[0] + dx, p0[1]] : fs === 'T' ? [p0[0], p0[1] - dy] : fs === 'B' ? [p0[0], p0[1] + dy] : [p0[0] - dx, p0[1]];
+    c2 = ts === 'L' ? [p3[0] - dx, p3[1]] : ts === 'T' ? [p3[0], p3[1] - dy] : ts === 'B' ? [p3[0], p3[1] + dy] : [p3[0] + dx, p3[1]];
+  }
+  const f = function (v) { return Math.round(v); };
+  return 'M ' + f(p0[0]) + ' ' + f(p0[1]) + ' C ' + f(c1[0]) + ' ' + f(c1[1]) + ', ' + f(c2[0]) + ' ' + f(c2[1]) + ', ' + f(p3[0]) + ' ' + f(p3[1]);
+}
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { theme: null, view: 'diff', sel: null, w: 1300, h: 500, saved: false, take: { c1: true, c2: true, c3: true, c4: true, c5: 'mine' } };
+    const self = this;
+    this.mapRef = function (el) {
+      if (!el || el === self._el) return;
+      self._el = el;
+      if (window.ResizeObserver) { self._ro = new ResizeObserver(function () { self.measure(); }); self._ro.observe(el); }
+      self.measure();
+    };
+    this.toggleTheme = function () { self.setState({ theme: self.theme() === 'dark' ? 'light' : 'dark' }); };
+    this.showDiff = function () { self.setState({ view: 'diff' }); };
+    this.showOld = function () { self.setState({ view: 'old' }); };
+    this.showNew = function () { self.setState({ view: 'new' }); };
+    this.save = function () { self.setState({ saved: true }); };
+    this.keep = function () { self.setState({ take: { c1: false, c2: false, c3: false, c4: false, c5: 'mine' }, saved: false }); };
+  }
+  componentWillUnmount() { if (this._ro) this._ro.disconnect(); }
+  theme() { return this.state.theme || this.props.theme || 'light'; }
+  measure() {
+    if (!this._el) return;
+    const w = this._el.clientWidth, h = this._el.clientHeight;
+    if (w && h && (w !== this.state.w || h !== this.state.h)) this.setState({ w: w, h: h });
+  }
+  renderVals() {
+    const s = this.state, self = this, take = s.take, view = s.view;
+    const sel = s.sel ? CHANGES.filter(function (c) { return c.id === s.sel; })[0] : null;
+    const selNodes = {};
+    if (sel) sel.nodes.forEach(function (id) { selNodes[id] = true; });
+    const after = view === 'new', before = view === 'old', diff = view === 'diff';
+    const byId = {};
+    NODES.forEach(function (n) { byId[n.id] = n; });
+    const visible = function (n) {
+      if (n.added) return after ? take.c1 : !before;
+      if (n.id === 'sms') return !(after && take.c4);
+      return true;
+    };
+    const nodes = NODES.filter(visible).map(function (n) {
+      const m = MK[n.brand] || null;
+      let brand = n.brand, sub = n.sub || '', title = n.title;
+      let cls = n.kind === 'start' || n.kind === 'end' ? 'pill' : n.kind === 'decision' ? 'dia' : (n.kind === 'fork' || n.kind === 'join') ? 'bar' : n.kind;
+      let tag = '', tagCls = '';
+      if (n.added) { if (diff) { cls += ' add' + (take.c1 ? '' : ' off'); tag = take.c1 ? 'new' : 'skipped'; tagCls = take.c1 ? 'add' : 'off'; } }
+      if (n.id === 'score') {
+        if ((after && take.c2) || (diff && take.c2)) sub = n.subNew;
+        if (diff) { cls += take.c2 ? ' chg' : ''; tag = take.c2 ? 'model changed' : ''; tagCls = 'chg'; }
+      }
+      if (n.id === 'high') {
+        if ((after || diff) && take.c3) title = n.titleNew;
+        if (diff && take.c3) cls += ' chg';
+      }
+      if (n.id === 'sms' && diff) { cls += ' rem' + (take.c4 ? '' : ' off'); tag = take.c4 ? 'removed' : 'kept'; tagCls = take.c4 ? 'rem' : 'off'; }
+      if (n.id === 'note') {
+        if ((after || diff) && take.c5 === 'nim') { brand = 'claude'; sub = 'claude-haiku-5-5 · Hindi'; }
+        if (diff) { cls += ' conf'; tag = take.c5 === 'nim' ? 'Planner\'s pick' : 'your call'; tagCls = 'conf'; }
+      }
+      if (n.id === 'slack' && diff) { tag = 'yours · kept'; tagCls = 'yours'; }
+      if (sel && !selNodes[n.id]) cls += ' dim';
+      if (sel && selNodes[n.id]) cls += ' sel';
+      const mm = MK[brand] || m;
+      const isCard = ['api', 'llm', 'mcp', 'gate', 'start', 'code'].indexOf(n.kind) >= 0;
+      return { x: n.x, y: n.y, w: n.w, h: n.h, cls: cls, title: title, sub: sub, hasSub: !!sub && n.kind !== 'decision',
+        showText: n.kind !== 'fork' && n.kind !== 'join', showTile: isCard,
+        tcls: n.kind === 'gate' ? 'lock' : (mm ? '' : 'code'), isCode: !mm && n.kind !== 'gate',
+        bg: mm ? mm.bg : '', ink: mm ? inkOn(mm.bg) : '', img: mm && mm.img ? mm.img : '', mono: mm && mm.mono ? mm.mono : '',
+        hasImg: !!(mm && mm.img), hasMono: !!(mm && mm.mono), tag: tag, tagCls: tagCls, hasTag: !!tag };
+    });
+    const vis = {};
+    NODES.filter(visible).forEach(function (n) { vis[n.id] = true; });
+    const edges = EDGES.filter(function (e) { return vis[e[0]] && vis[e[1]]; }).map(function (e) {
+      let cls = e[4] || '';
+      if (cls === 'add' && !diff) cls = '';
+      if (cls === 'add' && diff && !take.c1) cls = 'add dim';
+      if (cls === 'rem' && !diff) cls = '';
+      if (cls === 'rem' && diff && !take.c4) cls = '';
+      if (sel && !(selNodes[e[0]] || selNodes[e[1]])) cls += ' dim';
+      return { d: pathFor(byId[e[0]], byId[e[1]], e[2] || 'R', e[3] || 'L'), cls: cls };
+    });
+    const k = clamp(Math.min((s.w - 48) / 2060, (s.h - 70) / 640), 0.25, 1);
+    const wx = (s.w - 2060 * k) / 2 - 10 * k, wy = 52 + ((s.h - 70) - 640 * k) / 2 - 30 * k;
+    const changes = CHANGES.map(function (c) {
+      let opts = [];
+      if (c.choices) {
+        opts = c.choices.map(function (ch) {
+          return { label: ch[1], on: take[c.id] === ch[0], choose: function (e) { e.stopPropagation(); const t = Object.assign({}, s.take); t[c.id] = ch[0]; self.setState({ take: t, saved: false, sel: c.id }); } };
+        });
+      } else if (!c.info) {
+        opts = [
+          { label: c.type === 'rem' ? 'Remove it' : 'Take it', on: !!take[c.id], choose: function (e) { e.stopPropagation(); const t = Object.assign({}, s.take); t[c.id] = true; self.setState({ take: t, saved: false, sel: c.id }); } },
+          { label: c.type === 'rem' ? 'Keep it' : 'Skip', on: !take[c.id], choose: function (e) { e.stopPropagation(); const t = Object.assign({}, s.take); t[c.id] = false; self.setState({ take: t, saved: false, sel: c.id }); } }
+        ];
+      }
+      return { title: c.title, type: c.type, typeLabel: c.typeLabel, detail: c.detail, ev: c.ev, opts: opts, selCls: s.sel === c.id ? 'sel' : '',
+        pick: function () { self.setState({ sel: s.sel === c.id ? null : c.id }); } };
+    });
+    const n = ['c1', 'c2', 'c3', 'c4'].filter(function (id) { return take[id]; }).length + (take.c5 === 'nim' ? 1 : 0);
+    return {
+      theme: this.theme(), toggleTheme: this.toggleTheme, mapRef: this.mapRef,
+      vDiff: diff, vOld: before, vNew: after, showDiff: this.showDiff, showOld: this.showOld, showNew: this.showNew,
+      nodes: nodes, edges: edges, wx: Math.round(wx), wy: Math.round(wy), wk: Math.round(k * 1000) / 1000,
+      changes: changes, saved: s.saved, save: this.save, keep: this.keep,
+      saveLabel: n ? 'Save as map v5 · ' + n + (n === 1 ? ' change' : ' changes') : 'Save as map v5',
+      footText: 'Your edits stay on top. v4 stays runnable. Gates on payments and email are kept whatever you pick.'
+    };
+  }
+}
+</script>
+</body>
+</html>

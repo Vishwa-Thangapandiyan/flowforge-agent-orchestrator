@@ -1,4 +1,4 @@
-"""Random DAG generator for the simulated track (D6). Owner: Person C.
+"""Random DAG generator for the simulated track (D6).
 
 Edges only go from an earlier to a later step in a hidden rank order, so every
 graph is acyclic by construction; the declared order is shuffled afterwards so
@@ -39,7 +39,7 @@ class LatencyModel:
     @classmethod
     def load(cls, path: Path) -> LatencyModel:
         if path.exists():
-            data = json.loads(path.read_text())
+            data = json.loads(path.read_text(encoding="utf-8"))
             return cls({t: v for t, v in data.items() if v})
         return cls()
 

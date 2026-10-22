@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Connector detail</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;color:#0F1D26;background:#EEF3F5}
+a{color:#2457C5}a:hover{color:#0B7A70}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="display:flex;flex-wrap:wrap;min-height:1100px;background:#EEF3F5">
+<nav style="flex:1 1 220px;box-sizing:border-box;padding:24px 16px;background:#0F1D26;display:flex;flex-direction:column;gap:6px;align-self:stretch">
+<div style="font-family:'Bricolage Grotesque','Segoe UI',sans-serif;font-size:24px;font-weight:700;color:#fff;padding:0 12px 18px">FlowForge</div>
+<a href="Main.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Overview</a>
+<a href="Connector.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;background:#1D3340;color:#fff;font-weight:600;text-decoration:none;font-size:15px">Connectors</a>
+<a href="PlanReview.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Plan review</a>
+<a href="Run.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Live run</a>
+<a href="Approvals.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px"><span>Approvals</span><span style="background:#F2B84B;color:#3A2D0E;border-radius:10px;padding:1px 8px;font-size:12px;font-weight:600">2</span></a>
+<a href="History.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Run history</a>
+<a href="Security.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Security</a>
+<a href="AddConnector.dc.html" style="margin-top:14px;padding:11px 12px;border-radius:8px;border:1px dashed #4A5E6A;color:#E8F0F3;text-decoration:none;font-size:15px;text-align:center">+ Add app</a>
+</nav>
+
+<main style="flex:999 1 560px;min-width:0;box-sizing:border-box;padding:32px;display:flex;flex-direction:column;gap:24px">
+<div style="font-size:15px;color:#4A5E6A"><a href="Main.dc.html" style="color:#2457C5">Baby-care shop</a> &nbsp;›&nbsp; <b style="color:#0F1D26">Razorpay</b></div>
+
+<header style="background:#fff;border:1px solid #D3DDE3;border-radius:16px;padding:20px;display:flex;flex-wrap:wrap;gap:16px;align-items:center">
+<span style="flex:0 0 56px;height:56px;border-radius:14px;background:#3395FF;color:#0F1D26;display:flex;align-items:center;justify-content:center;font:500 20px 'IBM Plex Mono',monospace">Rz</span>
+<div style="display:flex;flex-direction:column;gap:2px;flex:1 1 200px">
+<h1 style="margin:0;font-family:'Bricolage Grotesque','Segoe UI',sans-serif;font-size:30px;line-height:1.1">Razorpay</h1>
+<span style="color:#4A5E6A">Payments · HTTP API · slot: Payments</span>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+<span style="background:#DCF2E4;color:#1F7A45;border-radius:999px;padding:6px 12px;font-size:14px;font-weight:600">Connected · test mode</span>
+<button type="button" style="min-height:44px;padding:0 16px;border-radius:10px;border:1px solid #D3DDE3;background:#fff;color:#0F1D26;font-weight:600;font-size:15px">Test connection</button>
+<button type="button" style="min-height:44px;padding:0 16px;border-radius:10px;border:0;background:#6B46C1;color:#fff;font-weight:600;font-size:15px">Swap app</button>
+</div>
+</header>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(420px,100%),1fr));gap:16px">
+<section style="background:#fff;border:1px solid #D3DDE3;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:10px">
+<span style="font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#4A5E6A">Connection</span>
+<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid #EEF3F5"><span>Account</span><b>Baby-care shop (test)</b></div>
+<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid #EEF3F5"><span>Mode</span><b>Test</b></div>
+<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid #EEF3F5"><span>Key id</span><b style="color:#1F7A45">configured ••••••</b></div>
+<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid #EEF3F5"><span>Webhook secret</span><b style="color:#1F7A45">configured ••••••</b></div>
+<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 0"><span>Last test call</span><b style="color:#1F7A45">OK, 2 min ago</b></div>
+<p style="margin:0;font-size:13px;color:#4A5E6A">Keys are write-only. The real values live in the vault and are never shown.</p>
+</section>
+
+<section style="background:#fff;border:1px solid #D3DDE3;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:10px">
+<span style="font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#4A5E6A">The form you filled in</span>
+<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid #EEF3F5"><span>Currency</span><b>INR</b></div>
+<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid #EEF3F5"><span>Methods</span><b>UPI, cards, wallets</b></div>
+<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid #EEF3F5"><span>Webhook URL</span><b style="font-family:'IBM Plex Mono',monospace;font-size:14px">/hooks/razorpay</b></div>
+<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 0"><span>Checkout</span><b>Standard modal</b></div>
+<a href="AddConnector.dc.html" style="font-weight:600">Edit this form</a>
+</section>
+</div>
+
+<section style="background:#fff;border:1px solid #D3DDE3;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:baseline">
+<span style="font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#4A5E6A">Tasks inside this box</span>
+<span style="font-size:14px;color:#4A5E6A">Found by the Planner from this app's API and your code</span>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:10px 12px;background:#EEF3F5;border-radius:10px"><span style="background:#E1EAFB;color:#2457C5;border-radius:6px;padding:3px 8px;font:500 12px 'IBM Plex Mono',monospace">http</span><b style="flex:1 1 200px">Create order</b><span style="color:#4A5E6A">0.8 s</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:10px 12px;background:#EEF3F5;border-radius:10px"><span style="background:#DDF2EF;color:#0B7A70;border-radius:6px;padding:3px 8px;font:500 12px 'IBM Plex Mono',monospace">script</span><b style="flex:1 1 200px">Verify signature</b><span style="color:#4A5E6A">0.1 s</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:10px 12px;background:#EEF3F5;border-radius:10px"><span style="background:#E1EAFB;color:#2457C5;border-radius:6px;padding:3px 8px;font:500 12px 'IBM Plex Mono',monospace">http</span><b style="flex:1 1 200px">Handle payment.captured</b><span style="color:#4A5E6A">0.4 s</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:10px 12px;background:#FCEFD0;border-radius:10px"><span style="background:#F2B84B;color:#3A2D0E;border-radius:6px;padding:3px 8px;font:500 12px 'IBM Plex Mono',monospace">gate</span><b style="flex:1 1 200px">Refund, needs your approval</b><span style="color:#8A5A00;font-weight:600">human</span></div>
+</section>
+
+<section style="background:#fff;border:1px solid #D3DDE3;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:baseline">
+<span style="font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#6B46C1">Suggested by the Planner</span>
+<button type="button" style="min-height:44px;padding:0 16px;border-radius:10px;border:1px solid #D3DDE3;background:#fff;color:#0F1D26;font-weight:600;font-size:15px">Scan again</button>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:12px;background:#ECE6FA;border-radius:10px">
+<div style="flex:1 1 280px;display:flex;flex-direction:column;gap:2px"><b>Fetch order after capture</b><span style="font-size:14px;color:#4A5E6A">Evidence: <span style="font-family:'IBM Plex Mono',monospace">routes/hooks.js:41</span> reads the order after payment.captured</span></div>
+<button type="button" style="min-height:44px;padding:0 16px;border-radius:10px;border:0;background:#0B7A70;color:#fff;font-weight:600;font-size:15px">Accept</button>
+<button type="button" style="min-height:44px;padding:0 16px;border-radius:10px;border:1px solid #D3DDE3;background:#fff;color:#0F1D26;font-weight:600;font-size:15px">Dismiss</button>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:12px;background:#ECE6FA;border-radius:10px">
+<div style="flex:1 1 280px;display:flex;flex-direction:column;gap:2px"><b>Mark order verified</b><span style="font-size:14px;color:#4A5E6A">Evidence: <span style="font-family:'IBM Plex Mono',monospace">shop API · PATCH /orders/{id}</span></span></div>
+<button type="button" style="min-height:44px;padding:0 16px;border-radius:10px;border:0;background:#0B7A70;color:#fff;font-weight:600;font-size:15px">Accept</button>
+<button type="button" style="min-height:44px;padding:0 16px;border-radius:10px;border:1px solid #D3DDE3;background:#fff;color:#0F1D26;font-weight:600;font-size:15px">Dismiss</button>
+</div>
+<p style="margin:0;font-size:13px;color:#4A5E6A">A suggestion with no real tool, route or file behind it is dropped before you see it.</p>
+</section>
+
+<section style="background:#fff;border:1px solid #D3DDE3;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:8px">
+<span style="font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#4A5E6A">Recent activity</span>
+<div style="font:500 14px/1.6 'IBM Plex Mono',monospace;color:#0F1D26">12:04 &nbsp;payment.captured · order_•••• · ₹1,299</div>
+<div style="font:500 14px/1.6 'IBM Plex Mono',monospace;color:#0F1D26">12:04 &nbsp;signature verified</div>
+<div style="font:500 14px/1.6 'IBM Plex Mono',monospace;color:#0F1D26">11:58 &nbsp;test call OK</div>
+</section>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1100}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

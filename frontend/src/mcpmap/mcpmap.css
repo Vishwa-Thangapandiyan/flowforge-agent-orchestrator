@@ -1,0 +1,21 @@
+/* The MCP Map export page (D26). The map itself carries its own styles inside the SVG. */
+.mm-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 20px 0 16px; }
+.mm-actions .btn small { color: var(--muted); font: 500 12px var(--mono); }
+.mm-actions .btn.primary small { color: inherit; opacity: .8; }
+.mm-said { color: var(--teal); font-weight: 600; min-height: 1em; }
+.mm-frame { overflow-x: auto; border-radius: 16px; border: 1px solid var(--line); box-shadow: var(--shadow-1); background: #fff; }
+.mm-frame svg { display: block; width: 100%; min-width: 860px; height: auto; }
+.mm-mermaid { margin-top: 20px; }
+.mm-mermaid summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+.mm-mermaid pre { margin: 8px 0 0; padding: 16px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line);
+  font: 12.5px/1.6 var(--mono); overflow-x: auto; }
+.mm-rules { margin-top: 12px; color: var(--muted); font-size: 14px; }
+
+/* PDF: the print dialog gets the map alone, on A4 landscape */
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+  body * { visibility: hidden; }
+  .mm-print, .mm-print * { visibility: visible; }
+  .mm-print { position: absolute; inset: 0 auto auto 0; width: 100%; border: 0; box-shadow: none; overflow: visible; }
+  .mm-print svg { min-width: 0; }
+}

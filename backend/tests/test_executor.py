@@ -1,10 +1,14 @@
+import sys
+
 import pytest
 
-from flowforge.schema import Workflow
+from flowforge.nodes.mock_node import MockNode
 from flowforge.scheduler.executor import StepState, run_workflow
 from flowforge.scheduler.rate_limit import TokenBucket
-from flowforge.nodes.mock_node import MockNode
+from flowforge.schema import Workflow
 from flowforge.storage import Storage
+
+TIMER_TICK_MS = 16 if sys.platform == "win32" else 1
 
 
 def mk(steps, **wf):
@@ -34,11 +38,27 @@ DIAMOND = mk(
 
 
 async def test_diamond_meets_lower_bound():
-    result, _ = await run(DIAMOND)
+    events = []
+    result, _ = await run(DIAMOND, on_event=lambda e: events.append((e["step_id"], e["state"])) if e["type"] == "step" else None)
     assert result.status == "succeeded"
     assert result.predicted_critical_path == ["a", "b", "e"]
     assert result.actual_critical_path == ["a", "b", "e"]
-    assert 100 <= result.makespan_ms < 140  # lower bound is 100
+    # never faster than the lower bound (100 ms), give or take one OS timer tick per step on the chain: Windows'
+    # clock ticks every ~15.6 ms, so a 20 ms sleep can read as 16 there (CI saw 78, 93 and 94)
+    assert result.makespan_ms >= 100 - len(result.actual_critical_path) * TIMER_TICK_MS
+
+    # Meeting the bound means the critical chain never waits for a slot: when a chain step
+    # becomes ready, the steps already running plus any started ahead of it (equal-priority
+    # ties) still leave it a free slot. Checked on event order, not wall-clock windows,
+    # which OS timer granularity and load make unreliable.
+    def starts_without_waiting(step):
+        ready_at, started_at = events.index((step, "ready")), events.index((step, "running"))
+        running = {s for s, state in events[:ready_at] if state == "running"}
+        running -= {s for s, state in events[:ready_at] if state == "succeeded"}
+        started_ahead = [s for s, state in events[ready_at:started_at] if state == "running"]
+        return len(running) + len(started_ahead) < DIAMOND.max_concurrency
+
+    assert all(starts_without_waiting(s) for s in ["a", "b", "e"])
 
 
 async def test_dependencies_respected():
@@ -57,8 +77,10 @@ TRAP = mk([m("x1", 40), m("x2", 40), m("x3", 40), m("l1", 40), m("l2", 40, ["l1"
 async def test_critical_path_beats_fifo():
     cp, _ = await run(TRAP, policy="critical_path")
     fifo, _ = await run(TRAP, policy="fifo")
-    # cp starts the chain at t=0 → 3 rounds (120 ms); fifo starts it late → 4 rounds (160 ms)
-    assert cp.makespan_ms < 150 <= fifo.makespan_ms
+    # cp starts the chain at t=0 → 3 rounds (120 ms); fifo starts it late → 4 rounds (160 ms).
+    # Assert the scheduling decision, not wall-clock thresholds: timer granularity varies by OS.
+    assert cp.steps["l1"].started_at < cp.steps["x1"].finished_at
+    assert fifo.steps["l1"].started_at >= min(fifo.steps["x1"].finished_at, fifo.steps["x2"].finished_at)
 
 
 async def test_sequential_is_sum_of_work():
@@ -70,7 +92,10 @@ async def test_levels_barrier_vs_greedy():
     wf = mk([m("a", 20), m("b", 20, ["a"]), m("c", 60)], max_concurrency=4)
     levels, _ = await run(wf, policy="levels")
     greedy, _ = await run(wf, policy="greedy")
-    assert greedy.makespan_ms < 75 and levels.makespan_ms >= 80  # b waits for c's layer
+    # b waits for c's layer under levels, not under greedy. Assert the scheduling decision,
+    # not wall-clock thresholds: timer granularity varies by OS.
+    assert greedy.steps["b"].started_at < greedy.steps["c"].finished_at
+    assert levels.steps["b"].started_at >= levels.steps["c"].finished_at
 
 
 async def test_failure_skips_descendants_only():

@@ -2,11 +2,10 @@
 
 from hypothesis import given, settings
 from hypothesis import strategies as st
+from test_graph_properties import mk, random_dags
 
 from flowforge.scheduler import critical_path as cp
 from flowforge.scheduler import graph
-
-from test_graph_properties import mk, random_dags
 
 
 def brute_force_longest(edges, weights):

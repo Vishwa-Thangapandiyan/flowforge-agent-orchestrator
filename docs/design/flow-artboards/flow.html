@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en" data-mode="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flow from code</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Phase 6 artboard (D25): the flow map read from code, with the Faster panel and a decision's step panel.
+   Tokens from docs/design/flow-map-artboards and checks-artboards; the graph is graph.js in the Studio theme. */
+:root { --app:#EEF3F5; --canvas:#F2F6F7; --surface:#FFFFFF; --surface-2:#F5F8F9; --fg:#0F1D26; --muted:#4A5E6A; --faint:#8A9BA5; --line:#D6DFE4; --line-2:#BFCCD3;
+  --rail:#0F1D26; --rail-fg:#C9D6DC; --rail-active:#1D3340; --teal:#0B7A70; --teal-bg:#DDF2EF; --violet:#6B46C1; --violet-bg:#EEE8FB; --amber:#8A5A00; --amber-bg:#FCEFD0;
+  --up:#0B7A70; --warn:#E3A535; --down:#D2513E; --api:#2F6FDB; --mcp:#2E8B57; --llm:#1F2328; --local:#4A5E6A;
+  --sans:'Geist',ui-sans-serif,system-ui,sans-serif; --mono:'Geist Mono',ui-monospace,Menlo,monospace; --shadow:0 1px 2px rgb(15 29 38 / 6%),0 8px 22px -12px rgb(15 29 38 / 22%); }
+[data-mode="dark"] { --app:#0A1216; --canvas:#081014; --surface:#0F1A20; --surface-2:#0C161B; --fg:#E8F0F3; --muted:#98ADB8; --faint:#5E7482; --line:#1F3039; --line-2:#2C424D;
+  --rail:#060C0F; --rail-fg:#9FB3BD; --rail-active:#13232B; --teal:#4FD1C0; --teal-bg:#10302C; --violet:#B79CFF; --violet-bg:#231C3E; --amber:#F2B84B; --amber-bg:#33270B;
+  --up:#4FD1C0; --warn:#F2B84B; --down:#FF8C7A; --llm:#3A4652; --shadow:0 1px 2px rgb(0 0 0 / 40%),0 10px 26px -14px rgb(0 0 0 / 75%); }
+* { box-sizing: border-box; }
+body { margin: 0; background: #0A1216; color: #C9D6DC; font: 14px/1.45 var(--sans); }
+button { font: inherit; color: inherit; }
+.sheet { display: flex; flex-direction: column; gap: 48px; padding: 40px; min-width: 1520px; }
+.note { max-width: 1440px; font-size: 15px; } .note h2 { margin: 0 0 6px; color: #fff; font: 600 20px/1.2 var(--sans); } .note p { margin: 0; max-width: 80ch; }
+.modes { position: fixed; top: 16px; right: 16px; z-index: 50; display: flex; gap: 6px; }
+.modes button { padding: 8px 14px; border-radius: 999px; border: 1px solid #2C424D; background: #13232B; color: #E8F0F3; cursor: pointer; }
+.modes button[aria-pressed="true"] { background: #E8F0F3; color: #0A1216; }
+.board { width: 1440px; height: 900px; display: flex; overflow: hidden; border-radius: 14px; background: var(--app); color: var(--fg); box-shadow: 0 30px 80px -30px rgb(0 0 0 / 60%); }
+.rail { flex: 0 0 76px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 8px; background: var(--rail); }
+.navi { width: 62px; min-height: 54px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-radius: 12px; color: var(--rail-fg); font: 500 10.5px/1.1 var(--sans); }
+.navi.on { background: var(--rail-active); color: #fff; box-shadow: inset 3px 0 0 #4FD1C0; }
+svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.proj { margin-right: auto; } .proj h1 { margin: 0; font: 650 17px/1.15 var(--sans); } .proj small { display: block; margin-top: 5px; font: 500 11.5px/1 var(--mono); color: var(--muted); }
+.chip { display: inline-flex; align-items: center; gap: 10px; padding: 6px 14px 6px 6px; border-radius: 999px; background: var(--violet-bg); border: 1px solid color-mix(in srgb, var(--violet) 35%, transparent); }
+.chip .spark { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--violet) 30%, transparent); color: var(--violet); }
+.chip .k { display: block; font: 600 10.5px/1 var(--mono); letter-spacing: .06em; color: var(--violet); } .chip .v { display: block; margin-top: 4px; font: 600 13px/1 var(--sans); } .chip .v span { margin-left: 6px; font: 500 11.5px/1 var(--mono); color: var(--muted); }
+.btn { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--surface); font-weight: 550; }
+.btn.ai { color: var(--violet); border-color: color-mix(in srgb, var(--violet) 45%, transparent); background: transparent; }
+.btn.on { background: var(--fg); color: var(--surface); border-color: var(--fg); }
+.btn svg { width: 18px; height: 18px; }
+.seg { display: inline-flex; padding: 3px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line); }
+.seg b { padding: 7px 12px; border-radius: 8px; font-weight: 500; color: var(--muted); } .seg b.on { background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }
+.stage { flex: 1; min-height: 0; display: flex; }
+.canvas { position: relative; flex: 1; min-width: 0; background-color: var(--canvas); background-image: radial-gradient(rgb(15 29 38 / 12%) 1.1px, transparent 1.4px); background-size: 22px 22px; }
+[data-mode="dark"] .canvas { background-image: radial-gradient(rgb(147 168 179 / 12%) 1.1px, transparent 1.4px); }
+.canvas { overflow: hidden; }
+.canvas svg { position: absolute; top: 70px; left: -10px; width: 1480px; height: auto; }   /* reading size; the app pans */
+.tools { position: absolute; top: 12px; left: 12px; display: flex; gap: 6px; padding: 5px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); z-index: 2; }
+.tools span { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 8px; font-weight: 550; font-size: 13px; }
+.tools span.on { background: var(--fg); color: var(--surface); }
+.legend { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 14px; padding: 8px 12px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); font-size: 12px; color: var(--muted); z-index: 2; }
+.legend i { display: inline-block; width: 22px; height: 0; border-top: 3px solid var(--fg); vertical-align: middle; margin-right: 6px; }
+.legend em { font-family: var(--mono); font-style: italic; }
+/* graph (Studio) */
+svg[data-theme="studio"] text { font-family: var(--sans); } svg .title { font-size: 13px; font-weight: 600; fill: var(--fg); } svg .sub, svg .weight, svg .code, svg .mono { font-family: var(--mono); font-size: 10.5px; fill: var(--muted); }
+svg .mono { fill: #fff; font-size: 10px; font-weight: 600; } svg .branch-label { font: 600 10px var(--mono); fill: var(--fg); } svg .weight.estimate { font-style: italic; }
+svg .card, svg .pill { fill: var(--surface); stroke: var(--line-2); } svg .diamond { fill: var(--surface); stroke: var(--fg); stroke-width: 1.3; }
+svg .edge { fill: none; stroke: #93A5AF; stroke-width: 1.4; } [data-mode="dark"] svg .edge { stroke: #46606D; } svg .edge.cp { stroke: var(--fg); stroke-width: 2.6; } svg .edge.via { stroke-dasharray: 4 4; }
+svg .arrow { fill: #93A5AF; } svg .edgebar { fill: var(--line-2); } svg .h-up .edgebar { fill: var(--up); } svg .h-warn .edgebar { fill: var(--warn); } svg .h-down .edgebar { fill: var(--down); }
+svg .h-up .hdot { fill: var(--up); } svg .h-warn .hdot { fill: var(--warn); } svg .h-down .hdot { fill: var(--down); }
+svg .t-api { fill: var(--api); } svg .t-mcp { fill: var(--mcp); } svg .t-llm { fill: var(--llm); } svg .t-local { fill: var(--local); }
+svg .cp .card { stroke: var(--fg); stroke-width: 1.6; }
+svg .node { transition: opacity .25s; } svg .node.dim { opacity: .28; } svg .node.lit .card { stroke: var(--teal); stroke-width: 2.4; }
+svg .node.sel .diamond { stroke: var(--teal); stroke-width: 2.6; }
+@media (prefers-reduced-motion: reduce) { svg .node { transition: none; } }
+/* the Faster panel */
+.side { flex: 0 0 410px; background: var(--surface); border-left: 1px solid var(--line); overflow: auto; }
+.sec { padding: 16px 18px; border-bottom: 1px solid var(--line); }
+.sh { display: block; margin-bottom: 10px; font: 600 11px/1 var(--mono); letter-spacing: .07em; color: var(--muted); }
+.side h2 { margin: 0; font: 650 19px/1.2 var(--sans); }
+.side h2 small { display: block; margin-top: 4px; font: 400 13px/1.4 var(--sans); color: var(--muted); }
+.times { display: grid; grid-template-columns: 82px 1fr; gap: 6px 10px; align-items: center; margin-top: 14px; }
+.times > span { font-size: 12.5px; color: var(--muted); } .times > span b { display: block; font: 650 15px/1.1 var(--sans); color: var(--fg); }
+.lane { position: relative; height: 14px; border-radius: 4px; background: var(--surface-2); }
+.lanes { display: grid; gap: 3px; }
+.seg-t { position: absolute; top: 0; bottom: 0; border-radius: 3px; border: 1px solid var(--surface); }
+.seg-t.api { background: var(--api); } .seg-t.mcp { background: var(--mcp); } .seg-t.llm { background: var(--violet); } .seg-t.local { background: var(--local); }
+.seg-t.est { background-image: repeating-linear-gradient(135deg, transparent 0 3px, rgb(255 255 255 / 45%) 3px 5px); }
+.scale { display: flex; justify-content: space-between; margin-top: 4px; font: 500 10px var(--mono); color: var(--faint); }
+.saving { display: flex; align-items: baseline; gap: 8px; margin-top: 14px; padding: 10px 12px; border-radius: 10px; background: var(--teal-bg); color: var(--fg); }
+.saving b { font: 650 22px/1 var(--sans); color: var(--teal); }
+.advice { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); margin-top: 10px; cursor: default; }
+.advice.on { border-color: var(--teal); box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 18%, transparent); }
+.advice h3 { margin: 0; display: flex; justify-content: space-between; gap: 10px; font: 600 14px/1.3 var(--sans); }
+.advice h3 span { flex: 0 0 auto; font: 600 12.5px/1.3 var(--mono); color: var(--teal); }
+.advice p { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
+.advice .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.advice .chips i { font-style: normal; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); font: 500 11.5px/1.5 var(--mono); }
+.advice code, .side code { font: 500 12px var(--mono); padding: 1px 5px; border-radius: 5px; background: var(--surface-2); border: 1px solid var(--line); }
+.caveat { margin-top: 10px; padding: 10px 12px; border-radius: 10px; border: 1px dashed var(--line-2); font-size: 13px; color: var(--muted); }
+.cp-line { font-size: 13px; color: var(--muted); } .cp-line b { color: var(--fg); }
+.ev { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-top: 10px; }
+.ev header { display: flex; justify-content: space-between; padding: 8px 10px; font: 500 12px/1.2 var(--mono); background: var(--surface-2); } .ev header span { color: var(--violet); }
+.ev pre { margin: 0; padding: 8px 10px; font: 400 12px/1.6 var(--mono); color: var(--muted); }
+.ev pre b { display: block; margin: 0 -10px; padding: 0 10px; color: var(--fg); font-weight: 500; background: color-mix(in srgb, var(--teal) 12%, transparent); }
+.branch { display: grid; grid-template-columns: 34px 1fr; gap: 8px; align-items: start; margin-top: 8px; font-size: 13px; }
+.branch code { justify-self: start; }
+</style>
+</head>
+<body>
+<div class="modes" role="group" aria-label="Light or dark"><button type="button" data-mode="light" aria-pressed="true">Light</button><button type="button" data-mode="dark" aria-pressed="false">Dark</button></div>
+<div class="sheet">
+
+<section class="note"><h2>1 · The flow, read from your code, and how it could be faster</h2>
+  <p>Flow now sits next to Dependencies, and both come from the code. The thick line is the critical path, the chain that decides how long a plan takes. The Faster panel opens with the same calls twice: one after another as the code is written, then as the dependency graph allows. Hovering a piece of advice lights up its blocks.</p></section>
+
+<div class="board" id="b1">
+  <nav class="rail" aria-label="Main">
+    <div class="navi" style="color:#4FD1C0"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></svg></div>
+    <div class="navi on"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/><path d="M10 6.5h4a3 3 0 0 1 3 3V14"/></svg>Flow map</div>
+    <div class="navi"><svg class="i" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Checks</div>
+    <div class="navi"><svg class="i" viewBox="0 0 24 24"><path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0zM12 18v4"/></svg>Connectors</div>
+    <div class="navi"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>Security</div>
+  </nav>
+  <div class="main">
+    <header class="top">
+      <div class="proj"><h1>trip-planner</h1><small>11 calls · 4 decisions · read from planner.py</small></div>
+      <span class="chip"><span class="spark"><svg class="i" width="16" height="16" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></span><span><span class="k">READ FROM YOUR CODE · NO AI</span><span class="v">Flow v1<span>nothing run or sent</span></span></span></span>
+      <span class="seg"><b>Dependencies</b><b class="on">Flow</b></span>
+      <span class="btn"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg>Theme: Studio</span>
+      <span class="btn ai"><svg class="i" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>Re-scan the repo</span>
+    </header>
+    <div class="stage">
+      <div class="canvas">
+        <div class="tools"><span>Fit</span><span>Re-tidy</span><span class="on">Critical path</span><span>Evidence</span></div>
+        <svg id="g1" role="img" aria-label="The trip planner's flow"></svg>
+        <div class="legend"><span><i></i>critical path</span><span>210 ms measured</span><span><em>2.0 s · estimate</em></span></div>
+      </div>
+      <aside class="side" aria-label="Faster">
+        <div class="sec">
+          <h2>Faster<small>The same 11 calls, as written and as your dependencies allow.</small></h2>
+          <div class="times">
+            <span>As written<b>15.4 s</b></span><div class="lane" id="written"></div>
+            <span>Could be<b>11.6 s</b></span><div class="lanes" id="could"></div>
+          </div>
+          <div class="scale"><span>0 s</span><span>5 s</span><span>10 s</span><span>15 s</span></div>
+          <div class="saving"><b>3.8 s</b> faster with two changes in planner.py</div>
+        </div>
+        <div class="sec">
+          <span class="sh">ADVICE</span>
+          <div class="advice on" data-advice="1">
+            <h3>Start these 4 together after the city check <span>−3.6 s</span></h3>
+            <p>None of them uses another's result. Run them with <code>asyncio.gather</code>.</p>
+            <div class="chips"><i>Nominatim · sight</i><i>Open-Meteo</i><i>fetch</i><i>currency</i></div>
+            <p>planner.py:58–68</p>
+          </div>
+          <div class="advice" data-advice="0">
+            <h3>Start ip-api with the city lookup <span>−0.2 s</span></h3>
+            <p>Neither needs the other. <code>asyncio.gather</code> both.</p>
+            <div class="chips"><i>ip-api</i><i>Nominatim · city</i></div>
+            <p>planner.py:51–52</p>
+          </div>
+          <div class="caveat">fetch and currency only need the city name, so they could start even before the city check. If the city isn't found, those calls would be wasted (planner.py:53).</div>
+        </div>
+        <div class="sec">
+          <span class="sh">CRITICAL PATH</span>
+          <p class="cp-line" style="margin:0"><b>Nominatim → fetch → Ollama → files</b>, 11.6 s. Slowest: <b>fetch</b>, 6.8 s to start (measured by the last check). Ollama's 2.0 s is an estimate: a check sees that it's up, not how long it writes.</p>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<section class="note"><h2>2 · A decision, clicked</h2>
+  <p>Decisions come from the code's own <code>if</code>. The panel shows the condition, where it is, and what each branch leads to.</p></section>
+
+<div class="board" id="b2">
+  <nav class="rail" aria-label="Main">
+    <div class="navi" style="color:#4FD1C0"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></svg></div>
+    <div class="navi on"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/><path d="M10 6.5h4a3 3 0 0 1 3 3V14"/></svg>Flow map</div>
+    <div class="navi"><svg class="i" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Checks</div>
+  </nav>
+  <div class="main">
+    <header class="top">
+      <div class="proj"><h1>trip-planner</h1><small>11 calls · 4 decisions · read from planner.py</small></div>
+      <span class="seg"><b>Dependencies</b><b class="on">Flow</b></span>
+    </header>
+    <div class="stage">
+      <div class="canvas"><svg id="g2" role="img" aria-label="The flow with a decision selected"></svg></div>
+      <aside class="side" aria-label="Step: City not found?">
+        <div class="sec"><span class="sh">DECISION</span><h2>City not found?</h2></div>
+        <div class="sec"><span class="sh">CONDITION, FROM THE CODE</span><code>if place is None:</code>
+          <div class="ev"><header>planner.py:53<span>found in your code</span></header><pre>        place = await attempt("find the city (Nominatim)", ...)
+<b>        if place is None:</b>            print("Can't plan without the city's location.")
+            return</pre></div>
+        </div>
+        <div class="sec"><span class="sh">BRANCHES</span>
+          <div class="branch"><code>yes</code><span>Stop: no plan is written (planner.py:55, <code>return</code>)</span></div>
+          <div class="branch"><code>no</code><span>Sight given?, Open-Meteo, fetch and currency carry on</span></div>
+        </div>
+        <div class="sec"><span class="sh">WHY IT MATTERS</span><p style="margin:0;font-size:13px;color:var(--muted)">Every call after this line waits for the city lookup. That is why the advice starts fetch and currency after the check, not before it.</p></div>
+      </aside>
+    </div>
+  </div>
+</div>
+</div>
+<script src="./graph.js"></script>
+<script>
+  // the two timelines, from the same weights the graph shows (ms)
+  const written = [["ip","api",210],["nomc","api",420],["noms","api",420],["osrm","api",640],["meteo","api",180],["time","mcp",1900],
+    ["fetch","mcp",6800],["cur","mcp",400],["pack","local",10],["llm","llm",2000,true],["save","mcp",2400]];
+  const could = [ // lane, start, length
+    [0,"ip","api",0,210],[1,"nomc","api",0,420],[0,"noms","api",420,420],[0,"osrm","api",840,640],[1,"meteo","api",420,180],
+    [1,"time","mcp",600,1900],[1,"pack","local",2500,10],[2,"fetch","mcp",420,6800],[3,"cur","mcp",420,400],
+    [2,"llm","llm",7220,2000,true],[2,"save","mcp",9220,2400]];
+  const total = 15400, pct = (ms) => `${(ms / total) * 100}%`;
+  let at = 0;
+  for (const [id, kind, ms, est] of written) {
+    const s = document.createElement("i"); s.className = `seg-t ${kind}${est ? " est" : ""}`; s.title = `${id} ${ms} ms`;
+    s.style.left = pct(at); s.style.width = pct(ms); document.getElementById("written").append(s); at += ms;
+  }
+  const lanes = [0,1,2,3].map(() => { const l = document.createElement("div"); l.className = "lane"; document.getElementById("could").append(l); return l; });
+  for (const [lane, id, kind, start, ms, est] of could) {
+    const s = document.createElement("i"); s.className = `seg-t ${kind}${est ? " est" : ""}`; s.title = `${id} ${ms} ms`;
+    s.style.left = pct(start); s.style.width = pct(ms); lanes[lane].append(s);
+  }
+  const g1 = document.getElementById("g1");
+  drawFlow(g1, "studio", { critical: true, advice: 1 });
+  for (const card of document.querySelectorAll("[data-advice]")) {
+    card.addEventListener("mouseenter", () => {
+      for (const c of document.querySelectorAll("[data-advice]")) c.classList.toggle("on", c === card);
+      drawFlow(g1, "studio", { critical: true, advice: Number(card.dataset.advice) });
+    });
+  }
+  drawFlow(document.getElementById("g2"), "studio", { critical: false, selected: "d1" });
+  for (const b of document.querySelectorAll(".modes button")) b.addEventListener("click", () => {
+    document.documentElement.dataset.mode = b.dataset.mode;
+    for (const o of document.querySelectorAll(".modes button")) o.setAttribute("aria-pressed", String(o === b));
+  });
+</script>
+</body>
+</html>

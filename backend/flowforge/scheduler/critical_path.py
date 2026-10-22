@@ -1,4 +1,4 @@
-"""Critical path + bottom levels via DP over the DAG (D1, D5). Owner: Person A."""
+"""Critical path + bottom levels via DP over the DAG (D1, D5)."""
 
 from __future__ import annotations
 

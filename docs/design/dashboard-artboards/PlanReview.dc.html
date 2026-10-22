@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Plan review</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;color:#0F1D26;background:#EEF3F5}
+a{color:#2457C5}a:hover{color:#0B7A70}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="display:flex;flex-wrap:wrap;min-height:1060px;background:#EEF3F5">
+<nav style="flex:1 1 220px;box-sizing:border-box;padding:24px 16px;background:#0F1D26;display:flex;flex-direction:column;gap:6px;align-self:stretch">
+<div style="font-family:'Bricolage Grotesque','Segoe UI',sans-serif;font-size:24px;font-weight:700;color:#fff;padding:0 12px 18px">FlowForge</div>
+<a href="Main.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Overview</a>
+<a href="Connector.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Connectors</a>
+<a href="PlanReview.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;background:#1D3340;color:#fff;font-weight:600;text-decoration:none;font-size:15px">Plan review</a>
+<a href="Run.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Live run</a>
+<a href="Approvals.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px"><span>Approvals</span><span style="background:#F2B84B;color:#3A2D0E;border-radius:10px;padding:1px 8px;font-size:12px;font-weight:600">2</span></a>
+<a href="History.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Run history</a>
+<a href="Security.dc.html" style="display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:8px;color:#C9D6DC;text-decoration:none;font-size:15px">Security</a>
+<a href="AddConnector.dc.html" style="margin-top:14px;padding:11px 12px;border-radius:8px;border:1px dashed #4A5E6A;color:#E8F0F3;text-decoration:none;font-size:15px;text-align:center">+ Add app</a>
+</nav>
+
+<main style="flex:999 1 560px;min-width:0;box-sizing:border-box;padding:32px;display:flex;flex-direction:column;gap:24px">
+<header style="display:flex;flex-direction:column;gap:6px">
+<span style="font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#6B46C1">Proposed by the Planner · nothing has run yet</span>
+<h1 style="margin:0;font-family:'Bricolage Grotesque','Segoe UI',sans-serif;font-size:36px;line-height:1.1">Here's what will happen</h1>
+<span style="color:#4A5E6A;font-size:17px">Goal: a nightly finance check. Scan the code, pull payments and stock data, draw charts, write a summary.</span>
+</header>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr));gap:16px;align-items:start">
+<section style="display:flex;flex-direction:column;gap:12px">
+
+<div style="display:flex;flex-direction:column;gap:8px">
+<span style="font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#4A5E6A">Starts together</span>
+<div style="background:#fff;border:1px solid #D3DDE3;border-radius:12px;padding:14px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+<span style="flex:0 0 32px;height:32px;border-radius:50%;background:#DDF2EF;color:#0B7A70;display:flex;align-items:center;justify-content:center;font-weight:700">1</span>
+<div style="flex:1 1 220px;display:flex;flex-direction:column;gap:2px"><b>Scan the code for problems</b><span style="font-size:13px;color:#4A5E6A">Sirius · <span style="font-family:'IBM Plex Mono',monospace">sirius scan</span></span></div>
+<span style="background:#DDF2EF;color:#0B7A70;border-radius:6px;padding:3px 8px;font:500 12px 'IBM Plex Mono',monospace">script</span><span style="color:#4A5E6A;font-size:14px">about 6 s</span>
+</div>
+<div style="background:#fff;border:1px solid #D3DDE3;border-radius:12px;padding:14px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+<span style="flex:0 0 32px;height:32px;border-radius:50%;background:#DDF2EF;color:#0B7A70;display:flex;align-items:center;justify-content:center;font-weight:700">2</span>
+<div style="flex:1 1 220px;display:flex;flex-direction:column;gap:2px"><b>Fetch today's payments</b><span style="font-size:13px;color:#4A5E6A">Razorpay (test) · <span style="font-family:'IBM Plex Mono',monospace">GET /payments</span></span></div>
+<span style="background:#E1EAFB;color:#2457C5;border-radius:6px;padding:3px 8px;font:500 12px 'IBM Plex Mono',monospace">http</span><span style="color:#4A5E6A;font-size:14px">about 1 s</span>
+</div>
+<div style="background:#fff;border:1px solid #D3DDE3;border-radius:12px;padding:14px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+<span style="flex:0 0 32px;height:32px;border-radius:50%;background:#DDF2EF;color:#0B7A70;display:flex;align-items:center;justify-content:center;font-weight:700">3</span>
+<div style="flex:1 1 220px;display:flex;flex-direction:column;gap:2px"><b>Update stock prices</b><span style="font-size:13px;color:#4A5E6A">Stock MCP server · tool <span style="font-family:'IBM Plex Mono',monospace">get_prices</span></span></div>
+<span style="background:#DDF2EF;color:#0B7A70;border-radius:6px;padding:3px 8px;font:500 12px 'IBM Plex Mono',monospace">mcp</span><span style="color:#4A5E6A;font-size:14px">about 3 s</span>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:8px">
+<span style="font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#4A5E6A">Then, when 2 and 3 are done</span>
+<div style="background:#fff;border:1px solid #D3DDE3;border-radius:12px;padding:14px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+<span style="flex:0 0 32px;height:32px;border-radius:50%;background:#DDF2EF;color:#0B7A70;display:flex;align-items:center;justify-content:center;font-weight:700">4</span>
+<div style="flex:1 1 220px;display:flex;flex-direction:column;gap:2px"><b>Draw the charts</b><span style="font-size:13px;color:#4A5E6A">Your script · <span style="font-family:'IBM Plex Mono',monospace">scripts/charts.py</span></span></div>
+<span style="background:#DDF2EF;color:#0B7A70;border-radius:6px;padding:3px 8px;font:500 12px 'IBM Plex Mono',monospace">script</span><span style="color:#4A5E6A;font-size:14px">about 2 s</span>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:8px">
+<span style="font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#4A5E6A">Then, when 1 and 4 are done</span>
+<div style="background:#fff;border:1px solid #D3DDE3;border-radius:12px;padding:14px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+<span style="flex:0 0 32px;height:32px;border-radius:50%;background:#DDF2EF;color:#0B7A70;display:flex;align-items:center;justify-content:center;font-weight:700">5</span>
+<div style="flex:1 1 220px;display:flex;flex-direction:column;gap:2px"><b>Write the summary</b><span style="font-size:13px;color:#4A5E6A">Gemini · sees redacted data only</span></div>
+<span style="background:#ECE6FA;color:#6B46C1;border-radius:6px;padding:3px 8px;font:500 12px 'IBM Plex Mono',monospace">llm</span><span style="color:#4A5E6A;font-size:14px">about 3 s</span>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:8px">
+<span style="font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#8A5A00">Waits for you</span>
+<div style="background:#FCEFD0;border:1px solid #F2B84B;border-radius:12px;padding:14px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+<span style="flex:0 0 32px;height:32px;border-radius:50%;background:#F2B84B;color:#3A2D0E;display:flex;align-items:center;justify-content:center;font-weight:700">6</span>
+<div style="flex:1 1 220px;display:flex;flex-direction:column;gap:2px"><b>Approve the summary before it is sent</b><span style="font-size:13px;color:#4A5E6A">Nothing is reported until you click Approve</span></div>
+<span style="background:#F2B84B;color:#3A2D0E;border-radius:6px;padding:3px 8px;font:500 12px 'IBM Plex Mono',monospace">gate</span>
+</div>
+</div>
+</section>
+
+<aside style="display:flex;flex-direction:column;gap:16px">
+<section style="background:#fff;border:1px solid #D3DDE3;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px">
+<span style="font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#4A5E6A">Estimated time</span>
+<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:baseline"><span style="font:700 44px/1 'Bricolage Grotesque',sans-serif;color:#0B7A70">about 9 s</span><span style="color:#4A5E6A">instead of about 15 s one at a time</span></div>
+<span style="font-size:14px;color:#4A5E6A">Steps 1, 2 and 3 start together. The slowest chain is 1 then 5, so that sets the total.</span>
+</section>
+<section style="background:#fff;border:1px solid #D3DDE3;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:10px">
+<span style="font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#4A5E6A">This plan touches</span>
+<div style="display:flex;flex-wrap:wrap;gap:8px">
+<span style="background:#EEF3F5;border-radius:999px;padding:6px 12px;font-size:14px">Sirius</span>
+<span style="background:#EEF3F5;border-radius:999px;padding:6px 12px;font-size:14px">Razorpay (test, read only)</span>
+<span style="background:#EEF3F5;border-radius:999px;padding:6px 12px;font-size:14px">Stock MCP server</span>
+<span style="background:#EEF3F5;border-radius:999px;padding:6px 12px;font-size:14px">Gemini</span>
+</div>
+<span style="font-size:14px;color:#4A5E6A">Changes data anywhere: <b style="color:#0F1D26">no</b>. Edits your code: <b style="color:#0F1D26">no</b>. Secrets used: 3, all kept in the vault.</span>
+</section>
+<section style="background:#fff;border:1px solid #D3DDE3;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px">
+<button type="button" style="min-height:52px;border-radius:10px;border:0;background:#0B7A70;color:#fff;font-weight:600;font-size:17px">Looks good, run it</button>
+<div style="display:flex;flex-wrap:wrap;gap:8px">
+<button type="button" style="flex:1 1 140px;min-height:44px;border-radius:10px;border:1px solid #D3DDE3;background:#fff;color:#0F1D26;font-weight:600;font-size:15px">Ask for changes</button>
+<button type="button" style="flex:1 1 140px;min-height:44px;border-radius:10px;border:1px solid #D3DDE3;background:#fff;color:#0F1D26;font-weight:600;font-size:15px">Discard</button>
+</div>
+<span style="font-size:13px;color:#4A5E6A">Every step above points to a real tool, route or file. Anything that could not be backed up was dropped. <a href="Run.dc.html">Advanced: show graph and JSON</a></span>
+</section>
+</aside>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1060}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

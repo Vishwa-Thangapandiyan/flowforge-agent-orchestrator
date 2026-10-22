@@ -9,7 +9,7 @@ from pathlib import Path
 import httpx
 from mcp import Client, StdioServerParameters
 
-from flowforge.agent import build_server
+from flowforge.agent import AGENT_CALLS_SETTING, build_server, preview
 from flowforge.api.checks import CONFIRMED_SETTING
 from flowforge.api.scan import REPO_SETTING
 from flowforge.storage import Storage
@@ -179,13 +179,50 @@ async def test_no_answer_ever_carries_a_key(tmp_path):
             result = await client.call_tool(tool, {})
             text = json.dumps([c.model_dump() for c in result.content])
             assert FAKE_KEY not in text, tool
+    assert FAKE_KEY not in json.dumps(preview(repo, storage))
+    assert FAKE_KEY not in (storage.setting(AGENT_CALLS_SETTING) or "")
 
 
-async def test_each_call_leaves_a_last_call_note_for_the_dashboard(tmp_path):
+async def test_each_call_is_listed_for_the_dashboard_newest_first_with_a_one_line_answer(tmp_path):
     storage = storage_for(tmp_path)
-    await call(build_server(TRIP_PLANNER, storage), "get_advice")
-    note = json.loads(storage.setting("agent_last_call"))
-    assert note["tool"] == "get_advice" and note["repo"] == "trip-planner" and note["at"]
+    server = build_server(TRIP_PLANNER, storage)
+    await call(server, "get_map")
+    await call(server, "get_advice")
+    calls = json.loads(storage.setting(AGENT_CALLS_SETTING))
+    assert [c["tool"] for c in calls] == ["get_advice", "get_map"]
+    assert calls[0]["repo"] == "trip-planner" and calls[0]["at"]
+    assert calls[0]["got"] == "3 ways to be faster · saves ~2.2 s"
+    assert calls[1]["got"].endswith(" dependencies")
+
+
+async def test_the_call_list_keeps_the_last_twenty(tmp_path):
+    storage = storage_for(tmp_path)
+    storage.set_setting(AGENT_CALLS_SETTING, json.dumps([{"tool": "get_map", "repo": "x", "at": "t", "got": "old"}] * 20))
+    await call(build_server(TRIP_PLANNER, storage), "what_changed")
+    calls = json.loads(storage.setting(AGENT_CALLS_SETTING))
+    assert len(calls) == 20 and calls[0]["tool"] == "what_changed" and calls[0]["got"] == "No saved map yet"
+
+
+def test_the_preview_shows_what_each_tool_answers_for_this_repo_without_recording_a_call(tmp_path):
+    storage = storage_for(tmp_path)
+    got = preview(TRIP_PLANNER, storage)
+    cards = {c["tool"]: c for c in got["cards"]}
+    assert list(cards) == ["get_map", "check_health", "get_flow", "get_advice", "what_changed"]
+    assert cards["get_map"]["headline"] == "12 dependencies"
+    assert cards["get_map"]["sub"] == "1 LLM · 4 MCP servers · 6 APIs · 1 program"
+    assert cards["check_health"]["headline"] == "Not checked yet"
+    assert " → " in cards["get_flow"]["headline"]
+    assert cards["get_advice"]["headline"] == "3 ways to be faster" and cards["get_advice"]["sub"].startswith("saves ~2.2 s")
+    assert cards["what_changed"]["headline"] is None
+    assert storage.setting(AGENT_CALLS_SETTING) is None   # the page looking is not the agent asking
+
+
+def test_the_preview_reads_stored_health_and_runs_nothing(tmp_path):
+    storage = storage_for(tmp_path)   # no repo setting: example mode keeps none, the preview is the dashboard's own repo
+    storage.add_checks("r1", [{"id": "api-nominatim", "kind": "api", "status": "up", "summary": "Up"},
+                              {"id": "mcp-currency", "kind": "mcp", "status": "down", "summary": "Down"}])
+    cards = {c["tool"]: c for c in preview(TRIP_PLANNER, storage)["cards"]}
+    assert cards["check_health"]["headline"] == "1 up · 1 down" and cards["check_health"]["tone"] == "bad"
 
 
 async def test_flowforge_mcp_runs_over_a_real_stdio_pipe(tmp_path):

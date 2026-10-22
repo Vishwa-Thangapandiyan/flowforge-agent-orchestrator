@@ -33,7 +33,8 @@ from flowforge.storage import Storage, now_iso
 
 log = logging.getLogger(__name__)
 
-LAST_CALL_SETTING = "agent_last_call"   # {tool, repo, at}: shown on the dashboard's Connect page (D29)
+AGENT_CALLS_SETTING = "agent_calls"   # [{tool, repo, at, got}], newest first: the Connect page's list (D30)
+KEEP_CALLS = 20
 NOT_STARTED = "Not started: say yes in the dashboard first (Check now)"
 
 INSTRUCTIONS = (
@@ -68,8 +69,10 @@ def _health(row: dict[str, Any] | None) -> dict[str, Any]:
 class _Repo:
     """One repo as the agent sees it, with the dashboard's data when the dashboard maps this same folder."""
 
-    def __init__(self, root: Path, storage: Storage, transport: httpx.AsyncBaseTransport | None):
+    def __init__(self, root: Path, storage: Storage, transport: httpx.AsyncBaseTransport | None = None, *,
+                 dashboards: bool = False):
         self.root, self.storage, self.transport = root.resolve(), storage, transport
+        self.dashboards = dashboards   # the dashboard's own repo (the preview): its data applies even in example mode
         try:
             values = secret_values_for(Registry(storage).all())
         except Exception:   # a connector the registry can't read must not stop the server
@@ -79,10 +82,17 @@ class _Repo:
     @property
     def shared(self) -> bool:
         """Does the dashboard's database map this repo? Only then do its checks and yeses apply."""
-        return self.storage.setting(REPO_SETTING) == str(self.root)
+        return self.dashboards or self.storage.setting(REPO_SETTING) == str(self.root)
 
     def answer(self, tool: str, data: dict[str, Any]) -> dict[str, Any]:
-        self.storage.set_setting(LAST_CALL_SETTING, json.dumps({"tool": tool, "repo": self.root.name, "at": now_iso()}))
+        """The masked answer, after noting the call for the Connect page (D30)."""
+        note = {"tool": tool, "repo": self.root.name, "at": now_iso(), "got": headline(tool, data)}
+        note = _mask(note, self.redactor)
+        try:
+            calls = json.loads(self.storage.setting(AGENT_CALLS_SETTING) or "[]")
+        except ValueError:
+            calls = []
+        self.storage.set_setting(AGENT_CALLS_SETTING, json.dumps([note, *calls][:KEEP_CALLS]))
         return _mask({"repo": self.root.name, **data}, self.redactor)
 
     def latest(self) -> dict[str, dict[str, Any]]:
@@ -121,6 +131,100 @@ def _times(flow: Flow) -> dict[str, Any]:
     }
 
 
+def _seconds(ms: float) -> str:
+    return f"{ms / 1000:.1f} s" if ms >= 1000 else f"{round(ms)} ms"
+
+
+def _plural(n: int, word: str, many: str | None = None) -> str:
+    return f"{n} {word if n == 1 else many or word + 's'}"
+
+
+def headline(tool: str, data: dict[str, Any]) -> str | None:
+    """A tool's answer in one line, from counts and times only (D30): the Connect page's cards and call list."""
+    if tool == "get_map":
+        return _plural(len(data["dependencies"]), "dependency", "dependencies")
+    if tool == "check_health":
+        counts = data["summary"]
+        parts = [f"{counts[s]} {s}" for s in ("up", "warn", "down", "skipped") if counts.get(s)]
+        return " · ".join(parts) or "Nothing to check"
+    if tool in ("get_flow", "get_advice") and not data["available"]:
+        return "No flow: no Python calls found"
+    if tool == "get_flow":
+        return f"{_seconds(data['as_written_ms'])} → {_seconds(data['could_be_ms'])}"
+    if tool == "get_advice":
+        n = len(data["advice"])
+        if not n:
+            return "Nothing to start together"
+        return f"{_plural(n, 'way')} to be faster · saves ~{_seconds(data['saved_ms'])}"
+    if tool == "what_changed":
+        if not data["saved"]:
+            return "No saved map yet"
+        return f"{len(data['added'])} added · {len(data['removed'])} removed"
+    return None
+
+
+def _map_data(r: _Repo) -> dict[str, Any]:
+    result = r.scan()
+    latest = r.latest()
+    deps = [_dependency(d, latest.get(d.id)) for d in result.dependencies]
+    counts = Counter(d.kind for d in result.dependencies)
+    return {"dependencies": deps, "counts": dict(counts), "files_read": result.files_scanned}
+
+
+def _flow_data(result: Any) -> dict[str, Any]:
+    if result.flow is None:
+        return {"available": False, "message": result.message}
+    flow = result.flow
+    calls = [{"id": n.id, "kind": n.kind, "service": n.title, "does": n.what, "ref": n.evidence[0].ref,
+              "ms": n.estimate_ms, "measured": n.estimate_source == "measured", "writes": code_writes(n),
+              "repeats": bool(n.repeats)} for n in flow.nodes if n.kind in CALL_KINDS]
+    decisions = [{"id": n.id, "question": n.title, "condition": n.condition, "ref": n.evidence[0].ref}
+                 for n in flow.nodes if n.kind == "decision"]
+    lines = [{"from": e.source, "to": e.target, "when": e.when} for e in flow.edges]
+    entries = [n.title for n in flow.nodes if n.kind == "start"]
+    return {"available": True, "entry_points": entries, "calls": calls, "decisions": decisions, "lines": lines,
+            **_times(flow)}
+
+
+def _advice_data(result: Any) -> dict[str, Any]:
+    if result.flow is None:
+        return {"available": False, "message": result.message}
+    advice = [a.model_dump(mode="json") for a in result.flow.advice]
+    return {"available": True, "advice": advice, "saved_ms": round(sum(a["saved_ms"] for a in advice), 1)}
+
+
+KIND_WORDS = {"llm": "LLM", "mcp": "MCP server", "api": "API", "local": "program"}
+
+
+def preview(repo: Path, storage: Storage) -> dict[str, Any]:
+    """What each tool would answer about the dashboard's repo now, as the Connect page's cards (D30). Health is the
+    stored checks: nothing is run, and no call is noted."""
+    r = _Repo(repo, storage, dashboards=True)
+    deps = _map_data(r)
+    counts = deps["counts"]
+    kinds = " · ".join(_plural(counts[k], word) for k, word in KIND_WORDS.items() if counts.get(k))
+    checked = [d["health"]["status"] for d in deps["dependencies"] if d["health"]["status"] != "unchecked"]
+    health = {"summary": dict(Counter(checked))}
+    tone = "bad" if "down" in checked else "warn" if "warn" in checked else "ok" if checked else "plain"
+    read = r.flow()
+    flow, advice = _flow_data(read), _advice_data(read)
+    cards = [
+        {"tool": "get_map", "headline": headline("get_map", deps), "sub": kinds, "tone": "plain"},
+        {"tool": "check_health", "headline": headline("check_health", health) if checked else "Not checked yet",
+         "sub": f"{_plural(len(checked), 'last check')} stored" if checked else "Your agent can run the checks",
+         "tone": tone},
+        {"tool": "get_flow", "headline": headline("get_flow", flow) if flow["available"] else None,
+         "sub": "as written → could be" if flow["available"] else flow["message"], "tone": "plain"},
+        {"tool": "get_advice", "headline": (_plural(len(advice["advice"]), "way") + " to be faster")
+         if advice["available"] else None,
+         "sub": f"saves ~{_seconds(advice['saved_ms'])}, the change written out" if advice["available"] else None,
+         "tone": "warn" if advice["available"] and advice["advice"] else "plain"},
+        {"tool": "what_changed", "headline": None, "sub": "After your agent edits: what it added or removed",
+         "tone": "plain"},
+    ]
+    return _mask({"repo": r.root.name, "cards": cards}, r.redactor)
+
+
 def build_server(repo: Path, storage: Storage, *, transport: httpx.AsyncBaseTransport | None = None) -> MCPServer:
     """The server for one repo. `transport` answers the health checks' requests in tests."""
     r = _Repo(repo, storage, transport)
@@ -130,42 +234,21 @@ def build_server(repo: Path, storage: Storage, *, transport: httpx.AsyncBaseTran
     def get_map() -> dict[str, Any]:
         """Every dependency the repo uses (LLMs, MCP servers, HTTP APIs, local programs), each with where it appears
         (file:line) and its latest health. Read from the code now; nothing is run."""
-        result = r.scan()
-        latest = r.latest()
-        deps = [_dependency(d, latest.get(d.id)) for d in result.dependencies]
-        counts = Counter(d.kind for d in result.dependencies)
-        return r.answer("get_map", {"dependencies": deps, "counts": dict(counts), "files_read": result.files_scanned})
+        return r.answer("get_map", _map_data(r))
 
     @server.tool(annotations=READ)
     def get_flow() -> dict[str, Any]:
         """The order the code calls its dependencies (Python), from each entry point: every call with its file:line
         and time (measured by the last check, else an estimate), the if-decisions, which call waits for which, and
         the critical path: the chain that sets the total time, as written versus as early as inputs allow."""
-        result = r.flow()
-        if result.flow is None:
-            return r.answer("get_flow", {"available": False, "message": result.message})
-        flow = result.flow
-        calls = [{"id": n.id, "kind": n.kind, "service": n.title, "does": n.what, "ref": n.evidence[0].ref,
-                  "ms": n.estimate_ms, "measured": n.estimate_source == "measured", "writes": code_writes(n),
-                  "repeats": bool(n.repeats)} for n in flow.nodes if n.kind in CALL_KINDS]
-        decisions = [{"id": n.id, "question": n.title, "condition": n.condition, "ref": n.evidence[0].ref}
-                     for n in flow.nodes if n.kind == "decision"]
-        lines = [{"from": e.source, "to": e.target, "when": e.when} for e in flow.edges]
-        entries = [n.title for n in flow.nodes if n.kind == "start"]
-        return r.answer("get_flow", {"available": True, "entry_points": entries, "calls": calls,
-                                     "decisions": decisions, "lines": lines, **_times(flow)})
+        return r.answer("get_flow", _flow_data(r.flow()))
 
     @server.tool(annotations=READ)
     def get_advice() -> dict[str, Any]:
         """Calls that don't need each other's results but wait for each other: how much running them together
         saves, the change written out when it is safe (lines now and could be), what to move by hand, and a prompt
         describing the whole change. FlowForge never applies it: you make the change and run the tests."""
-        result = r.flow()
-        if result.flow is None:
-            return r.answer("get_advice", {"available": False, "message": result.message})
-        advice = [a.model_dump(mode="json") for a in result.flow.advice]
-        return r.answer("get_advice", {"available": True, "advice": advice,
-                                       "saved_ms": round(sum(a["saved_ms"] for a in advice), 1)})
+        return r.answer("get_advice", _advice_data(r.flow()))
 
     @server.tool(annotations=CHECKS)
     async def check_health(ids: list[str] | None = None) -> dict[str, Any]:

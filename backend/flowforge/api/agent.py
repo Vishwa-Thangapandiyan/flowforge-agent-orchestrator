@@ -1,7 +1,9 @@
 """Connect an agent (D29): the set-up each coding agent needs to start FlowForge's MCP server on this repo, with the
-paths filled in, and the agent's last call, which proves the connection works.
+paths filled in, and the agent's calls, which prove the connection works. The preview is what each tool would answer
+about this repo now (D30).
 
-GET /agent/connect   {repo, command, agents: {claude, codex, antigravity}, last_call}
+GET /agent/connect   {repo, command, agents: {claude, codex, antigravity}, last_call, calls}
+GET /agent/preview   {repo, cards: [{tool, headline, sub, tone}]}
 """
 
 from __future__ import annotations
@@ -11,9 +13,9 @@ import shlex
 import shutil
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
-from flowforge.agent import LAST_CALL_SETTING
+from flowforge.agent import AGENT_CALLS_SETTING, preview
 from flowforge.api.scan import repo_path
 from flowforge.home import CHECKOUT
 from flowforge.state import app_state
@@ -38,7 +40,10 @@ def agent_connect() -> dict[str, Any]:
     # JSON strings are valid TOML basic strings, Windows backslashes included
     args = ", ".join(map(json.dumps, command[1:]))
     toml = f"[mcp_servers.flowforge]\ncommand = {json.dumps(command[0])}\nargs = [{args}]"
-    last = s.storage.setting(LAST_CALL_SETTING)
+    try:
+        calls = json.loads(s.storage.setting(AGENT_CALLS_SETTING) or "[]")
+    except ValueError:
+        calls = []
     return {
         "repo": str(repo) if repo else None,
         "command": command,
@@ -53,5 +58,15 @@ def agent_connect() -> dict[str, Any]:
                             "file": "mcp_config.json (… menu → MCP Servers → Manage MCP Servers → View raw config)",
                             "text": json.dumps(config, indent=2)},
         },
-        "last_call": json.loads(last) if last else None,
+        "last_call": calls[0] if calls else None,
+        "calls": calls,
     }
+
+
+@router.get("/agent/preview")
+def agent_preview() -> dict[str, Any]:
+    s = app_state()
+    repo = repo_path(s)
+    if repo is None:
+        raise HTTPException(404, "No folder mapped yet: scan one first")
+    return preview(repo, s.storage)

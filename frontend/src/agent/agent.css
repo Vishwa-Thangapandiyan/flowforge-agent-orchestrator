@@ -1,26 +1,76 @@
-/* Connect your coding agent (D29) */
-.ca-last { display: flex; align-items: center; gap: 10px; margin: 20px 0 16px; padding: 12px 16px; border-radius: var(--r-md);
-  border: 1px solid var(--line); background: var(--surface); color: var(--muted); }
-.ca-last i { width: 10px; height: 10px; border-radius: 50%; background: var(--line-2); flex: none; }
-.ca-last.on { color: var(--fg); border-color: color-mix(in srgb, var(--teal) 45%, var(--line)); }
-.ca-last.on i { background: var(--teal); box-shadow: 0 0 0 4px color-mix(in srgb, var(--teal) 20%, transparent); }
-.ca-last code, .ca-panel code, .ca-tools code { font-family: var(--mono); font-size: .92em; }
-.ca-setup, .ca-tools { padding: 18px; margin-bottom: 16px; }
-.ca-tabs { margin-bottom: 14px; flex-wrap: wrap; }
-.ca-steps { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 0 0 12px; padding: 0; list-style: none; }
-.ca-steps li { display: flex; align-items: center; gap: 8px; }
-.ca-steps b { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--teal-bg);
-  color: var(--teal-ink); font: 650 12px var(--mono); }
-.ca-box { display: grid; gap: 8px; }
-.ca-box pre { margin: 0; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2);
-  font: 12.5px/1.6 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
-.ca-copy { display: flex; align-items: center; gap: 10px; }
-.ca-said { color: var(--teal); font-weight: 600; font-size: 14px; }
-.ca-or { margin: 14px 0 6px; color: var(--muted); font-size: 14px; }
+/* Connect your coding agent (D29, D30): set-up left; what the agent gets and what it asked, right */
+.ca-grid { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 20px; align-items: start; margin-top: 20px; }
+.ca-right { display: grid; gap: 22px; min-width: 0; }
+.ca-label { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font: 600 12px/1.2 var(--mono); letter-spacing: .08em;
+  text-transform: uppercase; color: var(--muted); }
+.ca-label span { color: var(--fg); text-transform: none; letter-spacing: 0; }
+.ca-label .ca-live { margin-left: auto; color: var(--teal); text-transform: none; letter-spacing: 0; }
+.ca-live::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: var(--teal); }
+.ca-setup { padding: 18px; }
+.ca-panel code, .ca-cards code, .ca-calls code, .ca-note code { font-family: var(--mono); font-size: .92em; }
+
+/* the agents, as cards */
+.ca-agents { display: grid; gap: 8px; margin-bottom: 14px; }
+.ca-agent { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; border-radius: var(--r-md);
+  border: 1.5px solid var(--line); background: var(--surface-2); color: var(--fg); text-align: left; cursor: pointer; font: inherit; }
+.ca-agent:hover { border-color: var(--line-2); }
+.ca-agent[aria-selected="true"] { border-color: var(--teal); background: color-mix(in srgb, var(--teal) 8%, var(--surface)); }
+.ca-agent span { display: grid; gap: 1px; }
+.ca-agent small { color: var(--muted); font-size: 12.5px; }
+.ca-tick { display: grid; place-items: center; width: 22px; height: 22px; margin-left: auto; border-radius: 50%;
+  background: var(--teal); color: var(--on-teal); }
+
+/* copy, show, three moves */
+.ca-copy { width: 100%; justify-content: center; padding: 11px 16px; font-size: 15px; }
+.ca-said { display: block; min-height: 20px; margin-top: 4px; color: var(--teal); font-weight: 600; font-size: 13.5px; text-align: center; }
+.ca-show summary { cursor: pointer; color: var(--muted); font-size: 13.5px; }
+.ca-show pre { margin: 8px 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2);
+  font: 12px/1.6 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ca-or { margin: 10px 0 0; color: var(--muted); font-size: 13.5px; overflow-wrap: anywhere; }
+.ca-steps { display: grid; gap: 8px; margin: 14px 0 0; padding: 0; list-style: none; font-size: 14px; }
+.ca-steps li { display: flex; align-items: baseline; gap: 10px; }
+.ca-steps b { display: inline-grid; place-items: center; flex: none; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--teal-bg); color: var(--teal-ink); font: 650 12px var(--mono); }
+.ca-steps span { overflow-wrap: anywhere; }
 .ca-note { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; color: var(--muted); font-size: 13.5px; overflow-wrap: anywhere; }
-.ca-tools h2 { margin-bottom: 10px; }
-.ca-tools ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
-.ca-tools li { display: grid; grid-template-columns: 130px 1fr; gap: 12px; align-items: baseline; }
-.ca-tools li code { color: var(--teal-ink); font-weight: 600; }
-.ca-safe { display: flex; align-items: center; gap: 8px; margin: 14px 0 0; color: var(--muted); font-size: 13.5px; }
-@media (max-width: 560px) { .ca-tools li { grid-template-columns: 1fr; gap: 2px; } }
+
+/* connection state */
+.ca-last { display: flex; align-items: center; gap: 10px; margin-top: 16px; padding: 10px 12px; border-radius: var(--r-md);
+  border: 1px dashed var(--line-2); color: var(--muted); font-size: 14px; }
+.ca-last i { width: 10px; height: 10px; border-radius: 50%; background: var(--line-2); flex: none; }
+.ca-last.on { color: var(--fg); border-style: solid; border-color: color-mix(in srgb, var(--teal) 45%, var(--line));
+  background: var(--teal-bg); }
+.ca-last.on i { background: var(--teal); box-shadow: 0 0 0 4px color-mix(in srgb, var(--teal) 22%, transparent); }
+
+/* what your agent gets: one card per tool */
+.ca-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.ca-card { position: relative; display: grid; gap: 4px; padding: 14px 16px; border-radius: var(--r-md); border: 1px solid var(--line);
+  background: var(--surface); }
+.ca-card:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.ca-ask { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13.5px; padding-right: 92px; }
+.ca-card strong { font-size: 22px; line-height: 1.25; letter-spacing: -.01em; }
+.ca-card.tone-bad strong { color: var(--coral); }
+.ca-card.tone-warn strong { color: var(--amber); }
+.ca-card.tone-ok strong { color: var(--green); }
+.ca-sub { color: var(--muted); font-size: 13.5px; }
+.ca-card > code { position: absolute; top: 14px; right: 16px; color: var(--faint); font-size: 11.5px; }
+
+/* what your agent asked */
+.ca-calls { margin: 0; padding: 4px 16px; list-style: none; }
+.ca-calls li { display: grid; grid-template-columns: 52px 150px 1fr; gap: 12px; align-items: center; padding: 10px 0;
+  border-top: 1px solid var(--line); font-size: 14px; }
+.ca-calls li:first-child { border-top: 0; }
+.ca-calls time { font: 12.5px var(--mono); color: var(--muted); }
+.ca-tool { display: flex; align-items: center; gap: 6px; color: var(--teal-ink); }
+.ca-got { overflow-wrap: anywhere; }
+
+.ca-safe { display: flex; align-items: center; gap: 8px; margin: 22px 0 0; color: var(--muted); font-size: 13.5px; }
+
+@media (max-width: 860px) { .ca-grid { grid-template-columns: 1fr; } }
+@media (max-width: 560px) {
+  .ca-cards { grid-template-columns: 1fr; }
+  .ca-calls li { grid-template-columns: 44px 1fr; }
+  .ca-got { grid-column: 2; }
+  .ca-ask { padding-right: 0; }
+  .ca-card > code { position: static; }
+}

@@ -17,6 +17,7 @@ from flowforge.scan.facts import FileFacts, Ref
 from flowforge.scan.files import language, list_files
 from flowforge.scan.models import Dependency, EnvName, ScanEvidence, ScanResult
 from flowforge.scan.urls import api_shaped, clean_url, host_of, is_local, is_not_a_service
+from flowforge.security.findings import ConfigKey, findings_for
 from flowforge.security.logfilter import Redactor, redact_code
 
 EXCERPT_RADIUS = 2
@@ -323,9 +324,19 @@ def scan_with_places(root: str | Path) -> tuple[ScanResult, Places]:
         for name, line in f.env:
             env.setdefault((f.path, line), []).append(name)
             seen.setdefault(name, f"{f.path}:{line}")
+    dependencies = merge.result(env)
+    by_dep = {dep_id: sorted(d.places) for dep_id, d in merge.deps.items()}
+    config_keys = [ConfigKey(f"mcp-{_slug(server.name)}", server.name, name, rel, line)
+                   for rel, servers in configs for server in servers for name, line in server.env_literals]
+
+    def excerpt(path: str, line: int) -> tuple[int, list[str]]:
+        ev = merge.evidence(path, line, "")
+        return ev.first_line or line, ev.lines
+
+    findings = findings_for(texts, {rel: language(rel) for rel in texts}, dependencies, by_dep, config_keys, excerpt)
     result = ScanResult(root=root.name, files_scanned=len(listing.files), skipped=listing.skipped,
-                        languages=languages, dependencies=merge.result(env),
-                        env_names=[EnvName(name=n, ref=r) for n, r in sorted(seen.items())])
-    places = Places(by_dep={dep_id: sorted(d.places) for dep_id, d in merge.deps.items()}, app_servers=app_servers,
-                    facts={f.path: f for f in facts if f.language == "python"})
+                        languages=languages, dependencies=dependencies,
+                        env_names=[EnvName(name=n, ref=r) for n, r in sorted(seen.items())], findings=findings,
+                        findings_checked=True)
+    places = Places(by_dep=by_dep, app_servers=app_servers, facts={f.path: f for f in facts if f.language == "python"})
     return result, places

@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from flowforge import main
-from flowforge.flow import PYTHON_ONLY
+from flowforge.flow import NO_ENTRY
 from flowforge.flowmap.models import Flow, FlowEdge, FlowNode
 from flowforge.flowmap.validate import check
 
@@ -43,7 +43,7 @@ def test_a_re_scan_of_unchanged_code_finds_no_changes(example):
     assert pending["changes"] == []
 
 
-def test_a_repo_without_python_says_its_flow_waits(tmp_path, monkeypatch):
+def test_a_repo_whose_calls_sit_outside_any_function_says_so(tmp_path, monkeypatch):
     repo = tmp_path / "web"
     repo.mkdir()
     (repo / "app.js").write_text("fetch('https://api.weather.test/v1/today');\n")
@@ -52,7 +52,7 @@ def test_a_repo_without_python_says_its_flow_waits(tmp_path, monkeypatch):
     monkeypatch.setenv("FLOWFORGE_REPO", str(repo))
     with TestClient(main.app) as c:
         assert c.get("/flow").json()["available"] is True
-        assert c.get("/flow?map=flow").json() == {"available": False, "message": PYTHON_ONLY}
+        assert c.get("/flow?map=flow").json() == {"available": False, "message": NO_ENTRY}
 
 
 def test_choosing_a_repo_draws_its_flow_too(tmp_path, monkeypatch):

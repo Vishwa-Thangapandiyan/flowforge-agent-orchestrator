@@ -9,7 +9,8 @@ import { ExportPage } from "./mcpmap/ExportPage";
 import { AddConnector } from "./pages/AddConnector";
 import { Catalog } from "./pages/Catalog";
 import { ConnectorPage } from "./pages/Connector";
-import { Approvals, Security } from "./pages/Later";
+import { Approvals } from "./pages/Later";
+import { Security } from "./security/Security";
 import { LiveRun, LiveRunLatest } from "./pages/LiveRun";
 import { RunHistory } from "./pages/RunHistory";
 

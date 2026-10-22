@@ -1,0 +1,34 @@
+/* Security (D31): counts by level, then one card per finding */
+.sec-level { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 99px;
+  font: 600 11.5px/1.3 var(--mono); letter-spacing: .05em; text-transform: uppercase; }
+.sec-level::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.sec-level.lv-high { background: var(--coral-bg); color: var(--coral); }
+.sec-level.lv-medium { background: var(--amber-bg); color: var(--amber); }
+.sec-level.lv-low { background: var(--blue-bg); color: var(--blue); }
+
+.sec-counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 20px 0 16px; }
+.sec-count { display: grid; gap: 6px; justify-items: start; padding: 14px 16px; border-radius: var(--r-md);
+  border: 1px solid var(--line); background: var(--surface); }
+.sec-count b { font-size: 26px; line-height: 1; }
+
+.sec-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.sec-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 330px); gap: 18px; padding: 16px 18px;
+  border-radius: var(--r-md); border: 1px solid var(--line); background: var(--surface); }
+.sec-card.lv-high { border-left: 3px solid var(--coral); }
+.sec-card.lv-medium { border-left: 3px solid var(--amber); }
+.sec-card:target { box-shadow: 0 0 0 2px var(--teal); }
+.sec-main { min-width: 0; }
+.sec-card h3 { margin: 8px 0 2px; font-size: 17px; }
+.sec-ref { font: 12.5px var(--mono); color: var(--muted); }
+.sec-code { margin: 10px 0 0; padding: 8px 0; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-2);
+  font: 12.5px/1.6 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.sec-code span { display: block; padding: 0 12px; }
+.sec-code span.hl { background: color-mix(in srgb, var(--coral) 14%, transparent); }
+.sec-code i { display: inline-block; min-width: 34px; color: var(--faint); font-style: normal; user-select: none; }
+.sec-fix { margin: 0; padding: 2px 0 2px 12px; border-left: 3px solid var(--green); font-size: 14px; }
+.sec-fix b { display: block; color: var(--green); font: 600 11.5px var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+.sec-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.sec-said { color: var(--teal); font-weight: 600; font-size: 13.5px; }
+
+@media (max-width: 760px) { .sec-card { grid-template-columns: 1fr; } }
+@media (max-width: 480px) { .sec-counts { gap: 6px; } .sec-count { padding: 10px 12px; } }

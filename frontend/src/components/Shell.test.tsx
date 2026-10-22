@@ -14,7 +14,7 @@ test("the nav lists every page, with later phases marked", async () => {
   // Runs became Checks (D24); Approvals waits for V2 (D19)
   expect(nav).not.toHaveTextContent("Approvals");
   expect(screen.getByRole("link", { name: /Security/ })).toHaveAttribute("aria-current", "page");
-  expect(nav).toHaveTextContent("Phase 7");
+  expect(nav).not.toHaveTextContent("Phase 7");   // findings are real since D31
 });
 
 test("example data is labelled as such", async () => {

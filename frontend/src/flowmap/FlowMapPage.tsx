@@ -10,6 +10,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, useApi } from "../api/client";
 import { CheckConfirm, countsText, Squares } from "../checks/Health";
 import { useChecks } from "../checks/useChecks";
+import { type Finding, type SecurityResponse, worst } from "../security/Security";
 import type { Connector, ConnectorType, FlowNode, FlowResponse, FlowView, NodeKind, Trace } from "../api/types";
 import { when } from "../components/format";
 import { Icons } from "../components/icons";
@@ -185,6 +186,12 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
   const [scanning, setScanning] = useState(false);
   const checks = useChecks(deps);   // health on a dependency map (D24)
   const health = useMemo(() => Object.fromEntries(checks.items.map((i) => [i.id, i])), [checks.items]);
+  const security = useApi<SecurityResponse>(deps ? "/security" : null);   // findings on a dependency map (D31)
+  const findings = useMemo(() => {
+    const out: Record<string, Finding[]> = {};
+    for (const f of security.data?.findings ?? []) if (f.dep_id) (out[f.dep_id] ??= []).push(f);
+    return out;
+  }, [security.data]);
   const [find, setFind] = useState("");
   const [cp, setCp] = useState(code);   // a flow read from code opens on its critical path (D25)
   const [showEvidence, setShowEvidence] = useState(true);
@@ -237,8 +244,10 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
       search: query ? (hits.has(id) ? "hit" : "miss") : pointed ? (pointed.has(id) ? "hit" : "miss") : null,
       showTip: !dismissed.has(id) && !frame, showEvidence, retryMax: retry?.max ?? null,
       health: deps && health[id] ? health[id] : undefined,
+      risk: findings[id] ? worst(findings[id]) : undefined,
     };
-  }, [flow.nodes, flow.edges, tileFor, deps, code, theme, frame, query, hits, cp, dismissed, showEvidence, health, pointed]);
+  }, [flow.nodes, flow.edges, tileFor, deps, code, theme, frame, query, hits, cp, dismissed, showEvidence, health, pointed,
+    findings]);
 
   // Boxed on a flow lays blocks out in time columns (D26); every other style keeps your saved layout
   const timed = theme === "boxed" && !deps;
@@ -442,7 +451,19 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
     setSel(id);
     setNodes((ns) => ns.map((x) => ({ ...x, selected: x.id === id })));
     rf.setCenter(n.position.x + (n.width ?? 196) / 2, n.position.y + (n.height ?? 64) / 2, { zoom: Math.max(zoom, 0.9), duration: 450 });
-  };
+  };  // "Show on map" from the Security page: /?focus=<dependency> selects and centres that block once it is drawn (D31)
+  const focus = params.get("focus");
+  const focused = useRef<string | null>(null);
+  useEffect(() => {
+    if (!focus || focused.current === focus || !nodes.some((n) => n.id === focus)) return;
+    focused.current = focus;   // once per request: focusOn changes the blocks, which runs this again
+    // after the first fit to the screen (a frame after the blocks are drawn), or that fit moves it away again
+    window.setTimeout(() => focusOn(focus), 120);
+    const rest = Object.fromEntries(params);
+    delete rest.focus;
+    setParams(rest, { replace: true });
+  }, [focus, nodes]);   // eslint-disable-line react-hooks/exhaustive-deps
+
 
   const selected = sel ? flow.nodes.find((n) => n.id === sel) : undefined;
   const appName = flow.nodes.find((n) => n.id === "app")?.title;
@@ -666,6 +687,7 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
         {selected && (
           <StepPanel key={selected.id} node={selected} flow={flow} tile={tileFor(selected)}
             health={deps ? health[selected.id] : undefined} example={meta.example} checking={checks.running}
+            findings={findings[selected.id]}
             othersUp={checks.items.filter((i) => i.status === "up" && i.id !== selected.id).length}
             onCheck={(id) => void checks.checkNow([id])}
             state={frame?.nodes[selected.id] ?? "idle"} cap={frame?.caps[selected.id] ?? ""} waiting={frame?.waiting === selected.id}

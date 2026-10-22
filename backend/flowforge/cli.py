@@ -28,6 +28,7 @@ def parse(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("command", nargs="?", default="serve", choices=["serve", "scan", "mcp"])
     parser.add_argument("path", nargs="?", help="scan: the folder to read")
     parser.add_argument("--repo", help="serve: map this folder; mcp: the repo to answer about (default: here)")
+    parser.add_argument("--db", help="mcp: the dashboard's database (default: FLOWFORGE_DB, else flowforge.db)")
     parser.add_argument("--replace", action="store_true",
                         help="serve: --repo names a different folder than last time, so start a fresh map")
     parser.add_argument("--example", action="store_true", help="use example data (no keys, no network)")
@@ -46,7 +47,7 @@ def main(argv: list[str] | None = None) -> None:
         scan_folder(args.path)
         return
     if args.command == "mcp":
-        serve_agent(args.repo)
+        serve_agent(args.repo, args.db)
         return
     if args.repo:
         if not Path(args.repo).expanduser().is_dir():
@@ -68,7 +69,7 @@ def main(argv: list[str] | None = None) -> None:
                 reload_dirs=[str(Path(__file__).parent)] if args.reload else None)
 
 
-def serve_agent(repo: str | None) -> None:
+def serve_agent(repo: str | None, db: str | None = None) -> None:
     """The MCP server a coding agent starts (D29). stdout is the agent's pipe, so everything else goes to stderr."""
     import logging
 
@@ -84,7 +85,7 @@ def serve_agent(repo: str | None) -> None:
     logging.basicConfig(stream=sys.stderr, level=logging.WARNING)
     redactor = Redactor()
     install_log_redaction(redactor)
-    path = database_path()
+    path = Path(db).expanduser() if db else database_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     build_server(root, Storage(path, redact=redactor.redact)).run("stdio")
 

@@ -150,10 +150,10 @@ Ready-made presets: NVIDIA NIM, Gemini, Claude, Ollama, Razorpay, Stripe and the
 | — | Scheduler core: five policies, caches, retries, SSE run stream, status page, benchmarks | **Done** |
 | 1 | Any LLM (OpenAI-compatible + Anthropic), any MCP server with tool discovery, `local` command steps, connector registry, ruff + CI | **Done** |
 | 2 | Dashboard v1: live run, tool health, money and time, run history, add/edit apps, example data | **Done** |
-| 3 | The flow map: canvas, step panel and edits, replay, re-check diff, connector catalog | **Done**, in review |
-| 4 | Repo scan: every dependency with its `file:line`, no LLM | **Done**, in review |
-| 5 | Health checks: Check now, why it's down, the Checks page | **Done**, in review |
-| 6 | Flow order from Python code, the critical path, "run these together", map styles, the MCP Map export | **Done**, in review |
+| 3 | The flow map: canvas, step panel and edits, replay, re-check diff, connector catalog | **Done** |
+| 4 | Repo scan: every dependency with its `file:line`, no LLM | **Done** |
+| 5 | Health checks: Check now, why it's down, the Checks page | **Done** |
+| 6 | Flow order from Python code, the critical path, "run these together" with the change written out, map styles, the MCP Map export | **Done** |
 | 6b | Flow order from Dart and JS/TS | Next |
 | 7 | Security findings: hard-coded keys, `http://` APIs, risky MCP configs | Planned |
 | 8 | Launch: docs, demo, `pip install` | Planned |

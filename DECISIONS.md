@@ -950,6 +950,35 @@ D23's rule holds: nothing drawn by hand. Vishwa chose Python first, with Dart an
 
 ---
 
+## D29. The FlowForge MCP server: five tools, the same data, nothing written (Vishwa, 2026-10-22)
+
+**Context.** D28 makes the user's coding agent the default brain, connected through FlowForge as an MCP server. This decides what that server is.
+
+**Choice:**
+- **`flowforge mcp [--repo PATH]`**, a stdio MCP server (MCP SDK 2.x `MCPServer`), started by the agent itself. `--repo` defaults to the working folder the agent starts it in. It does not need the dashboard to be running.
+- **The same data as the dashboard.** It opens the same database (`FLOWFORGE_DB`, else the default next to the checkout) and reads the saved check latencies and the saved yes for MCP commands. The map and the flow are read fresh from the repo each call (plain code, D20), so an edit shows up at once.
+- **Five tools:**
+  - `get_map`: the dependencies, each with its kind, address, `file:line` places and latest health;
+  - `get_flow`: the calls in order with `file:line`, the decisions, the critical path, as written vs could be;
+  - `get_advice`: D27's advice, with the written change and the agent prompt;
+  - `check_health`: D24's checks, now;
+  - `what_changed`: the repo now compared with the map saved in the dashboard (dependencies added or removed) and the flow's could-be time.
+
+  `get_security_findings` comes with Phase 7.
+- **Annotations:** every tool is read-only; `check_health` is marked open-world (it makes requests).
+- **Safety:**
+  - Every answer goes through the same masking as evidence (`redact_code`, then the `Redactor` with the configured key values). No key value, ever.
+  - `check_health` starts an MCP server only when the dashboard already holds the user's yes for that exact command (D24's confirmation); otherwise that check is "skipped: say yes in the dashboard first". APIs, LLMs and local programs get D24's harmless checks.
+  - There are no write tools. The agent edits; the user approves (D28).
+  - Logs go to stderr only, so the stdio pipe stays clean.
+- **Proof it works:** each tool call stores the time and the tool's name (a setting, no arguments). The dashboard's "Connect an agent" page shows it, with copy-ready set-up for Claude Code, Codex and Antigravity, paths filled in. A format that couldn't be checked against the agent's current docs is labelled so.
+
+**Why:** a server the agent starts by itself, reading the same saved data, is one config line for the user and keeps one source of truth. Read-only tools and the existing yes-before-start rule keep FlowForge's promises when an agent, not a person, is asking.
+
+**Code:** `backend/flowforge/agent/` (new), `cli.py` (`mcp`), `api/agent.py` (`GET /agent/connect`), `frontend/src/pages/ConnectAgent.tsx`.
+
+---
+
 ## Step JSON schema (reference)
 
 ```json

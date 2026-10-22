@@ -1,7 +1,7 @@
 // Brand marks for preset and catalog integrations: CC0 SVGs from the simple-icons package, used only
 // to identify the integration (nominative use, D15). Anything not in the package gets a monogram tile.
 import {
-  siAdyen, siAirtable, siClaude, siDeepgram, siDeepseek, siDiscord, siDocker, siElevenlabs, siFirebase, siGithub, siGitlab,
+  siAdyen, siAirtable, siClaude, siClaudecode, siDeepgram, siDeepseek, siDiscord, siDocker, siElevenlabs, siFirebase, siGithub, siGitlab,
   siGmail, siGoogledrive, siGooglegemini, siGooglesheets, siHuggingface, siJira, siLinear, siMistralai, siModelcontextprotocol,
   siMongodb, siNotion, siNvidia, siOllama, siOpenrouter, siPaypal, siPerplexity, siPostgresql, siRazorpay, siRedis, siReplicate,
   siResend, siSentry, siShopify, siSquare, siStripe, siSupabase, siTelegram, siVercel, siWhatsapp,
@@ -23,7 +23,7 @@ const m = (icon: SimpleIcon, tile?: string): Mark => ({
 /** By connector or catalog id. Tile colours follow the design tokens where the design names one. */
 const MARKS: Record<string, Mark> = {
   razorpay: m(siRazorpay, "#3395FF"), stripe: m(siStripe, "#635BFF"), gemini: m(siGooglegemini, "#4285F4"),
-  nim: m(siNvidia, "#76B900"), claude: m(siClaude, "#D97757"), ollama: m(siOllama, "#1F2328"),
+  nim: m(siNvidia, "#76B900"), claude: m(siClaude, "#D97757"), claudecode: m(siClaudecode, "#D97757"), ollama: m(siOllama, "#1F2328"),
   mistral: m(siMistralai), openrouter: m(siOpenrouter), deepseek: m(siDeepseek), perplexity: m(siPerplexity),
   huggingface: m(siHuggingface), paypal: m(siPaypal), square: m(siSquare), adyen: m(siAdyen), github: m(siGithub),
   gitlab: m(siGitlab), docker: m(siDocker), sentry: m(siSentry), vercel: m(siVercel), linear: m(siLinear), jira: m(siJira),
@@ -37,7 +37,7 @@ const MARKS: Record<string, Mark> = {
 const MONO_TILES: Record<string, string> = {
   openai: "#10A37F", groq: "#F55036", together: "#0B5FE0", cohere: "#39594D", sirius: "#0B7A70", playwright: "#2EAD33",
   slack: "#4A154B", twilio: "#C81E34", higgsfield: "#2A2A30", stability: "#5B3FD1", runway: "#16191D", assemblyai: "#2545D3",
-  inventory: "#2F6FD6",
+  inventory: "#2F6FD6", codex: "#1F2328", antigravity: "#4285F4",
 };
 
 type BrandSource = Pick<Connector, "id" | "type"> & { connection?: Record<string, unknown> };

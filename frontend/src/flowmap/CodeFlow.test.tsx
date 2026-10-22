@@ -64,9 +64,9 @@ test("pointing at a piece of advice lights up its blocks", async () => {
 });
 
 test("a repo without Python says why its flow waits", async () => {
-  mockApi(routes({ available: false, message: "Flow order needs Python for now; Dart and JS/TS are next." }));
+  mockApi(routes({ available: false, message: "Flow order reads Python, Dart, JavaScript and TypeScript." }));
   renderAt("/?map=flow");
-  expect(await screen.findByText("Flow order needs Python for now; Dart and JS/TS are next.")).toBeInTheDocument();
+  expect(await screen.findByText("Flow order reads Python, Dart, JavaScript and TypeScript.")).toBeInTheDocument();
   expect(screen.queryByLabelText("Folder to scan")).not.toBeInTheDocument();
 });
 
@@ -92,4 +92,32 @@ test("pointing at a block lights what it waits for and what waits for it", async
   act(() => (weather.closest(".react-flow__node") as HTMLElement).focus());
   expect([...document.querySelectorAll(".ff-block.hit .ff-title")].map((t) => t.textContent).sort())
     .toEqual(["Find the city", "Today's weather", "Write the plan", "plan()"]);
+});
+
+test("a flow read from Dart says it was read by patterns and names Dart's import (D32)", async () => {
+  const dart = {
+    ...CODEFLOW, patterns: ["dart"],
+    advice: (CODEFLOW.advice ?? []).map((a) => (a.change ? { ...a, change: { ...a.change, needs_import: false, import_text: "import 'dart:async';" } } : a)),
+  };
+  mockApi(routes(dart));
+  renderAt("/?map=flow");
+  const faster = await screen.findByRole("region", { name: "Faster" }, { timeout: 5000 });
+  expect(within(faster).getByText("Dart read by patterns: less exact than Python (D32).")).toBeInTheDocument();
+  await userEvent.click(within(faster).getByRole("button", { name: "Show the change" }));
+  expect(within(faster).getByText("import 'dart:async';")).toBeInTheDocument();
+});
+
+test("with several entry points, Faster shows the slowest action's calls, not every call added up (D32)", async () => {
+  const second = {
+    ...CODEFLOW,
+    nodes: [...CODEFLOW.nodes,
+      { ...CODEFLOW.nodes.find((n) => n.kind === "start")!, id: "start-other", title: "other()" },
+      { ...CODEFLOW.nodes.find((n) => n.kind === "api")!, id: "api-extra-1", title: "Extra" }],
+    edges: [...CODEFLOW.edges, { ...CODEFLOW.edges[0], id: "start-other__api-extra-1", source: "start-other", target: "api-extra-1" }],
+  };
+  mockApi(routes(second));
+  renderAt("/?map=flow");
+  const faster = await screen.findByRole("region", { name: "Faster" }, { timeout: 5000 });
+  const entry = CODEFLOW.nodes.find((n) => n.id === CODEFLOW.critical_path.path[0])!;
+  expect(faster).toHaveTextContent(`The slowest of 2 actions, ${entry.title}: its 4 calls`);
 });

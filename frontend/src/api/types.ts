@@ -241,6 +241,8 @@ export interface CodeChange {
   /** calls of the same advice in another block: "\"find the sight\" (planner.py:58): inside `if sight:`" */
   by_hand: string[];
   needs_import: boolean;
+  /** the import the change needs, when the file lacks it (D32) */
+  import_text?: string | null;
 }
 
 /** Calls that could start together (D25), with what running them together saves. */
@@ -263,6 +265,8 @@ export interface FlowView {
   advice?: Advice[];
   /** code flows: every call one after another, as written */
   written_ms?: number | null;
+  /** languages read by patterns, less exact than Python (D32) */
+  patterns?: string[];
   version: number;
   created_at: string;
   layer: "mine" | "planner";

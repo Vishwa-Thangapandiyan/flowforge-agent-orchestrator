@@ -60,6 +60,16 @@ Switch the map to **Flow**. FlowForge reads your Python (by its syntax tree, nev
 
 Dart and JS/TS flows come next; the dependency map already covers them.
 
+### Use it from your coding agent
+
+FlowForge is also an **MCP server**, so Claude Code, Codex or Antigravity can ask it about your app and then make the change themselves. Open **Connect agent** in the dashboard: it gives you the one line (or config block) for your agent, with the paths filled in. For Claude Code it looks like:
+
+```bash
+claude mcp add flowforge -- uv --directory /path/to/flowforge run flowforge mcp --repo /path/to/your/app
+```
+
+Your agent gets five read-only tools: `get_map`, `get_flow`, `get_advice`, `check_health` and `what_changed`. Every answer is masked (key values never appear), FlowForge never edits your code, and a check starts an MCP server only after you said yes to it on the Checks page. FlowForge needs no AI of its own for any of this.
+
 ### Send someone the map
 
 **Export** on the map opens the **MCP Map**: a standard picture of an app's MCP architecture (lanes by kind, time left to right, one shape per kind, a title block and a key; rules in [docs/mcp-map.md](docs/mcp-map.md)). Download it as **SVG** (documents), **PNG 2×** (slides), **PDF** (reports, A4 landscape), copy it as **Mermaid** (GitHub draws it in a README or pull request), or save the **Flow JSON** behind it. It's all made in your browser, from data whose key formats were already masked.
@@ -104,6 +114,7 @@ To use real LLM steps, `cp .env.example .env` and add a free `NVIDIA_API_KEY` fr
 | **Flow map** (home) | Your app's dependency map on a canvas: pan, zoom, drag, search, minimap. Every block is something the code uses (an LLM, an MCP server, an API, a local program), with its evidence (`file:line` with the code). Dashed blocks were only mentioned, never called. **Scan a folder** maps another folder; **Re-scan the repo** shows what changed. "As scanned / With my edits" switches between the scan and your edits. **Flow** shows the order the code calls them, the critical path and the **Faster** panel; **Style** picks one of five looks |
 | **MCP Map** (Export) | The map to send: SVG, PNG, PDF, Mermaid or Flow JSON |
 | **Checks** | Check now, each dependency's verdict, why it's down and the likely fix, and the history |
+| **Connect agent** | The set-up for Claude Code, Codex or Antigravity, the tools your agent gets, and its last call |
 | **How the Planner drew it** | The analysis replayed: read the repo, run the app in test mode, trace the calls, draft, check. What it read, what it dropped and why |
 | **Re-check** | What changed in your repo since the last map: added, changed, removed, and conflicts with your edits. You pick what to take; the old version stays listed |
 | **Connectors** | A catalog of 56 apps with search and categories, honest **Live** / **Demo only** badges, and a mock test run for every one. Apps you connected but your code doesn't call wait here, off the map |

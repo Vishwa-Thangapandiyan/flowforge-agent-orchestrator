@@ -20,6 +20,7 @@ from fastapi import FastAPI, HTTPException
 
 from flowforge import example_data, spa
 from flowforge import state as app_state_module
+from flowforge.api import agent as agent_api
 from flowforge.api import checks as checks_api
 from flowforge.api import connectors as connectors_api
 from flowforge.api import flowmap as flowmap_api
@@ -31,7 +32,7 @@ from flowforge.connectors.registry import Registry, check_references, load_conne
 from flowforge.connectors.runtime import build_nodes  # noqa: F401 (re-exported for callers)
 from flowforge.flowmap.planner import CodeFlowPlanner, ScanPlanner
 from flowforge.flowmap.service import FlowService
-from flowforge.home import flowforge_home
+from flowforge.home import database_path, flowforge_home
 from flowforge.security.logfilter import Redactor, install_log_redaction, secret_values_for
 from flowforge.state import AppState, app_state
 from flowforge.storage import Storage
@@ -54,10 +55,9 @@ def __getattr__(name: str) -> Any:
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     example = os.getenv("FLOWFORGE_EXAMPLE") == "1"
     redactor = Redactor()
-    default_db = flowforge_home() / "example.db" if example else ROOT / "flowforge.db"
     if example:
-        default_db.parent.mkdir(parents=True, exist_ok=True)
-    storage = Storage(os.getenv("FLOWFORGE_DB") or default_db, redact=redactor.redact)
+        flowforge_home().mkdir(parents=True, exist_ok=True)
+    storage = Storage(database_path(example), redact=redactor.redact)
     registry = Registry(storage)
     registry.ensure_defaults()
     from_file = load_connectors_file(flowforge_home() / "connectors.json")
@@ -113,6 +113,7 @@ app.include_router(stats_api.router)
 app.include_router(flowmap_api.router)
 app.include_router(scan_api.router)
 app.include_router(checks_api.router)
+app.include_router(agent_api.router)
 
 
 @app.get("/workflows")

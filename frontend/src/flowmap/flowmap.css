@@ -473,3 +473,9 @@
 .sp-said { margin-left: 8px; color: var(--teal); font-size: 12.5px; font-weight: 600; }
 /* phones pinch to zoom: the zoom buttons would sit on the search box (D33) */
 @media (max-width: 700px) { .fm-tools { display: none; } }
+/* labelled menus (D33, amended): "Style ▾" and "More ▾" */
+.mm-btn { min-width: 0; font-size: 14px; letter-spacing: 0; gap: 6px; }
+.mm-caret { display: inline-flex; color: var(--muted); }
+.fm-actions .btn { white-space: nowrap; }
+.sec-chip { white-space: nowrap; }
+@media (max-width: 760px) { .fm-actions { flex-wrap: wrap; margin-left: 0; } }

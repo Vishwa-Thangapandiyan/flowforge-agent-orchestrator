@@ -10,7 +10,7 @@ export type MenuItem =
   | { kind: "toggle"; label: string; on: boolean; onClick: () => void }
   | { kind: "radio"; label: string; note?: string; on: boolean; onClick: () => void; swatch?: string };
 
-export function MoreMenu({ items, label = "More" }: { items: MenuItem[]; label?: string }) {
+export function MoreMenu({ items, label = "More", button }: { items: MenuItem[]; label?: string; button?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -22,9 +22,8 @@ export function MoreMenu({ items, label = "More" }: { items: MenuItem[]; label?:
   const run = (fn: () => void) => () => { setOpen(false); fn(); };
   return (
     <div className="mm" ref={box} onKeyDown={(e) => e.key === "Escape" && setOpen(false)}>
-      <button type="button" className="btn mm-btn" aria-label={label} aria-haspopup="menu" aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}>
-        <span aria-hidden="true">⋯</span>
+      <button type="button" className="btn mm-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+        {button ?? label} <span className="mm-caret" aria-hidden="true">{Icons.chevron(14)}</span>
       </button>
       {open && (
         <div className="mm-menu" role="menu" aria-label={label}>

@@ -1062,6 +1062,8 @@ D23's rule holds: nothing drawn by hand. Vishwa chose Python first, with Dart an
 
 **Why:** a first look decides whether a stranger keeps FlowForge. Three controls and one idea per screen make the map readable at a glance; nothing is removed, only moved one click away.
 
+**Amended the same day (Vishwa):** a bare ⋯ hid too much: the map lost options people reach for. The map's header now shows **Re-scan, Export and Style ▾** as buttons next to the warning chip and Check now, and the menu is labelled **More ▾** and keeps the rest (scan another folder, my edits, add, apps, how it was mapped, re-tidy, critical path, every check, file:line, legend, minimap). Whether this or the old full row reads better is to be seen in use.
+
 **Code:** `frontend/src/flowmap/` (`MapHeader.tsx`, `MoreMenu.tsx` new; `FlowMapPage.tsx`, `nodes.tsx`, `Faster.tsx`, `StepPanel.tsx`), `frontend/src/security/SecurityChip.tsx`, `components/Shell.tsx`, `checks/ChecksPage.tsx`, `flow/curly.py`, `flow/__init__.py`.
 
 ---

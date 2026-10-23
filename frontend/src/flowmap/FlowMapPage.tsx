@@ -6,7 +6,7 @@ import {
   type NodeChange, type OnSelectionChangeParams,
 } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, useApi } from "../api/client";
 import { CheckConfirm } from "../checks/Health";
 import { useChecks } from "../checks/useChecks";
@@ -508,13 +508,11 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload, action
     : (flow.pending ? "Review the re-check" : rechecking ? "Re-checking…" : "Re-check the repo");
   const menu: MenuItem[] = [
     { kind: "head", label: deps ? "Map" : "Flow" },
-    { kind: "action", label: rescanLabel, icon: Icons.refresh(16), onClick: () => void recheck(), disabled: rechecking },
     ...(deps ? [{ kind: "action" as const, label: "Scan another folder", icon: Icons.search(16), onClick: () => setScanning(true) }] : []),
     { kind: "toggle", label: `Show my edits (${flow.counts.edits})`, on: layer === "mine",
       onClick: () => setLayer(layer === "mine" ? "planner" : "mine") },
     { kind: "action", label: deps ? "Add a block" : "Add a step", icon: Icons.addBox(16), onClick: () => void addStep() },
     ...(deps ? [{ kind: "link" as const, label: "Apps and connectors", icon: Icons.plug(16), to: "/connectors" }] : []),
-    { kind: "link", label: "Export", icon: Icons.share(16), to: `/map/export${q}` },
     { kind: "link", label: deps ? "How it was mapped" : code ? "How it was read" : "How it was drawn", icon: Icons.question(16), to: `/map/how${q}` },
     { kind: "head", label: "View" },
     { kind: "action", label: "Re-tidy", icon: Icons.tidy(16), onClick: retidy },
@@ -523,10 +521,9 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload, action
     { kind: "toggle", label: "File and line under blocks", on: showEvidence, onClick: () => setShowEvidence((v) => !v) },
     { kind: "toggle", label: "Legend", on: legend, onClick: () => setLegend((v) => !v) },
     { kind: "toggle", label: "Minimap", on: minimap, onClick: () => setMinimap((v) => !v) },
-    { kind: "head", label: "Style" },
-    ...THEMES.map((t) => ({ kind: "radio" as const, label: t.name, note: t.note, on: t.id === theme, swatch: `sw-${t.id}`,
-      onClick: () => setTheme(t.id) })),
   ];
+  const styles: MenuItem[] = THEMES.map((t) => ({ kind: "radio" as const, label: t.name, note: t.note, on: t.id === theme,
+    swatch: `sw-${t.id}`, onClick: () => setTheme(t.id) }));
 
   return (
     <div className={`fm${drawing ? " drawing" : ""}`} data-graph={theme}>
@@ -543,15 +540,20 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload, action
         {oneAction && setAction && <ActionPicker actions={actions} value={action} onChange={setAction} />}
         <div className="fm-actions">
           {deps && <SecurityChip findings={security.data?.findings ?? []} onShow={focusOn} />}
+          {!deps && !code && (
+            <button className="btn primary" type="button" onClick={startReplay} disabled={!trace || busy}>
+              {Icons.play(18)} {busy ? "Running…" : "Test run"}
+            </button>
+          )}
+          <button className="btn" type="button" onClick={() => void recheck()} disabled={rechecking}>
+            {Icons.refresh(18)} {rescanLabel}
+          </button>
+          <Link className="btn" to={`/map/export${q}`}>{Icons.share(18)} Export</Link>
+          <MoreMenu items={styles} label="Map style" button={<>{Icons.monitor(18)} Style</>} />
           {deps && checks.items.length > 0 && (
             <button className="btn primary" type="button" onClick={() => void checks.checkNow()} disabled={checks.running}>
               {Icons.activity(18)} {checks.progress ? `Checking ${checks.progress.done}/${checks.progress.total}…`
                 : checks.running ? "Checking…" : "Check now"}
-            </button>
-          )}
-          {!deps && !code && (
-            <button className="btn primary" type="button" onClick={startReplay} disabled={!trace || busy}>
-              {Icons.play(18)} {busy ? "Running…" : "Test run"}
             </button>
           )}
           <MoreMenu items={menu} />

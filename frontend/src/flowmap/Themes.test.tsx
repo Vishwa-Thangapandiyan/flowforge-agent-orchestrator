@@ -18,7 +18,7 @@ beforeEach(() => localStorage.clear());
 afterEach(() => vi.unstubAllGlobals());
 
 async function pick(theme: string) {
-  await userEvent.click(await screen.findByRole("button", { name: "More" }, { timeout: 5000 }));   // styles live in ⋯ (D33)
+  await userEvent.click(await screen.findByRole("button", { name: /^Style/ }, { timeout: 5000 }));
   await userEvent.click(screen.getByRole("menuitemradio", { name: new RegExp(theme) }));
 }
 

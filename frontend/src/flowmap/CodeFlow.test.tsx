@@ -160,3 +160,21 @@ test("a step you added stays visible in the chosen action, so you can edit it", 
   expect(view.nodes.map((n) => n.id)).toContain("step_new");
   expect(view.nodes.map((n) => n.id)).not.toContain("start-other");
 });
+
+test("Show every check lays the flow out again for full-size checks", async () => {
+  const two = {
+    ...CODEFLOW, positions: {},
+    actions: [
+      { id: "start-plan", title: "plan()", written_ms: 9400, could_ms: 9220, path: CODEFLOW.critical_path.path, calls: 4 },
+      { id: "start-x", title: "x()", written_ms: 0, could_ms: 0, path: [], calls: 0 },
+    ],
+  };
+  mockApi(routes(two));
+  renderAt("/?map=flow");
+  await screen.findByText("About the city", { selector: ".ff-title" }, { timeout: 5000 });
+  const at = () => (document.querySelector('.react-flow__node[data-id="llm-ollama-1"]') as HTMLElement).style.transform;
+  const before = at();
+  await userEvent.click(screen.getByRole("button", { name: "More" }));
+  await userEvent.click(screen.getByRole("menuitemcheckbox", { name: /Show every check/ }));
+  await vi.waitFor(() => expect(at()).not.toBe(before));   // full boxes take more room: the blocks move
+}, 20000);

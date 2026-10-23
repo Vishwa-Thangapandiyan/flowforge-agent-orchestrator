@@ -303,11 +303,13 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload, action
     return new Set([...walk((e) => [e.target, e.source]), ...walk((e) => [e.source, e.target])]);
   }, [flow.edges]);
   const wasTimed = useRef(timed);
+  const wasCompact = useRef(compact);   // ◆ marks and full boxes need their own layout (D33)
   useEffect(() => {
     const saved = placeAll(flow.nodes, flow.edges, flow.positions, size);
     const placed = timed ? timeColumns(flow, saved, size) : saved;
-    const switched = wasTimed.current !== timed;
+    const switched = wasTimed.current !== timed || wasCompact.current !== compact;
     wasTimed.current = timed;
+    wasCompact.current = compact;
     setNodes((current) => {
       const at = timed || switched ? {} : Object.fromEntries(current.map((n) => [n.id, n.position]));
       return flow.nodes.map((n) => {

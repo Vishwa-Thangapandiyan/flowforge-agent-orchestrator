@@ -114,6 +114,18 @@ class Change(_Model):
     import_text: str | None = None   # the import to add for the change, when the file lacks it (D32)
 
 
+class Action(_Model):
+    """One entry point of a flow read from code, as the action picker shows it (D33): its calls one after another
+    as written, as early as inputs allow, and the chain that sets that time."""
+
+    id: str                        # its start block
+    title: str
+    written_ms: float = Field(ge=0)
+    could_ms: float = Field(ge=0)
+    path: list[str] = Field(default_factory=list)
+    calls: int = 0
+
+
 class Advice(_Model):
     """Calls that could start together (D25): awaited one after another, and none uses another's result.
     `saved_ms` is what running them together would save, from the blocks' weights. `change` writes it out when plain
@@ -137,6 +149,7 @@ class Flow(_Model):
     advice: list[Advice] = Field(default_factory=list)
     written_ms: float | None = None   # code flows: every call one after another, as the code is written (D25)
     patterns: list[str] = Field(default_factory=list)   # code flows: languages read by patterns, less exact (D32)
+    actions: list[Action] = Field(default_factory=list)   # code flows: one per entry point, slowest first (D33)
 
     @model_validator(mode="after")
     def _structure(self) -> Flow:

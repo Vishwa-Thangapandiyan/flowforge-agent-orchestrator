@@ -13,12 +13,12 @@ from pathlib import Path
 from typing import Any
 
 from flowforge.flow import curly
-from flowforge.flow.advice import advise, written_ms
+from flowforge.flow.advice import advise, written_by_entry, written_ms
 from flowforge.flow.index import Func, Index
 from flowforge.flow.order import Body, Stmt, flatten, label, preds, reduce
 from flowforge.flow.reach import Hit, Reach, writes
-from flowforge.flowmap.models import Evidence, Flow, FlowEdge, FlowNode, Op
-from flowforge.flowmap.validate import DEFAULT_MS
+from flowforge.flowmap.models import CALL_KINDS, Action, Evidence, Flow, FlowEdge, FlowNode, Op
+from flowforge.flowmap.validate import DEFAULT_MS, critical
 from flowforge.scan.models import Dependency, ScanResult
 from flowforge.scan.scanner import Places, scan_with_places
 from flowforge.security.logfilter import Redactor, redact_code
@@ -107,6 +107,9 @@ class _Python:
     def question(self, func: Func, body: Body, s: Stmt) -> str:
         return _question(func, body, s, self.index)
 
+    def keep_decision(self, func: Func, body: Body, s: Stmt) -> bool:
+        return True
+
 
 class _Builder:
     """Blocks and lines for every entry point of one repo, with ids unique across the map."""
@@ -133,7 +136,7 @@ class _Builder:
                                    what=f"An entry point in {func.path}.",
                                    evidence=[_evidence(func.path, lines, lang.start_line(func), "starts here")]))
         decisions = {s.idx for s in body.stmts if s.is_if and (s.stops or any(
-            t.hits for t in body.stmts[s.idx + 1: s.block_end + 1]))}
+            t.hits for t in body.stmts[s.idx + 1: s.block_end + 1])) and lang.keep_decision(func, body, s)}
         enters: dict[int, list[str]] = {}   # statement -> the blocks a line into it lands on
         leaves: dict[int, list[str]] = {}   # statement -> the blocks a line out of it leaves from
         is_async = lang.is_async(func)
@@ -251,7 +254,28 @@ class _Builder:
         modules = {m.path: m.tree for m in self.index.modules.values()}
         flow.advice = advise(flow, self.meta, self.sources, modules)
         flow.written_ms = written_ms(flow, self.meta)
+        flow.actions = _actions(flow, written_by_entry(flow, self.meta))
         return flow
+
+
+def _actions(flow: Flow, written: dict[str, float]) -> list[Action]:
+    """Each entry point on its own (D33): what it reaches, its time as written and could be, slowest first."""
+    out = []
+    for start in (n for n in flow.nodes if n.kind == "start"):
+        reach, queue = {start.id}, [start.id]
+        while queue:
+            here = queue.pop()
+            for e in flow.edges:
+                if e.source == here and e.target not in reach:
+                    reach.add(e.target)
+                    queue.append(e.target)
+        sub = Flow(kind="flow", source="code", nodes=[n for n in flow.nodes if n.id in reach],
+                   edges=[e for e in flow.edges if e.source in reach and e.target in reach])
+        cp = critical(sub)
+        calls = sum(1 for n in sub.nodes if n.kind in CALL_KINDS)
+        out.append(Action(id=start.id, title=start.title, written_ms=written.get(start.id, 0.0),
+                          could_ms=round(cp.length_ms, 1), path=list(cp.path), calls=calls))
+    return sorted(out, key=lambda a: (-a.written_ms, a.title))
 
 
 def _masked(text: str) -> str:

@@ -759,6 +759,14 @@ class Lang:
     def condition(self, func: Func, s: Stmt) -> str:
         return re.sub(r"\s+", " ", self.text(func, s, raw=True)).strip()
 
+    def keep_decision(self, func: Func, body: Body, s: Stmt) -> bool:
+        """A check that only stops on UI state (`!mounted || request != _request`) isn't the app's flow (D33): keep a
+        decision that guards a call, or whose condition reads a call's result or an input."""
+        if any(t.hits for t in body.stmts[s.idx + 1: s.block_end + 1]):
+            return True
+        from_calls = set().union(*(t.writes for t in body.stmts[: s.idx] if t.hits))
+        return bool(s.reads & (from_calls | func.params))
+
     def question(self, func: Func, body: Body, s: Stmt) -> str:
         cond = re.sub(r"\s+", " ", self.text(func, s)).strip()
         name, failed = None, False

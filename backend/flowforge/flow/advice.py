@@ -104,8 +104,13 @@ def _caveat(flow: Flow, ids: list[str], meta: dict[str, dict], names: list[str])
 
 
 def written_ms(flow: Flow, meta: dict[str, dict]) -> float:
-    """The slowest entry point as the code is written: its calls one after another, those it already gathers
-    counting once, at the slowest. Entry points are separate actions, so they are never added together (D32)."""
+    """The slowest entry point as the code is written. Entry points are separate actions, so they are never added
+    together (D32)."""
+    return round(max(written_by_entry(flow, meta).values(), default=0.0), 1)
+
+
+def written_by_entry(flow: Flow, meta: dict[str, dict]) -> dict[str, float]:
+    """Each entry point's calls one after another, those it already gathers counting once, at the slowest."""
     by_id = {n.id: n for n in flow.nodes}
     totals: dict[str, float] = defaultdict(float)
     gathered: dict[tuple[str, int], list[float]] = defaultdict(list)
@@ -117,4 +122,4 @@ def written_ms(flow: Flow, meta: dict[str, dict]) -> float:
             totals[m["entry"]] += w
     for (entry, _), ws in gathered.items():
         totals[entry] += max(ws)
-    return round(max(totals.values(), default=0.0), 1)
+    return {entry: round(ms, 1) for entry, ms in totals.items()}

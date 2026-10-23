@@ -24,8 +24,8 @@ What makes it different: **it knows which chain of steps is the bottleneck and s
 ### Install (from the first release, v0.1.0)
 
 ```bash
-uvx flowforge --example          # try it: a sample app's maps in your browser, no keys, nothing sent
-pip install flowforge            # or install it
+uvx flowforge-map --example      # try it: a sample app's maps in your browser, no keys, nothing sent
+pip install flowforge-map        # or install it (the command is `flowforge`)
 flowforge --repo ~/my-app        # map your own repo
 ```
 

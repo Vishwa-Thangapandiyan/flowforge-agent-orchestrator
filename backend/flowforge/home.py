@@ -11,6 +11,7 @@ from pathlib import Path
 
 PACKAGE = Path(__file__).resolve().parent
 CHECKOUT = PACKAGE.parents[1]
+DIST_NAME = "flowforge-map"   # the name on PyPI (D34); the command and the import stay `flowforge`
 IN_CHECKOUT = (CHECKOUT / "pyproject.toml").is_file() and (CHECKOUT / "backend" / "flowforge").is_dir()
 
 # name -> (inside the package, in the checkout)
@@ -31,7 +32,7 @@ def resource(name: str, package: Path = PACKAGE, checkout: Path = CHECKOUT) -> P
 
 def version() -> str:
     try:
-        return metadata.version("flowforge")
+        return metadata.version(DIST_NAME)
     except metadata.PackageNotFoundError:
         return "0.0.0"
 

@@ -33,7 +33,7 @@ def _command(repo: str, db: str) -> list[str]:
     if kind == "checkout":
         return [shutil.which("uv") or "uv", "--directory", str(home.CHECKOUT), "run", "flowforge", *tail]
     if kind == "uvx":
-        return [shutil.which("uvx") or "uvx", f"flowforge=={home.version()}", *tail]
+        return [shutil.which("uvx") or "uvx", f"{home.DIST_NAME}=={home.version()}", *tail]
     return [sys.executable, "-m", "flowforge.cli", *tail]
 
 

@@ -11,23 +11,30 @@ from __future__ import annotations
 import json
 import shlex
 import shutil
+import sys
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
+from flowforge import home
 from flowforge.agent import AGENT_CALLS_SETTING, preview
 from flowforge.api.scan import repo_path
-from flowforge.home import CHECKOUT
 from flowforge.state import app_state
 
 router = APIRouter()
 
 
 def _command(repo: str, db: str) -> list[str]:
-    """Until FlowForge is on PyPI (Phase 8), uv runs it from this checkout. Full paths: an agent started from a
-    desktop app may not have your shell's PATH."""
-    uv = shutil.which("uv") or "uv"
-    return [uv, "--directory", str(CHECKOUT), "run", "flowforge", "mcp", "--repo", repo, "--db", db]
+    """How the agent starts FlowForge's MCP server, matching how FlowForge was installed (D34): from the checkout
+    through uv, through uvx with the version pinned (as FlowForge advises for MCP servers, D31), or the same Python.
+    Full paths: an agent started from a desktop app may not have your shell's PATH."""
+    tail = ["mcp", "--repo", repo, "--db", db]
+    kind = home.install_kind()
+    if kind == "checkout":
+        return [shutil.which("uv") or "uv", "--directory", str(home.CHECKOUT), "run", "flowforge", *tail]
+    if kind == "uvx":
+        return [shutil.which("uvx") or "uvx", f"flowforge=={home.version()}", *tail]
+    return [sys.executable, "-m", "flowforge.cli", *tail]
 
 
 @router.get("/agent/connect")

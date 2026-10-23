@@ -1,0 +1,52 @@
+# Publish to PyPI when a version tag (v0.1.0, …) is pushed (D34). Trusted publishing: PyPI trusts this workflow in
+# this repository, so no token or password exists anywhere. The wheel is smoke-tested before it is published.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4  # v10.1.0
+        with:
+          python-version: "3.12"
+      - name: The tag matches the package's version
+        run: test "${GITHUB_REF_NAME#v}" = "$(uv version --short)"
+      - run: npm ci && npm run build
+        working-directory: frontend
+      - run: uv build
+      - name: Install the wheel alone and smoke-test it
+        run: |
+          uv venv "$RUNNER_TEMP/smoke" --python 3.12
+          uv pip install --python "$RUNNER_TEMP/smoke/bin/python" dist/*.whl
+          cp scripts/smoke_installed.py "$RUNNER_TEMP/"
+          cd "$RUNNER_TEMP" && "$RUNNER_TEMP/smoke/bin/python" -I smoke_installed.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write   # trusted publishing: a short-lived token PyPI checks against this workflow
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

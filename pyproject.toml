@@ -1,9 +1,24 @@
 [project]
 name = "flowforge"
 version = "0.1.0"
-description = "The scheduler layer for agent workflows: runs LLM, MCP and HTTP steps as a DAG, critical path first"
+description = "Map what your app depends on (LLMs, MCP servers, APIs), check their health and security, and see what could run faster. Local and free; the scan needs no AI."
 readme = "README.md"
 requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Vishwa Thangapandiyan" }]
+keywords = ["mcp", "llm", "dependencies", "dependency-map", "health-check", "security", "critical-path", "developer-tools"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Web Environment",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: System :: Monitoring",
+]
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
@@ -16,6 +31,10 @@ dependencies = [
     "jsonschema>=4.26.0",
     "python-multipart>=0.0.32",
 ]
+
+[project.urls]
+Homepage = "https://github.com/Vishwa-Thangapandiyan/flowforge-agent-orchestrator"
+Issues = "https://github.com/Vishwa-Thangapandiyan/flowforge-agent-orchestrator/issues"
 
 [project.scripts]
 flowforge = "flowforge.cli:main"
@@ -32,8 +51,28 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+# The package carries what it needs (D34): the built dashboard, the example app and the sample workflows. The
+# dashboard is built output (git-ignored), so it is an artifact; build it first (npm run build in frontend/).
 [tool.hatch.build.targets.wheel]
-packages = ["backend/flowforge"]
+only-include = ["backend/flowforge", "backend/workflows", "frontend/dist", "examples/trip-planner"]
+artifacts = ["frontend/dist"]
+exclude = ["**/__pycache__", "examples/trip-planner/trips/*.md"]
+dev-mode-dirs = ["backend"]   # development (uv sync): import from backend/, files come from the checkout
+
+[tool.hatch.build.targets.wheel.sources]
+"backend/flowforge" = "flowforge"
+"backend/workflows" = "flowforge/_workflows"
+"frontend/dist" = "flowforge/_dashboard"
+"examples/trip-planner" = "flowforge/_example/trip-planner"
+
+[tool.hatch.build.targets.wheel.force-include]   # a single file: sources only rewrites folders
+"frontend/classic.html" = "flowforge/_classic.html"
+
+[tool.hatch.build.targets.sdist]
+only-include = ["backend/flowforge", "backend/workflows", "frontend/dist", "frontend/classic.html", "examples/trip-planner",
+    "README.md", "LICENSE", "pyproject.toml"]
+artifacts = ["frontend/dist"]
+exclude = ["**/__pycache__", "examples/trip-planner/trips/*.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["backend/tests"]

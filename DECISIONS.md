@@ -1068,6 +1068,24 @@ D23's rule holds: nothing drawn by hand. Vishwa chose Python first, with Dart an
 
 ---
 
+## D34. An installable package (Phase 8, part 1, Vishwa, 2026-10-24)
+
+**Context.** Phase 8 is split: make FlowForge installable now and quietly, add features, then announce. Until now it ran only from a checkout: the dashboard, the example app, the sample workflows and the default database were found next to the source, and the Connect page told agents to run `uv --directory <checkout> run flowforge mcp`. The name `flowforge` was free on PyPI.
+
+**Choice:**
+- **One package, `flowforge`, with everything it needs inside:** the built dashboard (`flowforge/_dashboard`), the trip planner for `--example` (`flowforge/_example/trip-planner`, its tracked files only), the sample workflows (`flowforge/_workflows`) and the classic page. `home.resource(name)` finds each inside the package, else in the checkout, so development works as before. No Node is needed to run it.
+- **Where data lives:** in a checkout, `flowforge.db` stays next to it; installed, the default is `~/.flowforge/flowforge.db` (`FLOWFORGE_HOME`), never inside the installed package. `FLOWFORGE_DB` still wins.
+- **The agent's command (D29) follows how FlowForge was installed:** a checkout keeps `uv --directory …`; a `uvx` install gives `uvx flowforge==<version> mcp …`, pinned, as FlowForge itself advises for MCP servers (D31); a `pip` install gives the same Python running `-m flowforge.cli mcp …`.
+- **`flowforge --version`.**
+- **Releases by tag, with no stored secret:** pushing a `v*` tag runs `release.yml`: build the dashboard, build the wheel and sdist, install the wheel in a clean environment outside the repo and smoke-test it (version, `--example` serves the page and the map, `flowforge mcp` answers), then publish to PyPI with trusted publishing (PyPI trusts this repository's workflow; no token or password exists to leak). Every PR runs the same build and smoke test without publishing.
+- **Vishwa owns the PyPI project:** the account, its 2FA and the trusted publisher are set up by him.
+
+**Why:** one command (`uvx flowforge --example`) is the difference between a stranger trying FlowForge and not. Packaging the same files the checkout uses keeps one code path; trusted publishing keeps the "no secret anywhere" promise for the release itself.
+
+**Code:** `home.py` (`IN_CHECKOUT`, `resource`, `database_path`), `spa.py`, `cli.py`, `main.py`, `api/scan.py`, `api/agent.py`, `pyproject.toml`, `.github/workflows/release.yml`, `.github/workflows/ci.yml`.
+
+---
+
 ## Step JSON schema (reference)
 
 ```json

@@ -33,6 +33,14 @@ Run the app with `uv run uvicorn flowforge.main:app --reload` and open http://lo
 
 Work on a branch named `feat/<what>` and open a pull request into `main`. The `DAA` branch is the frozen course project: never commit to it or target it.
 
+## Releasing (maintainers)
+
+1. Set `version` in `pyproject.toml`, run `uv lock`, and merge that.
+2. Tag the merge: `git tag v0.1.0 && git push origin v0.1.0`.
+3. The **Release** workflow builds the dashboard and the package, installs it alone in a clean environment, smoke-tests it (`scripts/smoke_installed.py`), and publishes to PyPI with trusted publishing: no token is stored anywhere. A tag that doesn't match the version stops it.
+
+Every pull request already runs the same build and smoke test (the `package` CI job), without publishing.
+
 ## Style
 
 Match the code around you: type hints, `from __future__ import annotations`, short docstrings that cite decisions (`(D7)`), Pydantic models with `extra="forbid"`. Prefer the standard library and existing patterns over new abstractions; a new runtime dependency needs a reason in the pull request.

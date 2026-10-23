@@ -12,7 +12,6 @@ import json
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
@@ -33,15 +32,14 @@ from flowforge.connectors.registry import Registry, check_references, load_conne
 from flowforge.connectors.runtime import build_nodes  # noqa: F401 (re-exported for callers)
 from flowforge.flowmap.planner import CodeFlowPlanner, ScanPlanner
 from flowforge.flowmap.service import FlowService
-from flowforge.home import database_path, flowforge_home
+from flowforge.home import database_path, flowforge_home, resource
 from flowforge.security.logfilter import Redactor, install_log_redaction, secret_values_for
 from flowforge.state import AppState, app_state
 from flowforge.storage import Storage
 
 load_dotenv()
 
-ROOT = Path(__file__).resolve().parents[2]
-WORKFLOWS_DIR = ROOT / "backend" / "workflows"
+WORKFLOWS_DIR = resource("workflows")   # inside the package when installed (D34)
 MCP_CHECK_TIMEOUT_S = runs_api.MCP_CHECK_TIMEOUT_S
 
 

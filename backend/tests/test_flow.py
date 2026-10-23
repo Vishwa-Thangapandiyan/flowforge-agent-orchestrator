@@ -245,11 +245,11 @@ def test_a_url_written_inside_the_call_is_a_call(tmp_path):
     assert flow is not None and ("start-run", "api-api-weather-test-1", None) in edges(flow)
 
 
-def test_a_repo_without_python_says_flows_need_python_for_now(tmp_path):
+def test_a_call_outside_any_function_has_no_flow_to_draw(tmp_path):
     write(tmp_path, {"web/app.js": "fetch('https://api.weather.test/v1/today');\n"})
     result = flow_of(tmp_path)
     assert result.flow is None
-    assert result.message == "Flow order needs Python for now; Dart and JS/TS are next."
+    assert result.message == "No function here calls a dependency yet."
 
 
 def test_nothing_in_the_repo_runs(tmp_path, no_network):

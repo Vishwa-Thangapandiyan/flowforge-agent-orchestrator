@@ -15,9 +15,25 @@ function line(n: FlowNode): number {
 }
 
 
+const LANGUAGE_NAMES: Record<string, string> = { dart: "Dart", javascript: "JavaScript", typescript: "TypeScript" };
+const languageName = (l: string) => LANGUAGE_NAMES[l] ?? l;
+
 export function Faster({ flow, onPoint }: { flow: FlowView; onPoint: (ids: string[] | null) => void }) {
-  const calls = useMemo(() => flow.nodes.filter((n) => CALL_KINDS.has(n.kind) && (n.estimate_ms ?? 0) > 0)
-    .sort((a, b) => line(a) - line(b)), [flow.nodes]);
+  // several entry points are separate actions: show the slowest one, the one the critical path runs through (D32)
+  const entries = flow.nodes.filter((n) => n.kind === "start");
+  const entry = entries.length > 1 ? flow.nodes.find((n) => n.id === flow.critical_path.path[0]) : undefined;
+  const calls = useMemo(() => {
+    let keep: Set<string> | null = null;
+    if (entry) {
+      keep = new Set([entry.id]);
+      for (let grew = true; grew;) {
+        grew = false;
+        for (const e of flow.edges) if (keep.has(e.source) && !keep.has(e.target)) { keep.add(e.target); grew = true; }
+      }
+    }
+    return flow.nodes.filter((n) => CALL_KINDS.has(n.kind) && (n.estimate_ms ?? 0) > 0 && (!keep || keep.has(n.id)))
+      .sort((a, b) => line(a) - line(b));
+  }, [flow.nodes, flow.edges, entry]);
   const start = useMemo(() => earliest(flow), [flow]);
   const written = flow.written_ms ?? calls.reduce((t, n) => t + (n.estimate_ms ?? 0), 0);
   const could = flow.critical_path.length_ms;
@@ -40,7 +56,8 @@ export function Faster({ flow, onPoint }: { flow: FlowView; onPoint: (ids: strin
   return (
     <section className="sp fx" aria-label="Faster">
       <div className="sp-sec">
-        <h2 className="fx-h">Faster<small>The same {calls.length} calls, as written and as your dependencies allow.</small></h2>
+        <h2 className="fx-h">Faster<small>{entry ? <>The slowest of {entries.length} actions, <b>{entry.title}</b>: its {calls.length} calls, </>
+          : <>The same {calls.length} calls, </>}as written and as your dependencies allow.</small></h2>
         <div className="fx-times">
           <span>As written<b>{took(written)}</b></span>
           <div className="fx-lane" role="img" aria-label={`as written: ${took(written)}`}>
@@ -79,6 +96,9 @@ export function Faster({ flow, onPoint }: { flow: FlowView; onPoint: (ids: strin
               ? "measured by the last check" : "an estimate"}).</>}
           </p>
         </div>
+      )}
+      {(flow.patterns ?? []).length > 0 && (
+        <p className="fx-limits">{flow.patterns!.map(languageName).join(", ")} read by patterns: less exact than Python (D32).</p>
       )}
       <p className="fx-limits">Can't see: calls passed around as values, callbacks, or chosen at run time (D25).</p>
     </section>
@@ -138,7 +158,9 @@ function AdviceCard({ a, flow, onPoint }: { a: Advice; flow: FlowView; onPoint: 
                       <button type="button" className="fx-btn" onClick={() => copy(c.after.join("\n"))}>
                         {Icons.copy(15)} Copy the new code
                       </button>
-                      {c.needs_import && <p className="fx-note">Add <code>import asyncio</code> at the top of {c.path}.</p>}
+                      {(c.import_text || c.needs_import) && (
+                        <p className="fx-note">Add <code>{c.import_text ?? "import asyncio"}</code> at the top of {c.path}.</p>
+                      )}
                       {c.by_hand.length > 0 && (
                         <div className="fx-note">
                           <b>Move by hand</b> (or copy the prompt):

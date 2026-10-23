@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import ast
 from dataclasses import dataclass
+from typing import Any
 
 from flowforge.flowmap.models import Change
 from flowforge.security.logfilter import redact_code
@@ -17,14 +18,16 @@ from flowforge.security.logfilter import redact_code
 
 @dataclass
 class Call:
-    """One awaited call of a piece of advice."""
+    """One awaited call of a piece of advice. `stmt` and `func` are the reader's own: an `ast` statement and function
+    for Python, a `Stmt` and `curly.Func` for Dart/JS/TS (D32)."""
 
-    stmt: ast.stmt
-    func: ast.FunctionDef | ast.AsyncFunctionDef
+    stmt: Any
+    func: Any
     path: str
     words: str          # what it does, in the code's words ("find the sight")
     ref: str            # "planner.py:58"
     weight: float
+    line: int = 0
 
 
 def _blocks(func: ast.AST) -> dict[int, tuple[ast.AST, list[ast.stmt]]]:
@@ -125,7 +128,7 @@ def change(calls: list[Call], source: str, module: ast.Module) -> Change | None:
         after=[redact_code(x) for x in after], saved_ms=round(sum(weights) - max(weights), 1),
         by_hand=[f"{_quoted(c)}: {_where(blocks[id(c.stmt)][0]) if id(c.stmt) in blocks else 'in another block'}"
                  for c in sorted(left, key=lambda c: c.stmt.lineno)],
-        needs_import=not imported)
+        needs_import=not imported, import_text=None if imported else "import asyncio")
 
 
 def prompt(calls: list[Call], entry: str, saved_ms: float, caveat: str | None, how: str) -> str:
@@ -133,7 +136,7 @@ def prompt(calls: list[Call], entry: str, saved_ms: float, caveat: str | None, h
     paths = sorted({c.path for c in calls})
     lines = [f"In {', '.join(paths)}, {entry} waits for each of these calls before starting the next, "
              "but none of them uses another's result:",
-             *(f"- line {c.ref.rsplit(':', 1)[1]}: \"{c.words}\"" for c in sorted(calls, key=lambda c: c.stmt.lineno)),
+             *(f"- line {c.ref.rsplit(':', 1)[1]}: \"{c.words}\"" for c in sorted(calls, key=lambda c: c.line)),
              f"Make them run at the same time, {how}, so the slowest one sets the time. "
              f"FlowForge estimates about {saved_ms / 1000:.1f} s saved."]
     if caveat:

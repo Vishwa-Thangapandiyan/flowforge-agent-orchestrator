@@ -52,13 +52,12 @@ Starting an MCP server runs code, so the first check lists exactly what will sta
 
 ### See the order your app runs in
 
-Switch the map to **Flow**. FlowForge reads your Python (by its syntax tree, never running it) and draws the order your code calls its dependencies: which call waits for which, the `if`s that choose, and where the code stops early. Every block and line points to its `file:line`.
+Switch the map to **Flow**. FlowForge reads your Python (by its syntax tree), Dart, JavaScript and TypeScript (by patterns, and says so), never running anything, and draws the order your code calls its dependencies: which call waits for which, the `if`s that choose, and where the code stops early. Every block and line points to its `file:line`.
 
 - **The critical path** is the chain that sets the total time, weighted by the latencies your last check measured (LLMs are estimates, and say so).
-- **Faster** compares "as written" (one call after another) with "could be", and lists the calls that don't need each other's results. **Show the change** writes out the `asyncio.gather` (now → could be, ready to copy) when it's safe; **Copy prompt for your coding agent** hands the rest to Claude Code, Codex or any agent. FlowForge never edits your code.
+- **Faster** compares "as written" (the slowest action, one call after another) with "could be", and lists the calls that don't need each other's results. **Show the change** writes out the `asyncio.gather`, Dart's `(a, b).wait` or `Promise.all` (now → could be, ready to copy) when it's safe; **Copy prompt for your coding agent** hands the rest to Claude Code, Codex or any agent. FlowForge never edits your code.
 - **Watch it run** plays the could-be schedule; pointing at a block lights up its path. Five map styles: Studio, Boxed, Blueprint, Metro, Soft.
 
-Dart and JS/TS flows come next; the dependency map already covers them.
 
 ### Use it from your coding agent
 
@@ -165,7 +164,7 @@ Ready-made presets: NVIDIA NIM, Gemini, Claude, Ollama, Razorpay, Stripe and the
 | 4 | Repo scan: every dependency with its `file:line`, no LLM | **Done** |
 | 5 | Health checks: Check now, why it's down, the Checks page | **Done** |
 | 6 | Flow order from Python code, the critical path, "run these together" with the change written out, map styles, the MCP Map export | **Done** |
-| 6b | Flow order from Dart and JS/TS | Next |
+| 6b | Flow order from Dart and JS/TS | **Done** |
 | 7 | Security findings: hard-coded keys, `http://` APIs, risky MCP configs | **Done** |
 | 8 | Launch: docs, demo, `pip install` | Planned |
 | 9 | CLI agent and a desktop app (Tauri) | Planned |
@@ -262,7 +261,7 @@ Both tracks run every policy with the cache off and on, and write CSV plus a mar
 | `backend/flowforge/connectors/` | Connector models, secret references, presets and the catalog, registry |
 | `backend/flowforge/scan/` | The repo scan: dependencies and their evidence, by plain code |
 | `backend/flowforge/checks/` | One harmless health check per dependency |
-| `backend/flowforge/flow/` | Flow order from Python code: the calls, the `if`s, the critical path weights, the advice |
+| `backend/flowforge/flow/` | Flow order from code (Python by `ast`, Dart/JS/TS by patterns in `curly.py`): the calls, the `if`s, the critical path weights, the advice |
 | `backend/flowforge/flowmap/` | The flow map: Flow JSON models, validation and code-inserted gates, the Planner interface and its example fixture, re-check diff |
 | `backend/flowforge/schema.py`, `templating.py`, `storage.py` | Validation, `{{steps.x.output}}` templates, SQLite |
 | `backend/flowforge/main.py`, `api/` | The API: start-up wiring, runs, connectors, health and savings |
@@ -276,7 +275,7 @@ Tests are in `backend/tests/` and never touch the network. They include property
 
 ## Docs
 
-- [DECISIONS.md](DECISIONS.md): every design decision and its reason (D1–D9 for the scheduler core, D10–D18 for connectors, gates, MCP, local commands, planning, the dashboard, run history and the flow map, D19–D26 for the repo scan, health checks, flow order and the MCP Map)
+- [DECISIONS.md](DECISIONS.md): every design decision and its reason (D1–D9 for the scheduler core, D10–D18 for connectors, gates, MCP, local commands, planning, the dashboard, run history and the flow map, D19–D32 for the repo scan, health checks, flow order, the MCP Map, the MCP server for coding agents, security findings and Dart/JS flows)
 - [docs/mcp-map.md](docs/mcp-map.md): the MCP Map's six rules and its export formats
 - [CLAUDE.md](CLAUDE.md): roadmap, security spec, data model and working rules
 - [docs/design/](docs/design/README.md): the design artboards; `flow-map-artboards/` is the current spec for the flow map

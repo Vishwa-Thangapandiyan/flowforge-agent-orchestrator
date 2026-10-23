@@ -17,6 +17,10 @@ _BY_ID = {s["id"]: s for s in SERVICES}
 _ROUTERS = {normalize_package(p) for p in ROUTER_SDKS}
 
 
+def by_id(service_id: str) -> dict | None:
+    return _BY_ID.get(service_id)
+
+
 def by_host(host: str) -> dict | None:
     """The service a host (or host:port) belongs to. A leading "." in the table matches any subdomain."""
     name = host.split(":")[0]

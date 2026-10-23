@@ -1022,6 +1022,31 @@ D23's rule holds: nothing drawn by hand. Vishwa chose Python first, with Dart an
 
 ---
 
+## D32. Flow order for Dart, JavaScript and TypeScript (Phase 6b, Vishwa, 2026-10-23)
+
+**Context.** D25 reads the order of calls from Python's AST. Dart (Flutter) and JS/TS apps got "needs Python". The plan Vishwa approved: a small reader of our own for the three languages (they share braces and `;`), no new dependency, the same flow, critical path and advice, and an honest label.
+
+**Choice:**
+- **`flow/curly.py` reads Dart, JS and TS** without running anything. It first blanks out comments and string contents (keeping `${…}` and Dart's `$name` interpolations as code, so what a string reads still counts), then finds:
+  - functions: Dart declarations and getters, `function` and arrow functions, class methods; each with its class, whether it is `async`, and its body;
+  - statements in order: declarations (`final/var/const/let/late`, typed or not, and destructuring), assignments, `if/else`, loops, `try/catch/finally`, `switch` (one statement), `return/throw`. JS without `;` ends a statement at a line break when nothing continues it;
+  - what each statement reads and writes (D25's rules: names it reads, names it declares or assigns, a list it adds to), whether it awaits, and whether it already runs calls together (`Future.wait`, Dart's `(a, b).wait`, `Promise.all/allSettled/race`).
+- **What it calls:** a statement reaches a dependency when one of the scan's call places (D21) is inside it; when it calls a function of the repo that reaches one (by name: the same file first, then a name unique in the repo; `Class.method` for a static call); or when it uses a known service's client. A service's client is named by `presets.SERVICES` (`client`: for Supabase `Supabase.instance.client` and `createClient(`), and any name the repo binds to it (`SupabaseClient get supabaseClient => Supabase.instance.client;`) is that client too.
+- **The same flow as Python's:** the builder, the critical path, the decisions with whole questions (`if (trip == null) throw …` asks 'Did "get trip" fail?'), early stops, the advice and its caveat are shared; only reading the code differs. A step's label is the repo function it calls, as words (`getItineraryItems` → "get itinerary items"), or a string it passes.
+- **The written change (D27):** Dart `final (a, b) = await (f(), g()).wait;` (it needs `import 'dart:async';`), JS/TS `const [a, b] = await Promise.all([f(), g()]);`. The same safety rule as Python: one block of one async function, each a plain `x = await …`, nothing between them using a result or changing an input. A TypeScript declaration with a type is listed to move by hand, so no type is dropped. `Change.import_text` names the import to add.
+- **Honest label:** `Flow.patterns` lists the languages read by patterns; the Faster panel says they are less exact than Python. Mixed repos get one flow with every language's entry points.
+- **Hidden order, learned from the first real Flutter app** (three of its four first pieces of advice were wrong):
+  - a call to a repo function carries the outside names (fields, globals) that function reads and writes, through what it calls: `loadTrips()` filling `_trips` comes before a line that reads `_trips`;
+  - a service call that changes state (`insert`, `update`, `upsert`, `delete`, an `.auth.…()` call such as signing in) is a write, and a call that reads and writes one service counts as a write, so two of them keep their order (D25);
+  - a callback's calls (an anonymous function passed somewhere) run later, not as part of the statement, as D25 already skips Python's lambdas; a statement that gathers (`Future.wait`, `Promise.all`) runs its callbacks now, so those count.
+- **As written, per entry point (amends D25's `written_ms`):** entry points are separate actions, so "as written" is the slowest entry point's calls one after another, not every entry point added up. With 37 entry points the sum read 14.4 s against a 1.2 s critical path, which oversold the saving.
+
+**Why:** the same plain-code reading (D20) and the same map for every language the scan already knows, without a parser dependency. tree-sitter stays the option if patterns prove too loose (CLAUDE.md §12).
+
+**Code:** `flow/curly.py` (new), `flow/__init__.py`, `flow/advice.py`, `flow/rewrite.py`, `flowmap/models.py` (`Flow.patterns`, `Change.import_text`), `scan/scanner.py` (`Places.code`), `connectors/presets.py` (`client`), `frontend/src/flowmap/Faster.tsx`.
+
+---
+
 ## Step JSON schema (reference)
 
 ```json

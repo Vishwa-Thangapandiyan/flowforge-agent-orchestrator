@@ -170,7 +170,7 @@ class FlowService:
             "available": True, "kind": flow.kind, "source": flow.source, "version": row["version"],
             "created_at": row["created_at"],
             "advice": [a.model_dump(mode="json") for a in flow.advice], "written_ms": flow.written_ms,
-            "layer": layer,
+            "patterns": flow.patterns, "layer": layer,
             "fact_sheet_hash": row["fact_sheet_hash"], "nodes": nodes, "edges": edges, "hidden": hidden,
             "critical_path": {"path": cp.path, "length_ms": cp.length_ms, "bottleneck": cp.bottleneck},
             "positions": positions, "apps": apps,

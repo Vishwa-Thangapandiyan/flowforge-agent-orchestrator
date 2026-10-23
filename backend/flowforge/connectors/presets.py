@@ -156,6 +156,12 @@ MODEL_LISTS: dict[str, str] = {
     "cohere": "https://api.cohere.com/v1/models", "groq": "https://api.groq.com/openai/v1/models",
     "openrouter": "https://openrouter.ai/api/v1/models", "deepseek": "https://api.deepseek.com/models",
 }
+# How a service's SDK client is reached in Dart/JS/TS code (D32): a call through it, or through a name bound to it,
+# is a call to that service
+CLIENTS: dict[str, tuple[str, ...]] = {
+    "supabase": (r"Supabase\.instance\.client", r"\bcreateClient\s*\(", r"\bSupabaseClient\s*\("),
+    "firebase": (r"FirebaseFirestore\.instance", r"\bgetFirestore\s*\(", r"FirebaseAuth\.instance"),
+}
 # SDKs that route to many providers (D21): the provider comes from the model name, by these prefixes
 ROUTER_SDKS = ("litellm",)
 MODEL_PREFIXES: dict[str, tuple[str, ...]] = {

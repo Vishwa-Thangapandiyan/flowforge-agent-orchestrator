@@ -104,17 +104,29 @@ def _caveat(flow: Flow, ids: list[str], meta: dict[str, dict], names: list[str])
 
 
 def written_ms(flow: Flow, meta: dict[str, dict]) -> float:
-    """The slowest entry point as the code is written: its calls one after another, those it already gathers
-    counting once, at the slowest. Entry points are separate actions, so they are never added together (D32)."""
-    by_id = {n.id: n for n in flow.nodes}
-    totals: dict[str, float] = defaultdict(float)
-    gathered: dict[tuple[str, int], list[float]] = defaultdict(list)
+    """The slowest entry point as the code is written. Entry points are separate actions, so they are never added
+    together (D32)."""
+    weight = {n.id: n.estimate_ms or 0.0 for n in flow.nodes}
+    return round(max((written_of(p, weight) for p in parts_by_entry(meta).values()), default=0.0), 1)
+
+
+def parts_by_entry(meta: dict[str, dict]) -> dict[str, list[list[str]]]:
+    """Each entry point's calls as written: one group per call, or one per statement that already gathers its calls."""
+    out: dict[str, list[list[str]]] = defaultdict(list)
+    gathered: dict[tuple[str, int], list[str]] = {}
     for node_id, m in meta.items():
-        w = by_id[node_id].estimate_ms or 0.0
         if m["gathered"]:
-            gathered[(m["entry"], m["stmt"])].append(w)
+            key = (m["entry"], m["stmt"])
+            if key not in gathered:
+                gathered[key] = []
+                out[m["entry"]].append(gathered[key])
+            gathered[key].append(node_id)
         else:
-            totals[m["entry"]] += w
-    for (entry, _), ws in gathered.items():
-        totals[entry] += max(ws)
-    return round(max(totals.values(), default=0.0), 1)
+            out[m["entry"]].append([node_id])
+    return dict(out)
+
+
+def written_of(parts: list[list[str]], weight: dict[str, float]) -> float:
+    """One call after another; a group the code runs together counts once, at its slowest. Calls not in `weight`
+    (hidden from the map) count nothing."""
+    return sum(max((weight[i] for i in p if i in weight), default=0.0) for p in parts)

@@ -10,7 +10,6 @@ import { AddConnector } from "./pages/AddConnector";
 import { Catalog } from "./pages/Catalog";
 import { ConnectorPage } from "./pages/Connector";
 import { Approvals } from "./pages/Later";
-import { Security } from "./security/Security";
 import { LiveRun, LiveRunLatest } from "./pages/LiveRun";
 import { RunHistory } from "./pages/RunHistory";
 
@@ -42,7 +41,7 @@ export const routes = [
       { path: "/runs", element: <RunHistory /> },
       { path: "/runs/:id", element: <LiveRun /> },
       { path: "/approvals", element: <Approvals /> },
-      { path: "/security", element: <Security /> },
+      { path: "/security", element: <Navigate to="/" replace /> },  // findings live on the map (D33)
       { path: "*", element: <NotFound /> },
     ],
   },

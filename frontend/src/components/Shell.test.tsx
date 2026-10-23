@@ -4,35 +4,25 @@ import { META, mockApi, renderAt } from "../test/api";
 
 afterEach(() => vi.unstubAllGlobals());
 
-test("the nav lists every page, with later phases marked", async () => {
+test("the rail has three places: the map, its checks and your coding agent (D33)", async () => {
   mockApi({ "/meta": META });
-  renderAt("/security");
+  renderAt("/checks");
   const nav = screen.getByRole("navigation", { name: "Main" });
-  for (const name of ["Flow map", "Checks", "Connectors", "Security"]) {
-    expect(nav).toHaveTextContent(name);
-  }
-  // Runs became Checks (D24); Approvals waits for V2 (D19)
-  expect(nav).not.toHaveTextContent("Approvals");
-  expect(screen.getByRole("link", { name: /Security/ })).toHaveAttribute("aria-current", "page");
-  expect(nav).not.toHaveTextContent("Phase 7");   // findings are real since D31
+  const links = Array.from(nav.querySelectorAll("a.rail-item")).map((a) => a.textContent);
+  expect(links).toEqual(["Map", "Checks", "Connect agent"]);
+  expect(screen.getByRole("link", { name: /Checks/ })).toHaveAttribute("aria-current", "page");
+  for (const gone of ["Security", "Connectors", "Add app", "Approvals"]) expect(nav).not.toHaveTextContent(gone);
 });
 
-test("example data is labelled as such", async () => {
+test("security has no page of its own: its old address opens the map", async () => {
   mockApi({ "/meta": META });
   renderAt("/security");
-  expect(await screen.findByText("Example data.")).toBeInTheDocument();
-});
-
-test("no example banner with real data", async () => {
-  const calls = mockApi({ "/meta": { ...META, example: false } });
-  renderAt("/security");
-  await vi.waitFor(() => expect(calls.length).toBeGreaterThan(0));
-  expect(screen.queryByText("Example data.")).not.toBeInTheDocument();
+  expect(await screen.findByRole("link", { name: /Map/ })).toHaveAttribute("aria-current", "page");
 });
 
 test("API calls ask for JSON, never HTML", async () => {
   const calls = mockApi({ "/meta": META });
-  renderAt("/security");
+  renderAt("/checks");
   await vi.waitFor(() => expect(calls.length).toBeGreaterThan(0));
   expect(new Headers(calls[0].init?.headers).get("Accept")).toBe("application/json");
 });

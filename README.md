@@ -110,17 +110,16 @@ To use real LLM steps, `cp .env.example .env` and add a free `NVIDIA_API_KEY` fr
 
 | Page | What it shows |
 |---|---|
-| **Flow map** (home) | Your app's dependency map on a canvas: pan, zoom, drag, search, minimap. Every block is something the code uses (an LLM, an MCP server, an API, a local program), with its evidence (`file:line` with the code). Dashed blocks were only mentioned, never called. **Scan a folder** maps another folder; **Re-scan the repo** shows what changed. "As scanned / With my edits" switches between the scan and your edits. **Flow** shows the order the code calls them, the critical path and the **Faster** panel; **Style** picks one of five looks |
+| **Map** (home) | Your app's dependencies as blocks with a health dot; hover for `file:line`, click for details. The header has three controls: **⚠ N to fix** (keys in code, plain `http://`, risky MCP servers; values are never shown), **Check now**, and **⋯** (re-scan, scan another folder, your edits, export, legend, minimap, the five styles). **Flow** shows the order the code calls them, one action at a time, slowest first, with the **Faster** panel |
 | **MCP Map** (Export) | The map to send: SVG, PNG, PDF, Mermaid or Flow JSON |
 | **Checks** | Check now, each dependency's verdict, why it's down and the likely fix, and the history |
 | **Connect agent** | The set-up for Claude Code, Codex or Antigravity; what your agent gets from this repo (dependencies, health, time, ways to be faster); and, once connected, what it asked |
 | **How the Planner drew it** | The analysis replayed: read the repo, run the app in test mode, trace the calls, draft, check. What it read, what it dropped and why |
 | **Re-check** | What changed in your repo since the last map: added, changed, removed, and conflicts with your edits. You pick what to take; the old version stays listed |
-| **Connectors** | A catalog of 56 apps with search and categories, honest **Live** / **Demo only** badges, and a mock test run for every one. Apps you connected but your code doesn't call wait here, off the map |
+| **Apps and connectors** (Map ⋯) | A catalog of 56 apps with search and categories, honest **Live** / **Demo only** badges, and a mock test run for every one. Apps you connected but your code doesn't call wait here, off the map |
 | **Connector page** | One app's connection (keys shown only as *configured*, *missing* or *example*), what it has done, and its recent activity |
-| **Add an app** | LLM, MCP server, HTTP API or local command; colour and logo; a live preview; and exactly what gets saved, with no secrets |
+| **Add an app** (from Apps and connectors) | LLM, MCP server, HTTP API or local command; colour and logo; a live preview; and exactly what gets saved, with no secrets |
 | **Workflow runs** (under Checks, advanced) | Money and time saved, and every scheduled run: live bars with the slowest chain outlined, outputs, and why a failed run failed |
-| Security | What the scan found unsafe, by level: keys written in code or MCP configs, APIs on plain `http://`, MCP servers with no pinned version or given the whole disk. Each with the masked lines, the fix, a prompt for your coding agent, and **Show on map**. Blocks with findings wear a badge on the map |
 
 Both maps are drawn by plain code from your repo, with no AI, and nothing on them is drawn by hand. Edits on the map change how FlowForge maps your app, never your code.
 

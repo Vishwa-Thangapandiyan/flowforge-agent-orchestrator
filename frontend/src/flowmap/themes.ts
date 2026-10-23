@@ -3,7 +3,7 @@
 import type { Node } from "@xyflow/react";
 import type { FlowView, NodeKind } from "../api/types";
 import { CALL_KINDS, earliest, isThrough } from "./kinds";
-import { sizeOf } from "./layout";
+import { sizeOf, type Sizer } from "./layout";
 
 export type GraphTheme = "studio" | "boxed" | "blueprint" | "metro" | "soft";
 
@@ -89,7 +89,8 @@ const COLUMN = 340, ROW_GAP = 52;
 
 const isThroughId = (flow: FlowView, id: string) => { const n = flow.nodes.find((x) => x.id === id); return !!n && isThrough(n); };
 
-export function timeColumns(flow: FlowView, placed: Record<string, [number, number]>): Record<string, [number, number]> {
+export function timeColumns(flow: FlowView, placed: Record<string, [number, number]>,
+  size: Sizer = sizeOf): Record<string, [number, number]> {
   const start = earliest(flow);
   const through = new Map(flow.edges.filter((e) => isThroughId(flow, e.target))
     .map((e) => [e.target, e.source]));
@@ -113,11 +114,11 @@ export function timeColumns(flow: FlowView, placed: Record<string, [number, numb
   [...columns.keys()].sort((a, b) => a - b).forEach((k, col) => {
     const ids = columns.get(k)!.sort((a, b) => (placed[a]?.[1] ?? 0) - (placed[b]?.[1] ?? 0));
     // stack by each block's own height, with room for its file:line underneath and the box's title above
-    const total = ids.reduce((t, id) => t + sizeOf(kind(id)).h, 0) + ROW_GAP * (ids.length - 1);
+    const total = ids.reduce((t, id) => t + size(kind(id)).h, 0) + ROW_GAP * (ids.length - 1);
     let y = -total / 2;
     for (const id of ids) {
       out[id] = [col * COLUMN, through.has(id) ? NaN : y];
-      y += sizeOf(kind(id)).h + ROW_GAP;
+      y += size(kind(id)).h + ROW_GAP;
     }
   });
   for (const [id, server] of through) if (out[id] && out[server]) out[id][1] = out[server][1];   // level with its server

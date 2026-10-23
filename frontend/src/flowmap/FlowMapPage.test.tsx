@@ -15,12 +15,12 @@ test("the home page is the Planner's map of the app", async () => {
   api();
   renderAt("/");
   expect(await screen.findByRole("heading", { name: "Baby-care shop", level: 1 })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: /The Planner drew this map/ })).toHaveAttribute("href", "/map/how");
   expect(await screen.findAllByText("Score fraud risk", { selector: ".ff-title" })).toHaveLength(2); // Gemini and its fallback
   expect(screen.getByText("Risky order?")).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: /1 step unconfirmed/ })).toBeInTheDocument();
   expect(screen.getByRole("toolbar", { name: "Map tools" })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Planner's map" })).toHaveAttribute("aria-pressed", "false");
+  await userEvent.click(screen.getByRole("button", { name: /^More/ }));
+  expect(screen.getByRole("menuitem", { name: /How it was drawn/ })).toHaveAttribute("href", "/map/how");
+  expect(screen.getByRole("menuitemcheckbox", { name: /Show my edits/ })).toHaveAttribute("aria-checked", "true");
   // the engine behind the Planner is never named
   expect(screen.getByRole("banner").textContent).not.toMatch(/NIM|llama|NVIDIA/);
 });
@@ -38,7 +38,8 @@ test("the layer switch asks for the Planner's own version", async () => {
   const calls = api();
   renderAt("/");
   await screen.findByText("Fetch order", { selector: ".ff-title" });
-  await userEvent.click(screen.getByRole("button", { name: "Planner's map" }));
+  await userEvent.click(screen.getByRole("button", { name: /^More/ }));
+  await userEvent.click(screen.getByRole("menuitemcheckbox", { name: /Show my edits/ }));   // off: the version as drawn
   await vi.waitFor(() => expect(calls.some((c) => c.url.startsWith("/flow?layer=planner"))).toBe(true));
 });
 
@@ -56,15 +57,17 @@ test("a dependency map shows what the app uses, without a test run or critical p
   renderAt("/");
   expect(await screen.findByText("Nominatim", { selector: ".ff-title" })).toBeInTheDocument();
   expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("trip-planner");   // the scanned folder
+  // the header (D33, amended): Re-scan, Export and Style in view; the rest in a labelled More menu
   const banner = screen.getByRole("banner");
-  expect(within(banner).getByText("6 dependencies")).toBeInTheDocument();
-  expect(within(banner).queryByText(/gates/)).not.toBeInTheDocument();
-  expect(screen.getByRole("link", { name: /Scanned from your code/ })).toHaveAttribute("href", "/map/how");
+  expect(within(banner).getByRole("button", { name: /Re-scan the repo/ })).toBeInTheDocument();
+  expect(within(banner).getByRole("link", { name: /Export/ })).toHaveAttribute("href", "/map/export");
+  expect(within(banner).getByRole("button", { name: /^Style/ })).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /Test run/ })).not.toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: /Critical path/ })).not.toBeInTheDocument();
-  expect(screen.getByRole("button", { name: /Add dependency/ })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: /Re-scan the repo/ })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "As scanned" })).toBeInTheDocument();   // no Planner drew it
+  await userEvent.click(within(banner).getByRole("button", { name: /^More/ }));
+  const menu = screen.getByRole("menu", { name: "More" });
+  expect(within(menu).getByRole("menuitem", { name: /Add a block/ })).toBeInTheDocument();
+  expect(within(menu).getByRole("menuitem", { name: /How it was mapped/ })).toHaveAttribute("href", "/map/how");
+  expect(within(menu).queryByRole("menuitemcheckbox", { name: /Critical path/ })).not.toBeInTheDocument();
   expect(screen.getByText("Your coding tools", { selector: ".ff-title" })).toBeInTheDocument();
 });
 
@@ -74,7 +77,8 @@ test("example mode has both maps, and Scan a folder says how to map your own", a
   await screen.findByText("Nominatim", { selector: ".ff-title" });
   // both maps come from code now (D25), so the switch is back; nothing drawn by hand reaches it (D23)
   expect(screen.getByRole("group", { name: "Which map" })).toBeInTheDocument();
-  await userEvent.click(screen.getByRole("button", { name: /Scan a folder/ }));
+  await userEvent.click(screen.getByRole("button", { name: /^More/ }));
+  await userEvent.click(screen.getByRole("menuitem", { name: /Scan another folder/ }));
   expect(screen.getByText(/flowforge --repo/)).toBeInTheDocument();
   expect(screen.queryByLabelText("Folder to scan")).not.toBeInTheDocument();
 });
@@ -92,7 +96,8 @@ test("with a map, a different folder replaces it only after you confirm", async 
   });
   renderAt("/");
   await screen.findByText("Nominatim", { selector: ".ff-title" });
-  await userEvent.click(screen.getByRole("button", { name: /Scan a folder/ }));
+  await userEvent.click(screen.getByRole("button", { name: /^More/ }));
+  await userEvent.click(screen.getByRole("menuitem", { name: /Scan another folder/ }));
   await userEvent.type(screen.getByLabelText("Folder to scan"), "/home/me/shop");
   await userEvent.click(screen.getByRole("button", { name: "Scan this folder" }));
   const replace = await screen.findByRole("button", { name: /Replace the map/ });

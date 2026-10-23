@@ -13,12 +13,12 @@ from pathlib import Path
 from typing import Any
 
 from flowforge.flow import curly
-from flowforge.flow.advice import advise, written_ms
+from flowforge.flow.advice import advise, parts_by_entry, written_ms
 from flowforge.flow.index import Func, Index
 from flowforge.flow.order import Body, Stmt, flatten, label, preds, reduce
 from flowforge.flow.reach import Hit, Reach, writes
 from flowforge.flowmap.models import Evidence, Flow, FlowEdge, FlowNode, Op
-from flowforge.flowmap.validate import DEFAULT_MS
+from flowforge.flowmap.validate import DEFAULT_MS, actions_of
 from flowforge.scan.models import Dependency, ScanResult
 from flowforge.scan.scanner import Places, scan_with_places
 from flowforge.security.logfilter import Redactor, redact_code
@@ -107,6 +107,9 @@ class _Python:
     def question(self, func: Func, body: Body, s: Stmt) -> str:
         return _question(func, body, s, self.index)
 
+    def keep_decision(self, func: Func, body: Body, s: Stmt) -> bool:
+        return True
+
 
 class _Builder:
     """Blocks and lines for every entry point of one repo, with ids unique across the map."""
@@ -133,7 +136,7 @@ class _Builder:
                                    what=f"An entry point in {func.path}.",
                                    evidence=[_evidence(func.path, lines, lang.start_line(func), "starts here")]))
         decisions = {s.idx for s in body.stmts if s.is_if and (s.stops or any(
-            t.hits for t in body.stmts[s.idx + 1: s.block_end + 1]))}
+            t.hits for t in body.stmts[s.idx + 1: s.block_end + 1])) and lang.keep_decision(func, body, s)}
         enters: dict[int, list[str]] = {}   # statement -> the blocks a line into it lands on
         leaves: dict[int, list[str]] = {}   # statement -> the blocks a line out of it leaves from
         is_async = lang.is_async(func)
@@ -251,6 +254,7 @@ class _Builder:
         modules = {m.path: m.tree for m in self.index.modules.values()}
         flow.advice = advise(flow, self.meta, self.sources, modules)
         flow.written_ms = written_ms(flow, self.meta)
+        flow.actions = actions_of(flow, parts_by_entry(self.meta))
         return flow
 
 

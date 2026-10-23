@@ -267,6 +267,8 @@ export interface FlowView {
   written_ms?: number | null;
   /** languages read by patterns, less exact than Python (D32) */
   patterns?: string[];
+  /** code flows: one per entry point, slowest first (D33) */
+  actions?: FlowAction[];
   version: number;
   created_at: string;
   layer: "mine" | "planner";
@@ -418,4 +420,14 @@ export interface CheckRecord {
   reason: string | null;
   fix: string | null;
   at: string;
+}
+
+/** One entry point of a flow read from code: what the action picker lists (D33). */
+export interface FlowAction {
+  id: string;
+  title: string;
+  written_ms: number;
+  could_ms: number;
+  path: string[];
+  calls: number;
 }

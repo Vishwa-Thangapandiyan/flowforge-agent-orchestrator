@@ -11,7 +11,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 
 from flowforge.connectors.models import Connector
-from flowforge.flowmap.models import CALL_KINDS, CONNECTOR_TYPE, Evidence, Flow, FlowEdge, FlowNode
+from flowforge.flowmap.models import CALL_KINDS, CONNECTOR_TYPE, Action, Evidence, Flow, FlowEdge, FlowNode
 from flowforge.scheduler.critical_path import critical_path
 from flowforge.scheduler.graph import DAG, CycleError, topological_order
 
@@ -196,3 +196,33 @@ def critical(flow: Flow) -> Critical:
         path.append(nxt)
     bottleneck = max(path, key=lambda i: weights[i]) if path else None
     return Critical(path=path, length_ms=cp.length_ms, bottleneck=bottleneck)
+
+
+def reach(flow: Flow, start: str) -> set[str]:
+    """Everything a start block leads to."""
+    seen, queue = {start}, [start]
+    while queue:
+        here = queue.pop()
+        for e in flow.edges:
+            if e.source == here and e.target not in seen:
+                seen.add(e.target)
+                queue.append(e.target)
+    return seen
+
+
+def actions_of(flow: Flow, parts: dict[str, list[list[str]]]) -> list[Action]:
+    """Each entry point of a code flow on its own (D33): its time as written (from `parts`, by start id: its calls in
+    the groups the code runs them), could be, and the chain that sets it, slowest first. The service recomputes them
+    on the map as shown, so a hidden call leaves both times."""
+    weight = {n.id: n.estimate_ms or 0.0 for n in flow.nodes if n.kind in CALL_KINDS}
+    out = []
+    for start in (n for n in flow.nodes if n.kind == "start"):
+        ids = reach(flow, start.id)
+        sub = Flow(kind="flow", source="code", nodes=[n for n in flow.nodes if n.id in ids],
+                   edges=[e for e in flow.edges if e.source in ids and e.target in ids])
+        cp = critical(sub)
+        mine = parts.get(start.id, [[i] for i in ids if i in weight])
+        written = sum(max((weight[i] for i in p if i in weight), default=0.0) for p in mine)
+        out.append(Action(id=start.id, title=start.title, written_ms=round(written, 1), could_ms=round(cp.length_ms, 1),
+                          path=list(cp.path), calls=sum(1 for n in sub.nodes if n.kind in CALL_KINDS), parts=mine))
+    return sorted(out, key=lambda a: (-a.written_ms, a.title))

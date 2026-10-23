@@ -26,7 +26,6 @@ test("an LLM step shows its evidence with the cited line, its runs and the Plann
   expect(screen.getByText("app/score.py:11")).toBeInTheDocument();
   expect(document.querySelector(".sp-cl.hl")).toHaveTextContent("call()");
   expect(screen.getByText("p50 2.1 s · 2 rate-limited in 40")).toBeInTheDocument();
-  expect(screen.getByText("On the critical path")).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: /^Use / }));
   expect(a.edit).toHaveBeenCalledWith({ op: "set_connector", node: "score", connector: "nim" });
 });
@@ -77,13 +76,12 @@ test("a scanned dependency shows the address it will be checked at, not an app t
   const dep = (id: string) => DEPS.nodes.find((n) => n.id === id)!;
   const { rerender } = render(<StepPanel node={dep("api-nominatim")} flow={DEPS} tile={null} state="idle" cap="" waiting={false}
     connectors={[]} tipShown layer="mine" actions={actions()} />);
-  expect(screen.getByText("Address")).toBeInTheDocument();
-  expect(screen.getByText("https://nominatim.openstreetmap.org/search")).toBeInTheDocument();
+  expect(screen.getByText("https://nominatim.openstreetmap.org/search")).toBeInTheDocument();   // under its name
   expect(screen.queryByText("What it does")).not.toBeInTheDocument();
   expect(screen.queryByText(/not connected/)).not.toBeInTheDocument();   // nothing to connect: it's not an error
   rerender(<StepPanel node={dep("mcp-fetch")} flow={DEPS} tile={null} state="idle" cap="" waiting={false}
     connectors={[]} tipShown layer="mine" actions={actions()} />);
-  expect(screen.getByText("Starts with")).toBeInTheDocument();
+  expect(screen.getByText(DEPS.nodes.find((n) => n.id === "mcp-fetch")!.what)).toBeInTheDocument();   // the command it starts with
   rerender(<StepPanel node={dep("api-www-mysite-test")} flow={DEPS} tile={null} state="idle" cap="" waiting={false}
     connectors={[]} tipShown layer="mine" actions={actions()} />);
   expect(screen.getByText(/only mentions it/)).toBeInTheDocument();

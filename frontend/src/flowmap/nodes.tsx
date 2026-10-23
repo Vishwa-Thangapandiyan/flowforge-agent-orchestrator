@@ -8,7 +8,7 @@ import { BrandTile } from "../brand/BrandTile";
 import { caption as healthCaption } from "../checks/Health";
 import type { LiveStatus } from "../checks/useChecks";
 import { Icons } from "../components/icons";
-import { sizeOf } from "./layout";
+import { compactSize, sizeOf } from "./layout";
 import type { NodeState } from "./replay";
 import type { GraphTheme } from "./themes";
 import { actionName, isThrough, SERVICE_WORD } from "./kinds";
@@ -32,6 +32,8 @@ export interface BlockData extends Record<string, unknown> {
   health?: { status: LiveStatus; summary: string; latency_ms?: number | null };
   /** the worst level of its security findings (D31) */
   risk?: "high" | "medium" | "low";
+  /** a decision drawn as a small ◆ on the line (D33) */
+  compact?: boolean;
   state: NodeState;
   cap: string;
   search: "hit" | "miss" | null;
@@ -74,6 +76,7 @@ function classes(d: BlockData, selected: boolean): string {
     "ff-block", `kind-${n.kind}`, d.state !== "idle" && `st-${d.state}`, selected && "selected",
     n.status === "unconfirmed" && "unconf", d.search, d.cp && d.state === "idle" && "cp",
     d.diff && !d.diffOff && `diff-${d.diff}`, d.diffOff && "diff-off", d.health && `h-${d.health.status}`,
+    d.compact && n.kind === "decision" && "compact",
   ].filter(Boolean).join(" ");
 }
 
@@ -94,17 +97,18 @@ function Caption({ d, evidence }: { d: BlockData; evidence: boolean }) {
   const first = d.node.evidence[0];
   if (!first || ["fork", "join"].includes(d.node.kind)) return null;
   const text = first.type === "code" && first.ref ? first.ref.split("/").pop()
-    : first.type === "policy" ? "policy · D14" : first.type === "user" ? "added by you"
+    : first.type === "policy" ? "added by code" : first.type === "user" ? "added by you"
       : d.node.status === "unconfirmed" ? "no call found" : "";
   if (!text && !h) return null;
   return <span className="ff-cap">{text}{h && <em className={`ff-h ${d.health?.status}`}>{h}</em>}</span>;
 }
 
 function Shell({ d, selected, children }: { d: BlockData; selected: boolean; children: ReactNode }) {
-  const size = sizeOf(d.node.kind);
+  const size = d.compact ? compactSize(d.node.kind) : sizeOf(d.node.kind);
   const n = d.node;
   return (
     <div className={classes(d, selected)} style={{ width: size.w, height: size.h }}
+      title={hoverText(d)}
       aria-label={`${n.title}, ${KIND_WORD[n.kind] ?? n.kind}${d.tile ? `, ${d.tile.name}` : ""}${n.status === "unconfirmed" ? ", unconfirmed" : ""}${d.risk ? `, ${d.risk} security finding` : ""}`}>
       <span className="ff-focus" />
       {children}
@@ -147,7 +151,7 @@ export function CardNode({ data, selected }: NodeProps<BlockNode>) {
         <Tile d={data} />
         <span className="ff-text"><span className="ff-title">{titleOf(data)}</span><span className="ff-sub">{subOf(data)}</span></span>
       </span>
-      <span className={`ff-tag ${n.kind === "llm" ? "llm" : n.kind === "gate" ? "gate" : ""}`}>{TAG[n.kind] ?? n.kind}</span>
+      {n.kind === "gate" && <span className="ff-tag gate">{TAG.gate}</span>}
       {data.retryMax && data.state === "idle" && <span className="ff-retry">{Icons.refresh(10)} {data.retryMax}×</span>}
       <Caption d={data} evidence={data.showEvidence} />
     </Shell>
@@ -187,6 +191,13 @@ export function BarNode({ data, selected }: NodeProps<BlockNode>) {
   );
 }
 
+
+/** What hovering a block says (D33): where it is in the code, and a ◆ mark's question. */
+function hoverText(d: BlockData): string | undefined {
+  const ref = d.node.evidence.find((e) => e.type === "code" && e.ref)?.ref;
+  if (d.compact && d.node.kind === "decision") return [d.node.title, ref].filter(Boolean).join(" · ");
+  return ref ?? undefined;
+}
 
 /** A block's name: on a flow read from code, what the call does in the code's own words ("Today's weather"). */
 export function titleOf(d: BlockData): string {

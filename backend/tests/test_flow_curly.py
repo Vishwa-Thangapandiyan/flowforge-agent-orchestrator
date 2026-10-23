@@ -266,3 +266,48 @@ def test_as_written_is_the_slowest_entry_point_not_every_entry_added_up(tmp_path
     flow = flow_of(dart_app(tmp_path)).flow
     # downloadTrip runs 3 calls one after another (900 ms); refresh runs 2 (600 ms): separate actions, never summed
     assert flow.written_ms == 900
+
+
+def test_a_check_that_only_stops_on_ui_state_is_not_drawn_but_a_check_on_a_result_is(tmp_path):
+    repo = dart_app(tmp_path)
+    write(repo, {"lib/features/budget_screen.dart": """
+        import '../services/trip_service.dart';
+
+        class BudgetScreenState {
+          int _request = 0;
+
+          Future<void> load(String id) async {
+            final request = ++_request;
+            final items = await getItineraryItems(id);
+            if (!mounted || request != _request) return;
+            show(items);
+          }
+        }
+    """})
+    flow = flow_of(repo).flow
+    questions = {n.title for n in flow.nodes if n.kind == "decision"}
+    assert 'Did "get trip" fail?' in questions   # downloadTrip's check reads a call's result: kept
+    assert not any("mounted" in (n.condition or "") for n in flow.nodes)
+
+
+def test_each_action_has_its_own_times_slowest_first(tmp_path):
+    flow = flow_of(dart_app(tmp_path)).flow
+    actions = [(a.title, a.written_ms, a.could_ms, a.calls) for a in flow.actions]
+    assert actions == [("downloadTrip()", 900.0, 900.0, 3), ("refresh()", 600.0, 300.0, 2)]
+    assert flow.actions[0].path[0] == "start-downloadTrip"
+
+
+def test_a_check_on_a_value_derived_from_a_call_is_kept(tmp_path):
+    repo = write(tmp_path / "web", {"src/api.ts": TS_API, "src/run.ts": """
+        import { getWeather, getPlace } from "./api";
+
+        export async function run(city: string) {
+          const res = await getWeather(city);
+          const ok = res.ok;
+          if (!ok) return;
+          return await getPlace(city);
+        }
+    """})
+    flow = flow_of(repo).flow
+    assert any(n.kind == "decision" and n.condition == "!ok" for n in flow.nodes)
+    assert any(n.kind == "end" for n in flow.nodes)   # the Stop branch stays

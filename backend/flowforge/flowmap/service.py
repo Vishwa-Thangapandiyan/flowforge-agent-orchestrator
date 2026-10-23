@@ -9,9 +9,19 @@ from typing import Any
 
 from flowforge.connectors.models import Connector
 from flowforge.flowmap.diff import apply_choices, default_take, diff
-from flowforge.flowmap.models import CALL_KINDS, CONNECTOR_TYPE, Analysis, Evidence, Flow, FlowEdge, Override, Trace
+from flowforge.flowmap.models import (
+    CALL_KINDS,
+    CONNECTOR_TYPE,
+    Action,
+    Analysis,
+    Evidence,
+    Flow,
+    FlowEdge,
+    Override,
+    Trace,
+)
 from flowforge.flowmap.planner import NoFlow, Planner
-from flowforge.flowmap.validate import FlowError, check, critical
+from flowforge.flowmap.validate import FlowError, actions_of, check, critical
 from flowforge.storage import FlowStore
 
 NOT_AVAILABLE = "No map yet. Scan a folder to draw what your app depends on."
@@ -170,7 +180,8 @@ class FlowService:
             "available": True, "kind": flow.kind, "source": flow.source, "version": row["version"],
             "created_at": row["created_at"],
             "advice": [a.model_dump(mode="json") for a in flow.advice], "written_ms": flow.written_ms,
-            "patterns": flow.patterns, "layer": layer,
+            "patterns": flow.patterns,
+            "actions": [a.model_dump(mode="json") for a in _actions(planner_flow, flow)], "layer": layer,
             "fact_sheet_hash": row["fact_sheet_hash"], "nodes": nodes, "edges": edges, "hidden": hidden,
             "critical_path": {"path": cp.path, "length_ms": cp.length_ms, "bottleneck": cp.bottleneck},
             "positions": positions, "apps": apps,
@@ -358,3 +369,11 @@ def _need_connector(connector_id: str | None, kind: str, connectors: dict[str, C
     want = CONNECTOR_TYPE[kind]
     if connectors[connector_id].type != want:
         raise OverrideError(f"'{connector_id}' is a {connectors[connector_id].type} app; this step needs a {want} app")
+
+
+def _actions(scanned: Flow, merged: Flow) -> list[Action]:
+    """Each action's numbers from the map as it is shown, your edits included (D33): a hidden call leaves its critical
+    path and "as written", and a group that runs together still counts at its slowest remaining call."""
+    if not scanned.actions:
+        return []
+    return actions_of(merged, {a.id: a.parts for a in scanned.actions if a.parts})

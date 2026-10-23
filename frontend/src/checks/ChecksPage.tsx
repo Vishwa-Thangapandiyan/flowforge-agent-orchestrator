@@ -87,7 +87,6 @@ export function ChecksPage() {
       )}
       {checks.error && <div className="notice" role="alert">{checks.error}</div>}
       <div className="ck-overview">
-        <Squares statuses={statuses} size="big" label={countsText(statuses)} />
         <span className="ck-counts">
           {n("down") > 0 && <span><b style={{ color: "var(--coral)" }}>{n("down")}</b> down</span>}
           {n("warn") > 0 && <span><b style={{ color: "var(--amber)" }}>{n("warn")}</b> need{n("warn") === 1 ? "s" : ""} a look</span>}

@@ -9,13 +9,12 @@ afterEach(() => vi.unstubAllGlobals());
 
 const REAL = { ...META, example: false };
 
-test("the map shows each dependency's health and the whole app at a glance", async () => {
+test("the map shows each dependency's health on its block, with no extra strip (D33)", async () => {
   mockApi({ "/meta": REAL, "/flow": DEPS, "/connectors": CONNECTORS, "/checks": CHECKS, "/checks/plan": PLAN });
   renderAt("/");
   await screen.findByText("Nominatim", { selector: ".ff-title" }, { timeout: 5000 });
-  const strip = await screen.findByRole("img", { name: /3 up, 1 needs a look, 1 down/ });
-  expect(strip.querySelectorAll(".sq")).toHaveLength(6);
-  expect(document.querySelector(".ff-block.h-down")).toHaveTextContent("Ollama");
+  await vi.waitFor(() => expect(document.querySelector(".ff-block.h-down")).toHaveTextContent("Ollama"));
+  expect(screen.queryByRole("img", { name: /up, .* down/ })).not.toBeInTheDocument();
   expect(document.querySelector(".ff-block.h-warn")).toHaveTextContent("fetch");
   expect(screen.getByText("420 ms", { exact: false })).toBeInTheDocument();
 });

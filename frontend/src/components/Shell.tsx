@@ -51,12 +51,12 @@ interface Item {
   soon?: string;
 }
 
+// Three places (D33): the map (security warnings live on it), its checks, and your coding agent. Apps and workflow
+// runs stay one click away from the map's ⋯ menu and the Checks page.
 const ITEMS: Item[] = [
-  { to: "/", label: "Flow map", icon: Icons.map(20), active: /^\/($|map(\/|$))/ },
-  // Runs became Checks (D19, D24); workflow runs stay one link away. Approvals waits for V2 (D19).
+  { to: "/", label: "Map", icon: Icons.map(20), active: /^\/($|map(\/|$)|connectors(\/|$))/ },
   { to: "/checks", label: "Checks", icon: Icons.activity(20), active: /^\/(checks|runs|live)(\/|$)/ },
-  { to: "/connectors", label: "Connectors", icon: Icons.plug(20), active: /^\/connectors(\/|$)/ },
-  { to: "/security", label: "Security", icon: Icons.shield(20), active: /^\/security/ },
+  { to: "/connect", label: "Connect agent", icon: Icons.code(20), active: /^\/connect$/ },
 ];
 
 /** A route with `handle: { bleed: true }` (the flow map) fills the page edge to edge. */
@@ -87,23 +87,9 @@ export function Shell() {
             </Link>
           ))}
           <span className="rail-gap" />
-          <Link to="/connectors/new" className="rail-item rail-add" title="Add an app">
-            {Icons.plus(20)}
-            <span>Add app</span>
-          </Link>
-          <Link to="/connect" className="rail-item rail-add" title="Connect your coding agent">
-            {Icons.code(20)}
-            <span>Connect agent</span>
-          </Link>
           <ThemeToggle />
         </nav>
         <main className="main" id="main" tabIndex={-1}>
-          {value.example && !bleed && (
-            <div className="example-banner" role="note">
-              {Icons.spark(18)}
-              <span><b>Example data.</b> Nothing here touches a real account. Real numbers come from your own runs.</span>
-            </div>
-          )}
           <div key={location.pathname} className={`page${bleed ? "" : " page-enter"}`}>
             <Outlet />
           </div>

@@ -42,7 +42,7 @@ def test_the_agents_command_follows_how_flowforge_was_installed(monkeypatch):
     assert "--directory" in agent._command("/home/me/app", "/home/me/.flowforge/flowforge.db")
     monkeypatch.setattr(home, "install_kind", lambda: "uvx")
     cmd = agent._command("/home/me/app", "/home/me/.flowforge/flowforge.db")
-    assert cmd[0].endswith("uvx") and cmd[1] == f"flowforge=={home.version()}" and cmd[2:] == tail   # pinned (D31)
+    assert Path(cmd[0]).stem.lower() == "uvx" and cmd[1] == f"flowforge=={home.version()}" and cmd[2:] == tail   # pinned (D31)
     monkeypatch.setattr(home, "install_kind", lambda: "pip")
     assert agent._command("/home/me/app", "/home/me/.flowforge/flowforge.db") == [sys.executable, "-m", "flowforge.cli", *tail]
 

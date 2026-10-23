@@ -9,12 +9,11 @@ from __future__ import annotations
 
 import os
 from datetime import UTC, datetime, timedelta
-from importlib.metadata import PackageNotFoundError, version
 from typing import Any
 
 from fastapi import APIRouter
 
-from flowforge import example_data
+from flowforge import example_data, home
 from flowforge.api.connectors import connector_steps, secret_status
 from flowforge.state import app_state
 
@@ -75,10 +74,7 @@ def savings() -> dict[str, Any]:
 
 @router.get("/meta")
 def meta() -> dict[str, Any]:
-    try:
-        app_version = version("flowforge")
-    except PackageNotFoundError:
-        app_version = "0.0.0"
+    app_version = home.version()   # the installed package's, under its PyPI name (D34)
     example = app_state().example
     default = example_data.PROJECT_NAME if example else "My project"
     return {"project": os.getenv("FLOWFORGE_PROJECT_NAME") or default, "example": example, "version": app_version}

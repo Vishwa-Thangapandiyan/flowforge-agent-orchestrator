@@ -1,13 +1,11 @@
-// The step panel (D17): what a block does, its app, the Planner's tip, the evidence, recent runs and your edits.
-// On a dependency map its health comes first: the verdict, why, and the likely fix (D24).
-// Edits are saved on top of the Planner's version and never touch your code.
+// The step panel (D17, D33): a warning if there is one, its health, then what it is. The code and your edits are
+// folded away. Edits are saved on top of the map and never touch your code.
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { Link } from "react-router-dom";
 import { useApi } from "../api/client";
 import type { CheckRecord, Connector, Evidence, FlowNode, FlowView } from "../api/types";
 import { BrandTile } from "../brand/BrandTile";
 import { Dot, InternetWorks, took, WORD } from "../checks/Health";
-import type { Finding } from "../security/Security";
+import { type Finding, useCopy } from "../security/Security";
 import "../security/security.css";
 import type { LiveItem } from "../checks/useChecks";
 import { when } from "../components/format";
@@ -129,6 +127,7 @@ export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, t
   const [name, setName] = useState(node.title);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const [said, copy] = useCopy();
   useEffect(() => { setName(node.title); setError(undefined); }, [node.id, node.title]);
 
   const run = async (body: Record<string, unknown> | null, reset = false) => {
@@ -152,7 +151,6 @@ export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, t
   // a scanned dependency (D21): its line is where a check will go, and it needs no app connected (D23)
   const deps = flow.kind === "dependencies";
   const code = flow.source === "code";   // read from the app's code (D25): no connected app to show
-  const what = deps ? (node.kind === "mcp" || node.kind === "local" ? "Starts with" : "Address") : "What it does";
   const isUser = node.added_by === "user";
   const isCall = CALLS.has(node.kind);
   const fixed = ["gate", "start", "end"].includes(node.kind) || node.added_by === "policy";
@@ -172,39 +170,37 @@ export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, t
         <div style={{ flex: 1, minWidth: 0 }}>
           <span className={`sp-kind ${kindCls}`}>{KIND_LABEL[node.kind] ?? node.kind}</span>
           <h2>{node.title}</h2>
+          {node.what && node.kind !== "decision" && <p className="sp-what">{node.what}</p>}
         </div>
         <button className="fm-ib" type="button" aria-label="Close details" onClick={actions.close}>{Icons.close(18)}</button>
       </div>
       {runText && state !== "idle" && <div className={`sp-run ${state}`} role="status">{runText}</div>}
-      {health && <Health item={health} othersUp={othersUp} example={example} checking={checking} onCheck={onCheck} />}
       {findings && findings.length > 0 && (
-        <div className="sp-sec sp-security">
-          <span className="sp-sh">Security</span>
+        <div className="sp-sec sp-security" role="region" aria-label="To fix">
           <ul>
             {findings.map((f) => (
               <li key={f.id}>
                 <span className={`sec-level lv-${f.level}`}>{f.level}</span>
-                <span><b>{f.title}</b> <code>{f.ref}</code> <Link to={`/security#${f.id}`}>The fix</Link></span>
+                <span><b>{f.title}</b> <code>{f.ref}</code>
+                  <span className="sp-fix">{f.fix}</span>
+                  <button className="btn sm" type="button" onClick={() => copy(f.prompt)}>{Icons.copy(14)} Copy fix prompt</button>
+                  <span className="sp-said" aria-live="polite">{said}</span>
+                </span>
               </li>
             ))}
           </ul>
         </div>
       )}
-
-      <div className="sp-sec">
-        <span className="sp-sh">{what}</span>
-        <p className="sp-what">{node.what || (deps ? "No address in the code." : "No description from the Planner.")}</p>
-        <div className="sp-chips">
-          {node.on_critical_path && <span className="sp-chip cp">{Icons.route(12)} On the critical path</span>}
-          {node.estimate_source && node.estimate_ms != null && node.estimate_ms > 0 && (
-            <span className="sp-chip">{took(node.estimate_ms)} · {node.estimate_source}</span>
+      {health && <Health item={health} othersUp={othersUp} example={example} checking={checking} onCheck={onCheck} />}
+      {(node.side_effect || node.repeats || (code && node.estimate_ms)) && (
+        <div className="sp-chips sp-sec">
+          {code && node.estimate_ms != null && node.estimate_ms > 0 && (
+            <span className="sp-chip">{took(node.estimate_ms)} · {node.estimate_source === "measured" ? "measured" : "estimate"}</span>
           )}
           {node.repeats && <span className="sp-chip">{Icons.refresh(12)} Repeats in a loop</span>}
           {node.side_effect && <span className="sp-chip side">{code ? "Writes something" : "Side effect · behind a gate"}</span>}
-          {node.kind === "llm" && !code && !deps && <span className="sp-chip">{Icons.shield(12)} Keys and personal data removed first</span>}
-          {node.yours.length > 0 && <span className="sp-chip yours">Your edit</span>}
         </div>
-      </div>
+      )}
 
       {node.kind === "gate" && (
         <div className="sp-sec">
@@ -280,11 +276,12 @@ export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, t
         </div>
       )}
 
-      <div className="sp-sec">
-        <span className="sp-sh">Evidence</span>
-        {node.evidence.length ? node.evidence.map((ev, i) => <EvidenceItem key={i} ev={ev} />)
-          : <p className="sp-note">Structure only: this block's meaning comes from the lines around it.</p>}
-      </div>
+      {node.evidence.length > 0 && (
+        <details className="sp-sec sp-fold">
+          <summary>{Icons.file(14)} Code · {node.evidence.find((e) => e.ref)?.ref ?? `${node.evidence.length} places`}</summary>
+          {node.evidence.map((ev, i) => <EvidenceItem key={i} ev={ev} />)}
+        </details>
+      )}
 
       {node.stats && node.stats.history.length > 0 && (
         <div className="sp-sec">
@@ -297,8 +294,8 @@ export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, t
       )}
 
       {mine && (
-        <div className="sp-sec">
-          <span className="sp-sh">Edit</span>
+        <details className="sp-sec sp-fold">
+          <summary>{Icons.pencil(14)} Edit</summary>
           {!fixed && (
             <form onSubmit={rename} className="sp-row" style={{ alignItems: "flex-end" }}>
               <label className="field" style={{ flex: "1 1 200px" }}>Name
@@ -329,9 +326,8 @@ export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, t
             )}
           </div>
           {error && <p className="sp-note" role="alert" style={{ color: "var(--coral)" }}>{error}</p>}
-          <p className="sp-note">{isUser ? "Your own step. Your code has no call for it, so test-run replays skip it."
-            : "Edits change how FlowForge maps and tests this flow, never your code."}</p>
-        </div>
+          <p className="sp-note">{isUser ? "Your own step: no code calls it." : "Edits change the map, never your code."}</p>
+        </details>
       )}
     </aside>
   );

@@ -1,6 +1,5 @@
-// The Faster panel (D25, docs/design/flow-artboards/flow.html): the same calls twice, one after another as the code
-// is written and as early as their inputs allow, then the advice that closes the gap. Pointing at advice lights
-// up its blocks on the map.
+// The Faster panel (D25, D33): the two times first, as written and as early as inputs allow, then one card per piece
+// of advice. The why, the critical path and the limits wait behind an ⓘ. Pointing at advice lights up its blocks.
 import { useMemo, useState } from "react";
 import type { Advice, FlowNode, FlowView } from "../api/types";
 import { Icons } from "../components/icons";
@@ -18,7 +17,9 @@ function line(n: FlowNode): number {
 const LANGUAGE_NAMES: Record<string, string> = { dart: "Dart", javascript: "JavaScript", typescript: "TypeScript" };
 const languageName = (l: string) => LANGUAGE_NAMES[l] ?? l;
 
-export function Faster({ flow, onPoint }: { flow: FlowView; onPoint: (ids: string[] | null) => void }) {
+export function Faster({ flow, onPoint, onWatch, watching = false, canWatch = false }: {
+  flow: FlowView; onPoint: (ids: string[] | null) => void; onWatch?: () => void; watching?: boolean; canWatch?: boolean;
+}) {
   // several entry points are separate actions: show the slowest one, the one the critical path runs through (D32)
   const entries = flow.nodes.filter((n) => n.kind === "start");
   const entry = entries.length > 1 ? flow.nodes.find((n) => n.id === flow.critical_path.path[0]) : undefined;
@@ -56,10 +57,14 @@ export function Faster({ flow, onPoint }: { flow: FlowView; onPoint: (ids: strin
   return (
     <section className="sp fx" aria-label="Faster">
       <div className="sp-sec">
-        <h2 className="fx-h">Faster<small>{entry ? <>The slowest of {entries.length} actions, <b>{entry.title}</b>: its {calls.length} calls, </>
-          : <>The same {calls.length} calls, </>}as written and as your dependencies allow.</small></h2>
+        <h2 className="fx-h">Faster</h2>
+        <p className="fx-big" aria-label={`${took(written)} as written, ${took(could)} at best`}>
+          <b>{took(written)}</b><span aria-hidden="true">→</span><b className="could">{took(could)}</b>
+        </p>
+        <small className="fx-sub">{entry ? <>The slowest of {entries.length} actions, <b>{entry.title}</b>: its {calls.length} calls, </>
+          : <>The same {calls.length} calls, </>}as written and as your dependencies allow.</small>
         <div className="fx-times">
-          <span>As written<b>{took(written)}</b></span>
+          <span>As written</span>
           <div className="fx-lane" role="img" aria-label={`as written: ${took(written)}`}>
             {calls.map((n) => {
               const left = at;
@@ -68,7 +73,7 @@ export function Faster({ flow, onPoint }: { flow: FlowView; onPoint: (ids: strin
                 style={{ left: pct(left), width: pct(n.estimate_ms ?? 0) }} title={`${actionName(n)}: ${took(n.estimate_ms ?? 0)}`} />;
             })}
           </div>
-          <span>Could be<b>{took(could)}</b></span>
+          <span>Could be</span>
           <div className="fx-lanes" role="img" aria-label={`could be: ${took(could)}`}>
             {lanes.filter((l) => l.length).map((l, i) => (
               <div key={i} className="fx-lane">
@@ -78,7 +83,11 @@ export function Faster({ flow, onPoint }: { flow: FlowView; onPoint: (ids: strin
             ))}
           </div>
         </div>
-        {saved > 0 && <p className="fx-saving"><b>{took(saved)}</b> faster if every call started as soon as it could</p>}
+        {onWatch && (
+          <button type="button" className="btn fx-watch" onClick={onWatch} disabled={!canWatch || watching}>
+            {Icons.play(16)} {watching ? "Playing…" : "Watch it run"}
+          </button>
+        )}
       </div>
       {(flow.advice ?? []).length > 0 && (
         <div className="sp-sec">
@@ -88,19 +97,20 @@ export function Faster({ flow, onPoint }: { flow: FlowView; onPoint: (ids: strin
           ))}
         </div>
       )}
-      {path.length > 0 && (
-        <div className="sp-sec">
-          <span className="sp-sh">Critical path</span>
-          <p className="fx-cp"><b>{path.map((n) => actionName(n!)).join(" → ")}</b>, {took(could)}.
+      <details className="fx-more">
+        <summary>{Icons.question(15)} About these numbers</summary>
+        {saved > 0 && <p className="fx-cp"><b>{took(saved)}</b> faster if every call started as soon as it could.</p>}
+        {path.length > 0 && (
+          <p className="fx-cp">Critical path: <b>{path.map((n) => actionName(n!)).join(" → ")}</b>, {took(could)}.
             {slowest && <> Slowest: <b>{actionName(slowest)}</b> ({slowest.title}), {took(slowest.estimate_ms ?? 0)} ({slowest.estimate_source === "measured"
               ? "measured by the last check" : "an estimate"}).</>}
           </p>
-        </div>
-      )}
-      {(flow.patterns ?? []).length > 0 && (
-        <p className="fx-limits">{flow.patterns!.map(languageName).join(", ")} read by patterns: less exact than Python (D32).</p>
-      )}
-      <p className="fx-limits">Can't see: calls passed around as values, callbacks, or chosen at run time (D25).</p>
+        )}
+        {(flow.patterns ?? []).length > 0 && (
+          <p className="fx-limits">{flow.patterns!.map(languageName).join(", ")} read by patterns: less exact than Python.</p>
+        )}
+        <p className="fx-limits">Can't see: calls passed around as values, callbacks, or chosen at run time.</p>
+      </details>
     </section>
   );
 }
@@ -122,21 +132,24 @@ function AdviceCard({ a, flow, onPoint }: { a: Advice; flow: FlowView; onPoint: 
                 onFocus={() => onPoint(a.nodes)} onBlur={() => onPoint(null)}
                 aria-label={`Start these ${a.nodes.length} together, ${seconds(a.saved_ms)} faster`}>
                 <span className="fx-title">Start these {a.nodes.length} together <em>−{seconds(a.saved_ms)}</em></span>
-                <span className="fx-text">{a.text}</span>
                 <span className="fx-chips">{a.nodes.map((id) => {
                   const n = flow.nodes.find((x) => x.id === id);
                   return <i key={id}>{n ? actionName(n) : id}</i>;
                 })}</span>
-                <span className="fx-refs">{a.refs.join(", ")}</span>
               </button>
-              {a.caveat && <p className="fx-caveat">{a.caveat}</p>}
+              <details className="fx-why">
+                <summary>Why{a.caveat ? " · one catch" : ""}</summary>
+                <p className="fx-text">{a.text}</p>
+                {a.caveat && <p className="fx-caveat">{a.caveat}</p>}
+                <p className="fx-refs">{a.refs.join(", ")}</p>
+              </details>
               <div className="fx-do">
                 <button type="button" className="fx-btn" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
                   {Icons.code(15)} {open ? "Hide the change" : "Show the change"}
                 </button>
                 {a.prompt && (
-                  <button type="button" className="fx-btn" onClick={() => copy(a.prompt!)}>
-                    {Icons.copy(15)} Copy prompt for your coding agent
+                  <button type="button" className="fx-btn" onClick={() => copy(a.prompt!)} title="A prompt for your coding agent">
+                    {Icons.copy(15)} Copy prompt
                   </button>
                 )}
                 <span className="fx-said" aria-live="polite">{said}</span>

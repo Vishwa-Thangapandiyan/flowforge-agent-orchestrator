@@ -423,3 +423,53 @@
 .sp-security ul { display: grid; gap: 8px; margin: 6px 0 0; padding: 0; list-style: none; }
 .sp-security li { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: start; font-size: 13.5px; }
 .sp-security code { font: 12px var(--mono); color: var(--muted); }
+
+/* ---- declutter (D33): one header row, three controls, the rest in ⋯ ---------------------------------------------- */
+.fm-proj { flex-direction: row; align-items: center; gap: 10px; margin-right: 6px; }
+.fm-ex { padding: 2px 8px; font-size: 11px; }
+.fm-actions { margin-left: auto; flex-wrap: nowrap; }
+.fm-action { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.fm-action select { height: 38px; max-width: 260px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--fg); font: 600 13.5px var(--body); }
+/* zoom and fit: small, bottom-left; search: top-right */
+.fm-tools { position: absolute; z-index: 5; left: 14px; bottom: 14px; flex-direction: column; flex-wrap: nowrap; padding: 3px; }
+.fm-search { width: 220px; height: 40px; }
+.fm-legend { left: 64px; }
+.fm-hud { left: 70px; }
+/* the ⋯ menu */
+.mm { position: relative; }
+.mm-btn { min-width: 40px; justify-content: center; padding: 0 10px; font-size: 18px; letter-spacing: 1px; }
+.mm-menu { position: absolute; right: 0; top: calc(100% + 8px); z-index: 40; display: grid; width: 270px; max-height: min(70vh, 640px);
+  overflow: auto; padding: 6px; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow-3); }
+.mm-head { padding: 10px 10px 4px; font: 600 11px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.mm-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 6px 10px; border: 0; border-radius: 8px;
+  background: none; color: var(--fg); font: 500 14px/1.25 var(--body); text-align: left; text-decoration: none; cursor: pointer; }
+.mm-item:hover, .mm-item:focus-visible { background: var(--surface-2); }
+.mm-item:disabled { opacity: .5; cursor: default; }
+.mm-item small { display: block; color: var(--muted); font-size: 12px; }
+.mm-check { display: inline-grid; place-items: center; width: 16px; color: var(--teal); }
+.mm-item .fm-swatch { flex: none; }
+/* a decision drawn as a small ◆ on the line; its question shows on hover and in the panel */
+.ff-block.kind-decision.compact .ff-dtext { display: none; }
+.ff-block.kind-decision.compact .ff-dia-in { inset: 3px; }
+/* the Faster panel */
+.fx-big { display: flex; align-items: baseline; gap: 10px; margin: 10px 0 2px; font: 650 28px/1 var(--display); }
+.fx-big span { color: var(--muted); font-size: 20px; }
+.fx-big .could { color: var(--teal-ink, var(--teal)); }
+.fx-sub { display: block; margin-bottom: 12px; color: var(--muted); font-size: 12.5px; }
+.fx-watch { margin-top: 12px; }
+.fx-why { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
+.fx-why summary, .fx-more summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+.fx-more { padding: 12px 16px 16px; border-top: 1px solid var(--line); }
+.fx-more summary { display: flex; align-items: center; gap: 6px; }
+.fx-more .fx-limits { padding: 8px 0 0; }
+.fx-more .fx-cp { margin-top: 8px; }
+/* the step panel, folded (D33) */
+.sp-head .sp-what { margin: 4px 0 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.sp-fold > summary { display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--muted); font: 500 13.5px var(--body); }
+.sp-fold[open] > summary { margin-bottom: 10px; }
+.sp-security li { grid-template-columns: auto 1fr; }
+.sp-fix { display: block; margin: 4px 0 8px; color: var(--muted); font-size: 13px; }
+.sp-said { margin-left: 8px; color: var(--teal); font-size: 12.5px; font-weight: 600; }
+/* phones pinch to zoom: the zoom buttons would sit on the search box (D33) */
+@media (max-width: 700px) { .fm-tools { display: none; } }

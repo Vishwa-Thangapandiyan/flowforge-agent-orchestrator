@@ -18,7 +18,7 @@ beforeEach(() => localStorage.clear());
 afterEach(() => vi.unstubAllGlobals());
 
 async function pick(theme: string) {
-  await userEvent.click(await screen.findByRole("button", { name: /^Style:/ }, { timeout: 5000 }));
+  await userEvent.click(await screen.findByRole("button", { name: "More" }, { timeout: 5000 }));   // styles live in ⋯ (D33)
   await userEvent.click(screen.getByRole("menuitemradio", { name: new RegExp(theme) }));
 }
 
@@ -27,7 +27,7 @@ test("the theme menu switches how the map looks, and remembers it for this viewe
   renderAt("/?map=flow");
   await pick("Blueprint");
   expect(document.querySelector(".fm")).toHaveAttribute("data-graph", "blueprint");
-  expect(screen.getByRole("button", { name: "Style: Blueprint" })).toBeInTheDocument();
+  expect(screen.getByRole("menuitemradio", { name: /Blueprint/ })).toHaveAttribute("aria-checked", "true");
   expect(localStorage.getItem("flowforge.graphTheme")).toBe("blueprint");
 });
 

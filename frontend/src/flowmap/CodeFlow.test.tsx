@@ -21,13 +21,18 @@ test("the Flow switch shows the order the code calls its dependencies, and how i
   // a block leads with what it does, in the code's own words; the service is underneath (D25)
   expect(await screen.findByText("About the city", { selector: ".ff-title" })).toBeInTheDocument();
   expect(screen.getByText("fetch · MCP server", { selector: ".ff-sub" })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: /Read from your code/ })).toBeInTheDocument();
   expect(await screen.findByRole("heading", { level: 1, name: "trip-planner" })).toBeInTheDocument();
-  expect(screen.getByRole("banner")).toHaveTextContent("4 calls·1 decision");
-  expect(screen.getByRole("button", { name: /Re-scan the repo/ })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: /Export/ })).toHaveAttribute("href", "/map/export?map=flow");   // the MCP Map (D26)
   expect(screen.queryByRole("button", { name: /Test run/ })).not.toBeInTheDocument();   // nothing to replay (D25)
+  // a decision is a small ◆ mark: its question on hover and in the panel, not printed on the map (D33)
+  const mark = document.querySelector(".ff-block.kind-decision.compact")!;
+  expect(mark).toHaveAttribute("title", expect.stringContaining("?"));
+  await userEvent.click(screen.getByRole("button", { name: "More" }));
+  expect(screen.getByRole("menuitem", { name: /Re-scan the repo/ })).toBeInTheDocument();
+  expect(screen.getByRole("menuitem", { name: /Export/ })).toHaveAttribute("href", "/map/export?map=flow");   // the MCP Map
+  await userEvent.click(screen.getByRole("menuitemcheckbox", { name: /Show every check/ }));
+  await vi.waitFor(() => expect(document.querySelector(".ff-block.kind-decision.compact")).toBeNull());
   const faster = screen.getByRole("region", { name: "Faster" });
+  expect(within(faster).getByRole("button", { name: /Watch it run/ })).toBeInTheDocument();
   expect(within(faster).getByText("9.4 s")).toBeInTheDocument();   // as written
   expect(within(faster).getByText("9.2 s")).toBeInTheDocument();   // could be: the critical path
   expect(within(faster).getByText(/start them together with asyncio.gather/)).toBeInTheDocument();
@@ -49,7 +54,7 @@ test("each piece of advice shows the code change and copies a prompt for a codin
   expect(change).toHaveTextContent("forecast, background = await asyncio.gather(");
   await userEvent.click(within(change).getByRole("button", { name: /Copy the new code/ }));
   expect(copied[0].split("\n")[0]).toBe("    forecast, background = await asyncio.gather(");
-  await userEvent.click(within(faster).getByRole("button", { name: /Copy prompt for your coding agent/ }));
+  await userEvent.click(within(faster).getByRole("button", { name: /Copy prompt/ }));
   expect(copied[1]).toMatch(/^In planner.py, plan\(\) waits/);
   expect(await within(faster).findByText("Copied")).toBeInTheDocument();
 });
@@ -94,7 +99,7 @@ test("pointing at a block lights what it waits for and what waits for it", async
     .toEqual(["Find the city", "Today's weather", "Write the plan", "plan()"]);
 });
 
-test("a flow read from Dart says it was read by patterns and names Dart's import (D32)", async () => {
+test("a flow read from Dart says it was read by patterns and names Dart's import", async () => {
   const dart = {
     ...CODEFLOW, patterns: ["dart"],
     advice: (CODEFLOW.advice ?? []).map((a) => (a.change ? { ...a, change: { ...a.change, needs_import: false, import_text: "import 'dart:async';" } } : a)),
@@ -102,7 +107,7 @@ test("a flow read from Dart says it was read by patterns and names Dart's import
   mockApi(routes(dart));
   renderAt("/?map=flow");
   const faster = await screen.findByRole("region", { name: "Faster" }, { timeout: 5000 });
-  expect(within(faster).getByText("Dart read by patterns: less exact than Python (D32).")).toBeInTheDocument();
+  expect(within(faster).getByText("Dart read by patterns: less exact than Python.")).toBeInTheDocument();
   await userEvent.click(within(faster).getByRole("button", { name: "Show the change" }));
   expect(within(faster).getByText("import 'dart:async';")).toBeInTheDocument();
 });
@@ -121,3 +126,27 @@ test("with several entry points, Faster shows the slowest action's calls, not ev
   const entry = CODEFLOW.nodes.find((n) => n.id === CODEFLOW.critical_path.path[0])!;
   expect(faster).toHaveTextContent(`The slowest of 2 actions, ${entry.title}: its 4 calls`);
 });
+
+test("with several actions, the flow shows one at a time, the slowest first (D33)", async () => {
+  const start = CODEFLOW.nodes.find((n) => n.kind === "start")!;
+  const api = CODEFLOW.nodes.find((n) => n.kind === "api")!;
+  const twoActions = {
+    ...CODEFLOW,
+    nodes: [...CODEFLOW.nodes, { ...start, id: "start-other", title: "other()" }, { ...api, id: "api-extra-1", what: "Extra call" }],
+    edges: [...CODEFLOW.edges, { ...CODEFLOW.edges[0], id: "start-other__api-extra-1", source: "start-other", target: "api-extra-1" }],
+    actions: [
+      { id: "start-plan", title: "plan()", written_ms: 9400, could_ms: 9220, path: CODEFLOW.critical_path.path, calls: 4 },
+      { id: "start-other", title: "other()", written_ms: 300, could_ms: 300, path: ["start-other", "api-extra-1"], calls: 1 },
+    ],
+  };
+  mockApi(routes(twoActions));
+  renderAt("/?map=flow");
+  const picker = await screen.findByRole("combobox", { name: /Action/ }, { timeout: 5000 });
+  expect(Array.from((picker as HTMLSelectElement).options).map((o) => o.textContent)).toEqual(["plan() · 9.4 s", "other() · 300 ms"]);
+  expect(await screen.findByText("About the city", { selector: ".ff-title" })).toBeInTheDocument();
+  expect(screen.queryByText("Extra call", { selector: ".ff-title" })).not.toBeInTheDocument();
+  await userEvent.selectOptions(picker, "start-other");
+  expect(await screen.findByText("Extra call", { selector: ".ff-title" }, { timeout: 5000 })).toBeInTheDocument();
+  expect(screen.queryByText("About the city", { selector: ".ff-title" })).not.toBeInTheDocument();
+  expect(within(screen.getByRole("region", { name: "Faster" })).getAllByText("300 ms").length).toBeGreaterThan(0);
+}, 20000);

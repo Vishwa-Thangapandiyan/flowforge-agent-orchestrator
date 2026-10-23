@@ -1,28 +1,29 @@
 // The home page (D17, D21): the map of your app. The dependency map (the default) shows what a scanned repo uses;
-// the flow map shows the order it runs in, with a replayable test run, once flow order comes from code (D23).
-// Pan, zoom and drag; click a block for its evidence; edit through overrides that never touch your code.
+// the flow map shows the order it runs in, one action at a time (D25, D33). Three controls in the header, the rest
+// in ⋯ (D33). Pan, zoom and drag; click a block for its details; edits never touch your code.
 import {
   MiniMap, ReactFlow, ReactFlowProvider, useNodesState, useReactFlow, useViewport, ViewportPortal,
   type NodeChange, type OnSelectionChangeParams,
 } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, useApi } from "../api/client";
-import { CheckConfirm, countsText, Squares } from "../checks/Health";
+import { CheckConfirm } from "../checks/Health";
 import { useChecks } from "../checks/useChecks";
-import { type Finding, type SecurityResponse, worst } from "../security/Security";
-import type { Connector, ConnectorType, FlowNode, FlowResponse, FlowView, NodeKind, Trace } from "../api/types";
-import { when } from "../components/format";
+import { type Finding, SecurityChip, type SecurityResponse, worst } from "../security/Security";
+import type { Connector, ConnectorType, FlowAction, FlowNode, FlowResponse, FlowView, NodeKind, Trace } from "../api/types";
+import { took } from "../checks/Health";
 import { Icons } from "../components/icons";
 import { useMeta } from "../components/Shell";
 import { EmptyState, ErrorBox } from "../components/ui";
 import { Faster } from "./Faster";
-import { CALL_KINDS, earliest } from "./kinds";
+import { earliest } from "./kinds";
 import { scheduleTrace } from "./schedule";
 import { boxes, readTheme, saveTheme, THEMES, timeColumns, type GraphTheme } from "./themes";
 import { edgeTypes, Markers, type LineEdge } from "./FlowEdge";
-import { autoLayout, handlesFor, placeAll, sizeOf } from "./layout";
+import { autoLayout, compactSize, handlesFor, placeAll, sizeOf } from "./layout";
 import { mapQuery, useMapId, type MapId } from "./mapId";
+import { MoreMenu, type MenuItem } from "./MoreMenu";
 import { nodeTypes, typeFor, type BlockData, type BlockNode, type TileSource } from "./nodes";
 import { buildReplay, frameAt, type Frame } from "./replay";
 import { StepPanel } from "./StepPanel";
@@ -53,6 +54,7 @@ export function FlowMapPage() {
   const isFlowMap = flow.data?.available && (flow.data.kind ?? "flow") === "flow";
   const trace = useApi<Trace>(isFlowMap ? `/flow/trace${mapQuery(map)}` : null);
   const connectors = useApi<Connector[]>("/connectors");
+  const [action, setAction] = useState<string | null>(null);   // the action a code flow shows (D33)
   if (flow.error) return <div style={{ padding: 24 }}><ErrorBox error={flow.error} what="the map" /></div>;
   if (!flow.data) return <div className="fm" aria-busy="true"><div className="fm-stage"><div className="fm-canvas skeleton" /></div></div>;
   if (!flow.data.available) {
@@ -65,11 +67,47 @@ export function FlowMapPage() {
       </div>
     );
   }
+  const actions = flow.data.source === "code" ? flow.data.actions ?? [] : [];
+  const current = actions.length > 1 ? (actions.find((a) => a.id === action) ?? actions[0]) : null;
   return (
     <ReactFlowProvider>
-      <MapView key={map} map={map} flow={flow.data} trace={trace.data ?? null}
-        connectors={connectors.data ?? []} layer={layer} setLayer={setLayer} reload={flow.reload} />
+      <MapView key={`${map}:${current?.id ?? ""}`} map={map} flow={current ? only(flow.data, current) : flow.data}
+        trace={trace.data ?? null} connectors={connectors.data ?? []} layer={layer} setLayer={setLayer} reload={flow.reload}
+        actions={actions} action={current?.id ?? null} setAction={setAction} />
     </ReactFlowProvider>
+  );
+}
+
+/** One action of a code flow (D33): what its start reaches, with its own times, critical path and advice. Laid out
+ * fresh: the saved layout is for the whole flow. */
+export function only(flow: FlowView, a: FlowAction): FlowView {
+  const keep = new Set([a.id]);
+  for (let grew = true; grew;) {
+    grew = false;
+    for (const e of flow.edges) if (keep.has(e.source) && !keep.has(e.target)) { keep.add(e.target); grew = true; }
+  }
+  const onPath = new Set(a.path);
+  const pathEdges = new Set(a.path.slice(1).map((id, i) => `${a.path[i]}>${id}`));
+  const nodes = flow.nodes.filter((n) => keep.has(n.id)).map((n) => ({ ...n, on_critical_path: onPath.has(n.id) }));
+  const slowest = nodes.filter((n) => onPath.has(n.id)).sort((x, y) => (y.estimate_ms ?? 0) - (x.estimate_ms ?? 0))[0];
+  return {
+    ...flow, nodes, positions: {},
+    edges: flow.edges.filter((e) => keep.has(e.source) && keep.has(e.target))
+      .map((e) => ({ ...e, on_critical_path: pathEdges.has(`${e.source}>${e.target}`) })),
+    critical_path: { path: a.path, length_ms: a.could_ms, bottleneck: slowest?.id ?? null },
+    written_ms: a.written_ms, advice: (flow.advice ?? []).filter((x) => x.nodes.every((id) => keep.has(id))),
+  };
+}
+
+/** Which action the flow shows: every entry point, slowest first, with its time (D33). */
+function ActionPicker({ actions, value, onChange }: { actions: FlowAction[]; value: string | null; onChange: (id: string) => void }) {
+  return (
+    <label className="fm-action">
+      <span>Action</span>
+      <select value={value ?? ""} onChange={(e) => onChange(e.target.value)}>
+        {actions.map((a) => <option key={a.id} value={a.id}>{a.title} · {took(a.written_ms)}</option>)}
+      </select>
+    </label>
   );
 }
 
@@ -131,23 +169,6 @@ function ScanHint() {
   );
 }
 
-/** The whole app at a glance: one square per dependency, in map order, and the counts in plain words (D24). */
-function HealthRow({ checks }: { checks: ReturnType<typeof useChecks> }) {
-  const statuses = checks.items.map((i) => i.status);
-  const checked = checks.view?.checked_at;
-  return (
-    <div className="fm-health" role="status">
-      <Squares statuses={statuses} label={countsText(statuses)} />
-      <span>{countsText(statuses).split(", ").map((part, i) => (
-        <span key={part} className={part.endsWith("down") ? "bad" : undefined}>{i > 0 && ", "}{i === 0 ? <b>{part}</b> : part}</span>
-      ))}</span>
-      <span className="sep" />
-      <span>{checks.progress ? `checking… ${checks.progress.done} of ${checks.progress.total}`
-        : checked ? `checked ${when(checked)}${checks.view?.example ? " · example results" : ""}` : "not checked yet"}</span>
-    </div>
-  );
-}
-
 interface ViewProps {
   map: MapId;
   flow: FlowView;
@@ -156,6 +177,9 @@ interface ViewProps {
   layer: "mine" | "planner";
   setLayer: (l: "mine" | "planner") => void;
   reload: () => void;
+  actions?: FlowAction[];
+  action?: string | null;
+  setAction?: (id: string) => void;
 }
 
 interface Play {
@@ -169,7 +193,7 @@ interface Play {
 
 const WATCH_MS = 7000;
 
-function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: ViewProps) {
+function MapView({ map, flow, trace, connectors, layer, setLayer, reload, actions = [], action = null, setAction }: ViewProps) {
   const deps = flow.kind === "dependencies";
   const code = flow.source === "code";   // the app's own flow, read from its code (D25)
   const [params, setParams] = useSearchParams();
@@ -194,11 +218,15 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
   }, [security.data]);
   const [find, setFind] = useState("");
   const [cp, setCp] = useState(code);   // a flow read from code opens on its critical path (D25)
-  const [showEvidence, setShowEvidence] = useState(true);
+  const [showEvidence, setShowEvidence] = useState(false);   // file:line on hover and in the panel by default (D33)
   const [legend, setLegend] = useState(false);
+  const [minimap, setMinimap] = useState(false);
+  const [allChecks, setAllChecks] = useState(false);   // decisions as full boxes instead of ◆ marks (D33)
+  const compact = code && !allChecks;
+  const size = compact ? compactSize : sizeOf;
+  const oneAction = actions.length > 1;   // one action of many, laid out fresh: its layout isn't saved
   const [theme, setThemeState] = useState<GraphTheme>(readTheme);   // how the map looks, per viewer (D26)
-  const [themeMenu, setThemeMenu] = useState(false);
-  const setTheme = (t: GraphTheme) => { setThemeState(t); saveTheme(t); setThemeMenu(false); };
+  const setTheme = (t: GraphTheme) => { setThemeState(t); saveTheme(t); };
   const [dismissed, setDismissed] = useState(readDismissed);
   const [play, setPlay] = useState<Play | null>(null);
   const [rechecking, setRechecking] = useState(false);
@@ -244,10 +272,10 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
       search: query ? (hits.has(id) ? "hit" : "miss") : pointed ? (pointed.has(id) ? "hit" : "miss") : null,
       showTip: !dismissed.has(id) && !frame, showEvidence, retryMax: retry?.max ?? null,
       health: deps && health[id] ? health[id] : undefined,
-      risk: findings[id] ? worst(findings[id]) : undefined,
+      risk: findings[id] ? worst(findings[id]) : undefined, compact,
     };
   }, [flow.nodes, flow.edges, tileFor, deps, code, theme, frame, query, hits, cp, dismissed, showEvidence, health, pointed,
-    findings]);
+    findings, compact]);
 
   // Boxed on a flow lays blocks out in time columns (D26); every other style keeps your saved layout
   const timed = theme === "boxed" && !deps;
@@ -275,23 +303,23 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
   }, [flow.edges]);
   const wasTimed = useRef(timed);
   useEffect(() => {
-    const saved = placeAll(flow.nodes, flow.edges, flow.positions);
-    const placed = timed ? timeColumns(flow, saved) : saved;
+    const saved = placeAll(flow.nodes, flow.edges, flow.positions, size);
+    const placed = timed ? timeColumns(flow, saved, size) : saved;
     const switched = wasTimed.current !== timed;
     wasTimed.current = timed;
     setNodes((current) => {
       const at = timed || switched ? {} : Object.fromEntries(current.map((n) => [n.id, n.position]));
       return flow.nodes.map((n) => {
-        const size = sizeOf(n.kind);
+        const box = size(n.kind);
         const p = at[n.id] ?? { x: placed[n.id][0], y: placed[n.id][1] };
-        return { id: n.id, type: typeFor(n.kind), position: p, width: size.w, height: size.h, data: dataFor(n.id)!,
+        return { id: n.id, type: typeFor(n.kind), position: p, width: box.w, height: box.h, data: dataFor(n.id)!,
           selected: current.find((c) => c.id === n.id)?.selected ?? false };
       });
     });
     if (switched) window.requestAnimationFrame(() => rf.fitView({ padding: 0.08, maxZoom: 1.1, duration: 400 }));
     // positions only reset when the map itself (or the time layout) changes; data updates are below
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [flow, timed]);
+  }, [flow, timed, compact]);
 
   useEffect(() => {
     setNodes((ns) => ns.map((n) => ({ ...n, data: dataFor(n.id) ?? n.data })));
@@ -316,12 +344,12 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
   const onNodesChange = useCallback((changes: NodeChange<BlockNode>[]) => {
     onNodesChangeBase(changes);
     for (const c of changes) {
-      if (c.type === "position" && c.position && !c.dragging && !timed) {   // the time layout is never saved
+      if (c.type === "position" && c.position && !c.dragging && !timed && !oneAction) {   // these layouts aren't saved
         pending.current[c.id] = [Math.round(c.position.x), Math.round(c.position.y)];
         savePositions();
       }
     }
-  }, [onNodesChangeBase, savePositions, timed]);
+  }, [onNodesChangeBase, savePositions, timed, oneAction]);
 
   const onSelectionChange = useCallback(({ nodes: picked }: OnSelectionChangeParams) => {
     setSel(picked[0]?.id ?? null);
@@ -422,9 +450,9 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
     }
   };
   const retidy = () => {
-    const laid = autoLayout(flow.nodes, flow.edges);
-    if (timed) {   // Boxed keeps its time columns, tidied from the fresh layout's order; never saved (D26)
-      const cols = timeColumns(flow, laid);
+    const laid = autoLayout(flow.nodes, flow.edges, size);
+    if (timed || oneAction) {   // Boxed's time columns and one action's layout are tidied, never saved (D26, D33)
+      const cols = timed ? timeColumns(flow, laid, size) : laid;
       setNodes((ns) => ns.map((n) => (cols[n.id] ? { ...n, position: { x: cols[n.id][0], y: cols[n.id][1] } } : n)));
       window.setTimeout(() => rf.fitView({ padding: 0.08, duration: 500 }), 30);
       return;
@@ -467,15 +495,35 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
 
   const selected = sel ? flow.nodes.find((n) => n.id === sel) : undefined;
   const appName = flow.nodes.find((n) => n.id === "app")?.title;
-  const unconfirmed = flow.nodes.filter((n) => n.status === "unconfirmed");
-  const depCount = flow.nodes.filter((n) => n.kind !== "start").length;
-  const bottleneck = flow.critical_path.bottleneck ? flow.nodes.find((n) => n.id === flow.critical_path.bottleneck) : undefined;
   const busy = !!play && !frame?.done;
   const elapsed = frame ? (frame.t / 1000).toFixed(1) : "0.0";
-  const callCount = flow.nodes.filter((n) => CALL_KINDS.has(n.kind)).length;
-  const decisionCount = flow.nodes.filter((n) => n.kind === "decision").length;
   const progress = frame ? Math.round((Object.values(frame.nodes).filter((s) => !["idle", "running", "retry", "waiting"].includes(s)).length / Math.max(1, flow.nodes.length)) * 100) : 0;
   const fellBack = !!frame && !!trace && trace.steps.some((s) => s.outcome === "failed" && (frame.nodes[s.node] === "failed"));
+
+  const rescanLabel = deps || code
+    ? (flow.pending ? "Review the re-scan" : rechecking ? "Re-scanning…" : "Re-scan the repo")
+    : (flow.pending ? "Review the re-check" : rechecking ? "Re-checking…" : "Re-check the repo");
+  const menu: MenuItem[] = [
+    { kind: "head", label: deps ? "Map" : "Flow" },
+    { kind: "action", label: rescanLabel, icon: Icons.refresh(16), onClick: () => void recheck(), disabled: rechecking },
+    ...(deps ? [{ kind: "action" as const, label: "Scan another folder", icon: Icons.search(16), onClick: () => setScanning(true) }] : []),
+    { kind: "toggle", label: `Show my edits (${flow.counts.edits})`, on: layer === "mine",
+      onClick: () => setLayer(layer === "mine" ? "planner" : "mine") },
+    { kind: "action", label: deps ? "Add a block" : "Add a step", icon: Icons.addBox(16), onClick: () => void addStep() },
+    ...(deps ? [{ kind: "link" as const, label: "Apps and connectors", icon: Icons.plug(16), to: "/connectors" }] : []),
+    { kind: "link", label: "Export", icon: Icons.share(16), to: `/map/export${q}` },
+    { kind: "link", label: deps ? "How it was mapped" : code ? "How it was read" : "How it was drawn", icon: Icons.question(16), to: `/map/how${q}` },
+    { kind: "head", label: "View" },
+    { kind: "action", label: "Re-tidy", icon: Icons.tidy(16), onClick: retidy },
+    ...(!deps ? [{ kind: "toggle" as const, label: "Critical path", on: cp, onClick: () => setCp((v) => !v) }] : []),
+    ...(code ? [{ kind: "toggle" as const, label: "Show every check", on: allChecks, onClick: () => setAllChecks((v) => !v) }] : []),
+    { kind: "toggle", label: "File and line under blocks", on: showEvidence, onClick: () => setShowEvidence((v) => !v) },
+    { kind: "toggle", label: "Legend", on: legend, onClick: () => setLegend((v) => !v) },
+    { kind: "toggle", label: "Minimap", on: minimap, onClick: () => setMinimap((v) => !v) },
+    { kind: "head", label: "Style" },
+    ...THEMES.map((t) => ({ kind: "radio" as const, label: t.name, note: t.note, on: t.id === theme, swatch: `sw-${t.id}`,
+      onClick: () => setTheme(t.id) })),
+  ];
 
   return (
     <div className={`fm${drawing ? " drawing" : ""}`} data-graph={theme}>
@@ -483,84 +531,19 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
       <header className="fm-top">
         <div className="fm-proj">
           <h1>{deps ? (appName ?? meta.project) : code ? (repo.data?.name ?? meta.project) : meta.project}</h1>
-          <small>
-            {deps ? <span>{depCount} dependencies</span>
-              : code ? <><span>{callCount} call{callCount === 1 ? "" : "s"}</span><span>·</span>
-                <span>{decisionCount} decision{decisionCount === 1 ? "" : "s"}</span></>
-                : <><span>{flow.counts.steps} steps</span><span>·</span><span>{flow.counts.gates} gates</span></>}
-            {flow.counts.unconfirmed > 0 && <><span>·</span><span>{flow.counts.unconfirmed} unconfirmed</span></>}
-            {meta.example && <span className="chip tone-violet" style={{ padding: "2px 8px", fontSize: 11 }}>Example data</span>}
-          </small>
+          {meta.example && <span className="chip tone-violet fm-ex">Example</span>}
         </div>
-        {deps ? (
-          <Link className="fm-planner" to={`/map/how${q}`} aria-label="Scanned from your code, with no AI. See how">
-            <span className="fm-spark">{Icons.search(18)}</span>
-            <span>
-              <span className="k"><span className="fm-live" />Scanned from your code · no AI</span>
-              <span className="v">Map v{flow.version}<span>nothing run or sent · {when(flow.created_at)}</span></span>
-            </span>
-          </Link>
-        ) : code ? (
-          <Link className="fm-planner" to={`/map/how${q}`} aria-label="Read from your code, with no AI. See how">
-            <span className="fm-spark">{Icons.code(18)}</span>
-            <span>
-              <span className="k"><span className="fm-live" />Read from your code · no AI</span>
-              <span className="v">Flow v{flow.version}<span>nothing run or sent · {when(flow.created_at)}</span></span>
-            </span>
-          </Link>
-        ) : (
-          <Link className="fm-planner" to={`/map/how${q}`} aria-label="The Planner drew this map. See how">
-            <span className="fm-spark">{Icons.spark(18)}</span>
-            <span>
-              <span className="k"><span className="fm-live" />Planner · drew this map</span>
-              <span className="v">Map v{flow.version}<span>from your code · {when(flow.created_at)}</span></span>
-            </span>
-          </Link>
-        )}
+        <div className="seg" role="group" aria-label="Which map">
+          <button type="button" aria-pressed={map === "deps"} onClick={() => setMap("deps")}>Dependencies</button>
+          <button type="button" aria-pressed={map === "flow"} onClick={() => setMap("flow")}>Flow</button>
+        </div>
+        {oneAction && setAction && <ActionPicker actions={actions} value={action} onChange={setAction} />}
         <div className="fm-actions">
-          <div className="fm-theme">
-            <button className="btn" type="button" aria-haspopup="menu" aria-expanded={themeMenu}
-              onClick={() => setThemeMenu((v) => !v)}>
-              {Icons.monitor(18)} Style: {THEMES.find((t) => t.id === theme)?.name}
-            </button>
-            {themeMenu && (
-              <div className="fm-theme-menu" role="menu" aria-label="Map style">
-                {THEMES.map((t) => (
-                  <button key={t.id} type="button" role="menuitemradio" aria-checked={t.id === theme}
-                    onClick={() => setTheme(t.id)}>
-                    <i className={`fm-swatch sw-${t.id}`} aria-hidden="true" />
-                    <span><b>{t.name}</b><small>{t.note}</small></span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="seg" role="group" aria-label="Which map">
-            <button type="button" aria-pressed={map === "deps"} onClick={() => setMap("deps")}>Dependencies</button>
-            <button type="button" aria-pressed={map === "flow"} onClick={() => setMap("flow")}>Flow</button>
-          </div>
-          {deps && (
-            <button className="btn" type="button" aria-expanded={scanning} onClick={() => setScanning((v) => !v)}>
-              {Icons.search(18)} Scan a folder
-            </button>
-          )}
-          <div className="seg" role="group" aria-label="Which version of the map">
-            <button type="button" aria-pressed={layer === "planner"} onClick={() => setLayer("planner")}>
-              {deps ? "As scanned" : code ? "As read" : "Planner's map"}
-            </button>
-            <button type="button" aria-pressed={layer === "mine"} onClick={() => setLayer("mine")}>
-              With my edits<span className="n">{flow.counts.edits}</span>
-            </button>
-          </div>
-          <button className="btn ai" type="button" onClick={recheck} disabled={rechecking}>
-            {Icons.refresh(18)} {deps || code
-              ? (flow.pending ? "Review the re-scan" : rechecking ? "Re-scanning…" : "Re-scan the repo")
-              : (flow.pending ? "Review the re-check" : rechecking ? "Re-checking…" : "Re-check the repo")}
-          </button>
-          <Link className="btn" to={`/map/export${q}`}>{Icons.share(18)} Export</Link>
+          {deps && <SecurityChip findings={security.data?.findings ?? []} onShow={focusOn} />}
           {deps && checks.items.length > 0 && (
             <button className="btn primary" type="button" onClick={() => void checks.checkNow()} disabled={checks.running}>
-              {Icons.activity(18)} {checks.running ? "Checking…" : "Check now"}
+              {Icons.activity(18)} {checks.progress ? `Checking ${checks.progress.done}/${checks.progress.total}…`
+                : checks.running ? "Checking…" : "Check now"}
             </button>
           )}
           {!deps && !code && (
@@ -568,14 +551,9 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
               {Icons.play(18)} {busy ? "Running…" : "Test run"}
             </button>
           )}
-          {code && (
-            <button className="btn primary" type="button" onClick={startReplay} disabled={!replay || busy}>
-              {Icons.play(18)} {busy ? "Playing…" : "Watch it run"}
-            </button>
-          )}
+          <MoreMenu items={menu} />
         </div>
       </header>
-      {deps && checks.items.length > 0 && <HealthRow checks={checks} />}
       {checks.asking && (
         <CheckConfirm asking={checks.asking} onStart={checks.confirm} onWithout={checks.withoutStarts} onCancel={checks.cancel} />
       )}
@@ -613,38 +591,18 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
                 ))}
               </ViewportPortal>
             )}
-            <MiniMap position="bottom-right" pannable zoomable ariaLabel="Mini map" nodeStrokeWidth={0}
+            {minimap && <MiniMap position="bottom-right" pannable zoomable ariaLabel="Mini map" nodeStrokeWidth={0}
               nodeColor={(n) => {
                 const k = (n.data as BlockData).node.kind;
                 return token(k === "llm" ? "--violet" : k === "gate" ? "--amber-strong" : "--line-2", "#9AAAB4");
               }}
-              maskColor={token("--mask", "rgba(120, 140, 150, 0.18)")} />
+              maskColor={token("--mask", "rgba(120, 140, 150, 0.18)")} />}
           </ReactFlow>
 
-          <div className="fm-tl">
-            <div className="fm-float fm-tools" role="toolbar" aria-label="Map tools">
-              <button className="fm-ib" type="button" aria-label="Zoom out" onClick={() => rf.zoomOut({ duration: 200 })}>{Icons.minus(18)}</button>
-              <span className="fm-zoom" aria-live="polite">{Math.round(zoom * 100)}%</span>
-              <button className="fm-ib" type="button" aria-label="Zoom in" onClick={() => rf.zoomIn({ duration: 200 })}>{Icons.plus(18)}</button>
-              <span className="fm-sep" />
-              <button className="fm-tbtn" type="button" onClick={() => rf.fitView({ padding: 0.08, duration: 450 })}>{Icons.fit(18)} Fit</button>
-              <button className="fm-tbtn" type="button" onClick={retidy}>{Icons.tidy(18)} Re-tidy</button>
-              <span className="fm-sep" />
-              {!deps && <button className="fm-tbtn" type="button" aria-pressed={cp} onClick={() => setCp((v) => !v)}>{Icons.route(18)} Critical path</button>}
-              <button className="fm-tbtn" type="button" aria-pressed={showEvidence} onClick={() => setShowEvidence((v) => !v)}>{Icons.fileCode(18)} Evidence</button>
-              <span className="fm-sep" />
-              <button className="fm-tbtn" type="button" onClick={addStep}>{Icons.addBox(18)} {deps ? "Add dependency" : "Add step"}</button>
-            </div>
-            {unconfirmed.length > 0 && !frame && (
-              <button className="fm-note unc" type="button" onClick={() => focusOn(unconfirmed[0].id)}>
-                {Icons.question(16)}<b>{unconfirmed.length} {deps ? "dependenc" + (unconfirmed.length > 1 ? "ies" : "y") : "step" + (unconfirmed.length > 1 ? "s" : "")} unconfirmed</b>
-                <span className="m">{deps ? "no call found, only a mention" : "no evidence in the repo"}</span>
-              </button>
-            )}
-            {cp && bottleneck && (
-              <span className="fm-note static">{Icons.route(16)}<span>Bottleneck: <b>{bottleneck.title}</b></span>
-                <span className="m">{((bottleneck.estimate_ms ?? 0) / 1000).toFixed(1)} s of {(flow.critical_path.length_ms / 1000).toFixed(1)} s</span></span>
-            )}
+          <div className="fm-float fm-tools" role="toolbar" aria-label="Map tools">
+            <button className="fm-ib" type="button" aria-label="Zoom out" onClick={() => rf.zoomOut({ duration: 200 })}>{Icons.minus(18)}</button>
+            <button className="fm-ib" type="button" aria-label="Zoom in" onClick={() => rf.zoomIn({ duration: 200 })}>{Icons.plus(18)}</button>
+            <button className="fm-ib" type="button" aria-label="Fit to screen" onClick={() => rf.fitView({ padding: 0.08, duration: 450 })}>{Icons.fit(18)}</button>
           </div>
 
           <label className="fm-float fm-search">
@@ -659,12 +617,14 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
             {query && <span className="c">{hits.size} found</span>}
           </label>
 
-          <div className="fm-float fm-legend">
-            <button className="fm-lh" type="button" aria-expanded={legend} onClick={() => setLegend((v) => !v)}>
-              <span>Legend</span><span style={{ transform: `rotate(${legend ? 180 : 0}deg)`, display: "inline-flex" }}>{Icons.chevron(15)}</span>
-            </button>
-            {legend && (deps ? <DepsLegend /> : code ? <CodeLegend /> : <Legend />)}
-          </div>
+          {legend && (
+            <div className="fm-float fm-legend" role="region" aria-label="Legend">
+              <button className="fm-lh" type="button" onClick={() => setLegend(false)}>
+                <span>Legend</span>{Icons.close(15)}
+              </button>
+              {deps ? <DepsLegend /> : code ? <CodeLegend /> : <Legend />}
+            </div>
+          )}
 
           {frame && played && (code || trace) && (
             <div className="fm-float fm-hud" role="status" aria-live="polite">
@@ -694,7 +654,8 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload }: View
             connectors={connectors} tipShown={!dismissed.has(selected.id)} layer={layer}
             actions={{ close: () => { setSel(null); setNodes((ns) => ns.map((n) => ({ ...n, selected: false }))); }, approve, reject, edit, reset, dismissTip }} />
         )}
-        {!selected && code && <Faster flow={flow} onPoint={(ids) => setPointed(ids ? new Set(ids) : null)} />}
+        {!selected && code && <Faster flow={flow} onPoint={(ids) => setPointed(ids ? new Set(ids) : null)}
+          onWatch={startReplay} watching={busy} canWatch={!!replay} />}
       </div>
     </div>
   );

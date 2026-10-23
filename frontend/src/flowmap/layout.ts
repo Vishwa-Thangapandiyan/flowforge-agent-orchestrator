@@ -15,18 +15,25 @@ const SIZES: Partial<Record<NodeKind, Size>> = {
   join: { w: 12, h: 260 },
 };
 const CARD: Size = { w: 196, h: 64 };
+const MARK: Size = { w: 26, h: 26 };   // a decision drawn as a small ◆ on the line (D33)
+
+export type Sizer = (kind: NodeKind) => Size;
 
 export function sizeOf(kind: NodeKind): Size {
   return SIZES[kind] ?? CARD;
 }
 
+/** Sizes with decisions as small marks: the flow's default look (D33). */
+export const compactSize: Sizer = (kind) => (kind === "decision" ? MARK : sizeOf(kind));
+
 /** Left-to-right layered layout. Returns each block's top-left corner. Retry loops are left out. */
-export function autoLayout(nodes: Pick<FlowNode, "id" | "kind">[], edges: Pick<FlowEdge, "source" | "target" | "kind">[]) {
+export function autoLayout(nodes: Pick<FlowNode, "id" | "kind">[], edges: Pick<FlowEdge, "source" | "target" | "kind">[],
+  size: Sizer = sizeOf) {
   const g = new dagre.graphlib.Graph();
   g.setGraph({ rankdir: "LR", nodesep: 56, ranksep: 104, marginx: 32, marginy: 32 });
   g.setDefaultEdgeLabel(() => ({}));
   for (const n of nodes) {
-    const s = sizeOf(n.kind);
+    const s = size(n.kind);
     g.setNode(n.id, { width: s.w, height: s.h });
   }
   for (const e of edges) {
@@ -36,16 +43,17 @@ export function autoLayout(nodes: Pick<FlowNode, "id" | "kind">[], edges: Pick<F
   const out: Record<string, [number, number]> = {};
   for (const n of nodes) {
     const p = g.node(n.id);
-    const s = sizeOf(n.kind);
+    const s = size(n.kind);
     out[n.id] = [Math.round(p.x - s.w / 2), Math.round(p.y - s.h / 2)];
   }
   return out;
 }
 
 /** Saved positions first; anything missing comes from the auto-layout, so a new block never lands on (0, 0). */
-export function placeAll(nodes: FlowNode[], edges: FlowEdge[], saved: Record<string, [number, number]>) {
+export function placeAll(nodes: FlowNode[], edges: FlowEdge[], saved: Record<string, [number, number]>,
+  size: Sizer = sizeOf) {
   const missing = nodes.some((n) => !saved[n.id]);
-  const auto = missing ? autoLayout(nodes, edges) : {};
+  const auto = missing ? autoLayout(nodes, edges, size) : {};
   const out: Record<string, [number, number]> = {};
   for (const n of nodes) out[n.id] = saved[n.id] ?? auto[n.id] ?? [0, 0];
   return out;

@@ -17,8 +17,8 @@ from flowforge.flow.advice import advise, written_by_entry, written_ms
 from flowforge.flow.index import Func, Index
 from flowforge.flow.order import Body, Stmt, flatten, label, preds, reduce
 from flowforge.flow.reach import Hit, Reach, writes
-from flowforge.flowmap.models import CALL_KINDS, Action, Evidence, Flow, FlowEdge, FlowNode, Op
-from flowforge.flowmap.validate import DEFAULT_MS, critical
+from flowforge.flowmap.models import Evidence, Flow, FlowEdge, FlowNode, Op
+from flowforge.flowmap.validate import DEFAULT_MS, actions_of
 from flowforge.scan.models import Dependency, ScanResult
 from flowforge.scan.scanner import Places, scan_with_places
 from flowforge.security.logfilter import Redactor, redact_code
@@ -254,28 +254,8 @@ class _Builder:
         modules = {m.path: m.tree for m in self.index.modules.values()}
         flow.advice = advise(flow, self.meta, self.sources, modules)
         flow.written_ms = written_ms(flow, self.meta)
-        flow.actions = _actions(flow, written_by_entry(flow, self.meta))
+        flow.actions = actions_of(flow, written_by_entry(flow, self.meta))
         return flow
-
-
-def _actions(flow: Flow, written: dict[str, float]) -> list[Action]:
-    """Each entry point on its own (D33): what it reaches, its time as written and could be, slowest first."""
-    out = []
-    for start in (n for n in flow.nodes if n.kind == "start"):
-        reach, queue = {start.id}, [start.id]
-        while queue:
-            here = queue.pop()
-            for e in flow.edges:
-                if e.source == here and e.target not in reach:
-                    reach.add(e.target)
-                    queue.append(e.target)
-        sub = Flow(kind="flow", source="code", nodes=[n for n in flow.nodes if n.id in reach],
-                   edges=[e for e in flow.edges if e.source in reach and e.target in reach])
-        cp = critical(sub)
-        calls = sum(1 for n in sub.nodes if n.kind in CALL_KINDS)
-        out.append(Action(id=start.id, title=start.title, written_ms=written.get(start.id, 0.0),
-                          could_ms=round(cp.length_ms, 1), path=list(cp.path), calls=calls))
-    return sorted(out, key=lambda a: (-a.written_ms, a.title))
 
 
 def _masked(text: str) -> str:

@@ -4,6 +4,7 @@ import { afterEach, expect, test, vi } from "vitest";
 import { META, mockApi, renderAt } from "../test/api";
 import { CONNECTORS } from "../test/fixtures";
 import { CODEFLOW, DEPS } from "../test/flowFixture";
+import { only } from "./FlowMapPage";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -150,3 +151,12 @@ test("with several actions, the flow shows one at a time, the slowest first (D33
   expect(screen.queryByText("About the city", { selector: ".ff-title" })).not.toBeInTheDocument();
   expect(within(screen.getByRole("region", { name: "Faster" })).getAllByText("300 ms").length).toBeGreaterThan(0);
 }, 20000);
+
+test("a step you added stays visible in the chosen action, so you can edit it", () => {
+  const start = CODEFLOW.nodes.find((n) => n.kind === "start")!;
+  const mine = { ...CODEFLOW.nodes.find((n) => n.kind === "api")!, id: "step_new", title: "New step", added_by: "user" as const };
+  const flow = { ...CODEFLOW, nodes: [...CODEFLOW.nodes, { ...start, id: "start-other" }, mine] };
+  const view = only(flow, { id: "start-plan", title: "plan()", written_ms: 9400, could_ms: 9220, path: [], calls: 4 });
+  expect(view.nodes.map((n) => n.id)).toContain("step_new");
+  expect(view.nodes.map((n) => n.id)).not.toContain("start-other");
+});

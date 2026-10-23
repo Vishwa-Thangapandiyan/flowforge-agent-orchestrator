@@ -77,3 +77,22 @@ def test_a_code_flow_needs_no_app_and_a_decision_may_have_one_branch():
     checked = check(flow, {})
     assert checked.node("api-shop-1").side_effect is True       # a POST changes something: marked…
     assert not any(n.kind == "gate" for n in checked.nodes)     # …but the app's own code has no approval step
+
+
+def test_hiding_a_call_updates_its_actions_numbers(tmp_path, monkeypatch):
+    import sys
+    sys.path.insert(0, str(Path(__file__).parent))
+    from test_flow_curly import dart_app
+
+    repo = dart_app(tmp_path)
+    monkeypatch.delenv("FLOWFORGE_EXAMPLE", raising=False)
+    monkeypatch.setenv("FLOWFORGE_DB", str(tmp_path / "ff.db"))
+    monkeypatch.setenv("FLOWFORGE_REPO", str(repo))
+    with TestClient(main.app) as c:
+        before = {a["title"]: a for a in c.get("/flow?map=flow").json()["actions"]}
+        assert (before["downloadTrip()"]["written_ms"], before["downloadTrip()"]["could_ms"]) == (900.0, 900.0)
+        assert "api-osrm-1" in before["downloadTrip()"]["path"]
+        assert c.post("/flow/overrides?map=flow", json={"op": "hide", "node": "api-osrm-1"}).status_code < 300
+        after = {a["title"]: a for a in c.get("/flow?map=flow").json()["actions"]}
+    assert (after["downloadTrip()"]["written_ms"], after["downloadTrip()"]["could_ms"]) == (600.0, 600.0)
+    assert "api-osrm-1" not in after["downloadTrip()"]["path"]

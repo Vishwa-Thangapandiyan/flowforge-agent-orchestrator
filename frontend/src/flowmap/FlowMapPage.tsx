@@ -81,7 +81,8 @@ export function FlowMapPage() {
 /** One action of a code flow (D33): what its start reaches, with its own times, critical path and advice. Laid out
  * fresh: the saved layout is for the whole flow. */
 export function only(flow: FlowView, a: FlowAction): FlowView {
-  const keep = new Set([a.id]);
+  // steps you added stay in view, so you can connect and edit them (they reach nothing yet)
+  const keep = new Set([a.id, ...flow.nodes.filter((n) => n.added_by === "user").map((n) => n.id)]);
   for (let grew = true; grew;) {
     grew = false;
     for (const e of flow.edges) if (keep.has(e.source) && !keep.has(e.target)) { keep.add(e.target); grew = true; }

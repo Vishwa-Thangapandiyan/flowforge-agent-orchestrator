@@ -103,6 +103,8 @@ class Storage:
     def __init__(self, path: str | Path = "flowforge.db", redact: Callable[[Any], Any] | None = None):
         self._lock = threading.RLock()
         self.path = Path(path)
+        if str(path) != ":memory:":
+            self.path.parent.mkdir(parents=True, exist_ok=True)   # a fresh install has no ~/.flowforge yet (D34)
         self.conn = sqlite3.connect(path, check_same_thread=False)
         self.conn.executescript(SCHEMA)
         self.redact: Callable[[Any], Any] = redact or _identity

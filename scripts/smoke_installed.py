@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import shutil
 import socket
 import subprocess
 import sys
@@ -49,6 +50,22 @@ async def agent(repo: str, db: str) -> dict[str, int]:
     return out
 
 
+def wait_for(url: str, server: subprocess.Popen) -> dict:
+    """The JSON at `url` once the server answers; the server's output if it stops first."""
+    for _ in range(120):
+        if server.poll() is not None:
+            check(False, f"the server stopped: {server.stdout.read() if server.stdout else ''}")
+        try:
+            r = httpx.get(url, timeout=2)
+            if r.status_code == 200:
+                return r.json()
+        except httpx.HTTPError:
+            pass
+        time.sleep(0.5)
+    check(False, f"no answer from {url}")
+    return {}
+
+
 def main() -> None:
     from flowforge.home import IN_CHECKOUT, resource, version
 
@@ -84,6 +101,22 @@ def main() -> None:
         server.terminate()
         server.wait(timeout=20)
     check(Path(home, "example.db").is_file(), "data stays in FLOWFORGE_HOME")
+
+    # a normal first launch on your own repo, with a data folder that doesn't exist yet
+    fresh = Path(tempfile.mkdtemp(prefix="ffnew-")) / "not-created-yet"
+    repo = Path(tempfile.mkdtemp(prefix="repo-")) / "app"
+    shutil.copytree(resource("example"), repo)
+    port = free_port()
+    command = [sys.executable, "-m", "flowforge.cli", "--repo", str(repo), "--no-open", "--port", str(port)]
+    server = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                              env={**os.environ, "FLOWFORGE_HOME": str(fresh)})
+    try:
+        flow = wait_for(f"http://127.0.0.1:{port}/flow", server)
+        check(flow.get("available") is True, "a first launch on your own repo maps it")
+    finally:
+        server.terminate()
+        server.wait(timeout=20)
+    check((fresh / "flowforge.db").is_file(), "its database is created in a new FLOWFORGE_HOME")
 
     got = asyncio.run(agent(str(resource("example")), str(Path(home, "agent.db"))))
     check(got == {"get_map": EXPECTED_DEPENDENCIES, "get_security_findings": EXPECTED_FINDINGS}, f"an agent gets {got}")

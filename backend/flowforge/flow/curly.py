@@ -764,8 +764,12 @@ class Lang:
         decision that guards a call, or whose condition reads a call's result or an input."""
         if any(t.hits for t in body.stmts[s.idx + 1: s.block_end + 1]):
             return True
-        from_calls = set().union(*(t.writes for t in body.stmts[: s.idx] if t.hits))
-        return bool(s.reads & (from_calls | func.params))
+        # names that carry a call's result or an input, followed through plain code: `ok = res.ok` after `res = await …`
+        carried = set(func.params)
+        for t in body.stmts[: s.idx]:
+            if t.hits or t.reads & carried:
+                carried |= t.writes
+        return bool(s.reads & carried)
 
     def question(self, func: Func, body: Body, s: Stmt) -> str:
         cond = re.sub(r"\s+", " ", self.text(func, s)).strip()

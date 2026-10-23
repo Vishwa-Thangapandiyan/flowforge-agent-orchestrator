@@ -295,3 +295,19 @@ def test_each_action_has_its_own_times_slowest_first(tmp_path):
     actions = [(a.title, a.written_ms, a.could_ms, a.calls) for a in flow.actions]
     assert actions == [("downloadTrip()", 900.0, 900.0, 3), ("refresh()", 600.0, 300.0, 2)]
     assert flow.actions[0].path[0] == "start-downloadTrip"
+
+
+def test_a_check_on_a_value_derived_from_a_call_is_kept(tmp_path):
+    repo = write(tmp_path / "web", {"src/api.ts": TS_API, "src/run.ts": """
+        import { getWeather, getPlace } from "./api";
+
+        export async function run(city: string) {
+          const res = await getWeather(city);
+          const ok = res.ok;
+          if (!ok) return;
+          return await getPlace(city);
+        }
+    """})
+    flow = flow_of(repo).flow
+    assert any(n.kind == "decision" and n.condition == "!ok" for n in flow.nodes)
+    assert any(n.kind == "end" for n in flow.nodes)   # the Stop branch stays

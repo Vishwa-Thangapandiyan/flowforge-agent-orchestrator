@@ -178,3 +178,14 @@ test("Show every check lays the flow out again for full-size checks", async () =
   await userEvent.click(screen.getByRole("menuitemcheckbox", { name: /Show every check/ }));
   await vi.waitFor(() => expect(at()).not.toBe(before));   // full boxes take more room: the blocks move
 }, 20000);
+
+test("with one action, as written comes from the action, so edits count", async () => {
+  const one = { ...CODEFLOW, written_ms: 9400,
+    actions: [{ id: "start-plan", title: "plan()", written_ms: 6100, could_ms: 6000, path: CODEFLOW.critical_path.path, calls: 3 }] };
+  mockApi(routes(one));
+  renderAt("/?map=flow");
+  const faster = await screen.findByRole("region", { name: "Faster" }, { timeout: 5000 });
+  expect(within(faster).getByText("6.1 s")).toBeInTheDocument();
+  expect(within(faster).queryByText("9.4 s")).not.toBeInTheDocument();
+  expect(screen.queryByRole("combobox", { name: /Action/ })).not.toBeInTheDocument();   // no picker for one action
+}, 20000);

@@ -71,7 +71,10 @@ export function FlowMapPage() {
   const current = actions.length > 1 ? (actions.find((a) => a.id === action) ?? actions[0]) : null;
   return (
     <ReactFlowProvider>
-      <MapView key={`${map}:${current?.id ?? ""}`} map={map} flow={current ? only(flow.data, current) : flow.data}
+      <MapView key={`${map}:${current?.id ?? ""}`} map={map}
+        flow={current ? only(flow.data, current)   // one action of many
+          : actions.length === 1 ? { ...flow.data, written_ms: actions[0].written_ms }   // its time, with your edits
+            : flow.data}
         trace={trace.data ?? null} connectors={connectors.data ?? []} layer={layer} setLayer={setLayer} reload={flow.reload}
         actions={actions} action={current?.id ?? null} setAction={setAction} />
     </ReactFlowProvider>

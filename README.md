@@ -21,6 +21,18 @@ What makes it different: **it knows which chain of steps is the bottleneck and s
 
 ## Quick start
 
+### Install (from the first release, v0.1.0)
+
+```bash
+uvx flowforge --example          # try it: a sample app's maps in your browser, no keys, nothing sent
+pip install flowforge            # or install it
+flowforge --repo ~/my-app        # map your own repo
+```
+
+You need Python 3.12 or newer ([uv](https://docs.astral.sh/uv/) installs it for you). The dashboard is inside the package: no Node needed. Your data lives in `~/.flowforge`.
+
+### From source (to work on FlowForge)
+
 You need **[uv](https://docs.astral.sh/uv/)** (it installs Python for you) and **[Node.js](https://nodejs.org/) 20 or newer** for the dashboard.
 
 ```bash

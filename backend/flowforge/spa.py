@@ -10,15 +10,14 @@ CI and fetch() calls (Accept: application/json or */*) keep getting JSON.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-ROOT = Path(__file__).resolve().parents[2]
-DIST = ROOT / "frontend" / "dist"
-CLASSIC = ROOT / "frontend" / "classic.html"
+from flowforge.home import resource
+
+DIST = resource("dashboard")   # inside the package when installed, frontend/dist in a checkout (D34)
+CLASSIC = resource("classic")
 API_DOCS = ("/docs", "/redoc", "/openapi.json")
 
 

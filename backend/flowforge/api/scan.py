@@ -18,11 +18,12 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from flowforge.flowmap.planner import CodeFlowPlanner, ScanPlanner
 from flowforge.flowmap.service import FlowService
+from flowforge.home import resource
 from flowforge.state import AppState, app_state
 from flowforge.storage import Storage
 
 REPO_SETTING = "repo_path"
-EXAMPLE_REPO = Path(__file__).resolve().parents[3] / "examples" / "trip-planner"   # scanned live in example mode
+EXAMPLE_REPO = resource("example")   # scanned live in example mode; shipped inside the package (D34)
 
 router = APIRouter()
 

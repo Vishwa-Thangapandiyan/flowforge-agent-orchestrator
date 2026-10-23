@@ -18,9 +18,9 @@ import threading
 import webbrowser
 from pathlib import Path
 
-from flowforge.home import flowforge_home
+from flowforge.home import flowforge_home, resource, version
 
-DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist" / "index.html"
+DIST = resource("dashboard") / "index.html"
 
 
 def parse(argv: list[str] | None) -> argparse.Namespace:
@@ -32,6 +32,7 @@ def parse(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--replace", action="store_true",
                         help="serve: --repo names a different folder than last time, so start a fresh map")
     parser.add_argument("--example", action="store_true", help="use example data (no keys, no network)")
+    parser.add_argument("--version", action="version", version=f"flowforge {version()}")
     parser.add_argument("--host", default=os.getenv("FLOWFORGE_HOST", "127.0.0.1"))
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--no-open", action="store_true", help="don't open the browser")

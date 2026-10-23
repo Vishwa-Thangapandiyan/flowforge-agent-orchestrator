@@ -1,5 +1,5 @@
 [project]
-name = "flowforge"
+name = "flowforge-map"   # on PyPI: "flowforge" is taken by a near-identical name (D34)
 version = "0.1.0"
 description = "Map what your app depends on (LLMs, MCP servers, APIs), check their health and security, and see what could run faster. Local and free; the scan needs no AI."
 readme = "README.md"
@@ -38,6 +38,7 @@ Issues = "https://github.com/Vishwa-Thangapandiyan/flowforge-agent-orchestrator/
 
 [project.scripts]
 flowforge = "flowforge.cli:main"
+flowforge-map = "flowforge.cli:main"   # so `uvx flowforge-map` runs it
 
 [dependency-groups]
 dev = [

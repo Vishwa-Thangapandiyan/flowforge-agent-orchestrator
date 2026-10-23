@@ -124,6 +124,9 @@ class Action(_Model):
     could_ms: float = Field(ge=0)
     path: list[str] = Field(default_factory=list)
     calls: int = 0
+    # its calls as written, in groups: one call, or calls the code already runs together (count once, at the
+    # slowest). Kept so "as written" can be recomputed from what is still on the map after edits.
+    parts: list[list[str]] = Field(default_factory=list)
 
 
 class Advice(_Model):

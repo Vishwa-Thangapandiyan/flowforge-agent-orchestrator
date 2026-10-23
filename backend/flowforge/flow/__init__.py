@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from flowforge.flow import curly
-from flowforge.flow.advice import advise, written_by_entry, written_ms
+from flowforge.flow.advice import advise, parts_by_entry, written_ms
 from flowforge.flow.index import Func, Index
 from flowforge.flow.order import Body, Stmt, flatten, label, preds, reduce
 from flowforge.flow.reach import Hit, Reach, writes
@@ -254,7 +254,7 @@ class _Builder:
         modules = {m.path: m.tree for m in self.index.modules.values()}
         flow.advice = advise(flow, self.meta, self.sources, modules)
         flow.written_ms = written_ms(flow, self.meta)
-        flow.actions = actions_of(flow, written_by_entry(flow, self.meta))
+        flow.actions = actions_of(flow, parts_by_entry(self.meta))
         return flow
 
 

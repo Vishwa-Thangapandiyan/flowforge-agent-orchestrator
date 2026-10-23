@@ -210,16 +210,19 @@ def reach(flow: Flow, start: str) -> set[str]:
     return seen
 
 
-def actions_of(flow: Flow, written: dict[str, float]) -> list[Action]:
-    """Each entry point of a code flow on its own (D33): its time as written (`written`, by start id), could be, and
-    the chain that sets it, slowest first. The service recomputes them on the merged map, so edits count."""
+def actions_of(flow: Flow, parts: dict[str, list[list[str]]]) -> list[Action]:
+    """Each entry point of a code flow on its own (D33): its time as written (from `parts`, by start id: its calls in
+    the groups the code runs them), could be, and the chain that sets it, slowest first. The service recomputes them
+    on the map as shown, so a hidden call leaves both times."""
+    weight = {n.id: n.estimate_ms or 0.0 for n in flow.nodes if n.kind in CALL_KINDS}
     out = []
     for start in (n for n in flow.nodes if n.kind == "start"):
         ids = reach(flow, start.id)
         sub = Flow(kind="flow", source="code", nodes=[n for n in flow.nodes if n.id in ids],
                    edges=[e for e in flow.edges if e.source in ids and e.target in ids])
         cp = critical(sub)
-        out.append(Action(id=start.id, title=start.title, written_ms=round(written.get(start.id, 0.0), 1),
-                          could_ms=round(cp.length_ms, 1), path=list(cp.path),
-                          calls=sum(1 for n in sub.nodes if n.kind in CALL_KINDS)))
+        mine = parts.get(start.id, [[i] for i in ids if i in weight])
+        written = sum(max((weight[i] for i in p if i in weight), default=0.0) for p in mine)
+        out.append(Action(id=start.id, title=start.title, written_ms=round(written, 1), could_ms=round(cp.length_ms, 1),
+                          path=list(cp.path), calls=sum(1 for n in sub.nodes if n.kind in CALL_KINDS), parts=mine))
     return sorted(out, key=lambda a: (-a.written_ms, a.title))

@@ -96,3 +96,28 @@ def test_hiding_a_call_updates_its_actions_numbers(tmp_path, monkeypatch):
         after = {a["title"]: a for a in c.get("/flow?map=flow").json()["actions"]}
     assert (after["downloadTrip()"]["written_ms"], after["downloadTrip()"]["could_ms"]) == (600.0, 600.0)
     assert "api-osrm-1" not in after["downloadTrip()"]["path"]
+
+
+def test_hiding_one_of_two_calls_that_run_together_keeps_the_other(tmp_path, monkeypatch):
+    repo = tmp_path / "web"
+    (repo / "src").mkdir(parents=True)
+    (repo / "src" / "api.ts").write_text(
+        'export async function getWeather(city: string) {\n'
+        '  const res = await fetch("https://api.open-meteo.com/v1/forecast?q=" + city);\n  return res.json();\n}\n\n'
+        'export async function getPlace(city: string) {\n'
+        '  const res = await fetch("https://nominatim.openstreetmap.org/search?q=" + city);\n  return res.json();\n}\n')
+    (repo / "src" / "plan.ts").write_text(
+        'import { getWeather, getPlace } from "./api";\n\n'
+        'export async function planFast(city: string) {\n'
+        '  const [w, p] = await Promise.all([getWeather(city), getPlace(city)]);\n  return { w, p };\n}\n\n'
+        'export async function other(city: string) {\n  return await getPlace(city);\n}\n')
+    monkeypatch.delenv("FLOWFORGE_EXAMPLE", raising=False)
+    monkeypatch.setenv("FLOWFORGE_DB", str(tmp_path / "ff.db"))
+    monkeypatch.setenv("FLOWFORGE_REPO", str(repo))
+    with TestClient(main.app) as c:
+        before = {a["title"]: a for a in c.get("/flow?map=flow").json()["actions"]}["planFast()"]
+        assert before["written_ms"] == 300.0   # together: the slower of the two, not the sum
+        hidden = next(i for i in before["path"] if i.startswith("api-"))
+        assert c.post("/flow/overrides?map=flow", json={"op": "hide", "node": hidden}).status_code < 300
+        after = {a["title"]: a for a in c.get("/flow?map=flow").json()["actions"]}["planFast()"]
+    assert after["written_ms"] == 300.0   # the other call still takes its 300 ms

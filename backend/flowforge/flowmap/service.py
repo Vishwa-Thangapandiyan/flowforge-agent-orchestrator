@@ -21,7 +21,7 @@ from flowforge.flowmap.models import (
     Trace,
 )
 from flowforge.flowmap.planner import NoFlow, Planner
-from flowforge.flowmap.validate import FlowError, actions_of, check, critical, reach
+from flowforge.flowmap.validate import FlowError, actions_of, check, critical
 from flowforge.storage import FlowStore
 
 NOT_AVAILABLE = "No map yet. Scan a folder to draw what your app depends on."
@@ -373,11 +373,7 @@ def _need_connector(connector_id: str | None, kind: str, connectors: dict[str, C
 
 def _actions(scanned: Flow, merged: Flow) -> list[Action]:
     """Each action's numbers from the map as it is shown, your edits included (D33): a hidden call leaves its critical
-    path, and its time leaves "as written"."""
+    path and "as written", and a group that runs together still counts at its slowest remaining call."""
     if not scanned.actions:
         return []
-    weight = {n.id: n.estimate_ms or 0.0 for n in scanned.nodes if n.kind in CALL_KINDS}
-    shown = {n.id for n in merged.nodes}
-    written = {a.id: max(0.0, a.written_ms - sum(weight.get(i, 0.0) for i in reach(scanned, a.id) - shown))
-               for a in scanned.actions}
-    return actions_of(merged, written)
+    return actions_of(merged, {a.id: a.parts for a in scanned.actions if a.parts})

@@ -1047,6 +1047,25 @@ D23's rule holds: nothing drawn by hand. Vishwa chose Python first, with Dart an
 
 ---
 
+## D33. Declutter: three visible controls, the rest one click away (Vishwa, 2026-10-23)
+
+**Context.** Vishwa: the extra information on the screens "makes our app cluttered and useless", and a whole Security page is too much for "a key is exposed". The map's header had 9 buttons and a provenance badge, the toolbar wrapped onto two rows, every block carried a kind tag and its `file:line`, the legend and minimap were always on, the side panel had six sections, 32 places showed decision numbers such as "(D25)" to users, and a Flutter app's flow stacked 37 actions with UI-only checks. Supersedes the page and layout parts of D17, D24, D26, D30 and D31 where they disagree; their data and APIs stay.
+
+**Choice:**
+- **The rule for every screen:** a header with the name, the view switch, at most one warning and one main action, and a ⋯ menu; the page shows only what answers "what is it, and is it all right"; details appear on hover or click, never printed by default; no internal words (decision numbers, "Flow v1", "fact sheet").
+- **Map:** header = repo name (with "Example" as a small chip), Dependencies / Flow, the ⚠ findings chip, Check now, ⋯ (style, re-scan, scan another folder, my edits, add dependency, export, legend, minimap, how it was mapped). Blocks show a name, the service and the health dot; `file:line` shows on hover and in the panel. Zoom, fit and search sit small in a corner. The legend and minimap are off until chosen in ⋯.
+- **Flow: one action at a time.** An action picker lists the entry points, slowest first, with their times; the map draws the chosen one (the slowest by default). Decisions are drawn as small ◆ marks on the line, with their question on hover and click; "Show every check" in ⋯ brings back the full boxes. A decision that only reads UI state (`mounted`, `context`, a field compared to a local) and guards no service call isn't drawn.
+- **Faster panel:** the two times and their bars, Watch it run, then one card per piece of advice with its saving, Show the change and Copy prompt. Caveats, the critical path and the limits are behind an ⓘ.
+- **Side panel:** three parts: a warning if any (with Copy fix prompt), health (with Check), and the code (folded). Rename and Hide sit behind ⋯.
+- **Security on the map:** the ⚠ chip (hidden when there is nothing to fix) opens a short list: level, title, `file:line`, Copy fix, Show. No key value is shown anywhere, so there is no password page: there is nothing secret to protect. The Security page and its rail button go; `GET /security` and `get_security_findings` stay.
+- **Rail:** Map, Checks, Connect agent, then Theme. The catalog and Add app open from the map's ⋯ → Add dependency (their routes keep working). The Checks page loses its squares strip and keeps the table.
+
+**Why:** a first look decides whether a stranger keeps FlowForge. Three controls and one idea per screen make the map readable at a glance; nothing is removed, only moved one click away.
+
+**Code:** `frontend/src/flowmap/` (`MapHeader.tsx`, `MoreMenu.tsx` new; `FlowMapPage.tsx`, `nodes.tsx`, `Faster.tsx`, `StepPanel.tsx`), `frontend/src/security/SecurityChip.tsx`, `components/Shell.tsx`, `checks/ChecksPage.tsx`, `flow/curly.py`, `flow/__init__.py`.
+
+---
+
 ## Step JSON schema (reference)
 
 ```json

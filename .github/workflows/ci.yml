@@ -46,3 +46,36 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+
+  package:
+    # The installable package (D34): build the dashboard and the wheel, install the wheel alone in a fresh
+    # environment outside the repo, and use it as a stranger would. Nothing is published here.
+    name: package / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4  # v10.1.0
+        with:
+          python-version: "3.12"
+      - run: npm ci && npm run build
+        working-directory: frontend
+      - run: uv build
+      - name: Install the wheel alone and smoke-test it
+        run: |
+          uv venv "$RUNNER_TEMP/smoke" --python 3.12
+          if [ "$RUNNER_OS" = Windows ]; then PY="$RUNNER_TEMP/smoke/Scripts/python.exe"; else PY="$RUNNER_TEMP/smoke/bin/python"; fi
+          uv pip install --python "$PY" dist/*.whl
+          cp scripts/smoke_installed.py "$RUNNER_TEMP/"
+          cd "$RUNNER_TEMP" && "$PY" -I smoke_installed.py

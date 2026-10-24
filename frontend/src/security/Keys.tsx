@@ -10,6 +10,7 @@ export type KeyStatus = "saved" | "unreadable" | "env_file" | "missing";
 export interface KeyInfo {
   name: string;
   status: KeyStatus;
+  requested?: boolean;
   ref: string | null;
   deps: string[];
   command: string | null;
@@ -22,6 +23,8 @@ export interface KeysResponse {
   keys: KeyInfo[];
   /** `flowforge run --repo … --`, to put before the command that starts your app */
   run?: string;
+  /** keys your coding agent asked for, waiting for you (D38) */
+  requests?: { name: string; why: string; at: string }[];
 }
 
 export type KeyNeed = "missing" | "env_file";
@@ -71,7 +74,7 @@ function KeyBox({ name, onSaved, onCancel }: { name: string; onSaved: () => void
 }
 
 /** One key and the one thing that fixes it: paste it (missing, can't read), move it in from .env, or replace it. */
-export function KeyRow({ k, onSaved }: { k: KeyInfo; onSaved: () => void }) {
+export function KeyRow({ k, onSaved, note }: { k: KeyInfo; onSaved: () => void; note?: string }) {
   const [replacing, setReplacing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -98,6 +101,7 @@ export function KeyRow({ k, onSaved }: { k: KeyInfo; onSaved: () => void }) {
           {k.ref && <code>{k.ref}</code>}
           {k.status === "env_file" && <span className="key-hint">a coding agent can read .env</span>}
           {k.status === "unreadable" && <span className="key-hint">save it again</span>}
+          {note && <span className="key-hint">{note}</span>}
         </span>
       </span>
       <span className="key-act">

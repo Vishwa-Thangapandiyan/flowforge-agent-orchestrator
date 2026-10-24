@@ -54,12 +54,13 @@ interface Item {
   count?: "issues" | "keys";
 }
 
-// Five places (D33, D37): the map, what to fix, your keys, the checks, and your coding agent. Apps and workflow runs
+// Six places (D33, D37, D38): the map, what to fix, your keys, the Vault, the checks, and your coding agent. Apps and workflow runs
 // stay one click away from the map's ⋯ menu and the Checks page.
 const ITEMS: Item[] = [
   { to: "/", label: "Map", icon: Icons.map(20), active: /^\/($|map(\/|$)|connectors(\/|$))/ },
   { to: "/issues", label: "Issues", icon: Icons.shield(20), active: /^\/issues$/, count: "issues" },
   { to: "/keys", label: "Keys", icon: Icons.key(20), active: /^\/keys$/, count: "keys" },
+  { to: "/vault", label: "Vault", icon: Icons.lock(20), active: /^\/vault$/ },
   { to: "/checks", label: "Checks", icon: Icons.activity(20), active: /^\/(checks|runs|live)(\/|$)/ },
   { to: "/connect", label: "Connect agent", icon: Icons.code(20), active: /^\/connect$/ },
 ];

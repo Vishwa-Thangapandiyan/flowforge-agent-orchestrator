@@ -60,9 +60,13 @@ def set_up(c: TestClient) -> bytes:
 
 
 def unlocked(c: TestClient, secret: bytes) -> None:
+    """Both steps (D38): the password, then the code."""
     import time
 
-    r = c.post("/lock/open", json={"password": PASSWORD, "code": totp(secret, time.time() + 30)})
+    first = c.post("/lock/password", json={"password": PASSWORD})
+    assert first.status_code == 200 and first.json()["next"] == "code"
+    assert "httponly" in first.headers["set-cookie"].lower()
+    r = c.post("/lock/code", json={"code": totp(secret, time.time() + 30)})
     assert r.status_code == 200, r.text
     assert 290 < r.json()["seconds_left"] <= 300
     assert "httponly" in r.headers["set-cookie"].lower() and "samesite=strict" in r.headers["set-cookie"].lower()
@@ -71,19 +75,21 @@ def unlocked(c: TestClient, secret: bytes) -> None:
 def test_the_lock_starts_off_and_says_so(shop):
     with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         assert c.get("/lock").json() == {"state": "none", "open": False, "seconds_left": 0, "reset_at": None}
-        assert c.get("/keys/hidden").status_code == 401
+        assert c.get("/vault/keys").status_code == 401
 
 
 def test_open_the_view_list_the_keys_and_reveal_one_at_a_time(shop):
     with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         secret = set_up(c)
-        assert c.get("/keys/hidden").status_code == 401             # set up isn't open
+        assert c.get("/vault/keys").status_code == 401             # set up isn't open
         unlocked(c, secret)
-        listed = c.get("/keys/hidden")
+        listed = c.get("/vault/keys")
         assert listed.status_code == 200
         for value in (FAKE, SAVED, IN_ENV):
             assert value not in listed.text                          # the list holds no values
-        items = {(i["where"], i["name"]): i for i in listed.json()["items"]}
+        rows = {r["name"]: r for r in listed.json()["keys"]}
+        assert set(rows) == {"STRIPE_KEY", "RAZORPAY_KEY", "GOOGLE_API_KEY"}
+        items = {(p["where"], name): p for name, r in rows.items() for p in r["places"]}
         assert set(items) == {("code", "STRIPE_KEY"), ("saved", "RAZORPAY_KEY"), ("env", "GOOGLE_API_KEY")}
         assert items[("code", "STRIPE_KEY")]["ref"] == "pay.py:4"
         for (where, name), value in {("code", "STRIPE_KEY"): FAKE, ("saved", "RAZORPAY_KEY"): SAVED,
@@ -109,22 +115,27 @@ def test_closing_ends_the_session(shop):
         assert c.get("/lock").json()["open"] is True
         c.post("/lock/close")
         assert c.get("/lock").json()["open"] is False
-        assert c.get("/keys/hidden").status_code == 401
+        assert c.get("/vault/keys").status_code == 401
 
 
-def test_a_wrong_try_says_the_same_whatever_was_wrong(shop):
+def test_each_step_says_what_was_wrong_and_the_code_needs_step_one(shop):
+    """D38: two screens, so each says which part was wrong; the code alone never opens the vault."""
     import time
 
     with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         secret = set_up(c)
-        wrong_pw = c.post("/lock/open", json={"password": "not it at all", "code": totp(secret, time.time() + 30)})
-        wrong_code = c.post("/lock/open", json={"password": PASSWORD, "code": "000000"})
-        assert wrong_pw.status_code == wrong_code.status_code == 403
-        assert wrong_pw.json() == wrong_code.json()
+        assert c.post("/lock/code", json={"code": totp(secret, time.time() + 30)}).status_code == 403   # no step 1
+        wrong = c.post("/lock/password", json={"password": "not it at all"})
+        assert wrong.status_code == 403 and "password" in wrong.json()["detail"].lower()
+        c.post("/lock/password", json={"password": PASSWORD})
+        bad = c.post("/lock/code", json={"code": "000000"})
+        assert bad.status_code == 403 and "code" in bad.json()["detail"].lower()
+        assert c.get("/vault/keys").status_code == 401
 
 
 @pytest.mark.parametrize("path, body", [
-    ("/lock/setup", {"password": PASSWORD}), ("/lock/open", {"password": PASSWORD, "code": "123456"}),
+    ("/lock/setup", {"password": PASSWORD}), ("/lock/password", {"password": PASSWORD}),
+    ("/lock/code", {"code": "123456"}),
     ("/keys/reveal", {"where": "saved", "name": "RAZORPAY_KEY", "ref": None}),
 ])
 def test_only_the_dashboard_on_this_machine_can_use_the_lock(shop, path, body):

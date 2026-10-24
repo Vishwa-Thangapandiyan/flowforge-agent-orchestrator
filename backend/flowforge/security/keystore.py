@@ -95,6 +95,10 @@ class KeyStore:
     def names(self) -> list[str]:
         return sorted(self._entries())
 
+    def saved(self) -> dict[str, dict[str, str]]:
+        """Each saved name with where it went and when (no values): {name: {"store", "added"}}."""
+        return {name: dict(entry) for name, entry in self._entries().items()}
+
     # the encrypted file: FLOWFORGE_HOME/keys/<repo hash>.enc holds {name: value}
 
     def _fernet(self):
@@ -236,7 +240,7 @@ class KeyStore:
         return saved
 
 
-def report(store: KeyStore, scan: ScanResult, verify: bool = True) -> list[dict[str, object]]:
+def report(store: KeyStore, scan: ScanResult, verify: bool = True, also: Iterable[str] = ()) -> list[dict[str, object]]:
     """Each key the code reads (an env name that looks secret, D31), plus each saved one: its status, where it is
     read, the dependencies that use it, and the command that fixes it. Names only (D36). `verify=False` (the agent's
     MCP server) reports a saved key as saved without reading it back."""
@@ -244,7 +248,7 @@ def report(store: KeyStore, scan: ScanResult, verify: bool = True) -> list[dict[
     from flowforge.security.finders import is_secret_name
 
     reads = {e.name: e.ref for e in scan.env_names if is_secret_name(e.name)}
-    names = sorted({*reads, *store.names()})
+    names = sorted({*reads, *store.names(), *also})   # `also`: names your agent asked for, not in the code yet
     status = store.status(names, verify=verify)
     out = []
     for name in names:

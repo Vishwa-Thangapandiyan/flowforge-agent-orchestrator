@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[2]
 TRIP_PLANNER = ROOT / "examples" / "trip-planner"
 FAKE_KEY = "sk_test_FAKEFAKE12345678"
 TOOLS = {"get_map", "get_flow", "get_advice", "check_health", "get_security_findings", "get_keys",
-         "get_fix_requests", "what_changed"}
+         "get_fix_requests", "request_key", "wait_for_keys", "what_changed"}
 
 
 def write(root: Path, files: dict[str, str]) -> Path:
@@ -44,13 +44,16 @@ def storage_for(tmp_path: Path, repo: Path | None = None) -> Storage:
     return storage
 
 
-async def test_an_agent_sees_six_tools_and_only_one_reaches_out(tmp_path):
+async def test_the_agents_tools_read_only_but_one_that_asks_for_a_key(tmp_path):
     server = build_server(TRIP_PLANNER, storage_for(tmp_path))
     async with Client(server) as client:
         tools = {t.name: t for t in (await client.list_tools()).tools}
     assert set(tools) == TOOLS
     for name, tool in tools.items():
-        assert tool.annotations.read_only_hint is True, name   # no tool writes anything (D29)
+        if name == "request_key":   # writes one thing, a request on the Keys page, never a value (D38)
+            assert tool.annotations.read_only_hint is False and tool.annotations.destructive_hint is False
+        else:
+            assert tool.annotations.read_only_hint is True, name   # (D29)
         assert tool.description
     assert tools["check_health"].annotations.open_world_hint is True
 

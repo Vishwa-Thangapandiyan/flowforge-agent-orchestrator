@@ -78,7 +78,7 @@ function classes(d: BlockData, selected: boolean): string {
     "ff-block", `kind-${n.kind}`, d.state !== "idle" && `st-${d.state}`, selected && "selected",
     n.status === "unconfirmed" && "unconf", d.search, d.cp && d.state === "idle" && "cp",
     d.diff && !d.diffOff && `diff-${d.diff}`, d.diffOff && "diff-off", d.health && `h-${d.health.status}`,
-    d.compact && n.kind === "decision" && "compact",
+    d.compact && n.kind === "decision" && "compact", d.keyNeed === "missing" && "key-missing",
   ].filter(Boolean).join(" ");
 }
 
@@ -94,6 +94,7 @@ function Status({ d }: { d: BlockData }) {
 
 function Caption({ d, evidence }: { d: BlockData; evidence: boolean }) {
   if (d.cap) return <span className={`ff-cap ${d.state}`}>{d.cap}</span>;
+  if (d.keyNeed === "missing") return <span className="ff-cap"><em className="ff-h key-missing">key missing · click to add</em></span>;   // D38
   const h = d.health ? healthCaption(d.health.status, d.health.summary, d.health.latency_ms) : "";
   if (!evidence) return h ? <span className="ff-cap"><em className={`ff-h ${d.health?.status}`}>{h}</em></span> : null;
   const first = d.node.evidence[0];

@@ -1206,6 +1206,34 @@ The rule from D36 stays: the coding agent never gets a value from FlowForge.
 
 ---
 
+## D38. Lanes on the map, keys your agent asks for, and the Vault (Vishwa, 2026-10-24)
+
+**Context.** Vishwa's look at the v0.3.0 build had three points:
+- **The map was cluttered.** In Boxed, each kind's box wrapped its blocks wherever they sat in the one column. Wikipedia (an API reached through `fetch`) sat up top, so the APIs box covered every other box.
+- **Keys should follow the agent's work.** The agent adds a dependency and asks for its key. The user clicks the new block, pastes the key, and the agent carries on.
+- **Key values don't belong on the Keys page.** The set-up there felt small and informal.
+
+**Choice** (Vishwa picked each):
+- **Lanes (amends D26).** In Boxed, a dependency map is laid out by code: the app's and the coding tools' start blocks on the left, then one lane per kind, side by side: MCP servers · LLMs · APIs · Local programs, each sorted by name. A block reached through a server sits in its own kind's lane, and its line crosses over. Like the time columns on a flow, this layout is tidied, never saved.
+- **A block whose key is missing** gets a coral outline and "key missing". Its panel's first button, **Add the key**, opens the Keys page with that key's box focused (`/keys?key=NAME`).
+- **The agent asks (amends D29).** Two MCP tools, neither of which ever holds a value:
+  - `request_key(name, why)` records a request: the env name, one line of why, the folder. It is the one tool that writes anything, and it writes only that request.
+  - `wait_for_keys(names, seconds)` returns as soon as each key is saved, or when the time is up (at most 110 s; call again to keep waiting). It reads the store's list of names, never a value.
+  
+  The Keys page shows requests first ("Your agent is waiting for …"). A request counts in the rail and clears once its key is saved. When a request arrives, the map shows "Your agent asked for a key · Review", which opens the usual re-scan diff, so the user sees what the agent added before it lands on the map (D17).
+- **The Keys page** only adds keys. The order is the agent's requests, then missing, then in `.env`, then saved (folded). The `flowforge run` line is one short row with Copy.
+- **The Vault (amends D37).** A rail page of its own, `/vault`, and the only place values show.
+  - **Locked:** two screens, one at a time. First the password: `POST /lock/password` counts tries and gives a 2-minute half-ticket in an httpOnly cookie. Then the code: `POST /lock/code` needs that ticket. Then 5 minutes open. Five wrong tries, across both steps, lock it for 15 minutes.
+  - **Set-up:** a full-page wizard in three steps (password, a large QR with the key to type if it can't be scanned, the first code).
+  - **Open:** every key, from the code, the store and `.env`, with its health and details. Health is healthy, in code, in `.env`, can't read, unused (saved but no code reads it), or saved 90+ days ago. Details are where it lives (keychain, encrypted file, `file:line`, `.env`), the dependency it serves, when it was saved, and live or test (worked out on the server from the key's prefix; only the word comes back).
+  - **Actions:** Show (30 s, D37), Fix (to Issues), Move in, Remove. A countdown and Lock now.
+
+**Why:** the map should read at a glance. The user does one thing per key (paste) while the agent waits. Seeing values is a separate, deliberate act behind two steps.
+
+**Code:** `frontend/src/flowmap/themes.ts` (`kindLanes`), `agent/server.py` (`request_key`, `wait_for_keys`), `api/keys.py`, `api/lock.py` (`/lock/password`, `/lock/code`, `/vault/keys`), `security/lock.py`, the dashboard's `security/VaultPage.tsx`.
+
+---
+
 ## Step JSON schema (reference)
 
 ```json

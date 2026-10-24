@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vault artboards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* D38 artboards: map lanes, keys your agent asks for, the Vault. Tokens and parts from issues-keys.html. Fake keys only. */
+/* D37 artboards: the Issues page, the Keys page, the locked key view. Tokens from frontend/src/styles/tokens.css.
+   Example data: the trip planner. Every key shown is fake. */
+:root{--bg:#EEF3F5;--surface:#FFFFFF;--surface-2:#F6F9FA;--fg:#0F1D26;--muted:#4A5E6A;--faint:#8A9BA5;--line:#D3DDE3;
+--teal:#0B7A70;--teal-bg:#DDF2EF;--blue:#2457C5;--blue-bg:#E1EAFB;--amber:#8A5A00;--amber-bg:#FCEFD0;--coral:#B93C2B;--coral-bg:#FBE4DF;
+--green:#1F7A45;--green-bg:#DCF2E4;--violet:#6B46C1;--violet-bg:#ECE6FA;--slate:#3A4756;--slate-bg:#E6EBEF;--on-teal:#FFFFFF;
+--nav-bg:#0F1D26;--nav-fg:#C9D6DC;--nav-active:#1D3340;
+--add:#1F7A45;--add-bg:#E4F5EA;--del:#B93C2B;--del-bg:#FBE9E5;
+--shadow:0 1px 2px rgb(15 29 38 / 6%),0 8px 22px -12px rgb(15 29 38 / 22%);
+--sans:'Geist',ui-sans-serif,system-ui,'Segoe UI',sans-serif;--mono:'Geist Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;color-scheme:light}
+:root[data-theme="dark"]{--bg:#0B1418;--surface:#122128;--surface-2:#0F1B21;--fg:#E8F0F3;--muted:#93A8B3;--faint:#5E7482;--line:#25363F;
+--teal:#4FD1C0;--teal-bg:#12332F;--blue:#7FA8FF;--blue-bg:#16284A;--amber:#F2B84B;--amber-bg:#3A2D0E;--coral:#FF8C7A;--coral-bg:#40201B;
+--green:#66D18F;--green-bg:#133423;--violet:#B79CFF;--violet-bg:#2A2147;--slate:#B6C3CC;--slate-bg:#1E2C34;--on-teal:#062320;
+--nav-bg:#070E11;--nav-active:#16262E;--add:#66D18F;--add-bg:#12301F;--del:#FF8C7A;--del-bg:#3A1C17;
+--shadow:0 1px 2px rgb(0 0 0 / 40%),0 12px 28px -14px rgb(0 0 0 / 60%);color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 var(--sans)}
+.top{display:flex;justify-content:space-between;align-items:center;padding:16px 24px}
+.top h1{margin:0;font-size:15px;font-weight:600;color:var(--muted)}
+.board{margin:0 24px 40px;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--bg);box-shadow:var(--shadow)}
+.label{display:flex;gap:10px;align-items:center;margin:28px 24px 10px;font:600 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.label b{color:var(--fg)}
+.app{display:grid;grid-template-columns:76px 1fr;min-height:330px}
+.rail{background:var(--nav-bg);color:var(--nav-fg);display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 0}
+.rail .logo{width:34px;height:34px;border-radius:10px;background:#13303a;margin-bottom:10px;display:grid;place-items:center;color:#4FD1C0;font-weight:700}
+.rail a{position:relative;width:62px;padding:8px 0 6px;border-radius:12px;text-align:center;font-size:11px;color:var(--nav-fg);text-decoration:none}
+.rail a i{display:block;font-style:normal;font-size:17px;line-height:1.2}
+.rail a.on{background:var(--nav-active);color:#fff;box-shadow:inset 3px 0 0 #4FD1C0}
+.rail .n{position:absolute;top:2px;right:6px;min-width:17px;height:17px;padding:0 4px;border-radius:99px;font:700 10.5px/17px var(--sans)}
+.n.coral{background:var(--coral);color:#fff}.n.amber{background:#F2B84B;color:#2a1d02}
+main{padding:22px 28px 28px;min-width:0}
+.head{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin-bottom:18px}
+.head h2{margin:0;font-size:22px;letter-spacing:-.01em}
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:99px;font:600 12px var(--sans)}
+.chip.high{background:var(--coral-bg);color:var(--coral)}.chip.med{background:var(--amber-bg);color:var(--amber)}
+.chip.ok{background:var(--green-bg);color:var(--green)}.chip.grey{background:var(--slate-bg);color:var(--slate)}
+.btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font:600 13px var(--sans);cursor:pointer;white-space:nowrap}
+.btn.primary{background:var(--teal);border-color:var(--teal);color:var(--on-teal)}
+.btn.violet{background:var(--violet-bg);border-color:transparent;color:var(--violet)}
+.btn.quiet{border-color:transparent;background:transparent;color:var(--muted)}
+.btn.sm{height:30px;padding:0 11px;font-size:12.5px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.right{margin-left:auto}
+.group{margin:18px 0 8px;display:flex;align-items:center;gap:8px;font:600 12px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.group small{font:500 12.5px var(--sans);letter-spacing:0;text-transform:none;color:var(--faint)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:10px;box-shadow:var(--shadow)}
+.row{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center}
+.dot{width:10px;height:10px;border-radius:50%}.dot.high{background:var(--coral)}.dot.med{background:#F2B84B}
+.what b{display:block;font-size:14.5px}
+.meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:3px;color:var(--muted);font-size:12.5px}
+code,.mono{font:12.5px var(--mono)}
+.ref{padding:1px 7px;border-radius:6px;background:var(--surface-2);border:1px solid var(--line);color:var(--muted)}
+.tile{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:5px;font:700 9px var(--sans);color:#fff;background:#2457C5}
+.diff{margin:12px 0 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;font:12.5px/1.7 var(--mono)}
+.diff .f{padding:6px 12px;background:var(--surface-2);border-bottom:1px solid var(--line);color:var(--muted)}
+.diff div.l{padding:0 12px;white-space:pre}
+.diff .del{background:var(--del-bg);color:var(--del)}.diff .add{background:var(--add-bg);color:var(--add)}.diff .ctx{color:var(--muted)}
+.does{display:grid;gap:4px;margin:12px 0;padding:0;list-style:none;font-size:13px}
+.does li::before{content:"✓";color:var(--teal);font-weight:700;margin-right:8px}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.done{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--teal-bg);color:var(--fg);font-size:13px}
+.done b{color:var(--teal)}
+.warnline{margin-top:8px;color:var(--amber);font-size:12.5px}
+.sent{display:flex;gap:8px;align-items:center;margin-top:10px;padding:9px 12px;border-radius:10px;background:var(--violet-bg);font-size:13px}
+.sent b{color:var(--violet)}
+.key{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px 12px;align-items:center}
+.key .ic{font-size:16px}
+.key .name{font:600 13.5px var(--mono)}
+.st{font:700 11px/1.4 var(--mono);letter-spacing:.05em;text-transform:uppercase}
+.st.missing{color:var(--amber)}.st.env{color:var(--muted)}.st.saved{color:var(--green)}
+.box{grid-column:2/-1;display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+input{height:34px;flex:1 1 220px;min-width:0;padding:0 12px;border-radius:9px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);font:13px var(--mono)}
+.run{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.run code{padding:6px 10px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line)}
+.lock{border-color:color-mix(in srgb,var(--violet) 40%,var(--line))}
+.lockhead{display:flex;gap:10px;align-items:center}
+.lockhead b{font-size:15px}
+.fields{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin-top:12px;align-items:end}
+.fields label{display:grid;gap:4px;font-size:12px;color:var(--muted)}
+.code6{letter-spacing:.35em;text-align:center}
+.note{margin:8px 0 0;color:var(--faint);font-size:12px}
+.vals{display:grid;gap:0;margin-top:12px}
+.val{display:grid;grid-template-columns:minmax(0,1.2fr) auto minmax(0,1.6fr) auto;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.val:first-child{border-top:0}
+.where{font:600 11px var(--mono);padding:2px 8px;border-radius:99px;background:var(--slate-bg);color:var(--slate)}
+.where.code{background:var(--coral-bg);color:var(--coral)}.where.saved{background:var(--green-bg);color:var(--green)}
+.mask{font:13px var(--mono);color:var(--muted);letter-spacing:.12em}
+.shown{font:13px var(--mono);color:var(--fg);padding:3px 8px;border-radius:6px;background:var(--amber-bg);overflow-wrap:anywhere}
+.timer{font:600 12.5px var(--mono);color:var(--violet)}
+.setup{display:grid;grid-template-columns:1fr auto;gap:22px;align-items:start}
+.qr{width:148px;height:148px;padding:10px;border-radius:12px;background:#fff;border:1px solid var(--line)}
+.steps{display:grid;gap:14px}
+.step{display:grid;grid-template-columns:auto 1fr;gap:10px}
+.step i{font-style:normal;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--violet-bg);color:var(--violet);font:700 12px var(--sans)}
+.banner{display:flex;gap:10px;align-items:center;padding:10px 14px;border-radius:12px;background:var(--coral-bg);color:var(--coral);font-size:13px;margin-bottom:14px}
+.agentbox{display:flex;gap:10px;align-items:center;padding:12px 14px;border-radius:12px;background:var(--surface);border:1px dashed var(--line);color:var(--muted);font-size:13px}
+@media (max-width:760px){.app{grid-template-columns:1fr}.rail{flex-direction:row;justify-content:center;padding:8px}.rail .logo{display:none}
+ main{padding:16px}.fields{grid-template-columns:1fr}.val{grid-template-columns:1fr auto}.setup{grid-template-columns:1fr}.row{grid-template-columns:auto 1fr}.row>.btn,.row>.btns{grid-column:2}}
+.story{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;align-items:center;margin:34px 24px 12px}
+.story .num{grid-row:span 2;display:grid;place-items:center;width:46px;height:46px;border-radius:50%;background:var(--teal);color:var(--on-teal);font:700 22px var(--sans)}
+.story h3{margin:0;font-size:20px;letter-spacing:-.01em}
+.story .say{display:flex;flex-wrap:wrap;gap:8px}
+.say span{display:inline-flex;gap:6px;align-items:center;padding:4px 10px;border-radius:99px;background:var(--surface);border:1px solid var(--line);font-size:13px}
+.say span b{color:var(--muted);font:600 11px var(--mono);letter-spacing:.05em;text-transform:uppercase}
+.next{margin:6px 24px 0;text-align:center;color:var(--teal);font:600 13px var(--sans)}
+.next::before{content:"";display:block;width:2px;height:26px;margin:0 auto 4px;background:var(--teal);opacity:.5}
+.once{margin-left:8px;padding:2px 8px;border-radius:99px;background:var(--violet-bg);color:var(--violet);font:600 12px var(--sans);vertical-align:middle}
+.mini{max-width:560px}
+
+.mapc{position:relative;height:470px;background:var(--surface-2);background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:18px 18px;overflow:hidden}
+.lane{position:absolute;top:28px;bottom:18px;border:1px solid var(--line);border-radius:14px;background:color-mix(in srgb,var(--surface) 55%,transparent)}
+.lane h4{margin:10px 12px 6px;font:600 11.5px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.lane h4 small{margin-left:6px;color:var(--faint)}
+.blk{position:absolute;left:12px;right:12px;height:46px;display:flex;gap:8px;align-items:center;padding:0 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface);box-shadow:var(--shadow);font-size:12.5px}
+.blk > span:last-of-type{min-width:0}.blk b{display:block;font-size:12.5px}.blk small{display:block;font:11px var(--mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.blk .tl{display:grid;place-items:center;width:24px;height:24px;border-radius:6px;color:#fff;font:700 9px var(--sans);flex:none}
+.blk.red{border:2px solid var(--coral);box-shadow:0 0 0 4px color-mix(in srgb,var(--coral) 18%,transparent)}
+.blk .cap{margin-left:auto;flex:none;padding:2px 6px;border-radius:99px;background:var(--coral-bg);font:600 10px var(--mono);color:var(--coral)}
+.apppill{position:absolute;left:18px;top:200px;width:110px;height:40px;display:grid;place-items:center;border-radius:99px;border:1px solid var(--line);background:var(--surface);font:600 12.5px var(--sans)}
+.wire{position:absolute;height:1.5px;background:var(--faint);transform-origin:left center}
+.mbanner{position:absolute;left:150px;right:20px;top:-2px;display:flex;gap:10px;align-items:center;padding:8px 12px;border-radius:10px;background:var(--violet-bg);color:var(--fg);font-size:13px;box-shadow:var(--shadow)}
+.mbanner b{color:var(--violet)}
+.panel{position:absolute;right:16px;top:44px;width:300px;padding:16px;border-radius:14px;border:1px solid var(--line);background:var(--surface);box-shadow:var(--shadow)}
+.panel h5{margin:0 0 4px;font-size:16px}
+.bigbtn{display:flex;justify-content:center;align-items:center;gap:8px;width:100%;height:42px;margin-top:12px;border-radius:10px;border:0;background:var(--coral);color:#fff;font:700 14px var(--sans)}
+.wait{border:2px solid var(--coral);background:color-mix(in srgb,var(--coral-bg) 55%,var(--surface))}
+.wait .ttl{display:flex;gap:8px;align-items:center;font:700 12px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--coral);margin-bottom:8px}
+.fold{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:13px}
+.runrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px;color:var(--muted)}
+.runrow code{padding:3px 8px;border-radius:6px;background:var(--surface-2);border:1px solid var(--line);color:var(--fg)}
+.center{display:grid;place-items:center;padding:36px 0}
+.gate{width:min(440px,100%);padding:28px;border-radius:18px;border:1px solid color-mix(in srgb,var(--violet) 40%,var(--line));background:var(--surface);box-shadow:var(--shadow);text-align:center}
+.gate .big{display:grid;place-items:center;width:64px;height:64px;margin:0 auto 12px;border-radius:18px;background:var(--violet-bg);color:var(--violet);font-size:28px}
+.gate h3{margin:0 0 4px;font-size:22px}
+.gate p{margin:0 0 16px;color:var(--muted);font-size:14px}
+.gate input{width:100%;height:44px;font-size:15px;text-align:center}
+.gate .btn{width:100%;justify-content:center;height:42px;margin-top:10px;font-size:14px}
+.dots{display:flex;gap:6px;justify-content:center;margin-bottom:14px}.dots i{width:28px;height:4px;border-radius:99px;background:var(--line)}.dots i.on{background:var(--violet)}
+.digits{display:flex;gap:8px;justify-content:center}.digits span{display:grid;place-items:center;width:44px;height:52px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);font:600 22px var(--mono)}
+.wiz{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.wcard{padding:18px;border-radius:14px;border:1px solid var(--line);background:var(--surface);box-shadow:var(--shadow)}
+.wcard.now{border:2px solid var(--violet)}
+.wcard .n{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--violet-bg);color:var(--violet);font-weight:700;margin-bottom:8px}
+.wcard h4{margin:0 0 6px;font-size:16px}.wcard p{margin:0 0 10px;color:var(--muted);font-size:13px}
+.wcard input{width:100%;margin-bottom:8px}
+.qrbig{width:180px;height:180px;margin:6px auto;display:block;padding:10px;border-radius:12px;background:#fff;border:1px solid var(--line)}
+.stepbar{display:flex;align-items:center;gap:10px;margin:0 0 16px;font:600 12.5px var(--sans);color:var(--muted)}
+.stepbar b{color:var(--violet)}.stepbar i{flex:1;height:4px;border-radius:99px;background:var(--line)}.stepbar i.on{background:var(--violet)}
+table.vt{width:100%;border-collapse:collapse;font-size:13px}
+.vt th{text-align:left;padding:8px 10px;font:600 11px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line)}
+.vt td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle}
+.vt .nm{font:600 12.5px var(--mono)}
+.h{display:inline-flex;gap:5px;align-items:center;padding:2px 9px;border-radius:99px;font:600 11.5px var(--sans);white-space:nowrap}
+.h.ok{background:var(--green-bg);color:var(--green)}.h.warn{background:var(--amber-bg);color:var(--amber)}.h.bad{background:var(--coral-bg);color:var(--coral)}.h.grey{background:var(--slate-bg);color:var(--slate)}
+.vsum{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.vsum div{flex:1 1 120px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface)}
+.vsum b{display:block;font-size:22px}.vsum span{color:var(--muted);font-size:12.5px}
+.tile2{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:5px;color:#fff;font:700 8.5px var(--sans);vertical-align:middle;margin-right:5px}
+@media (max-width:760px){.wiz{grid-template-columns:1fr}.mapc{height:auto}}
+</style>
+</head>
+<body>
+<div class="top"><h1>D38 · keys your agent asks for, and the Vault · example data, fake keys</h1><button class="btn sm" onclick="document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark'">◐ Light / dark</button></div><div class="story"><span class="num">1</span><h3>Your agent adds Stripe and asks for its key</h3><div class="say"><span><b>you're on</b>the Map (Boxed: one lane per kind, nothing overlaps)</span><span><b>you do</b>Review what it added</span><span><b>you get</b>a red Stripe block: key missing</span></div></div><div class="board"><div class="app"><nav class="rail"><div class="logo">✦</div><a class="on"><i>⌗</i>Map</a><a><i>⚠</i>Issues<span class="n coral">3</span></a><a><i>⚿</i>Keys<span class="n amber">2</span></a><a><i>🔒</i>Vault</a><a><i>∿</i>Checks</a><a><i>‹›</i>Connect agent</a></nav><main><div class="mbanner" style="position:static;margin:0 0 10px">🔑 <b>Your agent asked for a key</b> · it added code for Stripe <button class="btn sm right">Review</button></div><div class="mapc" style="height:560px"><svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1" aria-hidden="true"><g stroke="#93A5AF" stroke-width="1.5" fill="none"><path d="M128 230 C150 230 150 22 175 22 L190 22 L190 44"/><path d="M128 230 C150 230 150 22 175 22 L410 22 L410 44"/><path d="M128 230 C150 230 150 22 175 22 L630 22 L630 44"/><path d="M128 230 C150 230 150 22 175 22 L850 22 L850 44"/><path d="M568 227 C590 227 590 467 612 467" stroke-dasharray="4 3"/></g></svg><div class="apppill" style="top:210px">trip-planner</div><div class="lane" style="left:160px;width:200px;top:44px;bottom:auto;height:118px"><h4>LLMs<small>1</small></h4><div class="blk" style="top:40px"><span class="tl" style="background:#1F2328">Ol</span><span><b>Ollama</b><small>llama3.1:8b</small></span></div></div><div class="lane" style="left:380px;width:200px;top:44px;bottom:auto;height:298px"><h4>MCP servers<small>4</small></h4><div class="blk" style="top:40px"><span class="tl" style="background:#1F7A45">Ti</span><span><b>time</b><small>uvx mcp-server-time</small></span></div><div class="blk" style="top:100px"><span class="tl" style="background:#1F7A45">Fi</span><span><b>files</b><small>npx server-filesystem</small></span></div><div class="blk" style="top:160px"><span class="tl" style="background:#1F7A45">Fe</span><span><b>fetch</b><small>uvx mcp-server-fetch</small></span></div><div class="blk" style="top:220px"><span class="tl" style="background:#1F7A45">Cu</span><span><b>currency</b><small>python mcp_servers/…</small></span></div></div><div class="lane" style="left:600px;width:200px;top:44px;bottom:auto;height:478px"><h4>APIs<small>7</small></h4><div class="blk red" style="top:40px"><span class="tl" style="background:#635BFF">St</span><span><b>Stripe</b><small style="color:var(--coral);font-weight:600">🔑 key missing</small></span></div><div class="blk" style="top:100px"><span class="tl" style="background:#2457C5">GM</span><span><b>Google Maps</b><small>maps.googleapis.com</small></span></div><div class="blk" style="top:160px"><span class="tl" style="background:#2457C5">Ip</span><span><b>ip-api.com</b><small>ip-api.com/json</small></span></div><div class="blk" style="top:220px"><span class="tl" style="background:#2457C5">No</span><span><b>Nominatim</b><small>nominatim.osm.org</small></span></div><div class="blk" style="top:280px"><span class="tl" style="background:#2457C5">Op</span><span><b>Open-Meteo</b><small>api.open-meteo.com</small></span></div><div class="blk" style="top:340px"><span class="tl" style="background:#2457C5">OS</span><span><b>OSRM</b><small>router.project-osrm</small></span></div><div class="blk" style="top:400px"><span class="tl" style="background:#2457C5">Wi</span><span><b>Wikipedia</b><small>en.wikipedia.org</small></span></div></div><div class="lane" style="left:820px;width:200px;top:44px;bottom:auto;height:118px"><h4>Local<small>1</small></h4><div class="blk" style="top:40px"><span class="tl" style="background:#3A4756">PL</span><span><b>packing list</b><small>python tools/…</small></span></div></div></div></main></div></div><div class="next">click the red block</div><div class="story"><span class="num">2</span><h3>Click the red block</h3><div class="say"><span><b>you're on</b>the Map</span><span><b>you do</b>Add the key →</span><span><b>you get</b>the Keys page, box ready</span></div></div><div class="board"><div class="app"><nav class="rail"><div class="logo">✦</div><a class="on"><i>⌗</i>Map</a><a><i>⚠</i>Issues<span class="n coral">3</span></a><a><i>⚿</i>Keys<span class="n amber">2</span></a><a><i>🔒</i>Vault</a><a><i>∿</i>Checks</a><a><i>‹›</i>Connect agent</a></nav><main><div class="mapc" style="height:330px"><div class="apppill" style="top:140px">trip-planner</div><div class="lane" style="left:150px;width:200px;bottom:auto;height:178px"><h4>APIs<small>7</small></h4><div class="blk red" style="top:40px"><span class="tl" style="background:#635BFF">St</span><span><b>Stripe</b><small style="color:var(--coral);font-weight:600">🔑 key missing</small></span></div><div class="blk" style="top:100px"><span class="tl" style="background:#2457C5">GM</span><span><b>Google Maps</b><small>maps.googleapis.com</small></span></div></div><div class="panel"><h5>Stripe</h5><div class="meta"><span class="ref mono">pay.py:4</span>api.stripe.com</div><p style="margin:12px 0 0;font-size:13px">🔑 <b class="mono">STRIPE_SECRET_KEY</b> is missing. Your agent is waiting for it.</p><button class="bigbtn">🔑 Add the key →</button></div></div></main></div></div><div class="next">paste it</div><div class="story"><span class="num">3</span><h3>Paste the key</h3><div class="say"><span><b>you're on</b>the Keys page</span><span><b>you do</b>paste → Save</span><span><b>you get</b>your agent sees “saved” and carries on</span></div></div><div class="board"><div class="app"><nav class="rail"><div class="logo">✦</div><a><i>⌗</i>Map</a><a><i>⚠</i>Issues<span class="n coral">3</span></a><a class="on"><i>⚿</i>Keys<span class="n amber">2</span></a><a><i>🔒</i>Vault</a><a><i>∿</i>Checks</a><a><i>‹›</i>Connect agent</a></nav><main><div class="head"><h2>Keys</h2><span class="chip med">2 missing</span><span class="chip grey">1 in .env</span><span class="chip ok">2 saved</span></div>
+<div class="card wait"><div class="ttl">🔴 Your agent is waiting for</div>
+ <div class="key" style="grid-template-columns:auto 1fr"><span class="ic">🔑</span><div><div class="name">STRIPE_SECRET_KEY</div><div class="meta">for Stripe<span class="ref mono">pay.py:4</span>asked 1 min ago</div></div>
+ <div class="box"><input type="password" placeholder="Paste the key" value="sk_test_FAKEFAKE12345678" autofocus><button class="btn primary">🔒 Save</button></div></div></div>
+<div class="card key"><span class="ic">🔑</span><div><div class="name">OLLAMA_API_KEY</div><div class="meta"><span class="st missing">missing</span><span class="ref mono">config.py:30</span>Ollama</div></div><span></span>
+ <div class="box"><input type="password" placeholder="Paste the key"><button class="btn primary">🔒 Save</button></div></div>
+<div class="card key"><span class="ic">🔑</span><div><div class="name">OPENAI_API_KEY</div><div class="meta"><span class="st env">in .env</span><span class="ref mono">ai.py:4</span>an agent can read .env</div></div><button class="btn primary">Move into FlowForge</button></div>
+<div class="fold">▸ ✓ 2 saved · STRIPE_KEY, WIKI_TOKEN <span class="right runrow">▶ your app: <code>flowforge run -- …</code><button class="btn sm">Copy</button></span></div></main></div></div><div class="next">later: see your keys</div><div class="story"><span class="num">4</span><h3>Set up the Vault<span class="once">first time only</span></h3><div class="say"><span><b>you're on</b>the Vault page</span><span><b>you do</b>password → scan the QR → type the code</span><span><b>you get</b>a lock only you can open</span></div></div><div class="board"><div class="app"><nav class="rail"><div class="logo">✦</div><a><i>⌗</i>Map</a><a><i>⚠</i>Issues<span class="n coral">3</span></a><a><i>⚿</i>Keys<span class="n amber">2</span></a><a class="on"><i>🔒</i>Vault</a><a><i>∿</i>Checks</a><a><i>‹›</i>Connect agent</a></nav><main><div class="head"><h2>Vault</h2><span class="chip grey">set up once</span></div>
+<div class="stepbar"><b>Step 2 of 3</b><i class="on"></i><i class="on"></i><i></i></div>
+<div class="wiz">
+ <div class="wcard"><span class="n">✓</span><h4>Password</h4><p>8+ characters. Only you know it.</p><input type="password" value="correcthorse" disabled><input type="password" value="correcthorse" disabled></div>
+ <div class="wcard now"><span class="n">2</span><h4>Scan with your phone</h4><p>Google Authenticator, Authy or 1Password.</p><svg class="qrbig" viewBox="0 0 29 29" aria-label="QR code (example)"><rect width="29" height="29" fill="#fff"/>
+<g fill="#0F1D26"><path d="M0 0h7v7H0zM22 0h7v7h-7zM0 22h7v7H0z"/><path fill="#fff" d="M1 1h5v5H1zM23 1h5v5h-5zM1 23h5v5H1z"/><path d="M2 2h3v3H2zM24 2h3v3h-3zM2 24h3v3H2z"/>
+<path d="M9 1h2v2H9zM13 0h1v3h-1zM16 2h3v1h-3zM9 5h4v1H9zM15 5h1v3h-1zM18 6h2v2h-2zM8 9h3v1H8zM0 9h2v2H0zM3 10h3v1H3zM12 9h2v3h-2zM16 10h4v1h-4zM22 9h2v2h-2zM25 10h4v1h-4zM9 13h1v4H9zM12 14h3v1h-3zM17 13h2v2h-2zM21 13h3v1h-3zM26 13h2v3h-2zM0 14h3v1H0zM4 15h2v2H4zM11 17h4v1h-4zM16 16h1v4h-1zM19 17h3v2h-3zM24 17h2v1h-2zM9 20h2v3H9zM13 21h2v1h-2zM18 21h1v3h-1zM21 21h4v1h-4zM26 20h2v2h-2zM9 25h3v1H9zM14 24h2v4h-2zM20 24h2v2h-2zM23 25h1v4h-1zM26 26h3v1h-3z"/></g></svg><p style="text-align:center;margin:6px 0 0"><button class="btn sm quiet">Can't scan? Show the key</button></p></div>
+ <div class="wcard"><span class="n">3</span><h4>Type the code</h4><p>The 6 digits your phone shows now.</p><div class="digits"><span>·</span><span>·</span><span>·</span><span>·</span><span>·</span><span>·</span></div></div>
+</div>
+<p class="note" style="margin-top:14px">Your phone's code is locked by your password. Without both, nothing on this computer can open the Vault.</p></main></div></div><div class="next">every time after that</div><div class="story"><span class="num">5</span><h3>Your password</h3><div class="say"><span><b>you're on</b>the Vault page</span><span><b>you do</b>type it → Next</span><span><b>you get</b>step 2</span></div></div><div class="board"><div class="app"><nav class="rail"><div class="logo">✦</div><a><i>⌗</i>Map</a><a><i>⚠</i>Issues<span class="n coral">3</span></a><a><i>⚿</i>Keys<span class="n amber">2</span></a><a class="on"><i>🔒</i>Vault</a><a><i>∿</i>Checks</a><a><i>‹›</i>Connect agent</a></nav><main><div class="center"><div class="gate"><div class="dots"><i class="on"></i><i></i></div><div class="big">🔒</div><h3>Vault</h3><p>Step 1 of 2 · your password</p>
+<input type="password" value="correcthorse" placeholder="Password"><button class="btn primary">Next →</button></div></div></main></div></div><div class="next">then</div><div class="story"><span class="num">6</span><h3>The code on your phone</h3><div class="say"><span><b>you're on</b>the Vault page</span><span><b>you do</b>the 6 digits → Unlock</span><span><b>you get</b>5 minutes open</span></div></div><div class="board"><div class="app"><nav class="rail"><div class="logo">✦</div><a><i>⌗</i>Map</a><a><i>⚠</i>Issues<span class="n coral">3</span></a><a><i>⚿</i>Keys<span class="n amber">2</span></a><a class="on"><i>🔒</i>Vault</a><a><i>∿</i>Checks</a><a><i>‹›</i>Connect agent</a></nav><main><div class="center"><div class="gate"><div class="dots"><i class="on"></i><i class="on"></i></div><div class="big">📱</div><h3>Vault</h3><p>Step 2 of 2 · the code on your phone</p>
+<div class="digits"><span>4</span><span>8</span><span>2</span><span>9</span><span>1</span><span>7</span></div><button class="btn primary">Unlock</button>
+<p style="margin:12px 0 0;font-size:12.5px">Your coding agent can't do this step: it has no phone.</p></div></div></main></div></div><div class="next">open</div><div class="story"><span class="num">7</span><h3>Every key, with its health</h3><div class="say"><span><b>you're on</b>the open Vault</span><span><b>you do</b>Show · Fix · Move in · Remove</span><span><b>you get</b>a value for 30 s, then hidden</span></div></div><div class="board"><div class="app"><nav class="rail"><div class="logo">✦</div><a><i>⌗</i>Map</a><a><i>⚠</i>Issues<span class="n coral">3</span></a><a><i>⚿</i>Keys<span class="n amber">2</span></a><a class="on"><i>🔒</i>Vault</a><a><i>∿</i>Checks</a><a><i>‹›</i>Connect agent</a></nav><main><div class="head"><h2>Vault</h2><span class="chip ok">🔓 open</span><span class="timer right">locks in 4:32</span><button class="btn sm">Lock now</button></div>
+<div class="vsum"><div><b>5</b><span>keys</span></div><div><b style="color:var(--green)">2</b><span>healthy</span></div><div><b style="color:var(--coral)">1</b><span>written in code</span></div><div><b style="color:var(--amber)">2</b><span>need a look</span></div></div>
+<div class="card" style="padding:4px 8px;overflow-x:auto"><table class="vt"><thead><tr><th>Key</th><th>Health</th><th>Lives in</th><th>Used by</th><th>Kind</th><th>Saved</th><th>Value</th><th></th></tr></thead><tbody>
+<tr><td class="nm">STRIPE_SECRET_KEY</td><td><span class="h ok">✓ healthy</span></td><td>keychain</td><td><span class="tile2" style="background:#635BFF">St</span>Stripe</td><td><span class="h grey">test</span></td><td>today</td><td><span class="shown">sk_test_FAKEFAKE12345678</span></td><td><button class="btn sm">Hide · 24 s</button></td></tr>
+<tr><td class="nm">GOOGLE_STATIC_MAPS_KEY</td><td><span class="h bad">⚠ in code</span></td><td class="mono">config.py:23</td><td><span class="tile2" style="background:#2457C5">GM</span>Google Maps</td><td>—</td><td>—</td><td><span class="mask">••••••••••••</span></td><td><button class="btn sm">Show</button> <button class="btn sm primary">Fix</button></td></tr>
+<tr><td class="nm">OPENAI_API_KEY</td><td><span class="h warn">⚠ in .env</span></td><td class="mono">.env</td><td><span class="tile2" style="background:#10A37F">Op</span>OpenAI</td><td><span class="h grey">live</span></td><td>—</td><td><span class="mask">••••••••••••</span></td><td><button class="btn sm">Show</button> <button class="btn sm primary">Move in</button></td></tr>
+<tr><td class="nm">WIKI_TOKEN</td><td><span class="h warn">⚠ 120 days old</span></td><td>keychain</td><td><span class="tile2" style="background:#2457C5">Wi</span>Wikipedia</td><td>—</td><td>Jun 26</td><td><span class="mask">••••••••••••</span></td><td><button class="btn sm">Show</button></td></tr>
+<tr><td class="nm">OLD_TOKEN</td><td><span class="h grey">unused</span></td><td>encrypted file</td><td>—</td><td>—</td><td>Mar 2</td><td><span class="mask">••••••••••••</span></td><td><button class="btn sm">Show</button> <button class="btn sm quiet">Remove</button></td></tr>
+</tbody></table></div>
+<p class="note" style="margin-top:10px">One value at a time, hidden again after 30 s. Never stored, never logged, never sent to your agent.</p></main></div></div>
+</body>
+</html>

@@ -5,12 +5,12 @@ import { ISSUES } from "../test/securityFixture";
 
 afterEach(() => vi.unstubAllGlobals());
 
-test("the rail has five places: the map, issues, keys, checks and your coding agent (D37)", async () => {
+test("the rail has six places: the map, issues, keys, the Vault, checks and your coding agent (D38)", async () => {
   mockApi({ "/meta": META });
   renderAt("/checks");
   const nav = screen.getByRole("navigation", { name: "Main" });
   const links = Array.from(nav.querySelectorAll("a.rail-item")).map((a) => a.textContent);
-  expect(links).toEqual(["Map", "Issues", "Keys", "Checks", "Connect agent"]);
+  expect(links).toEqual(["Map", "Issues", "Keys", "Vault", "Checks", "Connect agent"]);
   expect(screen.getByRole("link", { name: /Checks/ })).toHaveAttribute("aria-current", "page");
   for (const gone of ["Security", "Connectors", "Add app", "Approvals"]) expect(nav).not.toHaveTextContent(gone);
 });

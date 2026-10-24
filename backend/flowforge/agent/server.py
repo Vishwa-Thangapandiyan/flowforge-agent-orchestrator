@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 import uuid
 from collections import Counter
 from pathlib import Path
@@ -20,6 +21,7 @@ from mcp.types import ToolAnnotations
 
 from flowforge.api.checks import CHECKABLE, check_workflow, command_text, confirmed_commands, target_for
 from flowforge.api.issues import FIX_REQUESTS_SETTING, fix_requests
+from flowforge.api.keys import add_key_request, clear_key_requests
 from flowforge.api.scan import REPO_SETTING
 from flowforge.checks import starts_process
 from flowforge.connectors.registry import Registry
@@ -29,7 +31,7 @@ from flowforge.flowmap.validate import code_writes, critical
 from flowforge.nodes.check_node import CheckNode
 from flowforge.scan import ScanResult, scan
 from flowforge.scheduler.executor import StepState, run_workflow
-from flowforge.security.keystore import KeyStore, report
+from flowforge.security.keystore import NAME, KeyStore, report
 from flowforge.security.logfilter import Redactor, redact_code, secret_values_for
 from flowforge.storage import Storage, now_iso
 
@@ -48,6 +50,8 @@ INSTRUCTIONS = (
     "then call what_changed to confirm. When the user says \"do the FlowForge fixes\", call get_fix_requests."
 )
 READ = ToolAnnotations(read_only_hint=True, open_world_hint=False)
+ASK = ToolAnnotations(read_only_hint=False, destructive_hint=False, idempotent_hint=True, open_world_hint=False)
+MAX_WAIT_S = 110
 CHECKS = ToolAnnotations(read_only_hint=True, open_world_hint=True)   # makes requests and may start servers
 
 
@@ -166,6 +170,10 @@ def headline(tool: str, data: dict[str, Any]) -> str | None:
         counts = data["summary"]
         parts = [f"{counts[k]} {w}" for k, w in (("missing", "missing"), ("env_file", "in .env")) if counts.get(k)]
         return " · ".join(parts) or ("All saved" if data["keys"] else "No keys read")
+    if tool == "request_key":
+        return f"Asked for {data['name']}"
+    if tool == "wait_for_keys":
+        return "All saved" if data["done"] else f"{_plural(len(data['waiting']), 'key')} still missing"
     if tool == "get_fix_requests":
         return _plural(len(data["requests"]), "fix", "fixes") + " sent to you" if data["requests"] else "Nothing sent"
     if tool == "what_changed":
@@ -355,6 +363,47 @@ def build_server(repo: Path, storage: Storage, *, transport: httpx.AsyncBaseTran
         get a value and never need one: write code that reads the name from the environment, then ask the user to
         run the `command` given (they type the key, hidden). Their app gets the keys with `flowforge run -- <app>`."""
         return r.answer("get_keys", _keys_data(r.root, r.scan()))
+
+    @server.tool(annotations=ASK)
+    def request_key(name: str, why: str) -> dict[str, Any]:
+        """Ask the user for a key your change needs (D38), e.g. after adding Stripe: name="STRIPE_SECRET_KEY",
+        why="for Stripe in pay.py". It shows first on FlowForge's Keys page. You never get or send the value: write
+        code that reads the name from the environment, tell the user to paste the key on the Keys page, then call
+        wait_for_keys. Their app gets it with `flowforge run`."""
+        if not NAME.fullmatch(name):
+            raise ValueError("name must be an env var name: letters, digits and _, not starting with a digit")
+        add_key_request(r.storage, r.root, name, why.strip() or "asked by your coding agent")
+        saved = KeyStore(r.root).status([name], verify=False)[name] == "saved"
+        if saved:
+            clear_key_requests(r.storage, r.root, [name])
+        where = "" if r.shared else " (open the dashboard on this repo: `flowforge --repo " + str(r.root) + "`)"
+        return r.answer("request_key", {
+            "name": name, "status": "saved" if saved else "requested",
+            "message": f"{name} is saved already: use it." if saved else
+            f"Ask the user to paste {name} on FlowForge's Keys page{where}; it's at the top. Then call wait_for_keys."})
+
+    @server.tool(annotations=READ)
+    async def wait_for_keys(names: list[str], seconds: int = 60) -> dict[str, Any]:
+        """Wait until the user has saved these keys on the Keys page (D38): returns as soon as all are saved, or
+        after `seconds` (at most 110; call again to keep waiting). Reads only which names are saved, never a
+        value."""
+        import asyncio
+
+        wanted = [n for n in dict.fromkeys(names) if NAME.fullmatch(n)]
+        deadline = time.monotonic() + max(1, min(MAX_WAIT_S, int(seconds)))
+        store = KeyStore(r.root)
+        while True:
+            status = store.status(wanted, verify=False)
+            saved = [n for n in wanted if status[n] == "saved"]
+            if len(saved) == len(wanted) or time.monotonic() >= deadline:
+                break
+            await asyncio.sleep(1)
+        clear_key_requests(r.storage, r.root, saved)
+        waiting = [n for n in wanted if n not in saved]
+        return r.answer("wait_for_keys", {
+            "saved": saved, "waiting": waiting, "done": not waiting,
+            "message": "All saved: run the app with `flowforge run -- <its command>`." if not waiting else
+            f"Still waiting for {', '.join(waiting)}: call wait_for_keys again, or remind the user."})
 
     @server.tool(annotations=READ)
     def get_fix_requests() -> dict[str, Any]:

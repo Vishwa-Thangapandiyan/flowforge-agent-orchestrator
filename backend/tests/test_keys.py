@@ -250,3 +250,17 @@ def test_run_needs_a_command(shop):
     with pytest.raises(SystemExit) as e:
         cli.main(["run", "--repo", str(shop)])
     assert e.value.code == 2
+
+
+def test_the_key_commands_work_where_output_is_not_utf8(shop):
+    """Windows writes a pipe in cp1252: a "✓" in the output made `flowforge key add` fail there (CI smoke test)."""
+    import os
+    import subprocess
+
+    env = {**os.environ, "PYTHONIOENCODING": "cp1252"}
+    for args, given in [(["add", "STRIPE_SECRET_KEY"], FAKE + "\n"), (["list"], ""), (["import"], ""),
+                        (["remove", "STRIPE_SECRET_KEY"], "")]:
+        run = subprocess.run([sys.executable, "-m", "flowforge.cli", "key", *args, "--repo", str(shop)], input=given,
+                             capture_output=True, text=True, env=env, encoding="cp1252")
+        assert run.returncode == 0, (args, run.stderr[-400:])
+        assert FAKE not in run.stdout + run.stderr

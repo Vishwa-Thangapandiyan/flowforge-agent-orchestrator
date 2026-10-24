@@ -134,7 +134,8 @@ def keys(repo: Path, home: Path) -> None:
     cli = [sys.executable, "-m", "flowforge.cli"]
     added = subprocess.run([*cli, "key", "add", "OLLAMA_API_KEY", "--repo", str(repo)], input=FAKE_KEY + "\n",
                            capture_output=True, text=True, env=env)
-    check(added.returncode == 0 and FAKE_KEY not in added.stdout + added.stderr, "flowforge key add saves a key")
+    check(added.returncode == 0 and FAKE_KEY not in added.stdout + added.stderr,
+          f"flowforge key add saves a key{'' if added.returncode == 0 else ': ' + added.stderr[-500:]}")
     listed = subprocess.run([*cli, "key", "list", "--repo", str(repo)], capture_output=True, text=True, env=env)
     check("saved" in listed.stdout and FAKE_KEY not in listed.stdout, "flowforge key list shows it saved")
     probe = f"import os, sys; sys.exit(0 if os.environ.get('OLLAMA_API_KEY') == {FAKE_KEY!r} else 3)"

@@ -142,18 +142,18 @@ def keys_command(argv: list[str]) -> None:
             where = store.add(args.name, value)
         except BadKey as e:
             parser.error(str(e))
-        print(f"✓ {args.name} saved in {'your keychain' if where == 'keychain' else 'FlowForge (encrypted file)'}.")
+        print(f"Saved {args.name} in {'your keychain' if where == 'keychain' else 'FlowForge (encrypted file)'}.")
         print("  Your app gets it with: flowforge run -- <the command that starts it>")
     elif args.action == "remove":
-        print(f"✓ {args.name} removed." if store.remove(args.name) else f"{args.name} wasn't saved.")
+        print(f"Removed {args.name}." if store.remove(args.name) else f"{args.name} wasn't saved.")
     elif args.action == "import":
         source = Path(args.name).expanduser() if args.name else repo / ".env"
         if not source.is_file():
             parser.error(f"{source} isn't a file")
         names = store.import_env(source)
-        print(f"✓ Saved {len(names)} from {source.name}: {', '.join(names) or 'nothing to save'}.")
+        print(f"Saved {len(names)} from {source.name}: {', '.join(names) or 'nothing to save'}.")
         if names:
-            print(f"  Delete {source.name} once your app runs with `flowforge run -- …`: a coding agent can read it.")
+            print(f"  Delete {source.name} once your app runs with `flowforge run -- ...`: a coding agent can read it.")
     else:
         from flowforge.scan import scan
 

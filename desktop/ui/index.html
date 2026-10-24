@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FlowForge</title>
+  <style>
+    /* The dashboard's tokens (frontend/src/styles/tokens.css): shown for a second or two while the server starts (D42) */
+    :root { --bg: #EEF3F5; --fg: #0F1D26; --muted: #4A5E6A; --teal: #0B7A70; --line: #D5E0E5; --coral: #B93C2B; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0B1418; --fg: #E8F0F3; --muted: #93A8B3; --teal: #4FD1C0; --line: #22343C; --coral: #FF8C7A; }
+    }
+    html, body { height: 100%; margin: 0; }
+    body { display: grid; place-items: center; background: var(--bg); color: var(--fg);
+      font: 15px/1.5 ui-sans-serif, system-ui, "Segoe UI", sans-serif; }
+    main { display: grid; justify-items: center; gap: 14px; padding: 16px; text-align: center; }
+    .mark { width: 56px; height: 56px; color: var(--teal); }
+    h1 { margin: 0; font-size: 22px; }
+    p { margin: 0; color: var(--muted); }
+    .bar { width: 220px; height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; }
+    .bar i { display: block; width: 40%; height: 100%; background: var(--teal); animation: slide 1.2s ease-in-out infinite; }
+    @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+    @media (prefers-reduced-motion: reduce) { .bar i { animation: none; width: 100%; } }
+    body.failed .bar { display: none; }
+    body.failed #why { color: var(--coral); }
+  </style>
+</head>
+<body>
+  <main>
+    <svg class="mark" viewBox="0 0 64 64" aria-hidden="true">
+      <rect width="64" height="64" rx="14" fill="#0F1D26" /><circle cx="32" cy="32" r="9" fill="#4FD1C0" />
+      <g stroke="#4FD1C0" stroke-width="4" stroke-linecap="round"><path d="M32 12v8M32 44v8M12 32h8M44 32h8" /></g>
+    </svg>
+    <h1>Starting FlowForge…</h1>
+    <p id="why" role="status">Your projects open in a moment. Nothing leaves this computer.</p>
+    <div class="bar" aria-hidden="true"><i></i></div>
+  </main>
+  <script>
+    window.flowforgeFailed = (message) => {
+      document.body.classList.add("failed");
+      document.querySelector("h1").textContent = "FlowForge couldn't start";
+      document.getElementById("why").textContent = message + " Quit and open FlowForge again.";
+    };
+  </script>
+</body>
+</html>

@@ -150,3 +150,33 @@ def test_a_damaged_lock_file_is_treated_as_on_and_unopenable(lock, clock):
     assert lock.state() == "on"                    # never "none": that would let anyone set a new lock silently
     with pytest.raises(LockError, match="reset"):
         lock.open("correct horse", "000000")
+
+
+def test_flowforge_lock_reset_needs_the_password_and_a_code(monkeypatch, capsys):
+    import time
+
+    from flowforge import cli
+
+    real = Lock()   # the command uses the real clock
+    secret = secret_of(real.setup("correct horse"))
+    real.confirm("correct horse", totp(secret, time.time()))
+    monkeypatch.setattr("builtins.input", lambda prompt="": totp(secret, time.time() + 30))
+    monkeypatch.setattr("getpass.getpass", lambda prompt="": "wrong password")
+    with pytest.raises(SystemExit):
+        cli.main(["lock", "reset"])
+    assert real.state() == "on"
+    monkeypatch.setattr("getpass.getpass", lambda prompt="": "correct horse")
+    cli.main(["lock", "reset"])
+    assert real.state() == "none" and "off" in capsys.readouterr().out
+
+
+def test_flowforge_lock_reset_forget_asks_first_and_leaves_a_mark(lock, clock, monkeypatch):
+    from flowforge import cli
+
+    turned_on(lock, clock)
+    monkeypatch.setattr("builtins.input", lambda prompt="": "n")
+    cli.main(["lock", "reset", "--forget"])
+    assert lock.state() == "on"
+    monkeypatch.setattr("builtins.input", lambda prompt="": "y")
+    cli.main(["lock", "reset", "--forget"])
+    assert lock.state() == "none" and lock.reset_at() is not None

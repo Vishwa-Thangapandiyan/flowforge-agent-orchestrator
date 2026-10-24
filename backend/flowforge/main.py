@@ -26,6 +26,7 @@ from flowforge.api import connectors as connectors_api
 from flowforge.api import flowmap as flowmap_api
 from flowforge.api import issues as issues_api
 from flowforge.api import keys as keys_api
+from flowforge.api import lock as lock_api
 from flowforge.api import runs as runs_api
 from flowforge.api import scan as scan_api
 from flowforge.api import security as security_api
@@ -122,6 +123,7 @@ app.include_router(agent_api.router)
 app.include_router(security_api.router)
 app.include_router(keys_api.router)
 app.include_router(issues_api.router)
+app.include_router(lock_api.router)
 
 
 @app.get("/workflows")

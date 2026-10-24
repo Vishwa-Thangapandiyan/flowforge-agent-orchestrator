@@ -1180,6 +1180,7 @@ The rule from D36 stays: the coding agent never gets a value from FlowForge.
     FlowForge refuses, and offers Send to agent instead, when the folder isn't a git repo or the file has uncommitted changes. The commit never holds the key. The fix still says to replace the key, because older commits do.
   - **Send to agent** covers what needs judgment: a key in Dart, `http://` (the service may have no https), an unpinned server (which version?), a server given the whole disk (which folder?). The issue joins a queue that the agent reads with an eighth MCP tool, `get_fix_requests` (masked, like every answer). An issue leaves the queue when a re-scan no longer finds it. FlowForge doesn't start the agent: the page says to tell it "do the FlowForge fixes" (Phase 10 runs it).
   - Example mode previews every fix and applies none.
+  - The Issues page reads the code each time it opens (plain code, nothing sent: D20), so a merged fix or an agent's edit shows at once. The map's badges still follow the saved map until a re-scan.
 - **Keys page.**
   - Each key the code reads has a password box, always open, with no command to copy (§6.5: `autocomplete=off`, emptied after it saves).
   - A key that is only in `.env` has **Move into FlowForge**: the server reads that one value from the file and saves it.

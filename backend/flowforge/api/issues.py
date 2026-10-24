@@ -2,6 +2,7 @@
 branch) or Send to agent (queued for the coding agent's `get_fix_requests`).
 
 GET  /issues                {repo, example, summary: {high, medium, low}, issues: [{...finding, action, state, branch}]}
+                            (read from the code each time)
 POST /issues/{id}/preview   the change Fix will make, masked, and whether it can be made now
 POST /issues/{id}/fix       make it: a new branch, the key saved → {id, branch, commit, file, name}
 POST /issues/{id}/send      queue it for the agent → {id, state: "sent"}
@@ -17,7 +18,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from flowforge.api.keys import from_this_machine, learn_saved_keys, stored_scan
+from flowforge.api.keys import from_this_machine, learn_saved_keys
 from flowforge.api.scan import repo_path
 from flowforge.scan import scan as scan_repo
 from flowforge.scan.models import Finding
@@ -70,7 +71,7 @@ def issues() -> dict[str, Any]:
     repo = repo_path(s)
     if repo is None or not repo.is_dir():
         return {"repo": None, "example": s.example, "summary": {}, "issues": []}
-    result = stored_scan(s, repo)
+    result = scan_repo(repo)   # the code as it is now: a merged fix or an agent's edit shows at once
     sent = {r["id"] for r in fix_requests(s.storage)}
     made = _load(s.storage, FIXES_SETTING, {})
     out = []

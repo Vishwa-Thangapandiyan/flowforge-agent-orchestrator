@@ -3,7 +3,7 @@
     uv run flowforge                  your data (flowforge.db), opens http://127.0.0.1:8000
     uv run flowforge --repo PATH      the same, mapping the folder PATH; a different folder needs --replace (D21)
     uv run flowforge --example        example data in FLOWFORGE_HOME/example.db, no keys needed
-    uv run flowforge scan PATH        print the folder's dependencies as JSON; nothing stored, nothing sent
+    uv run flowforge scan PATH        summarise dependencies (pipe or --json for JSON); nothing stored or sent
     uv run flowforge mcp [--repo P]   an MCP server for your coding agent, over stdio (D29); P defaults to here
     uv run flowforge serve --reload   (used by `npm run dev`; `serve` is optional)
     uv run flowforge key add NAME     save a key for this folder, typed hidden (D36); also: list, remove, import
@@ -27,9 +27,14 @@ DIST = resource("dashboard") / "index.html"
 
 
 def parse(argv: list[str] | None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(prog="flowforge", description="Run the FlowForge dashboard.")
+    parser = argparse.ArgumentParser(
+        prog="flowforge", description="Run the FlowForge dashboard.",
+        epilog="Commands: status [PROJECT], projects, issues [PROJECT], check [PROJECT], settings, "
+               "scan PATH, key add|list|remove|import, run -- CMD, mcp, lock reset, serve.")
     parser.add_argument("command", nargs="?", default="serve", choices=["serve", "scan", "mcp"])
     parser.add_argument("path", nargs="?", help="scan: the folder to read")
+    parser.add_argument("--plain", action="store_true", help="no colour, animation or banner")
+    parser.add_argument("--json", action="store_true", help="scan: print JSON even on a terminal")
     parser.add_argument("--repo", help="serve: map this folder; mcp: only this folder (default: every project)")
     parser.add_argument("--db", help="mcp: the dashboard's database (default: FLOWFORGE_DB, else flowforge.db)")
     parser.add_argument("--replace", action="store_true",
@@ -45,8 +50,17 @@ def parse(argv: list[str] | None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> None:
     argv = sys.argv[1:] if argv is None else argv
+    from flowforge.cli_ui import banner, console, project_command
+
+    # Leave every argument after -- untouched: those belong to the user's program (D36, D41).
+    boundary = argv.index("--") if "--" in argv else len(argv)
+    plain = "--plain" in argv[:boundary]
+    argv = [a for a in argv[:boundary] if a != "--plain"] + argv[boundary:]
+    if argv[:1] in (["status"], ["projects"], ["issues"], ["check"], ["settings"]):
+        project_command(argv[0], argv[1:], plain=plain)
+        return
     if argv[:1] == ["key"]:
-        keys_command(argv[1:])
+        keys_command(argv[1:], plain=plain)
         return
     if argv[:1] == ["run"]:
         run_with_keys(argv[1:])
@@ -57,9 +71,11 @@ def main(argv: list[str] | None = None) -> None:
 
     import uvicorn
 
+    if "--help" in argv or "-h" in argv:
+        banner(console(plain))
     args = parse(argv)
     if args.command == "scan":
-        scan_folder(args.path)
+        scan_folder(args.path, json_output=args.json, plain=plain)
         return
     if args.command == "mcp":
         serve_agent(args.repo, args.db)
@@ -74,6 +90,7 @@ def main(argv: list[str] | None = None) -> None:
         os.environ["FLOWFORGE_EXAMPLE"] = "1"
         os.environ.setdefault("FLOWFORGE_DB", str(flowforge_home() / "example.db"))
         flowforge_home().mkdir(parents=True, exist_ok=True)
+    banner(console(plain))
     url = f"http://{args.host}:{args.port}/"
     if not DIST.exists():
         print("The dashboard isn't built yet: run `npm run build` in frontend/ (the classic page is at /classic).")
@@ -108,7 +125,7 @@ def serve_agent(repo: str | None, db: str | None = None) -> None:
     build_server(root, Storage(path, redact=redactor.redact)).run("stdio")
 
 
-def scan_folder(path: str | None) -> None:
+def scan_folder(path: str | None, json_output: bool = False, plain: bool = False) -> None:
     """Read-only and offline (D20): print what the folder depends on, with evidence."""
     from flowforge.scan import scan
 
@@ -118,13 +135,16 @@ def scan_folder(path: str | None) -> None:
     if not Path(path).expanduser().is_dir():
         print(f"flowforge scan: {path} is not a folder", file=sys.stderr)
         raise SystemExit(2)
-    print(json.dumps(scan(Path(path).expanduser()).model_dump(mode="json"), indent=2))
+    result = scan(Path(path).expanduser())
+    if json_output or not sys.stdout.isatty():
+        print(json.dumps(result.model_dump(mode="json"), indent=2))
+    else:
+        from flowforge.cli_ui import console, scan_summary
+
+        scan_summary(console(plain), result)
 
 
-_SHOWN = {"saved": "saved", "unreadable": "can't read", "env_file": "in .env", "missing": "missing"}
-
-
-def keys_command(argv: list[str]) -> None:
+def keys_command(argv: list[str], plain: bool = False) -> None:
     """`flowforge key add|list|remove|import`: keys for one folder, which only `flowforge run` hands out (D36).
     Values are never printed."""
     from flowforge.security.keystore import NAME, BadKey, KeyStore, report
@@ -165,16 +185,9 @@ def keys_command(argv: list[str]) -> None:
         from flowforge.scan import scan
 
         found = report(store, scan(repo))
-        if not found:
-            print("No keys: the code reads none, and none are saved.")
-        width = max((len(k["name"]) for k in found), default=0)
-        for k in found:
-            print(f"{k['name']:<{width}}  {_SHOWN[k['status']]:<10}  {k['ref'] or ''}")
-        todo = [k for k in found if k["command"]]
-        if todo:
-            print()
-            for k in todo:
-                print(f"  {k['command']}")
+        from flowforge.cli_ui import console, key_table
+
+        key_table(console(plain), found)
 
 
 def _read_value(name: str) -> str:

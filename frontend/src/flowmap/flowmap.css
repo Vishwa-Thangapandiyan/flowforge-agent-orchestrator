@@ -491,3 +491,13 @@
 .fm-actions .btn { white-space: nowrap; }
 .sec-chip { white-space: nowrap; }
 @media (max-width: 760px) { .fm-actions { flex-wrap: wrap; margin-left: 0; } }
+
+/* your agent asked for a key (D38) */
+.fm-ask { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin: 8px 16px 0; padding: 10px 14px; border-radius: 12px;
+  background: var(--violet-bg); color: var(--fg); font-size: 13.5px; position: relative; z-index: 6; }
+.fm-ask b { color: var(--violet); }
+.fm-ask-why { color: var(--muted); }
+.fm-ask .btn:first-of-type { margin-left: auto; }
+.sp-addkey { display: flex; justify-content: center; align-items: center; gap: 8px; height: 42px; margin-bottom: 8px; border-radius: 10px;
+  background: var(--coral); color: #fff; font: 700 14px var(--body); text-decoration: none; }
+.sp-addkey:hover { filter: brightness(1.06); color: #fff; }

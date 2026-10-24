@@ -193,11 +193,19 @@ export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, t
           </ul>
         </div>
       )}
-      {keys && keys.length > 0 && (
-        <div className="sp-sec sp-keys" role="region" aria-label="Keys">
-          <KeyList keys={keys} onSaved={() => onKeySaved?.()} />
-        </div>
-      )}
+      {keys && keys.length > 0 && (() => {
+        const missing = keys.find((k) => k.status === "missing" || k.status === "unreadable");
+        return (
+          <div className="sp-sec sp-keys" role="region" aria-label="Keys">
+            {missing && (
+              <Link className="sp-addkey" to={`/keys?key=${encodeURIComponent(missing.name)}`}>
+                {Icons.key(16)} Add the key {Icons.arrow(16)}
+              </Link>
+            )}
+            <KeyList keys={keys} onSaved={() => onKeySaved?.()} />
+          </div>
+        );
+      })()}
       {health && <Health item={health} othersUp={othersUp} example={example} checking={checking} onCheck={onCheck} />}
       {(node.side_effect || node.repeats || (code && node.estimate_ms)) && (
         <div className="sp-chips sp-sec">

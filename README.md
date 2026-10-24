@@ -79,7 +79,7 @@ FlowForge is also an **MCP server**, so Claude Code, Codex or Antigravity can as
 claude mcp add flowforge -- uv --directory /path/to/flowforge run flowforge mcp --repo /path/to/your/app
 ```
 
-Your agent gets eight read-only tools: `get_map`, `get_flow`, `get_advice`, `check_health`, `get_security_findings`, `get_keys`, `get_fix_requests` and `what_changed`. Every answer is masked (key values never appear), the agent can't make FlowForge change your code, and a check starts an MCP server only after you said yes to it on the Checks page. FlowForge needs no AI of its own for any of this.
+Your agent gets ten tools: `get_map`, `get_flow`, `get_advice`, `check_health`, `get_security_findings`, `get_keys`, `get_fix_requests`, `request_key`, `wait_for_keys` and `what_changed`. All read only, except `request_key`, which only asks you for a key by name. Every answer is masked (key values never appear), the agent can't make FlowForge change your code, and a check starts an MCP server only after you said yes to it on the Checks page. FlowForge needs no AI of its own for any of this.
 
 ### Fix what's unsafe, with one click
 
@@ -105,7 +105,9 @@ flowforge run -- python app.py             # your app starts with the keys in it
 
 Each command takes `--repo PATH` (default: the folder you're in). In the dashboard, the **Keys** page does the same with no commands: paste a missing key into its box, or click **Move into FlowForge** for one that's in `.env`. On the map, a 🔑 badge marks a block whose key is missing. Your agent's `get_keys` tool gets names, statuses and the command to ask you to run, never a value. With no keychain (a server, CI), keys go to an encrypted file in `~/.flowforge`.
 
-**See a key again**, behind two locks: at the bottom of the Keys page, set a password and scan the QR with an authenticator app (Google Authenticator, Authy, 1Password). After that, your password and the 6-digit code on your phone open the key values for 5 minutes, for keys in your code, in FlowForge and in `.env`. Each value shows for 30 seconds. Forgot the password? `flowforge lock reset --forget` drops the lock (your keys stay) and the dashboard says so.
+**When your agent adds a dependency that needs a key**, it calls `request_key("STRIPE_SECRET_KEY", "for Stripe in pay.py")`. The map says "Your agent asked for a key", and the new block shows in coral, "key missing". Click it, paste the key on the Keys page, and the agent's `wait_for_keys` returns the moment it's saved. The agent only ever sees the name.
+
+**See a key again** in the **Vault**: set a password and scan the QR with an authenticator app (Google Authenticator, Authy, 1Password), once. After that, your password, then the 6-digit code on your phone, open it for 5 minutes. It lists every key with its health: healthy, written in code, in `.env`, can't read, unused, or old. It also shows where each key lives, what uses it, and whether it's a live or test key. Each value shows for 30 seconds. Forgot the password? `flowforge lock reset --forget` drops the lock (your keys stay) and the dashboard says so.
 
 What this does and doesn't promise: the key is never handed to your agent and isn't left in a file it reads by habit. An agent that can run commands as you could still run `flowforge run -- printenv`, read your keychain, or reset the lock (the dashboard then shows it was reset), so it isn't impossible. The 2FA stops web pages, anyone at your browser, and anything without your phone. MCP servers your coding tool starts get their environment from that tool, not from FlowForge.
 
@@ -236,7 +238,7 @@ FlowForge itself keeps keys out of its runs, events, cache, logs and the dashboa
 | `GET /security` | The scan's security findings, by level, with the fix and a prompt for each (D31) |
 | `GET /keys`, `PUT /keys/{name}`, `DELETE /keys/{name}`, `POST /keys/{name}/import` | The keys the code reads and their status; save one (write-only), move one in from `.env`, or forget it (D36, D37) |
 | `GET /issues`, `POST /issues/{id}/preview\|fix\|send` | Every issue with its button; the masked change; make it on a new branch; send it to your agent (D37) |
-| `GET /lock`, `POST /lock/setup\|confirm\|open\|close`, `GET /keys/hidden`, `POST /keys/reveal` | The key view's lock (password + authenticator code) and, once open, one value at a time (D37) |
+| `GET /lock`, `POST /lock/setup\|confirm\|password\|code\|close`, `GET /vault/keys`, `POST /keys/reveal` | The Vault: its lock (your password, then the authenticator code) and, once open, every key's health and one value at a time (D37, D38) |
 | `GET /health/tools`, `GET /stats/savings`, `GET /meta`, `GET /presets` | Tool health, money and time, app info, ready-made apps |
 | `GET /workflows`, `GET /workflows/{name}` | The example workflows |
 | `GET /flow?layer=mine\|planner` | The flow map: blocks, lines, positions, critical path, your edits |

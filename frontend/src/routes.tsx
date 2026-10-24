@@ -14,6 +14,7 @@ import { LiveRun, LiveRunLatest } from "./pages/LiveRun";
 import { RunHistory } from "./pages/RunHistory";
 import { IssuesPage } from "./security/IssuesPage";
 import { KeysPage } from "./security/KeysPage";
+import { VaultPage } from "./security/VaultPage";
 
 function NotFound() {
   return (
@@ -45,6 +46,7 @@ export const routes = [
       { path: "/approvals", element: <Approvals /> },
       { path: "/issues", element: <IssuesPage /> },
       { path: "/keys", element: <KeysPage /> },
+      { path: "/vault", element: <VaultPage /> },
       { path: "/security", element: <Navigate to="/issues" replace /> },  // the Issues page (D37)
       { path: "*", element: <NotFound /> },
     ],

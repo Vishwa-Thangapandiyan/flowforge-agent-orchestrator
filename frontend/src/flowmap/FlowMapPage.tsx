@@ -588,6 +588,14 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload, action
         </section>
       )}
       {notice && <div className="notice" role="alert" style={{ margin: "8px 16px 0" }}>{notice}</div>}
+      {deps && (counts.keysData?.requests?.length ?? 0) > 0 && (
+        <div className="fm-ask" role="status">
+          {Icons.key(16)} <b>Your agent asked for {counts.keysData!.requests!.map((r) => r.name).join(", ")}</b>
+          <span className="fm-ask-why">{counts.keysData!.requests![0].why}</span>
+          <button type="button" className="btn sm" onClick={() => void recheck()}>Review its change</button>
+          <Link className="btn sm primary" to={`/keys?key=${encodeURIComponent(counts.keysData!.requests![0].name)}`}>Add the key</Link>
+        </div>
+      )}
       <div className="fm-stage">
         <div className="fm-canvas" style={{ backgroundImage: "radial-gradient(var(--dot) 1.1px, transparent 1.4px)",
           backgroundSize: `${22 * zoom}px ${22 * zoom}px` } as CSSProperties}>

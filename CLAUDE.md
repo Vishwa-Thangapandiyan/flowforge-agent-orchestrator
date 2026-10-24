@@ -219,7 +219,7 @@ Fixed in Phase 1: `LLMNode` is no longer NIM-only (D10); `MCPNode` has tool disc
   - `keys.json` (names only) has no lock across processes: two `flowforge key add` at the same moment can lose one name.
   - Only the key routes check the Host and Origin (against DNS rebinding); the rest of the API (connector edits, `POST /scan`, `POST /checks`) doesn't yet, and should.
 - Issues and fixes (D37) limits:
-  - Fix covers a key that is a whole string literal in Python, JS or TS. A key inside a longer string (`"Bearer …"`), an f-string, a comment, Dart, or any MCP config goes to the agent. A later Fix for `.mcp.json` could wrap the server's command in `flowforge run`, so only the server gets the key.
+  - Fix covers a key that is a whole string literal in Python, or in JS/TS that shows it runs on Node (browser code has no `process.env`). A key inside a longer string (`"Bearer …"`), an f-string, a comment, Dart, or any MCP config goes to the agent. A later Fix for `.mcp.json` could wrap the server's command in `flowforge run`, so only the server gets the key.
   - Fix needs git, a first commit, and the file committed; it uses your git identity and runs your hooks (a failing hook leaves no branch).
   - A Python fix reads the key with `os.environ["NAME"]`, so the app fails at start without it (use `flowforge run`).
   - "Send to agent" waits until you tell your agent; FlowForge doesn't start it (Phase 10).

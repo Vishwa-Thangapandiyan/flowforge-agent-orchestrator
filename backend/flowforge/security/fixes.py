@@ -27,6 +27,16 @@ from flowforge.security.keystore import KeyStore
 from flowforge.security.logfilter import REDACTED, redact_code
 
 _FIXABLE_CODE = ("python", "javascript", "typescript")
+# JS/TS that shows it runs on Node, where `process.env` exists; anything that may run in a browser goes to the agent
+_NODE = re.compile(r"""\brequire\s*\(|\bfrom\s+['"]node:|\bprocess\.env\b"""
+                   r"""|\bfrom\s+['"](?:fs|path|os|http|https|crypto|child_process|express|fastify|koa|@nestjs/[\w-]+)['"]""")
+_BROWSER = re.compile(r"\b(?:window|document|localStorage|navigator)\.|\bimport\.meta\.env\b")
+
+
+def _runs_on_node(text: str) -> bool:
+    """The file shows it runs on Node and nothing says it runs in a browser (Codex review: a browser has no
+    `process`, and a key bundled into a web page is public anyway)."""
+    return bool(_NODE.search(text)) and not _BROWSER.search(text)
 
 
 class CantFix(Exception):
@@ -104,15 +114,19 @@ def _change(root: Path, f: Finding) -> _Change:
 
 
 def fixable(root: Path, f: Finding) -> bool:
-    """Can plain code make this change safely? A key that is a whole string literal in Python, JS or TS."""
+    """Can plain code make this change safely? A key that is a whole string literal in Python, or in JS or TS that
+    runs on Node."""
     if f.kind != "key_in_code":
         return False
     path, line = _where(f)
     lang = language(path)
     try:
-        return lang in _FIXABLE_CODE and key_span(_read(root, path), lang, line) is not None
+        text = _read(root, path)
     except CantFix:
         return False
+    if lang not in _FIXABLE_CODE or (lang != "python" and not _runs_on_node(text)):
+        return False
+    return key_span(text, lang, line) is not None
 
 
 def _slug(name: str) -> str:

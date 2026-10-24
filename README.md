@@ -87,8 +87,8 @@ The **Issues** page lists what the scan found unsafe, and every issue has one bu
 
 | Issue | Button | What happens |
 |---|---|---|
-| A key written in Python, JS or TS code | **Fix** | FlowForge shows the change (the key masked). On **Approve**, the key goes to your keys and the line reads it from the environment, on a new branch `flowforge/fix-…`. Your branch and files aren't touched; merge it when you're ready. |
-| `http://`, an unpinned MCP server, a server given the whole disk, a key in `.mcp.json` or Dart | **Send to agent** | It joins your coding agent's list (`get_fix_requests`). Tell your agent "do the FlowForge fixes". |
+| A key written in Python, or in JS/TS that runs on Node | **Fix** | FlowForge shows the change (the key masked). On **Approve**, the key goes to your keys and the line reads it from the environment, on a new branch `flowforge/fix-…`. Your branch and files aren't touched; merge it when you're ready. |
+| `http://`, an unpinned MCP server, a server given the whole disk, a key in `.mcp.json`, Dart or browser code | **Send to agent** | It joins your coding agent's list (`get_fix_requests`). Tell your agent "do the FlowForge fixes". |
 
 Fix needs a git repo and the file committed. FlowForge works out the change itself, with no AI. Replace a key that was in your code with its provider anyway: older commits still hold it.
 

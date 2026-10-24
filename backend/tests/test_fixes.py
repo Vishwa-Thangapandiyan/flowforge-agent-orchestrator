@@ -131,6 +131,7 @@ def test_an_existing_import_os_is_kept(tmp_path, as_someone):
 
 def test_a_js_key_becomes_process_env(tmp_path, as_someone):
     root = repo_with(tmp_path, {"src/pay.js": f"const stripe = require('stripe')('{FAKE}');\n"})
+    assert fixable(root, finding(root)) is True
     got = preview(root, finding(root))
     assert [ln["text"] for ln in got["lines"] if ln["kind"] == "add"] == [
         "const stripe = require('stripe')(process.env.STRIPE_KEY);"]
@@ -195,3 +196,26 @@ def test_a_key_in_an_mcp_config_goes_to_the_agent(tmp_path, as_someone):
     with pytest.raises(CantFix):
         apply_fix(root, f)
     assert KeyStore(root).names() == []
+
+
+# JS/TS: Fix only code that runs on Node, where process.env exists (Codex review: a browser has no process)
+
+@pytest.mark.parametrize("code", [
+    f"import Stripe from 'stripe';\nconst stripe = new Stripe('{FAKE}');\n",                          # could be either
+    f"const key = '{FAKE}';\ndocument.title = key;\n",                                             # a browser
+    f"const url = import.meta.env.VITE_API;\nconst key = '{FAKE}';\n",                             # a Vite app
+])
+def test_js_that_may_run_in_a_browser_goes_to_the_agent(tmp_path, as_someone, code):
+    root = repo_with(tmp_path, {"src/pay.js": code})
+    assert fixable(root, finding(root)) is False
+
+
+@pytest.mark.parametrize("code", [
+    f"const stripe = require('stripe')('{FAKE}');\n",
+    f"import fs from 'node:fs';\nconst key = '{FAKE}';\n",
+    f"import express from 'express';\nconst key = '{FAKE}';\n",
+    f"const port = process.env.PORT;\nconst key = '{FAKE}';\n",
+])
+def test_js_that_runs_on_node_is_fixable(tmp_path, as_someone, code):
+    root = repo_with(tmp_path, {"server/pay.js": code})
+    assert fixable(root, finding(root)) is True

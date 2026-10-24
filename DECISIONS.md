@@ -1171,7 +1171,7 @@ The rule from D36 stays: the coding agent never gets a value from FlowForge.
 **Choice** (Vishwa picked each option):
 - **Two pages.** **Issues** (`/issues`) and **Keys** (`/keys`) join the rail, with counts: Map · Issues · Keys · Checks · Connect agent. This supersedes D33's "no Security page". On the map, the ⚠ chip opens Issues and a 🔑 badge opens Keys; the popover goes.
 - **Every issue has a button. FlowForge fixes what plain code can fix safely, and sends the rest to the agent ("Both").**
-  - **Fix** handles a key written in Python, JavaScript or TypeScript code, as a whole string literal. FlowForge works out the change without an LLM:
+  - **Fix** handles a key written as a whole string literal in Python code, or in JavaScript or TypeScript that shows it runs on Node (`require`, `node:` or server imports, or `process.env` already; nothing of `window`, `document` or `import.meta.env`). Browser code goes to the agent (Codex review): a browser has no `process`, and a key bundled into a web page is public anyway. FlowForge works out the change without an LLM:
     - the value goes to the key store (D36), and `flowforge run` gives it to the app;
     - the literal becomes `os.environ["NAME"]` (adding `import os` when the file lacks it) or `process.env.NAME`.
     

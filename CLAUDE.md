@@ -49,7 +49,7 @@ FlowForge is an **LLMOps tool for apps that already use AI**, not an app builder
 2. **Map.** The home page draws the repo and its dependencies, grouped by kind, each with its evidence. Pan, zoom, drag and search. A scan can miss things (a URL built at runtime, say), so the user can add, correct or hide a dependency. Each edit is an override and **never changes the user's code**.
 3. **Check.** "Check now" runs a health check on each dependency, concurrently, under each one's rate limit (the checks per kind are in D19). The dots on the map turn green, amber or red. An optional timer comes later.
 4. **See the results.** The Checks page shows every check and test result over time: status, latency, errors.
-5. **Security.** A ⚠ chip on the map lists findings, and blocks with findings wear a badge: hard-coded keys, `http://` APIs, risky MCP configs. Key values are never shown (D33: no separate page).
+5. **Security.** The Issues page lists findings (hard-coded keys, `http://` APIs, risky MCP configs), each with Fix (FlowForge changes the code on a new branch) or Send to agent; the Keys page takes each key once. The map's ⚠ chip opens Issues and blocks wear badges (D37).
 6. **Re-scan.** When the code changes, re-scan. FlowForge shows a diff, and the old version stays (D17).
 7. **V2 (later).** The user adds a dependency on the map, and a local coding agent writes the code on a branch for them to approve.
 
@@ -218,6 +218,12 @@ Fixed in Phase 1: `LLMNode` is no longer NIM-only (D10); `MCPNode` has tool disc
   - A key is tied to a dependency when the scan sees it read on the dependency's line, when its name names the service (`STRIPE_…` → Stripe), or when its file has only one dependency; otherwise it is listed without a block.
   - `keys.json` (names only) has no lock across processes: two `flowforge key add` at the same moment can lose one name.
   - Only the key routes check the Host and Origin (against DNS rebinding); the rest of the API (connector edits, `POST /scan`, `POST /checks`) doesn't yet, and should.
+- Issues and fixes (D37) limits:
+  - Fix covers a key that is a whole string literal in Python, JS or TS, and a key in a `.mcp.json` read by coding tools. A key inside a longer string (`"Bearer …"`), an f-string, a comment, Dart, or an app's own MCP config goes to the agent.
+  - Fix needs git, a first commit, and the file committed; it uses your git identity and runs your hooks (a failing hook leaves no branch).
+  - A Python fix reads the key with `os.environ["NAME"]`, so the app fails at start without it (use `flowforge run`).
+  - "Send to agent" waits until you tell your agent; FlowForge doesn't start it (Phase 10).
+  - The Issues page reads the code fresh; the map's badges follow the saved map until a re-scan.
 - MCP server (D29) limits:
   - The agent's command follows the install (D34): a checkout uses `uv --directory`, `uvx` pins the version, a `pip` install uses its own Python.
   - The agent's map is as scanned: edits made on the dashboard's map (hidden or added blocks) aren't applied to it.

@@ -79,7 +79,18 @@ FlowForge is also an **MCP server**, so Claude Code, Codex or Antigravity can as
 claude mcp add flowforge -- uv --directory /path/to/flowforge run flowforge mcp --repo /path/to/your/app
 ```
 
-Your agent gets seven read-only tools: `get_map`, `get_flow`, `get_advice`, `check_health`, `get_security_findings`, `get_keys` and `what_changed`. Every answer is masked (key values never appear), FlowForge never edits your code, and a check starts an MCP server only after you said yes to it on the Checks page. FlowForge needs no AI of its own for any of this.
+Your agent gets eight read-only tools: `get_map`, `get_flow`, `get_advice`, `check_health`, `get_security_findings`, `get_keys`, `get_fix_requests` and `what_changed`. Every answer is masked (key values never appear), the agent can't make FlowForge change your code, and a check starts an MCP server only after you said yes to it on the Checks page. FlowForge needs no AI of its own for any of this.
+
+### Fix what's unsafe, with one click
+
+The **Issues** page lists what the scan found unsafe, and every issue has one button:
+
+| Issue | Button | What happens |
+|---|---|---|
+| A key written in Python, JS or TS code, or in `.mcp.json` | **Fix** | FlowForge shows the change (the key masked). On **Approve**, the key goes to your keys and the line reads it from the environment, on a new branch `flowforge/fix-…`. Your branch and files aren't touched; merge it when you're ready. |
+| `http://`, an unpinned MCP server, a server given the whole disk, a key in Dart | **Send to agent** | It joins your coding agent's list (`get_fix_requests`). Tell your agent "do the FlowForge fixes". |
+
+Fix needs a git repo and the file committed. FlowForge works out the change itself, with no AI. Replace a key that was in your code with its provider anyway: older commits still hold it.
 
 ### Keys your coding agent never sees
 
@@ -92,7 +103,7 @@ flowforge key import                       # move a .env into FlowForge (then de
 flowforge run -- python app.py             # your app starts with the keys in its environment
 ```
 
-Each command takes `--repo PATH` (default: the folder you're in). On the map, a 🔑 badge marks a block whose key is missing, and the ⚠ list has a box to paste it into. Your agent's `get_keys` tool gets names, statuses and the command to ask you to run, never a value. With no keychain (a server, CI), keys go to an encrypted file in `~/.flowforge`.
+Each command takes `--repo PATH` (default: the folder you're in). In the dashboard, the **Keys** page does the same with no commands: paste a missing key into its box, or click **Move into FlowForge** for one that's in `.env`. On the map, a 🔑 badge marks a block whose key is missing. Your agent's `get_keys` tool gets names, statuses and the command to ask you to run, never a value. With no keychain (a server, CI), keys go to an encrypted file in `~/.flowforge`.
 
 What this does and doesn't promise: the key is never handed to your agent and isn't left in a file it reads by habit. An agent that can run commands as you could still run `flowforge run -- printenv`, or read your keychain, so it isn't impossible. MCP servers your coding tool starts get their environment from that tool, not from FlowForge.
 

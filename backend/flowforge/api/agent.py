@@ -33,6 +33,8 @@ def server_command(repo: str | None, db: str | None) -> list[str]:
     kind = home.install_kind()
     if kind == "checkout":
         return [shutil.which("uv") or "uv", "--directory", str(home.CHECKOUT), "run", "flowforge", *tail]
+    if kind == "desktop":   # the bundled binary is the `flowforge` command; it has no `-m` (D42)
+        return [sys.executable, *tail]
     if kind == "uvx":
         return [shutil.which("uvx") or "uvx", f"{home.DIST_NAME}=={home.version()}", *tail]
     return [sys.executable, "-m", "flowforge.cli", *tail]

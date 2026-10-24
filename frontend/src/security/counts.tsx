@@ -1,6 +1,7 @@
-// How many issues and keys need you, for the rail's counts and the map's ⚠ chip (D37). One fetch, shared; a page
-// that fixes something calls reload so every count moves at once.
-import { createContext, type ReactNode, useContext, useMemo } from "react";
+// How many issues and keys need you, for the rail's counts and the map's ⚠ chip (D37). One fetch, shared, read again
+// on each page change; a page that fixes something calls reload so every count moves at once.
+import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { useApi } from "../api/client";
 import type { IssuesResponse } from "./IssuesPage";
 import { type KeysResponse, needsAction } from "./Keys";
@@ -22,6 +23,14 @@ export function CountsProvider({ children }: { children: ReactNode }) {
   const keys = useApi<KeysResponse>("/keys");
   const { reload: reloadIssues } = issues;
   const { reload: reloadKeys } = keys;
+  // read again on every page change: a scan, a re-scan you accepted or an agent's edit shows wherever you go next
+  const { pathname } = useLocation();
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) { first.current = false; return; }
+    reloadIssues();
+    reloadKeys();
+  }, [pathname, reloadIssues, reloadKeys]);
   const value = useMemo<Counts>(() => ({
     issues: (issues.data?.issues ?? []).filter((i) => i.state !== "fixed").length,
     keys: needsAction(keys.data?.keys ?? []).length,

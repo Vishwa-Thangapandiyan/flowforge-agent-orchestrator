@@ -82,3 +82,12 @@ test("nothing to fix says so", async () => {
   renderAt("/issues");
   expect(await screen.findByText("Nothing to fix")).toBeInTheDocument();
 });
+
+test("the counts are read again when you move to another page (Codex review: no stale counts after a scan)", async () => {
+  const calls = issuesApi();
+  renderAt("/issues");
+  await screen.findByRole("region", { name: "FlowForge fixes" });
+  const before = calls.filter((c) => c.url === "/issues").length;
+  await userEvent.click(screen.getByRole("link", { name: /^Keys/ }));
+  await vi.waitFor(() => expect(calls.filter((c) => c.url === "/issues").length).toBeGreaterThan(before));
+});

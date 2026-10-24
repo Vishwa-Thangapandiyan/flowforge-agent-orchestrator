@@ -120,6 +120,7 @@ function ActionPicker({ actions, value, onChange }: { actions: FlowAction[]; val
 /** Name a folder to map. It is read, never run, and nothing is sent (D20). With a map of `current` already, a
  * different folder replaces it, after you confirm (D22, D23). */
 function ScanForm({ onDone, current }: { onDone: () => void; current?: string }) {
+  const counts = useCounts();
   const [path, setPath] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -129,6 +130,7 @@ function ScanForm({ onDone, current }: { onDone: () => void; current?: string })
     setError(undefined);
     try {
       await api.post("/scan", replace ? { path: path.trim(), replace: true } : { path: path.trim() });
+      counts.reload();   // a new folder: its issues and keys (D37; Codex review)
       onDone();
     } catch (err) {
       if (current && err instanceof ApiError && err.status === 409) setConfirming(true);

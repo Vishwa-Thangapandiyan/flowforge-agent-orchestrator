@@ -88,9 +88,15 @@ def _imports_os(tree: ast.Module) -> bool:
                for n in tree.body)
 
 
-def _import_at(tree: ast.Module) -> int:
-    """The line index where `import os` goes: after the module docstring and any `from __future__` imports."""
+_CODING = re.compile(r"^[ \t\f]*#.*?coding[:=]")
+
+
+def _import_at(tree: ast.Module, lines: list[str]) -> int:
+    """The line index where `import os` goes: after a `#!` line and an encoding line (Codex review: a script run
+    directly needs its `#!` first), the module docstring and any `from __future__` imports."""
     at = 0
+    while at < min(2, len(lines)) and ((at == 0 and lines[0].startswith("#!")) or _CODING.match(lines[at])):
+        at += 1
     for i, node in enumerate(tree.body):
         doc = i == 0 and isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant) \
             and isinstance(node.value.value, str)
@@ -117,7 +123,7 @@ def _code_change(root: Path, f: Finding) -> _Change:
     if lang == "python":
         tree = ast.parse(text)
         if not _imports_os(tree):
-            lines.insert(_import_at(tree), "import os" + _newline(text))
+            lines.insert(_import_at(tree, lines), "import os" + _newline(text))
     return _Change(path, text, "".join(lines), name, value)
 
 

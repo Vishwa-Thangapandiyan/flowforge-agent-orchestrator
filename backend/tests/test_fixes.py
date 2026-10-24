@@ -236,3 +236,11 @@ def test_a_browser_word_in_a_comment_doesnt_block_node_code(tmp_path, as_someone
     root = repo_with(tmp_path, {"server/pay.js": f"// unlike the window.fetch version\n"
                                                  f"const stripe = require('stripe')('{FAKE}');\n"})
     assert fixable(root, finding(root)) is True
+
+
+def test_import_os_goes_after_a_shebang_and_an_encoding_line(tmp_path, as_someone):
+    """Codex review: a script run directly needs its #! on the first line."""
+    root = repo_with(tmp_path, {"run.py": f'#!/usr/bin/env python3\n# -*- coding: utf-8 -*-\nKEY = "{FAKE}"\n'})
+    apply_fix(root, finding(root))
+    lines = git(root, "show", "flowforge/fix-key:run.py").splitlines()
+    assert lines[:3] == ["#!/usr/bin/env python3", "# -*- coding: utf-8 -*-", "import os"]

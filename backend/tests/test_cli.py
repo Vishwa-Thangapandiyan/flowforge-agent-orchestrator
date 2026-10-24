@@ -241,3 +241,42 @@ def test_mcp_routing_stays_quiet(monkeypatch, capsys):
     cli.main(["mcp", "--plain"])
     server.assert_called_once_with(None, None)
     assert capsys.readouterr().out == ""
+
+
+def test_a_map_made_before_projects_is_a_project_for_the_cli_too(tmp_path, monkeypatch, capsys):
+    """Like the dashboard at start (D39): the database you had before projects, and the folder it maps, become a
+    project. Before this, the CLI said "No projects yet" until the dashboard had run once."""
+    from flowforge.projects import Projects
+    from flowforge.storage import Storage
+
+    app = tmp_path / "travel-app"
+    app.mkdir()
+    old = tmp_path / "flowforge.db"
+    Storage(old).set_setting("repo_path", str(app.resolve()))
+    monkeypatch.setenv("FLOWFORGE_DB", str(old))
+    cli.main(["projects", "--plain"])
+    assert "travel-app" in capsys.readouterr().out
+    [project] = Projects().list()
+    assert Path(project.db) == old.resolve() and Path(project.path) == app.resolve()
+    cli.main(["projects", "--plain"])   # listed once, not again
+    assert len(Projects().list()) == 1
+
+
+def test_no_old_map_means_no_project(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("FLOWFORGE_DB", str(tmp_path / "nothing.db"))
+    cli.main(["status", "--plain"])
+    assert "No projects yet" in capsys.readouterr().out
+    assert not (tmp_path / "nothing.db").exists()   # looking doesn't create a database
+
+
+def test_an_old_map_in_a_folder_with_odd_characters_is_still_found(tmp_path, monkeypatch, capsys):
+    """# and % mean something in a SQLite address; the path is quoted (Codex review)."""
+    from flowforge.projects import Projects, adopt_existing
+    from flowforge.storage import Storage
+
+    odd = tmp_path / "my#app 50%"
+    odd.mkdir()
+    old = odd / "flowforge.db"
+    Storage(old).set_setting("repo_path", str(odd.resolve()))
+    monkeypatch.setenv("FLOWFORGE_DB", str(old))
+    assert adopt_existing() is not None and len(Projects().list()) == 1

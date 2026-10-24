@@ -17,7 +17,8 @@ from flowforge.storage import Storage
 ROOT = Path(__file__).resolve().parents[2]
 TRIP_PLANNER = ROOT / "examples" / "trip-planner"
 FAKE_KEY = "sk_test_FAKEFAKE12345678"
-TOOLS = {"get_map", "get_flow", "get_advice", "check_health", "get_security_findings", "what_changed"}
+TOOLS = {"get_map", "get_flow", "get_advice", "check_health", "get_security_findings", "get_keys",
+         "what_changed"}
 
 
 def write(root: Path, files: dict[str, str]) -> Path:

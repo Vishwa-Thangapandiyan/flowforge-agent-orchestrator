@@ -12,6 +12,7 @@ import json
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
@@ -23,6 +24,7 @@ from flowforge.api import agent as agent_api
 from flowforge.api import checks as checks_api
 from flowforge.api import connectors as connectors_api
 from flowforge.api import flowmap as flowmap_api
+from flowforge.api import keys as keys_api
 from flowforge.api import runs as runs_api
 from flowforge.api import scan as scan_api
 from flowforge.api import security as security_api
@@ -85,6 +87,8 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         s.flows["deps"].planner = ScanPlanner(scan_api.EXAMPLE_REPO)
         s.flows["flow"].planner = CodeFlowPlanner(scan_api.EXAMPLE_REPO, lambda: example_data.latencies(storage))
     else:   # your folder: from --repo or the last one chosen, mapped now if it has no maps yet
+        keys_api.learn_saved_keys(s, Path(os.environ["FLOWFORGE_REPO"]) if os.getenv("FLOWFORGE_REPO")
+                                  else scan_api.repo_path(s))
         scan_api.startup_repo(storage, s.flows)
     if example:  # offline nodes and a seeded history, never mixed with real data (D16)
         example_data.install(s)
@@ -114,6 +118,7 @@ app.include_router(scan_api.router)
 app.include_router(checks_api.router)
 app.include_router(agent_api.router)
 app.include_router(security_api.router)
+app.include_router(keys_api.router)
 
 
 @app.get("/workflows")

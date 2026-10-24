@@ -1,4 +1,4 @@
-"""FlowForge as an MCP server (D28, D29): five read-only tools a coding agent can ask about the repo it works in.
+"""FlowForge as an MCP server (D28, D29, D36): read-only tools a coding agent can ask about the repo it works in.
 
 The map and the flow are read fresh from the repo on every call (plain code, nothing run, no LLM: D20). The
 dashboard's database supplies what only it knows, when it maps the same repo: measured latencies, past checks,
@@ -28,6 +28,7 @@ from flowforge.flowmap.validate import code_writes, critical
 from flowforge.nodes.check_node import CheckNode
 from flowforge.scan import ScanResult, scan
 from flowforge.scheduler.executor import StepState, run_workflow
+from flowforge.security.keystore import KeyStore, report
 from flowforge.security.logfilter import Redactor, redact_code, secret_values_for
 from flowforge.storage import Storage, now_iso
 
@@ -160,6 +161,10 @@ def headline(tool: str, data: dict[str, Any]) -> str | None:
     if tool == "get_security_findings":
         counts = data["summary"]
         return " · ".join(f"{counts[k]} {k}" for k in ("high", "medium", "low") if counts.get(k)) or "Nothing found"
+    if tool == "get_keys":
+        counts = data["summary"]
+        parts = [f"{counts[k]} {w}" for k, w in (("missing", "missing"), ("env_file", "in .env")) if counts.get(k)]
+        return " · ".join(parts) or ("All saved" if data["keys"] else "No keys read")
     if tool == "what_changed":
         if not data["saved"]:
             return "No saved map yet"
@@ -311,6 +316,18 @@ def build_server(repo: Path, storage: Storage, *, transport: httpx.AsyncBaseTran
         dependency it belongs to, a masked excerpt, the fix, and a prompt describing the change. Values are never
         shown. Catches known key formats and these patterns, not everything."""
         return r.answer("get_security_findings", _security_data(r.scan()))
+
+    @server.tool(annotations=READ)
+    def get_keys() -> dict[str, Any]:
+        """The keys the repo's code reads from its environment (names that look like keys), each with where it is
+        read, the dependencies that use it, and its status: saved in FlowForge, only in .env, or missing. You never
+        get a value and never need one: write code that reads the name from the environment, then ask the user to
+        run the `command` given (they type the key, hidden). Their app gets the keys with `flowforge run -- <app>`."""
+        # names and statuses only: this server, which the agent starts, never reads a value (D36)
+        found = report(KeyStore(r.root), r.scan())
+        summary = dict(Counter(k["status"] for k in found if k["status"] != "saved"))
+        return r.answer("get_keys", {"keys": found, "summary": summary,
+                                     "run": "flowforge run -- <the command that starts the app>"})
 
     @server.tool(annotations=READ)
     def what_changed() -> dict[str, Any]:

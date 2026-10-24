@@ -7,7 +7,6 @@ GET  /, /classic, /assets/*  → the dashboard and the V1 status page (spa.py)
 
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 from collections.abc import AsyncIterator
@@ -27,18 +26,20 @@ from flowforge.api import flowmap as flowmap_api
 from flowforge.api import issues as issues_api
 from flowforge.api import keys as keys_api
 from flowforge.api import lock as lock_api
+from flowforge.api import projects as projects_api
 from flowforge.api import runs as runs_api
 from flowforge.api import scan as scan_api
 from flowforge.api import security as security_api
 from flowforge.api import stats as stats_api
-from flowforge.connectors.models import Connector
-from flowforge.connectors.registry import Registry, check_references, load_connectors_file
+from flowforge.connectors.registry import load_connectors_file
 from flowforge.connectors.runtime import build_nodes  # noqa: F401 (re-exported for callers)
-from flowforge.flowmap.planner import CodeFlowPlanner, ScanPlanner
-from flowforge.flowmap.service import FlowService
 from flowforge.home import database_path, flowforge_home, resource
-from flowforge.security.logfilter import Redactor, install_log_redaction, secret_values_for
-from flowforge.state import AppState, app_state
+from flowforge.project_states import build_state, point_at_example
+from flowforge.project_states import close as close_state
+from flowforge.project_states import ensure as ensure_project
+from flowforge.projects import EXAMPLE_ID, Projects, valid_id
+from flowforge.security.logfilter import Redactor, install_log_redaction
+from flowforge.state import app_state
 from flowforge.storage import Storage
 
 load_dotenv()
@@ -54,65 +55,90 @@ def __getattr__(name: str) -> Any:
     raise AttributeError(name)
 
 
+def _default_db(example: bool) -> Path:
+    """The default project's database: FLOWFORGE_DB; else, for `--repo PATH`, that folder's project (an older
+    database that maps it, or no folder yet, stays as it is: D39); else the project opened last; else the usual one."""
+    if os.getenv("FLOWFORGE_DB") or example:
+        return database_path(example)
+    projects = Projects()
+    chosen = os.getenv("FLOWFORGE_REPO")
+    legacy = database_path()
+    if chosen:
+        found = projects.by_folder(Path(chosen))
+        if found:
+            return Path(found.db)
+        older = Storage(legacy).setting(scan_api.REPO_SETTING) if legacy.is_file() else None
+        if older in (None, str(Path(chosen).expanduser().resolve())):
+            return legacy
+        return Path(projects.add(Path(chosen)).db)   # another folder: a project of its own, not a fresh map
+    last = max((p for p in projects.list() if Path(p.path).is_dir()), key=lambda p: p.opened or p.added, default=None)
+    return Path(last.db) if last else legacy
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     example = os.getenv("FLOWFORGE_EXAMPLE") == "1"
     redactor = Redactor()
     if example:
         flowforge_home().mkdir(parents=True, exist_ok=True)
-    storage = Storage(database_path(example), redact=redactor.redact)
-    registry = Registry(storage)
-    registry.ensure_defaults()
     from_file = load_connectors_file(flowforge_home() / "connectors.json")
-    for connector in from_file:
-        registry.save(connector)
-    connectors = registry.all()
-    check_references(connectors)
-    redactor.set_values(secret_values_for(connectors))
+    s = build_state(_default_db(example), redactor, from_file, example, first=True)
     restore_logging = install_log_redaction(redactor)
-    storage.mark_interrupted()
-    nodes, buckets = build_nodes(connectors)
-    s = app_state_module.current = AppState(
-        nodes=nodes, rate_limits=buckets, storage=storage, registry=registry, redactor=redactor,
-        file_managed={c.id for c in from_file}, example=example)
-    # the maps (D17, D21, D25): what the repo depends on, and the order its code calls them. Both come from code
-    # (D23: nothing drawn by hand reaches a map).
-    def connected() -> dict[str, Connector]:
-        return {c.id: c for c in registry.all()}
-
-    drawn = storage.flows("flow").latest_flow_version("accepted")
-    if example and drawn and (drawn["flow"] or {}).get("source") != "code":
-        storage.clear_map("flow")   # an example.db from before D25 still holds a hand-drawn flow
-    s.flows = {"deps": FlowService(storage.flows("deps"), connected, None),
-               "flow": FlowService(storage.flows("flow"), connected, None)}
+    app_state_module.current = s
+    app_state_module.projects = {}
+    app_state_module.default_id = None
     if example:
-        s.flows["deps"].planner = ScanPlanner(scan_api.EXAMPLE_REPO)
-        s.flows["flow"].planner = CodeFlowPlanner(scan_api.EXAMPLE_REPO, lambda: example_data.latencies(storage))
-        keys_api.learn_saved_keys(s, scan_api.EXAMPLE_REPO)   # example data saves keys too (D37)
+        point_at_example(s)
+        app_state_module.projects[EXAMPLE_ID] = s
+        app_state_module.default_id = EXAMPLE_ID
     else:   # your folder: from --repo or the last one chosen, mapped now if it has no maps yet
         keys_api.learn_saved_keys(s, Path(os.environ["FLOWFORGE_REPO"]) if os.getenv("FLOWFORGE_REPO")
                                   else scan_api.repo_path(s))
-        scan_api.startup_repo(storage, s.flows)
-    if example:  # offline nodes and a seeded history, never mixed with real data (D16)
-        example_data.install(s)
-        example_data.seed_flow(s)
-        seeding = asyncio.create_task(example_data.seed(s))
-        s.tasks.add(seeding)
-        seeding.add_done_callback(s.tasks.discard)
+        scan_api.startup_repo(s.storage, s.flows)
+        repo = scan_api.repo_path(s)
+        if repo is not None:   # the folder it maps is a project: listed, and the default (D39)
+            project = Projects().add(repo, db=s.storage.path)
+            app_state_module.projects[project.id] = s
+            app_state_module.default_id = project.id
+            Projects().touch(project.id)
     try:
         yield
     finally:
-        s.shutting_down = True
-        for task in list(s.tasks):
-            task.cancel()
-        if s.tasks:
-            await asyncio.gather(*s.tasks, return_exceptions=True)
-        for node in {id(n): n for n in [*s.nodes.values(), *s.retired_nodes]}.values():
-            await node.aclose()
+        for each in {id(x): x for x in [s, *app_state_module.projects.values()]}.values():
+            await close_state(each)
         restore_logging()
 
 
+class ProjectPrefix:
+    """`/p/<id>/rest` → `/rest` for project <id> (D39): routes stay as they are; `app_state()` follows the prefix."""
+
+    def __init__(self, app: Any) -> None:
+        self.app = app
+
+    async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
+        path = scope.get("path", "") if scope["type"] in ("http", "websocket") else ""
+        if not path.startswith("/p/"):
+            await self.app(scope, receive, send)
+            return
+        pid, _, rest = path[3:].partition("/")
+        state = await ensure_project(pid) if valid_id(pid) else None
+        if state is None:
+            if scope["type"] == "http":
+                body = json.dumps({"detail": "No such project."}).encode()
+                await send({"type": "http.response.start", "status": 404,
+                            "headers": [(b"content-type", b"application/json")]})
+                await send({"type": "http.response.body", "body": body})
+            return
+        token = app_state_module.project_var.set(pid)
+        try:
+            inner = "/" + rest
+            await self.app({**scope, "path": inner, "raw_path": inner.encode()}, receive, send)
+        finally:
+            app_state_module.project_var.reset(token)
+
+
 app = FastAPI(title="FlowForge", lifespan=lifespan)
+app.add_middleware(ProjectPrefix)
 app.include_router(runs_api.router)
 app.include_router(connectors_api.router)
 app.include_router(stats_api.router)
@@ -124,6 +150,7 @@ app.include_router(security_api.router)
 app.include_router(keys_api.router)
 app.include_router(issues_api.router)
 app.include_router(lock_api.router)
+app.include_router(projects_api.router)
 
 
 @app.get("/workflows")

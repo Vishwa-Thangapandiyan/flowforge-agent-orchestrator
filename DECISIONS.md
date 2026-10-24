@@ -1234,6 +1234,43 @@ The rule from D36 stays: the coding agent never gets a value from FlowForge.
 
 ---
 
+## D39. Projects: a home with every project, and a picker in the rail (Vishwa, 2026-10-24)
+
+**Context.** FlowForge was one process for one folder: one database, one repo setting, one map. A different folder needed `--replace`, which wiped the map. Vishwa wants:
+- a main page listing every project;
+- opening one gives its own workspace (map, Issues, Keys, Vault, Checks, Connect agent);
+- switching between projects keeps each as it was left;
+- closing one never deletes it.
+
+This is step ① of Vishwa's order (① projects, ② settings + first run, ③ CLI, ④ the Tauri desktop app).
+
+**Choice** (Vishwa picked a picker in the rail over a tab bar):
+- **One database per project**, at `FLOWFORGE_HOME/projects/<id>.db`. `projects.json` lists each project: id, name, folder, database, when it was added and last opened. The database that existed before (with its repo setting) becomes the first project where it lies, and nothing moves. Example data is a built-in, read-only project.
+- **Every request names its project.**
+  - A middleware reads a `/p/<id>/` prefix, strips it and sets the project in a context variable.
+  - `app_state()` returns that project's state, built on first use (today's start-up, per project) and kept after.
+  - No route changes. A request with no prefix means the default project (the last one opened), so the MCP server, old links and scripts keep working.
+- **Shared across projects:** one redactor (it learns every project's saved keys, D36), the Vault's one lock per user (D37), and the keychain (keys already belong to a folder).
+- **The dashboard:**
+  - `/` is the home: a card per project with its dependencies, issues, missing keys and when it was last opened, plus **+ New project** and the example's card.
+  - A project's pages live under `/p/<id>/…`.
+  - The top of the rail is the **project picker**. It lists the projects you have open, the current one first; each comes back as it was left (its page, map view, open block and style). **×** closes a project from that list and never deletes it. The picker also has **All projects** (the home) and **+ New project**.
+- **New project:** pick the folder; FlowForge scans it (plain code, D20) and shows its map. There's no agent step.
+- **The agent is paired once, not per project** (Vishwa's choice). `flowforge mcp` with no `--repo` serves every project:
+  - each tool takes an optional `project` (an id or a name);
+  - without one, it answers about the project whose folder holds the agent's working directory, else the last one opened;
+  - a new read-only tool, `list_projects`, lists every project with its status.
+  
+  `flowforge mcp --repo PATH` still works as before. The screen that pairs the agent belongs to step ② (Settings + first run).
+- Removing a project from FlowForge deletes only FlowForge's copy of its map and checks, after you confirm. It never touches the folder. Removing the default project hands over to the project opened most recently; with none left, FlowForge offers to scan a folder (Codex review).
+- **Amends D21:** a different folder is a new project, so `--replace` and the one-folder rule go. `flowforge --repo PATH` opens that folder's project, adding it if new.
+
+**Why:** most people work on more than one app. Each one deserves its own map, issues and keys, and switching shouldn't cost anything.
+
+**Code:** `backend/flowforge/projects.py`, `state.py` (`app_state`), `main.py` (the middleware), `api/projects.py`, the dashboard's `projects/ProjectsPage.tsx`, `ProjectPicker.tsx`, `api/client.ts`.
+
+---
+
 ## Step JSON schema (reference)
 
 ```json

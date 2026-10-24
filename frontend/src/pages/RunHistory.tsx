@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "../projects/links";
 import { api, useApi } from "../api/client";
 import type { RunSummary } from "../api/types";
 import { BrandTile } from "../brand/BrandTile";

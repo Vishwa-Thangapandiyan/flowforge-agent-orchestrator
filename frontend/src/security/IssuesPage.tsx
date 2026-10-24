@@ -1,7 +1,7 @@
 // The Issues page (D37, docs/design/issues-keys): every issue with one button. Fix: FlowForge shows the change (the key
 // masked), you approve, and it's made on a new branch. Send to agent: for what needs a judgment call.
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "../projects/links";
 import { api } from "../api/client";
 import { Icons } from "../components/icons";
 import { EmptyState, ErrorBox } from "../components/ui";

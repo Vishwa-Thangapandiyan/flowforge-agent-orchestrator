@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { projectPath } from "./client";
 import type { RunEvent } from "./types";
 
 /** Every event of a run, live while it runs and replayed from storage afterwards (D16). */
@@ -10,7 +11,7 @@ export function useRunEvents(runId: string | undefined): { events: RunEvent[]; e
     setEvents([]);
     setEnded(false);
     if (!runId || typeof EventSource === "undefined") return;
-    const source = new EventSource(`/runs/${encodeURIComponent(runId)}/events`);
+    const source = new EventSource(projectPath(`/runs/${encodeURIComponent(runId)}/events`));
     const buffer: RunEvent[] = [];
     let frame = 0;
     const flush = () => {

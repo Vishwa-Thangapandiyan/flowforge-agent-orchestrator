@@ -18,9 +18,9 @@ export interface Counts {
 
 const CountsContext = createContext<Counts>({ issues: 0, keys: 0, reload: () => {} });
 
-export function CountsProvider({ children }: { children: ReactNode }) {
-  const issues = useApi<IssuesResponse>("/issues");
-  const keys = useApi<KeysResponse>("/keys");
+export function CountsProvider({ children, active = true }: { children: ReactNode; active?: boolean }) {
+  const issues = useApi<IssuesResponse>(active ? "/issues" : null);   // the home page has no project to count
+  const keys = useApi<KeysResponse>(active ? "/keys" : null);
   const { reload: reloadIssues } = issues;
   const { reload: reloadKeys } = keys;
   // read again on every page change: a scan, a re-scan you accepted or an agent's edit shows wherever you go next

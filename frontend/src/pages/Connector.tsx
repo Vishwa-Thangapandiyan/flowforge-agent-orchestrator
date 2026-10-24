@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { CSSProperties } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
+import { Link, useNavigate } from "../projects/links";
 import { api, ApiError, useApi } from "../api/client";
 import type { Activity, Connector, Health, Tool } from "../api/types";
 import { BrandTile } from "../brand/BrandTile";

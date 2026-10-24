@@ -2,7 +2,8 @@
 // what's missing, then keys still in .env, then the saved ones, folded. Values never come back to this page: seeing
 // them is the Vault's job.
 import { useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
+import { Link } from "../projects/links";
 import { Icons } from "../components/icons";
 import { EmptyState, ErrorBox } from "../components/ui";
 import { useCounts } from "./counts";

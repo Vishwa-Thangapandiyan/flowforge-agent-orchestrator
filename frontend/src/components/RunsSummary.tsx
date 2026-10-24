@@ -1,6 +1,6 @@
 // Money and time, and tool health: what the old Overview showed, now at the top of Runs (D17).
 import type { CSSProperties } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "../projects/links";
 import { useApi } from "../api/client";
 import type { Connector, Health, Savings } from "../api/types";
 import { BrandTile } from "../brand/BrandTile";

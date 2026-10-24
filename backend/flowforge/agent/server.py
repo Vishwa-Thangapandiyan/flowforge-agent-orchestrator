@@ -17,6 +17,7 @@ from typing import Any
 
 import httpx
 from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from flowforge.api.checks import CHECKABLE, check_workflow, command_text, confirmed_commands, target_for
@@ -29,6 +30,7 @@ from flowforge.flow import flow_of
 from flowforge.flowmap.models import CALL_KINDS, Flow
 from flowforge.flowmap.validate import code_writes, critical
 from flowforge.nodes.check_node import CheckNode
+from flowforge.projects import Projects
 from flowforge.scan import ScanResult, scan
 from flowforge.scheduler.executor import StepState, run_workflow
 from flowforge.security.keystore import NAME, KeyStore, report
@@ -170,6 +172,8 @@ def headline(tool: str, data: dict[str, Any]) -> str | None:
         counts = data["summary"]
         parts = [f"{counts[k]} {w}" for k, w in (("missing", "missing"), ("env_file", "in .env")) if counts.get(k)]
         return " · ".join(parts) or ("All saved" if data["keys"] else "No keys read")
+    if tool == "list_projects":
+        return _plural(len(data["projects"]), "project")
     if tool == "request_key":
         return f"Asked for {data['name']}"
     if tool == "wait_for_keys":
@@ -284,43 +288,80 @@ def preview(repo: Path, storage: Storage) -> dict[str, Any]:
     return _mask({"repo": r.root.name, "cards": cards}, r.redactor)
 
 
-def build_server(repo: Path, storage: Storage, *, transport: httpx.AsyncBaseTransport | None = None) -> MCPServer:
-    """The server for one repo. `transport` answers the health checks' requests in tests."""
-    r = _Repo(repo, storage, transport)
+def build_server(repo: Path | None, storage: Storage | None, *,
+                 transport: httpx.AsyncBaseTransport | None = None) -> MCPServer:
+    """The server for one repo, or (repo None) for every project (D39: the agent is paired once). `transport` answers
+    the health checks' requests in tests."""
+    fixed = _Repo(repo, storage, transport) if repo is not None and storage is not None else None
+    opened: dict[str, _Repo] = {}
+
+    def pick(project: str | None) -> _Repo:
+        """The repo a tool answers about: `project` (an id or a name) when given; else the one this server was started
+        for; else the project whose folder holds where the agent works; else the one opened last."""
+        registry = Projects()
+        if project is None and fixed is not None:
+            return fixed
+        found = registry.find(project) if project else registry.for_folder(Path.cwd())
+        if found is None and not project:
+            found = max(registry.list(), key=lambda p: p.opened or p.added, default=None)
+        if found is None:
+            raise ToolError(f"no project {project!r}: call list_projects to see them" if project else
+                             "no project yet: open FlowForge on your app's folder (`flowforge --repo PATH`)")
+        if fixed is not None and Path(found.path) == fixed.root:
+            return fixed
+        if found.id not in opened:
+            opened[found.id] = _Repo(Path(found.path), Storage(Path(found.db)), transport)
+        return opened[found.id]
+
     server = MCPServer(name="flowforge", title="FlowForge", instructions=INSTRUCTIONS)
 
     @server.tool(annotations=READ)
-    def get_map() -> dict[str, Any]:
+    def list_projects() -> dict[str, Any]:
+        """Every project FlowForge maps (D39): its id, name, folder and counts (dependencies, issues, keys missing).
+        `current` marks the one your working directory is in, which every tool answers about by default; pass another
+        one's id or name as `project` to ask about it."""
+        from flowforge.api.projects import card
+
+        here = Projects().for_folder(Path.cwd())
+        rows = [{**card(p), "current": bool(here and p.id == here.id)} for p in Projects().list()]
+        return _mask({"projects": rows}, Redactor())
+
+    @server.tool(annotations=READ)
+    def get_map(project: str | None = None) -> dict[str, Any]:
         """Every dependency the repo uses (LLMs, MCP servers, HTTP APIs, local programs), each with where it appears
         (file:line) and its latest health. Read from the code now; nothing is run."""
+        r = pick(project)
         return r.answer("get_map", _map_data(r))
 
     @server.tool(annotations=READ)
-    def get_flow() -> dict[str, Any]:
+    def get_flow(project: str | None = None) -> dict[str, Any]:
         """The order the code calls its dependencies (Python), from each entry point: every call with its file:line
         and time (measured by the last check, else an estimate), the if-decisions, which call waits for which, and
         the critical path: the chain that sets the total time, as written versus as early as inputs allow."""
+        r = pick(project)
         return r.answer("get_flow", _flow_data(r.flow()))
 
     @server.tool(annotations=READ)
-    def get_advice() -> dict[str, Any]:
+    def get_advice(project: str | None = None) -> dict[str, Any]:
         """Calls that don't need each other's results but wait for each other: how much running them together
         saves, the change written out when it is safe (lines now and could be), what to move by hand, and a prompt
         describing the whole change. FlowForge never applies it: you make the change and run the tests."""
+        r = pick(project)
         return r.answer("get_advice", _advice_data(r.flow()))
 
     @server.tool(annotations=CHECKS)
-    async def check_health(ids: list[str] | None = None) -> dict[str, Any]:
+    async def check_health(ids: list[str] | None = None, project: str | None = None) -> dict[str, Any]:
         """Check the dependencies now (all, or the ids from get_map), like the dashboard's Check now: one request
         without any key to an API, the model list of an LLM, an MCP server started and asked for its tools, a local
         program looked for. An MCP server starts only if the user already said yes to its exact command in the
         dashboard. Each result says why something is down and the likely fix."""
+        r = pick(project)
         result = r.scan()
         deps = {d.id: d for d in result.dependencies if d.kind in CHECKABLE and d.status == "confirmed"}
         if ids is not None:
             unknown = sorted(set(ids) - set(deps))
             if unknown:
-                raise ValueError(f"not a checkable dependency of this repo: {', '.join(unknown)} (see get_map)")
+                raise ToolError(f"not a checkable dependency of this repo: {', '.join(unknown)} (see get_map)")
             deps = {i: deps[i] for i in ids}
         targets = [target_for(d, result) for d in deps.values()]
         yes = confirmed_commands(r.storage) if r.shared else set()
@@ -349,29 +390,32 @@ def build_server(repo: Path, storage: Storage, *, transport: httpx.AsyncBaseTran
                                          "kept": r.shared, "waiting_for_yes": [t.id for t in waiting]})
 
     @server.tool(annotations=READ)
-    def get_security_findings() -> dict[str, Any]:
+    def get_security_findings(project: str | None = None) -> dict[str, Any]:
         """What in the repo is unsafe, read from the code now: keys written in code or MCP configs, APIs called over
         plain http, MCP servers with no pinned version or given the whole disk. Each finding has its file:line, the
         dependency it belongs to, a masked excerpt, the fix, and a prompt describing the change. Values are never
         shown. Catches known key formats and these patterns, not everything."""
+        r = pick(project)
         return r.answer("get_security_findings", _security_data(r.scan()))
 
     @server.tool(annotations=READ)
-    def get_keys() -> dict[str, Any]:
+    def get_keys(project: str | None = None) -> dict[str, Any]:
         """The keys the repo's code reads from its environment (names that look like keys), each with where it is
         read, the dependencies that use it, and its status: saved in FlowForge, only in .env, or missing. You never
         get a value and never need one: write code that reads the name from the environment, then ask the user to
         run the `command` given (they type the key, hidden). Their app gets the keys with `flowforge run -- <app>`."""
+        r = pick(project)
         return r.answer("get_keys", _keys_data(r.root, r.scan()))
 
     @server.tool(annotations=ASK)
-    def request_key(name: str, why: str) -> dict[str, Any]:
+    def request_key(name: str, why: str, project: str | None = None) -> dict[str, Any]:
         """Ask the user for a key your change needs (D38), e.g. after adding Stripe: name="STRIPE_SECRET_KEY",
         why="for Stripe in pay.py". It shows first on FlowForge's Keys page. You never get or send the value: write
         code that reads the name from the environment, tell the user to paste the key on the Keys page, then call
         wait_for_keys. Their app gets it with `flowforge run`."""
+        r = pick(project)
         if not NAME.fullmatch(name):
-            raise ValueError("name must be an env var name: letters, digits and _, not starting with a digit")
+            raise ToolError("name must be an env var name: letters, digits and _, not starting with a digit")
         add_key_request(r.storage, r.root, name, why.strip() or "asked by your coding agent")
         saved = KeyStore(r.root).status([name], verify=False)[name] == "saved"
         if saved:
@@ -383,10 +427,11 @@ def build_server(repo: Path, storage: Storage, *, transport: httpx.AsyncBaseTran
             f"Ask the user to paste {name} on FlowForge's Keys page{where}; it's at the top. Then call wait_for_keys."})
 
     @server.tool(annotations=READ)
-    async def wait_for_keys(names: list[str], seconds: int = 60) -> dict[str, Any]:
+    async def wait_for_keys(names: list[str], seconds: int = 60, project: str | None = None) -> dict[str, Any]:
         """Wait until the user has saved these keys on the Keys page (D38): returns as soon as all are saved, or
         after `seconds` (at most 110; call again to keep waiting). Reads only which names are saved, never a
         value."""
+        r = pick(project)
         import asyncio
 
         wanted = [n for n in dict.fromkeys(names) if NAME.fullmatch(n)]
@@ -406,16 +451,18 @@ def build_server(repo: Path, storage: Storage, *, transport: httpx.AsyncBaseTran
             f"Still waiting for {', '.join(waiting)}: call wait_for_keys again, or remind the user."})
 
     @server.tool(annotations=READ)
-    def get_fix_requests() -> dict[str, Any]:
+    def get_fix_requests(project: str | None = None) -> dict[str, Any]:
         """The issues the user sent you from FlowForge's Issues page ("do the FlowForge fixes"): each with its
         file:line, what is wrong, how to fix it and the whole change described (masked: no key value). An issue leaves
         the list once the code no longer has it, so call what_changed after your edit to confirm."""
+        r = pick(project)
         return r.answer("get_fix_requests", _fix_requests_data(r))
 
     @server.tool(annotations=READ)
-    def what_changed() -> dict[str, Any]:
+    def what_changed(project: str | None = None) -> dict[str, Any]:
         """After an edit: the dependencies added or removed since the map saved in the dashboard, and the flow's
         times now. Use it to confirm a change did what you meant."""
+        r = pick(project)
         saved = r.storage.latest_flow_version("deps") if r.shared else None
         if saved is None or not saved.get("flow"):
             return r.answer("what_changed", {"saved": False, "message": "The dashboard has no saved map of this repo "

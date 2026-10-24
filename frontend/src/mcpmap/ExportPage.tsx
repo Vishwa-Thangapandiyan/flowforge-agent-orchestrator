@@ -1,7 +1,7 @@
 // The MCP Map export (D26, docs/mcp-map.md): the map to send, drawn from the same data as the flow map, and five
 // ways to send it. Everything is made in the browser from what the API already masked (D16).
 import { useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "../projects/links";
 import { useApi } from "../api/client";
 import type { ChecksView, FlowResponse, HealthStatus } from "../api/types";
 import { Icons } from "../components/icons";

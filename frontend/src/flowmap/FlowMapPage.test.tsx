@@ -19,7 +19,7 @@ test("the home page is the Planner's map of the app", async () => {
   expect(screen.getByText("Risky order?")).toBeInTheDocument();
   expect(screen.getByRole("toolbar", { name: "Map tools" })).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: /^More/ }));
-  expect(screen.getByRole("menuitem", { name: /How it was drawn/ })).toHaveAttribute("href", "/map/how");
+  expect(screen.getByRole("menuitem", { name: /How it was drawn/ })).toHaveAttribute("href", "/p/test/map/how");
   expect(screen.getByRole("menuitemcheckbox", { name: /Show my edits/ })).toHaveAttribute("aria-checked", "true");
   // the engine behind the Planner is never named
   expect(screen.getByRole("banner").textContent).not.toMatch(/NIM|llama|NVIDIA/);
@@ -60,13 +60,13 @@ test("a dependency map shows what the app uses, without a test run or critical p
   // the header (D33, amended): Re-scan, Export and Style in view; the rest in a labelled More menu
   const banner = screen.getByRole("banner");
   expect(within(banner).getByRole("button", { name: /Re-scan the repo/ })).toBeInTheDocument();
-  expect(within(banner).getByRole("link", { name: /Export/ })).toHaveAttribute("href", "/map/export");
+  expect(within(banner).getByRole("link", { name: /Export/ })).toHaveAttribute("href", "/p/test/map/export");
   expect(within(banner).getByRole("button", { name: /^Style/ })).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /Test run/ })).not.toBeInTheDocument();
   await userEvent.click(within(banner).getByRole("button", { name: /^More/ }));
   const menu = screen.getByRole("menu", { name: "More" });
   expect(within(menu).getByRole("menuitem", { name: /Add a block/ })).toBeInTheDocument();
-  expect(within(menu).getByRole("menuitem", { name: /How it was mapped/ })).toHaveAttribute("href", "/map/how");
+  expect(within(menu).getByRole("menuitem", { name: /How it was mapped/ })).toHaveAttribute("href", "/p/test/map/how");
   expect(within(menu).queryByRole("menuitemcheckbox", { name: /Critical path/ })).not.toBeInTheDocument();
   expect(screen.getByText("Your coding tools", { selector: ".ff-title" })).toBeInTheDocument();
 });

@@ -19,7 +19,7 @@ test("history lists runs with status chips, times, cache and tokens, and explain
   const rows = within(table).getAllByRole("row");
   expect(rows).toHaveLength(4);
   expect(within(rows[1]).getByText("running")).toBeInTheDocument();
-  expect(within(rows[1]).getByRole("link", { name: "a41c9e" })).toHaveAttribute("href", "/runs/a41c9e000000");
+  expect(within(rows[1]).getByRole("link", { name: "a41c9e" })).toHaveAttribute("href", "/p/test/runs/a41c9e000000");
   expect(within(rows[2]).getByText("6.4 s")).toBeInTheDocument();
   expect(within(rows[3]).getByText("failed")).toBeInTheDocument();
   const why = screen.getByRole("region", { name: "Why it failed" });
@@ -40,5 +40,5 @@ test("an empty history offers a first run", async () => {
   mockApi({ "/meta": META, "/runs": [], "/connectors": CONNECTORS });
   renderAt("/runs");
   expect(await screen.findByText("No runs yet")).toBeInTheDocument();
-  for (const link of screen.getAllByRole("link", { name: /Start a run/ })) expect(link).toHaveAttribute("href", "/live");
+  for (const link of screen.getAllByRole("link", { name: /Start a run/ })) expect(link).toHaveAttribute("href", "/p/test/live");
 });

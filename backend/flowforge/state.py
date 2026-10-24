@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -64,10 +65,16 @@ class AppState:
     flows: dict[str, Any] = field(default_factory=dict)  # map id -> FlowService (D17, D21); Any avoids a cycle
 
 
-current: AppState | None = None
+current: AppState | None = None   # the default project: requests with no /p/<id>/ prefix (D39)
+projects: dict[str, AppState] = {}  # every project opened in this process, by id; the default is among them
+default_id: str | None = None
+project_var: ContextVar[str | None] = ContextVar("flowforge_project", default=None)   # set by the /p/<id>/ prefix
 
 
 def app_state() -> AppState:
-    if current is None:
-        raise HTTPException(503, "app not started")
-    return current
+    """The state of the project this request is for (D39): the one its `/p/<id>/` prefix names, else the default."""
+    pid = project_var.get()
+    found = projects.get(pid) if pid else current
+    if found is None:
+        raise HTTPException(503 if pid is None else 404, "app not started" if pid is None else "no such project")
+    return found

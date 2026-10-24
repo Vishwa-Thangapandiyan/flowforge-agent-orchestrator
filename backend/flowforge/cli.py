@@ -30,7 +30,7 @@ def parse(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="flowforge", description="Run the FlowForge dashboard.")
     parser.add_argument("command", nargs="?", default="serve", choices=["serve", "scan", "mcp"])
     parser.add_argument("path", nargs="?", help="scan: the folder to read")
-    parser.add_argument("--repo", help="serve: map this folder; mcp: the repo to answer about (default: here)")
+    parser.add_argument("--repo", help="serve: map this folder; mcp: only this folder (default: every project)")
     parser.add_argument("--db", help="mcp: the dashboard's database (default: FLOWFORGE_DB, else flowforge.db)")
     parser.add_argument("--replace", action="store_true",
                         help="serve: --repo names a different folder than last time, so start a fresh map")
@@ -93,13 +93,16 @@ def serve_agent(repo: str | None, db: str | None = None) -> None:
     from flowforge.security.logfilter import Redactor, install_log_redaction
     from flowforge.storage import Storage
 
-    root = Path(repo or ".").expanduser().resolve()
-    if not root.is_dir():
+    root = Path(repo).expanduser().resolve() if repo else None   # no --repo: every project (D39)
+    if root is not None and not root.is_dir():
         print(f"flowforge mcp: {root} is not a folder", file=sys.stderr)
         raise SystemExit(2)
     logging.basicConfig(stream=sys.stderr, level=logging.WARNING)
     redactor = Redactor()
     install_log_redaction(redactor)
+    if root is None:
+        build_server(None, None).run("stdio")
+        return
     path = Path(db).expanduser() if db else database_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     build_server(root, Storage(path, redact=redactor.redact)).run("stdio")

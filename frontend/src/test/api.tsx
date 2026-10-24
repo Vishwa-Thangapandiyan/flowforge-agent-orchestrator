@@ -9,7 +9,8 @@ export type Routes = Record<string, unknown | ((init?: RequestInit) => unknown)>
 export function mockApi(routes: Routes) {
   const calls: { url: string; init?: RequestInit }[] = [];
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = typeof input === "string" ? input : input.toString();
+    // a project's request ("/p/test/flow") matches the mock written for its page ("/flow") (D39)
+    const url = (typeof input === "string" ? input : input.toString()).replace(/^\/p\/[^/]+(?=\/|$)/, "") || "/";
     calls.push({ url, init });
     const path = url.split("?")[0];
     const key = Object.keys(routes).find((k) => k === url || k === path);
@@ -23,8 +24,17 @@ export function mockApi(routes: Routes) {
   return calls;
 }
 
+/** A page of a project (D39): renderAt("/keys") opens project "test"'s Keys page, renderAt("/") its map. */
 export function renderAt(path: string) {
-  const router = createMemoryRouter(routes, { initialEntries: [path] });
+  const inside = path.startsWith("/p/") || path === "/projects" || path.startsWith("/projects/");
+  const at = inside ? path : `/p/test${path === "/" ? "" : path.startsWith("/?") ? path.slice(1) : path}`;
+  const router = createMemoryRouter(routes, { initialEntries: [at] });
+  return render(<RouterProvider router={router} />);
+}
+
+/** The home page: every project (D39). */
+export function renderHome() {
+  const router = createMemoryRouter(routes, { initialEntries: ["/"] });
   return render(<RouterProvider router={router} />);
 }
 

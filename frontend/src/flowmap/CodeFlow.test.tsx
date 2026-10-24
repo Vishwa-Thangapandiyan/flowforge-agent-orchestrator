@@ -28,7 +28,7 @@ test("the Flow switch shows the order the code calls its dependencies, and how i
   const mark = document.querySelector(".ff-block.kind-decision.compact")!;
   expect(mark).toHaveAttribute("title", expect.stringContaining("?"));
   expect(screen.getByRole("button", { name: /Re-scan the repo/ })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: /Export/ })).toHaveAttribute("href", "/map/export?map=flow");   // the MCP Map
+  expect(screen.getByRole("link", { name: /Export/ })).toHaveAttribute("href", "/p/test/map/export?map=flow");   // the MCP Map
   await userEvent.click(screen.getByRole("button", { name: /^More/ }));
   await userEvent.click(screen.getByRole("menuitemcheckbox", { name: /Show every check/ }));
   await vi.waitFor(() => expect(document.querySelector(".ff-block.kind-decision.compact")).toBeNull());

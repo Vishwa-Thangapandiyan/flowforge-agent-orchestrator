@@ -23,7 +23,7 @@ test("the catalog splits what's on the map from what's only connected", async ()
   expect(within(idle).getByText("Inventory API")).toBeInTheDocument();
   expect(screen.getAllByText("Live").length).toBeGreaterThan(0);
   expect(screen.getAllByText("Demo only").length).toBeGreaterThan(0);
-  expect(screen.getAllByRole("link", { name: "Add" })[0]).toHaveAttribute("href", "/connectors/new?preset=stripe");
+  expect(screen.getAllByRole("link", { name: "Add" })[0]).toHaveAttribute("href", "/p/test/connectors/new?preset=stripe");
 });
 
 test("search and Live only filter the cards", async () => {

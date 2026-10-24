@@ -64,7 +64,7 @@ code, .mono { font-family: var(--mono); }
 
 /* a phone: five places and the theme share the width evenly; the Map item stands in for the logo (D37) */
 @media (max-width: 480px) {
-  .rail-brand { display: none; }
+  .rail-brand, .pk-caret { display: none; }
   .rail { padding: 6px 4px; }
   .rail-item { flex: 1 1 0; min-width: 0; padding: 0 2px; font-size: 10.5px; }
   .rail-count { right: 2px; }

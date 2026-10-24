@@ -1,7 +1,7 @@
 // The Checks page (D24, docs/design/checks-artboards): is everything the app depends on up, fast and safe to call?
 // Problems first, each in plain words with its likely fix; one dependency's history beside it.
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "../projects/links";
 import { useApi } from "../api/client";
 import type { CheckRecord, ConnectorType, NodeKind } from "../api/types";
 import { BrandTile } from "../brand/BrandTile";

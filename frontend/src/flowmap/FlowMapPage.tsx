@@ -6,7 +6,9 @@ import {
   type NodeChange, type OnSelectionChangeParams,
 } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useProjectId } from "../projects/links";
+import { rememberView, viewOf } from "../projects/memory";
 import { api, ApiError, useApi } from "../api/client";
 import { CheckConfirm } from "../checks/Health";
 import { useChecks } from "../checks/useChecks";
@@ -215,6 +217,13 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload, action
   const { zoom } = useViewport();
   const [nodes, setNodes, onNodesChangeBase] = useNodesState<BlockNode>([]);
   const [sel, setSel] = useState<string | null>(null);
+  const pid = useProjectId();
+  const viewKey = pid ? `${pid}:${map}` : null;   // each project's map comes back as you left it (D39)
+  const selNow = useRef(sel);
+  selNow.current = sel;
+  useEffect(() => () => {
+    if (viewKey) rememberView(viewKey, { ...rf.getViewport(), selected: selNow.current });
+  }, [viewKey, rf]);
   const [scanning, setScanning] = useState(false);
   const checks = useChecks(deps);   // health on a dependency map (D24)
   const health = useMemo(() => Object.fromEntries(checks.items.map((i) => [i.id, i])), [checks.items]);
@@ -347,9 +356,15 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload, action
   useEffect(() => {
     if (!fitted.current && nodes.length) {
       fitted.current = true;
-      window.requestAnimationFrame(() => rf.fitView({ padding: 0.08, maxZoom: 1.1 }));
+      const left = viewKey ? viewOf(viewKey) : undefined;
+      if (left) {   // back where you left it (D39)
+        window.requestAnimationFrame(() => rf.setViewport({ x: left.x, y: left.y, zoom: left.zoom }));
+        if (left.selected && nodes.some((n) => n.id === left.selected)) setSel(left.selected);
+      } else {
+        window.requestAnimationFrame(() => rf.fitView({ padding: 0.08, maxZoom: 1.1 }));
+      }
     }
-  }, [nodes.length, rf]);
+  }, [nodes, rf, viewKey]);
 
   const savePositions = useCallback((replace = false) => {
     window.clearTimeout(saveTimer.current);

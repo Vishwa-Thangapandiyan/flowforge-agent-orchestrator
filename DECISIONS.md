@@ -1255,7 +1255,14 @@ This is step ① of Vishwa's order (① projects, ② settings + first run, ③ 
   - `/` is the home: a card per project with its dependencies, issues, missing keys and when it was last opened, plus **+ New project** and the example's card.
   - A project's pages live under `/p/<id>/…`.
   - The top of the rail is the **project picker**. It lists the projects you have open, the current one first; each comes back as it was left (its page, map view, open block and style). **×** closes a project from that list and never deletes it. The picker also has **All projects** (the home) and **+ New project**.
-- **New project:** two steps. ① Pick the folder; FlowForge scans it (plain code, D20) and shows its map. ② Connect your coding agent with the Connect page's cards. Removing a project from FlowForge deletes only FlowForge's copy of its map and checks, after you confirm. It never touches the folder.
+- **New project:** pick the folder; FlowForge scans it (plain code, D20) and shows its map. There's no agent step.
+- **The agent is paired once, not per project** (Vishwa's choice). `flowforge mcp` with no `--repo` serves every project:
+  - each tool takes an optional `project` (an id or a name);
+  - without one, it answers about the project whose folder holds the agent's working directory, else the last one opened;
+  - a new read-only tool, `list_projects`, lists every project with its status.
+  
+  `flowforge mcp --repo PATH` still works as before. The screen that pairs the agent belongs to step ② (Settings + first run).
+- Removing a project from FlowForge deletes only FlowForge's copy of its map and checks, after you confirm. It never touches the folder.
 - **Amends D21:** a different folder is a new project, so `--replace` and the one-folder rule go. `flowforge --repo PATH` opens that folder's project, adding it if new.
 
 **Why:** most people work on more than one app. Each one deserves its own map, issues and keys, and switching shouldn't cost anything.

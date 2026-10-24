@@ -9,7 +9,7 @@ import { Icons } from "../components/icons";
 import { useCounts } from "./counts";
 import "./security.css";
 
-interface LockState {
+export interface LockState {
   state: "none" | "pending" | "on";
   open: boolean;
   seconds_left: number;
@@ -60,7 +60,8 @@ function Digits({ value, onChange, label }: { value: string; onChange: (v: strin
 }
 
 /** Step 4, first time only: password, scan the QR, the first code. */
-function SetUp({ onDone }: { onDone: () => void }) {
+/** The Vault's first set-up (D37): a password, the phone scans a QR, the first code. Also step 3 of the welcome (D40). */
+export function SetUp({ onDone }: { onDone: () => void }) {
   const [password, setPassword] = useState("");
   const [again, setAgain] = useState("");
   const [qr, setQr] = useState<{ uri: string; qr: string }>();

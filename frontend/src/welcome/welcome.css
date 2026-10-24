@@ -1,0 +1,26 @@
+/* The welcome (D40): once, full-screen, three steps */
+.wc { position: fixed; inset: 0; z-index: 50; display: grid; place-items: start center; overflow-y: auto; padding: 32px 16px;
+  background: var(--bg); }
+.wc-box { position: relative; display: grid; gap: 20px; width: min(860px, 100%); }
+.wc-head { display: grid; gap: 14px; }
+.wc-head h1 { margin: 0; font: 700 28px var(--display); }
+.wc-bar { display: flex; flex-wrap: wrap; gap: 8px 28px; margin: 0; padding: 0; list-style: none; }
+.wc-bar li { display: flex; align-items: center; gap: 8px; color: var(--muted); font-weight: 600; font-size: 14px; }
+.wc-bar i { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--line);
+  font: 700 12px var(--mono); font-style: normal; }
+.wc-bar li.now { color: var(--fg); } .wc-bar li.now i { border-color: var(--teal); color: var(--teal); }
+.wc-bar li.done i { border-color: var(--teal); background: var(--teal); color: var(--on-teal); }
+.wc-step { display: grid; gap: 12px; padding: 22px; border-radius: var(--r-lg); border: 2px solid var(--teal); background: var(--surface); }
+.wc-step h2 { margin: 0; font-size: 20px; }
+.wc-note { margin: 0; color: var(--muted); font-size: 14px; }
+.wc-in { display: flex; flex-wrap: wrap; gap: 8px; }
+.wc-in input { flex: 1 1 260px; min-width: 0; height: 44px; padding: 0 12px; border-radius: var(--r-sm); border: 1px solid var(--line);
+  background: var(--surface-2); color: var(--fg); font: 14px var(--mono); }
+.wc-or { margin: 0; color: var(--muted); font-size: 14px; }
+.wc-foot { display: flex; justify-content: flex-end; }
+.wc-done { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--green); font-weight: 600; }
+.wc-wait { height: 220px; border-radius: var(--r-md); background: var(--surface-2); }
+.wc-skip { justify-self: end; display: inline-flex; align-items: center; gap: 6px; padding: 6px 4px; border: 0; background: none;
+  color: var(--muted); font: 600 14px var(--body); cursor: pointer; }
+.wc-skip:hover { color: var(--fg); }
+.wc-skip:focus-visible { outline: 3px solid #7FA8FF; outline-offset: 2px; border-radius: 6px; }

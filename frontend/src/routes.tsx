@@ -17,6 +17,7 @@ import { RunHistory } from "./pages/RunHistory";
 import { IssuesPage } from "./security/IssuesPage";
 import { KeysPage } from "./security/KeysPage";
 import { VaultPage } from "./security/VaultPage";
+import { SettingsPage } from "./settings/SettingsPage";
 
 function NotFound() {
   return (
@@ -48,6 +49,7 @@ const projectPages = [
   { path: "keys", element: <KeysPage /> },
   { path: "vault", element: <VaultPage /> },
   { path: "security", element: <Navigate to="/issues" replace /> },  // the Issues page (D37)
+  { path: "settings", element: <SettingsPage /> },   // for every project (D40), shown inside the open one
   { path: "*", element: <NotFound /> },
 ];
 
@@ -57,6 +59,7 @@ export const routes = [
     children: [
       { path: "/", element: <ProjectsPage /> },
       { path: "/projects/new", element: <NewProjectPage /> },
+      { path: "/settings", element: <SettingsPage /> },
       { path: "/p/:pid", children: projectPages },
       { path: "*", element: <ToDefaultProject /> },   // an address from before projects: the default project's page
     ],

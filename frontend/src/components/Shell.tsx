@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, type ReactNode } from "react";
 import { Outlet, useLocation, useMatches } from "react-router-dom";
 import { Link, useProjectId } from "../projects/links";
 import { markOpen, rememberPlace } from "../projects/memory";
@@ -6,45 +6,12 @@ import { ProjectPicker } from "../projects/ProjectPicker";
 import { api, setProject, useApi } from "../api/client";
 import type { Meta } from "../api/types";
 import { Icons } from "./icons";
+import { applyTheme, readTheme } from "./theme";
+import { saveTheme as saveMapStyle, type GraphTheme } from "../flowmap/themes";
 import { CountsProvider, useCounts } from "../security/counts";
 
 const MetaContext = createContext<Meta>({ project: "My project", example: false, version: "" });
 export const useMeta = () => useContext(MetaContext);
-
-type Theme = "system" | "light" | "dark";
-const THEME_KEY = "flowforge.theme";
-
-function readTheme(): Theme {
-  try {
-    const t = localStorage.getItem(THEME_KEY);
-    return t === "light" || t === "dark" ? t : "system";
-  } catch {
-    return "system";
-  }
-}
-
-function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>(readTheme);
-  useEffect(() => {
-    if (theme === "system") document.documentElement.removeAttribute("data-theme");
-    else document.documentElement.setAttribute("data-theme", theme);
-    try {
-      localStorage.setItem(THEME_KEY, theme);
-    } catch {
-      /* private window: the choice just isn't remembered */
-    }
-  }, [theme]);
-  const next: Record<Theme, Theme> = { system: "light", light: "dark", dark: "system" };
-  const label = { system: "Theme: system", light: "Theme: light", dark: "Theme: dark" }[theme];
-  const icon = { system: Icons.monitor(20), light: Icons.sun(20), dark: Icons.moon(20) }[theme];
-  return (
-    <button type="button" className="rail-item rail-theme" onClick={() => setTheme(next[theme])} aria-label={`${label}. Change theme`}
-      title={label}>
-      {icon}
-      <span>Theme</span>
-    </button>
-  );
-}
 
 interface Item {
   to: string;
@@ -80,7 +47,24 @@ function Count({ of }: { of: "issues" | "keys" }) {
   return <span className={`rail-count ${of}`} aria-label={`${n} ${of === "issues" ? "to fix" : "need you"}`}>{n}</span>;
 }
 
+let synced = false;
+
+/** Once per load: the theme this browser chose, and the map style Settings saved when this browser has none (D40). */
+function useLook(): void {
+  useEffect(() => {
+    applyTheme(readTheme());
+    if (synced) return;
+    synced = true;
+    let mapStyleSaved = false;
+    try { mapStyleSaved = localStorage.getItem("flowforge.graphTheme") !== null; } catch { /* private window */ }
+    if (!mapStyleSaved) {
+      api.get<{ map_style: GraphTheme | null }>("/settings").then((s) => { if (s.map_style) saveMapStyle(s.map_style); }, () => {});
+    }
+  }, []);
+}
+
 export function Shell() {
+  useLook();
   const pid = useProjectId();
   setProject(pid);   // before any page renders: its requests go to this project (D39)
   return <ProjectShell key={pid ?? "home"} pid={pid} />;
@@ -121,7 +105,9 @@ function ProjectShell({ pid }: { pid: string | undefined }) {
             </Link>
           )}
           <span className="rail-gap" />
-          <ThemeToggle />
+          <Link to="/settings" className="rail-item" aria-current={at === "/settings" ? "page" : undefined} title="Settings">
+            {Icons.gear(20)}<span>Settings</span>
+          </Link>
         </nav>
         <main className="main" id="main" tabIndex={-1}>
           <div key={location.pathname} className={`page${bleed ? "" : " page-enter"}`}>

@@ -5,6 +5,8 @@ import { Navigate as RouterNavigate, useLocation, useNavigate as useRouterNaviga
 import { api, useApi } from "../api/client";
 import { Icons } from "../components/icons";
 import { EmptyState, ErrorBox } from "../components/ui";
+import type { SettingsData } from "../settings/types";
+import { Welcome } from "../welcome/Welcome";
 import { Link } from "./links";
 import { markOpen, placeOf } from "./memory";
 import "./projects.css";
@@ -105,6 +107,8 @@ function Card({ p, onChanged }: { p: ProjectCard; onChanged: () => void }) {
 
 export function ProjectsPage() {
   const list = useApi<ProjectsResponse>("/projects");
+  const settings = useApi<Pick<SettingsData, "welcome_done">>("/settings");
+  const [welcomed, setWelcomed] = useState(false);
   const go = useRouterNavigate();
   const data = list.data;
   const head = (
@@ -118,6 +122,9 @@ export function ProjectsPage() {
   );
   if (list.error && !data) return <div className="pj-page">{head}<ErrorBox error={list.error} what="your projects" /></div>;
   if (!data) return <div className="pj-page" aria-busy="true">{head}</div>;
+  if (data.projects.length === 0 && settings.data && !settings.data.welcome_done && !welcomed) {   // the first launch (D40)
+    return <Welcome exampleId={data.example.id} onDone={() => { setWelcomed(true); list.reload(); }} />;
+  }
   const openExample = () => { markOpen(data.example.id); go(placeOf(data.example.id)); };
   return (
     <div className="pj-page">{head}

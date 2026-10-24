@@ -55,3 +55,17 @@ def test_accepting_a_rescan_keeps_what_the_map_is(tmp_path):
     assert accepted.source == "code" and accepted.reader == READER
     assert accepted.actions and accepted.written_ms == new.written_ms and accepted.patterns == new.patterns
     assert all(all(i in {n.id for n in accepted.nodes} for i in a.nodes) for a in accepted.advice)
+
+
+def test_a_rescan_waiting_for_review_is_discarded_when_the_map_is_read_again(tmp_path):
+    storage = Storage(tmp_path / "ff.db")
+    planner = ScanPlanner(TRIP_PLANNER)
+    old = planner.analyze(0)
+    old.flow.reader = 0
+    store = storage.flows("deps")
+    for status in ("accepted", "pending"):
+        store.add_flow_version(status, old.flow.model_dump(mode="json"), None, old.analysis.model_dump(mode="json"),
+                               old.fact_sheet_hash)
+    service(storage, "deps").map_folder(planner, fresh=False)
+    assert store.latest_flow_version("pending") is None
+    assert store.flow_version(2)["status"] == "discarded"

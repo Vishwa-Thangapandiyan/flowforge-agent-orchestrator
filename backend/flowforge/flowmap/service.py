@@ -230,6 +230,9 @@ class FlowService:
             latest = self.store.latest_flow_version("accepted")
             if latest is None or (latest["flow"] or {}).get("reader", 0) >= getattr(self.planner, "reader", 0):
                 return None
+            pending = self.store.latest_flow_version("pending")
+            if pending is not None:   # a re-scan made by the older reader: read again below, so it is out of date
+                self.store.update_flow_version(pending["version"], "discarded")
         try:
             draft = self.planner.analyze(0)
         except NoFlow as why:

@@ -186,6 +186,13 @@ def _security_data(result: ScanResult) -> dict[str, Any]:
             "note": "Catches known key formats and these patterns, not everything. Values are never shown."}
 
 
+def _keys_data(root: Path, result: ScanResult) -> dict[str, Any]:
+    """Names and statuses only: this server, which the agent starts, never reads a value (D36)."""
+    found = report(KeyStore(root), result)
+    return {"keys": found, "summary": dict(Counter(k["status"] for k in found if k["status"] != "saved")),
+            "run": "flowforge run -- <the command that starts the app>"}
+
+
 def _flow_data(result: Any) -> dict[str, Any]:
     if result.flow is None:
         return {"available": False, "message": result.message}
@@ -223,7 +230,8 @@ def preview(repo: Path, storage: Storage) -> dict[str, Any]:
     tone = "bad" if "down" in checked else "warn" if "warn" in checked else "ok" if checked else "plain"
     read = r.flow()
     flow, advice = _flow_data(read), _advice_data(read)
-    security = _security_data(read.scan or r.scan())
+    scanned = read.scan or r.scan()
+    security, keys = _security_data(scanned), _keys_data(r.root, scanned)
     worst = next((lv for lv in ("high", "medium", "low") if security["summary"].get(lv)), None)
     cards = [
         {"tool": "get_map", "headline": headline("get_map", deps), "sub": kinds, "tone": "plain"},
@@ -233,6 +241,8 @@ def preview(repo: Path, storage: Storage) -> dict[str, Any]:
         {"tool": "get_security_findings", "headline": headline("get_security_findings", security),
          "sub": "keys in code, plain http, risky MCP servers",
          "tone": {"high": "bad", "medium": "warn"}.get(worst or "", "ok")},
+        {"tool": "get_keys", "headline": headline("get_keys", keys),
+         "sub": "names only: the user types each key, hidden", "tone": "warn" if keys["summary"] else "ok"},
         {"tool": "get_flow", "headline": headline("get_flow", flow) if flow["available"] else None,
          "sub": "as written → could be" if flow["available"] else flow["message"], "tone": "plain"},
         {"tool": "get_advice", "headline": (_plural(len(advice["advice"]), "way") + " to be faster")
@@ -323,11 +333,7 @@ def build_server(repo: Path, storage: Storage, *, transport: httpx.AsyncBaseTran
         read, the dependencies that use it, and its status: saved in FlowForge, only in .env, or missing. You never
         get a value and never need one: write code that reads the name from the environment, then ask the user to
         run the `command` given (they type the key, hidden). Their app gets the keys with `flowforge run -- <app>`."""
-        # names and statuses only: this server, which the agent starts, never reads a value (D36)
-        found = report(KeyStore(r.root), r.scan())
-        summary = dict(Counter(k["status"] for k in found if k["status"] != "saved"))
-        return r.answer("get_keys", {"keys": found, "summary": summary,
-                                     "run": "flowforge run -- <the command that starts the app>"})
+        return r.answer("get_keys", _keys_data(r.root, r.scan()))
 
     @server.tool(annotations=READ)
     def what_changed() -> dict[str, Any]:

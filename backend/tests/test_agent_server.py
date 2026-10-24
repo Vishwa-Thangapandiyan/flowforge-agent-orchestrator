@@ -208,7 +208,8 @@ def test_the_preview_shows_what_each_tool_answers_for_this_repo_without_recordin
     storage = storage_for(tmp_path)
     got = preview(TRIP_PLANNER, storage)
     cards = {c["tool"]: c for c in got["cards"]}
-    assert list(cards) == ["get_map", "check_health", "get_security_findings", "get_flow", "get_advice", "what_changed"]
+    assert list(cards) == ["get_map", "check_health", "get_security_findings", "get_keys", "get_flow", "get_advice",
+                          "what_changed"]
     assert cards["get_security_findings"]["headline"] == "1 high · 2 medium"
     assert cards["get_map"]["headline"] == "12 dependencies"
     assert cards["get_map"]["sub"] == "1 LLM · 4 MCP servers · 6 APIs · 1 program"

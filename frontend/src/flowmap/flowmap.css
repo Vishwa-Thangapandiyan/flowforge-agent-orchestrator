@@ -420,9 +420,9 @@
 .ff-risk.lv-high { background: var(--coral); color: #2a0d08; }
 .ff-risk.lv-medium { background: var(--amber); color: #2a1d02; }
 .ff-risk.lv-low { background: var(--blue); color: #0b1733; }
-.ff-key { position: absolute; top: -8px; right: -8px; z-index: 2; display: grid; place-items: center; width: 20px; height: 20px;
+/* top-left, so it never reads as the security "!" in the other corner */
+.ff-key { position: absolute; top: -8px; left: -8px; z-index: 2; display: grid; place-items: center; width: 20px; height: 20px;
   border-radius: 50%; border: 2px solid var(--canvas); }
-.ff-key.beside { right: 16px; }
 .ff-key.kn-missing { background: var(--amber); color: #2a1d02; }
 .ff-key.kn-env_file { background: var(--slate-bg); color: var(--slate); }
 .sp-keys .key-row { padding: 8px 0; }

@@ -120,7 +120,7 @@ function Shell({ d, selected, children }: { d: BlockData; selected: boolean; chi
       <Status d={d} />
       {d.health && n.kind !== "start" && <span className={`hdot ff-hdot ${d.health.status}`} aria-hidden="true" />}
       {d.risk && <span className={`ff-risk lv-${d.risk}`} aria-hidden="true">!</span>}
-      {d.keyNeed && <span className={`ff-key kn-${d.keyNeed}${d.risk ? " beside" : ""}`} aria-hidden="true">{Icons.key(11)}</span>}
+      {d.keyNeed && <span className={`ff-key kn-${d.keyNeed}`} aria-hidden="true">{Icons.key(11)}</span>}
       <Handles />
     </div>
   );

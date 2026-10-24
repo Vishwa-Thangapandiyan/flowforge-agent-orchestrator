@@ -46,6 +46,9 @@ flowforge = "flowforge.cli:main"
 flowforge-map = "flowforge.cli:main"   # so `uvx flowforge-map` runs it
 
 [dependency-groups]
+desktop = [
+    "pyinstaller>=6",
+]
 dev = [
     "pytest>=8",
     "pytest-asyncio>=0.24",

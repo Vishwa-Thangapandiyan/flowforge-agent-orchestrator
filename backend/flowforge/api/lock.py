@@ -1,13 +1,14 @@
-"""The locked key view (D37): the only place FlowForge shows a key's value. A password and the code from your phone
+"""The Vault (D37, D38): the only place FlowForge shows a key's value. Your password, then the code from your phone,
 open it for five minutes; values come one at a time, are never stored or logged, and the agent's MCP server has no way
-to them. Every route answers only to the dashboard on this machine (D36's Host/Origin guard).
+to them. Every route answers only to the dashboard on this machine (`from_this_machine`).
 
 GET  /lock            {state: none|pending|on, open, seconds_left, reset_at}
 POST /lock/setup      {password} → {uri, qr}: the phone's secret, shown once
 POST /lock/confirm    {password, code} → {state: "on"}
-POST /lock/open       {password, code} → {open: true, seconds_left}, with an httpOnly SameSite=Strict cookie
+POST /lock/password   {password} → {next: "code"}, with a 2-minute httpOnly ticket for step 2
+POST /lock/code       {code} + the ticket → {open: true, seconds_left}, with an httpOnly SameSite=Strict cookie
 POST /lock/close
-GET  /keys/hidden     open only: [{where: code|saved|env, name, ref}], no values
+GET  /vault/keys      open only: every key, its health and details, no values
 POST /keys/reveal     open only: {where, name, ref} → {value}
 """
 
@@ -28,12 +29,13 @@ from flowforge.scan.files import language
 from flowforge.security.finders import find_keys, is_secret_name, key_span
 from flowforge.security.findings import env_name
 from flowforge.security.keystore import KeyStore
-from flowforge.security.lock import SESSION_S, Lock, LockError
+from flowforge.security.lock import HALF_S, SESSION_S, Lock, LockError
 from flowforge.state import app_state
 
 router = APIRouter(dependencies=[Depends(from_this_machine)])
 
 COOKIE = "ff_keyview"
+STEP_COOKIE = "ff_vault_step"   # step 1's ticket, for step 2 only
 _CONFIG_PAIR = re.compile(r'"([A-Za-z_][A-Za-z0-9_]*)"\s*:\s*"((?:[^"\\]|\\.)*)"')
 
 
@@ -47,6 +49,10 @@ class Password(_Body):
 
 class PasswordCode(_Body):
     password: str
+    code: str
+
+
+class Code(_Body):
     code: str
 
 
@@ -138,13 +144,27 @@ def confirm(body: PasswordCode) -> dict[str, Any]:
     return {"state": "on"}
 
 
-@router.post("/lock/open")
-def open_view(body: PasswordCode, response: Response) -> dict[str, Any]:
-    lock = Lock()
+@router.post("/lock/password")
+def vault_password(body: Password, response: Response) -> dict[str, Any]:
+    """Step 1 of 2 (D38): the password. Right: a ticket for step 2; wrong: one try counted."""
     try:
-        token = lock.open(body.password, body.code)
+        ticket = Lock().password(body.password)
     except LockError as e:
         raise HTTPException(403, str(e)) from None
+    response.set_cookie(STEP_COOKIE, ticket, max_age=HALF_S, httponly=True, samesite="strict", path="/lock")
+    _no_store(response)
+    return {"next": "code", "seconds_left": HALF_S}
+
+
+@router.post("/lock/code")
+def vault_code(body: Code, request: Request, response: Response) -> dict[str, Any]:
+    """Step 2 of 2: the phone's code, with step 1's ticket, opens the vault for five minutes."""
+    lock = Lock()
+    try:
+        token = lock.code(request.cookies.get(STEP_COOKIE), body.code)
+    except LockError as e:
+        raise HTTPException(403, str(e)) from None
+    response.delete_cookie(STEP_COOKIE, path="/lock")
     response.set_cookie(COOKIE, token, max_age=SESSION_S, httponly=True, samesite="strict", path="/")
     _no_store(response)
     return {"open": True, "seconds_left": lock.seconds_left(token)}
@@ -157,15 +177,75 @@ def close_view(request: Request, response: Response) -> dict[str, Any]:
     return {"open": False}
 
 
-@router.get("/keys/hidden")
-def hidden(response: Response, _: str = Depends(_session)) -> dict[str, Any]:
-    """What the open view can show, without a value: keys in code, saved in FlowForge, in .env."""
+OLD_DAYS = 90
+_LIVE = re.compile(r"^(?:[spr]k|rzp)_live_")
+_TEST = re.compile(r"^(?:[spr]k|rzp)_test_")
+
+
+def _kind(value: str | None) -> str | None:
+    """live or test, from the key's own prefix (Stripe, Razorpay); None when it doesn't say. Only the word leaves."""
+    if not value:
+        return None
+    return "live" if _LIVE.match(value) else "test" if _TEST.match(value) else None
+
+
+def _health(row: dict[str, Any], readable: bool, read_by_code: bool, days: int | None) -> list[str]:
+    """What's wrong with a key, worst first; ["healthy"] when nothing is (D38)."""
+    where = {p["where"] for p in row["places"]}
+    out = []
+    if "code" in where:
+        out.append("in code")
+    if "saved" in where and not readable:
+        out.append("can't read")
+    if not where:
+        out.append("missing")
+    if "env" in where:
+        out.append("in .env")
+    if days is not None and days >= OLD_DAYS:
+        out.append(f"{days} days old")
+    if "saved" in where and not read_by_code:
+        out.append("unused")
+    return out or ["healthy"]
+
+
+@router.get("/vault/keys")
+def vault_keys(response: Response, _: str = Depends(_session)) -> dict[str, Any]:
+    """The open Vault: every key the code reads, FlowForge holds or .env sets, with where it lives, what uses it, when
+    it was saved, live or test, and its health. No value: Show asks for one at a time."""
+    from datetime import UTC, datetime
+
+    from flowforge.security.keystore import report
+
     _no_store(response)
     repo = _repo()
-    items = [{"where": "code", "name": name, "ref": ref} for name, ref, _value in _in_code(repo)]
-    items += [{"where": "saved", "name": name, "ref": None} for name in KeyStore(repo).names()]
-    items += [{"where": "env", "name": name, "ref": ".env"} for name in _in_env(repo)]
-    return {"items": items}
+    store = KeyStore(repo)
+    result = scan_repo(repo)
+    saved, values, in_env = store.saved(), store.env(), _in_env(repo)
+    in_code = _in_code(repo)
+    reads = {k["name"]: k for k in report(store, result)}
+    dep_names = {d.id: d.name for d in result.dependencies}
+    names = list(dict.fromkeys([*reads, *(n for n, _r, _v in in_code), *saved, *in_env]))
+    rows = []
+    now = datetime.now(UTC)
+    for name in names:
+        places: list[dict[str, Any]] = []
+        if name in saved:
+            places.append({"where": "saved", "ref": None, "store": saved[name].get("store")})
+        places += [{"where": "code", "ref": ref, "store": None} for n, ref, _v in in_code if n == name]
+        if name in in_env:
+            places.append({"where": "env", "ref": ".env", "store": None})
+        added = saved.get(name, {}).get("added")
+        try:
+            days = (now - datetime.fromisoformat(added)).days if added else None
+        except ValueError:
+            days = None
+        value = values.get(name) or in_env.get(name) or next((v for n, _r, v in in_code if n == name), None)
+        info = reads.get(name, {})
+        row = {"name": name, "places": places, "added": added, "kind": _kind(value),
+               "deps": [{"id": d, "name": dep_names.get(d, d)} for d in info.get("deps", [])], "ref": info.get("ref")}
+        row["health"] = _health(row, name in values, info.get("ref") is not None, days)
+        rows.append(row)
+    return {"keys": rows}
 
 
 @router.post("/keys/reveal")

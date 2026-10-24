@@ -18,10 +18,20 @@ export const THEMES: { id: GraphTheme; name: string; note: string }[] = [
 
 const KEY = "flowforge.graphTheme";   // a viewer convenience: kept in this browser only (D26)
 
+/** The style a link asks for (?style=boxed), if it names one. */
+export function styleInLink(): GraphTheme | null {
+  try {
+    const asked = new URLSearchParams(window.location.search).get("style");
+    return THEMES.some((t) => t.id === asked) ? (asked as GraphTheme) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function readTheme(): GraphTheme {
   try {
-    const asked = new URLSearchParams(window.location.search).get("style");   // a link to one style: ?style=boxed
-    if (THEMES.some((t) => t.id === asked)) return asked as GraphTheme;
+    const asked = styleInLink();
+    if (asked) return asked;
     const saved = localStorage.getItem(KEY);
     return THEMES.some((t) => t.id === saved) ? (saved as GraphTheme) : "studio";
   } catch {
@@ -41,6 +51,7 @@ export function useMapStyle(): [GraphTheme, (theme: GraphTheme) => void] {
   useEffect(() => {
     const take = (e: Event) => setTheme((e as CustomEvent<GraphTheme>).detail);
     window.addEventListener(MAP_STYLE_EVENT, take);
+    setTheme(readTheme());   // a style adopted between the first render and now
     return () => window.removeEventListener(MAP_STYLE_EVENT, take);
   }, []);
   return [theme, (t: GraphTheme) => { setTheme(t); saveTheme(t); }];

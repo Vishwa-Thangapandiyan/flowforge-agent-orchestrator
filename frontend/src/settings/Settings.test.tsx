@@ -77,10 +77,10 @@ test("the Look card follows a map style that arrives after it opened (Codex revi
   const { adoptMapStyle } = await import("../flowmap/themes");
   api();
   renderAt("/settings");
-  const select = await screen.findByRole("combobox", { name: /Maps open in/ });
-  expect(select).toHaveValue("studio");
+  expect(await screen.findByRole("combobox", { name: /Maps open in/ })).toHaveValue("studio");
   act(() => adoptMapStyle("blueprint"));
-  expect(select).toHaveValue("blueprint");
+  // found again: the page re-reads every few seconds and may have drawn the card anew
+  await vi.waitFor(() => expect(screen.getByRole("combobox", { name: /Maps open in/ })).toHaveValue("blueprint"));
 });
 
 test("a map style that can't be saved says so (Codex review)", async () => {

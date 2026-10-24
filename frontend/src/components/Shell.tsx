@@ -7,7 +7,7 @@ import { api, setProject, useApi } from "../api/client";
 import type { Meta } from "../api/types";
 import { Icons } from "./icons";
 import { applyTheme, readTheme } from "./theme";
-import { adoptMapStyle, type GraphTheme } from "../flowmap/themes";
+import { adoptMapStyle, styleInLink, type GraphTheme } from "../flowmap/themes";
 import { CountsProvider, useCounts } from "../security/counts";
 
 const MetaContext = createContext<Meta>({ project: "My project", example: false, version: "" });
@@ -57,7 +57,7 @@ function useLook(): void {
     synced = true;
     let mapStyleSaved = false;
     try { mapStyleSaved = localStorage.getItem("flowforge.graphTheme") !== null; } catch { /* private window */ }
-    if (!mapStyleSaved) {
+    if (!mapStyleSaved && !styleInLink()) {   // a link's own style wins (Codex review)
       api.get<{ map_style: GraphTheme | null }>("/settings").then((s) => { if (s.map_style) adoptMapStyle(s.map_style); }, () => {});
     }
   }, []);

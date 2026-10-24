@@ -1301,6 +1301,29 @@ D39 left pairing the agent once to this step.
 
 ---
 
+## D41. A CLI that looks like FlowForge (Vishwa, 2026-10-24)
+
+**Context.** Step ③ of Vishwa's order (① projects ② settings ③ CLI ④ Tauri). The CLI printed plain text and JSON.
+
+**Choice:**
+- A 3D "FlowForge" banner, camel-cased so the capital F's stand out. The letters are a constant in `backend/flowforge/cli_ui.py`: a shadowed block font like ANSI Shadow, with no figlet dependency. A true-blue gradient runs left to right, #2457C5 → #7FA8FF. It appears before the server starts, on `flowforge status` and `flowforge --help`; never when piped, with `--plain`, or with `NO_COLOR`.
+- Use `rich` for colours, tables and spinners, including Windows support.
+- New commands read FlowForge's own files offline (projects.json, project databases and key-store names), never the dashboard's HTTP API or a key value:
+  - `flowforge status [PROJECT]`: current folder's project, else last opened; dependencies with last-health dots (green up, amber warn, red down, grey unchecked), issues by level, missing keys, and the next thing to do, such as `flowforge key add X`.
+  - `flowforge projects`: name, folder, dependencies, issues, missing keys and last opened.
+  - `flowforge issues [PROJECT]`: level, title, file:line and fix, never a value.
+  - `flowforge check [PROJECT]`: health checks like Check now, with a spinner per dependency; refuse unapproved MCP commands (D24) and direct the user to approve in the dashboard. The offline implementation may instead print what would be checked and "run checks from the dashboard".
+  - `flowforge settings`: welcome done, map style, data location and version.
+  - `flowforge scan PATH`: a TTY summary with counts by kind, dependencies and findings; piped or `--json` prints today's JSON exactly.
+  - `flowforge key list`: the same data in a table with coloured statuses.
+- `--plain` on every command; respect `NO_COLOR`; use ASCII decorations when stdout's encoding is not UTF-8. No colour or animation when plain, NO_COLOR is set, or stdout is not a TTY.
+
+**Why:** the terminal is where developers live. It should look like the same product as the dashboard.
+
+**Code:** `backend/flowforge/cli.py`, `backend/flowforge/cli_ui.py`.
+
+---
+
 ## Step JSON schema (reference)
 
 ```json

@@ -33,6 +33,20 @@ You need Python 3.12 or newer ([uv](https://docs.astral.sh/uv/) installs it for 
 
 The first time, a short welcome walks you through three steps, each one skippable: your app's folder (or the example), pairing your coding agent once, and a lock for your keys. **⚙ Settings** at the bottom of the rail keeps what applies to every project: your agent, the theme and map style, the Vault's lock, and your data (each project's size, the MCP servers it may start, its check history, and the version, with **Check for updates**, which asks pypi.org only when you press it).
 
+### Terminal
+
+```bash
+flowforge status [PROJECT]     # health, issues, missing keys and the next step
+flowforge projects             # every project at a glance
+flowforge issues [PROJECT]     # security findings and fixes
+flowforge check [PROJECT]      # preview checks; run them from the dashboard
+flowforge settings             # saved settings, data location and version
+flowforge scan ~/my-app        # terminal summary; pipe it or use --json for JSON
+flowforge key list             # key names and statuses, never values
+```
+
+Project commands use the current folder's project, else the last opened; PROJECT is its name or id. They read local files and work with the dashboard stopped. `--plain` or `NO_COLOR` disables colour and the banner; pipes have no colour or animation.
+
 ### From source (to work on FlowForge)
 
 You need **[uv](https://docs.astral.sh/uv/)** (it installs Python for you) and **[Node.js](https://nodejs.org/) 20 or newer** for the dashboard.
@@ -50,7 +64,7 @@ uv run flowforge --example                # opens http://127.0.0.1:8000: a sampl
 ### Map your own repo
 
 ```bash
-uv run flowforge scan path/to/your/repo     # what it depends on, as JSON: nothing stored, nothing sent
+uv run flowforge scan path/to/your/repo     # summary (pipe or --json for JSON); nothing stored, nothing sent
 uv run flowforge --repo path/to/your/repo   # opens its dependency map; add --replace to switch folders
 ```
 

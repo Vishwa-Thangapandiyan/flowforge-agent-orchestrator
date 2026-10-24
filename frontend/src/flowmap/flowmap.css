@@ -358,6 +358,12 @@
 
 /* Boxed: containers of what runs together (flow) or of one kind (dependencies); right-angled lines */
 .react-flow__viewport-portal { z-index: -1; }   /* Boxed containers sit behind the lines and blocks */
+/* Boxed lanes (D38): one line from each start block runs above the lanes into each lane's top */
+.ff-bus { position: absolute; top: 0; left: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
+.ff-bus path { fill: none; stroke: var(--edge); stroke-width: 1.6; }
+/* a block whose key is missing (D38) */
+.ff-block.key-missing { border: 2px solid var(--coral); box-shadow: 0 0 0 4px color-mix(in srgb, var(--coral) 16%, transparent); }
+.ff-h.key-missing { color: var(--coral); font-weight: 650; }
 .ff-box { position: absolute; top: 0; left: 0; border-radius: 18px; background: color-mix(in srgb, var(--teal) 6%, var(--surface-2));
   border: 1px solid color-mix(in srgb, var(--teal) 20%, var(--line)); pointer-events: none; }
 .ff-box-label { position: absolute; top: 10px; left: 14px; font: 650 13px/1 var(--display); color: var(--fg); }

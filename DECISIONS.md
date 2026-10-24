@@ -1134,13 +1134,15 @@ The agent only needs the key's **name**: the code it writes reads `os.environ["S
   - **missing**.
   
   The names and where they are read come from the scan as it is (`Dependency.env_names`, `ScanResult.env_names`), so `READER` doesn't change.
+  
+  A key belongs to a dependency when the scan sees it read on the dependency's own lines; else when its name names the service (`STRIPE_SECRET_KEY` → Stripe); else when its file has only one dependency.
 - **On the map** (D33: no new page or header control):
   - a 🔑 badge on a block whose keys are missing (amber) or only in `.env` (grey);
   - a "Keys" part in the ⚠ chip;
   - the block's keys in the step panel.
   
   Each key offers the command to copy and a password box (`autocomplete=off`, emptied after it saves). Example mode shows the statuses but saves nothing (409).
-- **For the agent:** a seventh read-only MCP tool, `get_keys`. It returns names, statuses, where each is read, which dependencies use it, and the command to ask the user to run.
+- **For the agent:** a seventh read-only MCP tool, `get_keys`. It returns names, statuses, where each is read, which dependencies use it, and the command to ask the user to run. The MCP server, which the agent starts, never reads a value: not even to mask with.
 - **No sign-in, no 2FA, no page that shows keys.** FlowForge is local and single-user (§6.5). A page that shows keys is a place keys leak (a screen share, a screenshot). The keychain is already locked by the user's login. To see a key, use the provider's dashboard.
 
 **Why:** the user hands a key over once, and the agent wires it in by name. The key isn't left in a file the agent reads by habit.

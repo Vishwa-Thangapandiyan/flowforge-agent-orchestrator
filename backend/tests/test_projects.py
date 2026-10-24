@@ -133,9 +133,21 @@ def test_rename_and_remove_a_project_never_touch_its_folder(two):
     assert not db.exists() and (blog / "app.py").is_file()               # FlowForge's copy gone, your code kept
 
 
-def test_the_default_project_cant_be_removed_while_open(two):
+def test_removing_the_default_project_hands_over_to_another_then_to_none(two, tmp_path):
+    """Codex review: any project can be removed (D39). The next one opened becomes the default; with none left,
+    the map offers to scan a folder."""
+    _, blog = two
     with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
-        assert c.delete("/projects/shop").status_code == 409
+        c.post("/projects", json={"path": str(blog)})
+        assert c.delete("/projects/shop").json() == {"id": "shop", "removed": True}
+        listed = c.get("/projects").json()
+        assert [p["id"] for p in listed["projects"]] == ["blog"] and listed["default"] == "blog"
+        assert "api-api-blog-test" in node_ids(c)                       # no prefix: now blog
+        assert c.delete("/projects/blog").json()["removed"] is True
+        assert c.get("/projects").json() == {**c.get("/projects").json(), "default": None, "projects": []}
+        assert c.get("/scan").json()["repo"] is None                     # a blank FlowForge: scan a folder
+        assert c.get("/flow").json()["available"] is False
+    assert not (tmp_path / "flowforge.db").exists()
 
 
 def test_project_changes_answer_only_to_this_machine(two):

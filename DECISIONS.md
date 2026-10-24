@@ -1262,7 +1262,7 @@ This is step ① of Vishwa's order (① projects, ② settings + first run, ③ 
   - a new read-only tool, `list_projects`, lists every project with its status.
   
   `flowforge mcp --repo PATH` still works as before. The screen that pairs the agent belongs to step ② (Settings + first run).
-- Removing a project from FlowForge deletes only FlowForge's copy of its map and checks, after you confirm. It never touches the folder.
+- Removing a project from FlowForge deletes only FlowForge's copy of its map and checks, after you confirm. It never touches the folder. Removing the default project hands over to the project opened most recently; with none left, FlowForge offers to scan a folder (Codex review).
 - **Amends D21:** a different folder is a new project, so `--replace` and the one-folder rule go. `flowforge --repo PATH` opens that folder's project, adding it if new.
 
 **Why:** most people work on more than one app. Each one deserves its own map, issues and keys, and switching shouldn't cost anything.

@@ -106,6 +106,15 @@ async def ensure(project_id: str) -> AppState | None:
         return s
 
 
+def blank(like: AppState) -> AppState:
+    """A FlowForge with no project (the last one was removed): its map offers to scan a folder."""
+    from_file = [c for c in (like.registry.get(i) for i in sorted(like.file_managed)) if c is not None]
+    path = flowforge_home() / "blank.db"
+    for suffix in ("", "-wal", "-shm"):
+        Path(str(path) + suffix).unlink(missing_ok=True)
+    return build_state(path, like.redactor, from_file, example=False)
+
+
 async def close(s: AppState) -> None:
     """Stop a project's background work and close its nodes."""
     s.shutting_down = True

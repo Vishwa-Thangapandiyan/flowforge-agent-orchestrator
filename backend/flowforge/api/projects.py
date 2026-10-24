@@ -19,7 +19,7 @@ from pydantic import BaseModel, ConfigDict
 from flowforge import state as app_state_module
 from flowforge.api.keys import from_this_machine
 from flowforge.api.scan import REPO_SETTING
-from flowforge.project_states import close, ensure
+from flowforge.project_states import blank, close, ensure
 from flowforge.projects import EXAMPLE_ID, Project, Projects
 from flowforge.scan import ScanResult
 from flowforge.security.keystore import KeyStore, report
@@ -120,11 +120,17 @@ async def remove_project(project_id: str) -> dict[str, Any]:
     """FlowForge's copy goes (its database); the folder and your code are never touched (D39)."""
     if project_id == EXAMPLE_ID:
         raise HTTPException(409, "The example is built in.")
-    if project_id == app_state_module.default_id:
-        raise HTTPException(409, "This is the project FlowForge started with: open another one first.")
-    found = Projects().remove(project_id)
+    found = Projects().get(project_id)
     if found is None:
         raise HTTPException(404, "No such project.")
+    if project_id == app_state_module.default_id:   # hand over to the next project opened, else to a blank FlowForge
+        rest = [p for p in Projects().list() if p.id != project_id and Path(p.path).is_dir()]
+        nxt = max(rest, key=lambda p: p.opened or p.added, default=None)
+        handed = await ensure(nxt.id) if nxt else None
+        old = app_state_module.current
+        app_state_module.current = handed or (blank(old) if old is not None else None)
+        app_state_module.default_id = nxt.id if handed else None
+    Projects().remove(project_id)
     state = app_state_module.projects.pop(project_id, None)
     if state is not None:
         await close(state)

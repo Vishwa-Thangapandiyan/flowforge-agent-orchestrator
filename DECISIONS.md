@@ -1143,7 +1143,7 @@ The agent only needs the key's **name**: the code it writes reads `os.environ["S
   
   Each key offers the command to copy and a password box (`autocomplete=off`, emptied after it saves). Example mode shows the statuses but saves nothing (409).
   
-  Saving or forgetting a key answers only to the dashboard's own address: a Host of `localhost`, `127.0.0.1`, `::1` or the `FLOWFORGE_HOST` chosen, and an Origin, if sent, of the same. Otherwise a web page could swap in its own key (its own Stripe account, say) through DNS rebinding. On a dashboard bound to `0.0.0.0` and opened from another machine, keys are added with the CLI.
+  Saving or forgetting a key answers only to the dashboard's own address: a Host of `localhost`, `127.0.0.1`, `::1` or the `FLOWFORGE_HOST` chosen, and an Origin, if sent, of the same. Otherwise a web page could swap in its own key (its own Stripe account, say) through DNS rebinding. On a dashboard bound to `0.0.0.0` and opened from another machine, keys are added with the CLI. *(Changed by D37: the caller's real address must be this machine, and `FLOWFORGE_HOST` no longer counts.)*
 - **For the agent:** a seventh read-only MCP tool, `get_keys`. It returns names, statuses, where each is read, which dependencies use it, and the command to ask the user to run. The MCP server, which the agent starts, never reads a value: not even to mask with.
 - **No sign-in, no 2FA, no page that shows keys.** FlowForge is local and single-user (§6.5). A page that shows keys is a place keys leak (a screen share, a screenshot). The keychain is already locked by the user's login. To see a key, use the provider's dashboard.
 
@@ -1193,7 +1193,7 @@ The rule from D36 stays: the coding agent never gets a value from FlowForge.
   - **Open.** Password + current code (±1 step, no code used twice) opens a 5-minute session (an httpOnly, SameSite=Strict cookie). Five wrong tries lock the view for 15 minutes.
   - **View.** Values are masked until **Show**, which hides them again after 30 s. The view locks itself when the session ends.
   - **Reset.** `flowforge lock reset` asks for the password and a code. `--forget` drops the lock (the keys stay), writes it to `FLOWFORGE_HOME/lock-events.log`, and the dashboard shows "Key view was reset at …" until the next unlock.
-  - **Guards.** The lock and value routes have D36's Host/Origin guard. The MCP server has no way to values.
+  - **Guards.** Every route that saves a key, makes a fix, or touches the lock or a value answers only to this machine. The connection must come from loopback, and Host and Origin must name loopback too. Codex review: with `--host 0.0.0.0`, another machine could fake the headers, set up its own lock first and read every key; its real address can't be faked. The MCP server has no way to values.
 
 **Why:** the user does one thing (paste, click Fix, click Approve) and FlowForge does the rest. The values stay where only the person with the password and the phone can open them.
 

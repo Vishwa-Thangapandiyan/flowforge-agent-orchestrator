@@ -91,3 +91,16 @@ test("Lock now closes it, and a forced reset is shown until the next unlock", as
   expect(calls.find((c) => c.url === "/lock/close")?.init?.method).toBe("POST");
   expect(await within(await view()).findByRole("button", { name: /Open/ })).toBeInTheDocument();
 });
+
+test("Cancel leaves a half-done set-up, and it can be finished later (Codex review)", async () => {
+  lockApi("none");
+  renderAt("/keys");
+  await userEvent.click(within(await view()).getByRole("button", { name: /Set up/ }));
+  await userEvent.type(screen.getByLabelText("Password"), "correct horse");
+  await userEvent.type(screen.getByLabelText("Password again"), "correct horse");
+  await userEvent.click(screen.getByRole("button", { name: "Next" }));
+  await screen.findByRole("img", { name: /QR code/ });
+  await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  expect(screen.queryByRole("img", { name: /QR code/ })).not.toBeInTheDocument();
+  expect(within(await view()).getByRole("button", { name: /Set up|Finish setting up/ })).toBeInTheDocument();
+});

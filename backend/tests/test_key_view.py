@@ -21,6 +21,7 @@ FAKE = "sk_test_FAKEFAKE12345678"      # in code
 SAVED = "rzp_test_FAKE1234567"         # saved in FlowForge
 IN_ENV = "AIzaFAKEFAKEFAKEFAKEFAKE1234"  # in .env
 LOCAL = "http://127.0.0.1:8000"
+HERE = ("127.0.0.1", 50000)   # the caller's real address: this machine
 PASSWORD = "correct horse battery"
 
 
@@ -68,13 +69,13 @@ def unlocked(c: TestClient, secret: bytes) -> None:
 
 
 def test_the_lock_starts_off_and_says_so(shop):
-    with TestClient(main.app, base_url=LOCAL) as c:
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         assert c.get("/lock").json() == {"state": "none", "open": False, "seconds_left": 0, "reset_at": None}
         assert c.get("/keys/hidden").status_code == 401
 
 
 def test_open_the_view_list_the_keys_and_reveal_one_at_a_time(shop):
-    with TestClient(main.app, base_url=LOCAL) as c:
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         secret = set_up(c)
         assert c.get("/keys/hidden").status_code == 401             # set up isn't open
         unlocked(c, secret)
@@ -94,7 +95,7 @@ def test_open_the_view_list_the_keys_and_reveal_one_at_a_time(shop):
 
 
 def test_no_session_no_value(shop):
-    with TestClient(main.app, base_url=LOCAL) as c:
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         set_up(c)
         r = c.post("/keys/reveal", json={"where": "saved", "name": "RAZORPAY_KEY", "ref": None})
         assert r.status_code == 401 and SAVED not in r.text
@@ -103,7 +104,7 @@ def test_no_session_no_value(shop):
 
 
 def test_closing_ends_the_session(shop):
-    with TestClient(main.app, base_url=LOCAL) as c:
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         unlocked(c, set_up(c))
         assert c.get("/lock").json()["open"] is True
         c.post("/lock/close")
@@ -114,7 +115,7 @@ def test_closing_ends_the_session(shop):
 def test_a_wrong_try_says_the_same_whatever_was_wrong(shop):
     import time
 
-    with TestClient(main.app, base_url=LOCAL) as c:
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         secret = set_up(c)
         wrong_pw = c.post("/lock/open", json={"password": "not it at all", "code": totp(secret, time.time() + 30)})
         wrong_code = c.post("/lock/open", json={"password": PASSWORD, "code": "000000"})
@@ -127,14 +128,14 @@ def test_a_wrong_try_says_the_same_whatever_was_wrong(shop):
     ("/keys/reveal", {"where": "saved", "name": "RAZORPAY_KEY", "ref": None}),
 ])
 def test_only_the_dashboard_on_this_machine_can_use_the_lock(shop, path, body):
-    with TestClient(main.app, base_url=LOCAL) as c:
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         assert c.post(path, json=body, headers={"host": "evil.test"}).status_code == 403
         assert c.post(path, json=body, headers={"origin": "http://evil.test"}).status_code == 403
 
 
 def test_a_revealed_value_is_in_no_stored_row_and_no_log(shop, tmp_path, caplog):
     caplog.set_level(logging.DEBUG)
-    with TestClient(main.app, base_url=LOCAL) as c:
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         unlocked(c, set_up(c))
         for where, name in (("saved", "RAZORPAY_KEY"), ("env", "GOOGLE_API_KEY")):
             c.post("/keys/reveal", json={"where": where, "name": name, "ref": None})
@@ -150,3 +151,23 @@ async def test_the_agent_has_no_way_to_a_value(shop, tmp_path):
     assert not any(word in n for n in names for word in ("reveal", "value", "lock", "unlock"))
     for value in (FAKE, SAVED, IN_ENV):
         assert all(value not in a for a in answers)
+
+
+@pytest.mark.parametrize("path, body", [
+    ("/lock/setup", {"password": PASSWORD}), ("/keys/reveal", {"where": "saved", "name": "RAZORPAY_KEY", "ref": None}),
+])
+def test_another_machine_is_refused_even_when_it_claims_to_be_localhost(shop, path, body):
+    """Codex review (P1): with --host 0.0.0.0, Host and Origin can be faked; the caller's real address can't."""
+    with TestClient(main.app, base_url="http://localhost:8000", client=("192.168.1.50", 40000)) as c:
+        r = c.post(path, json=body, headers={"host": "localhost:8000", "origin": "http://localhost:8000"})
+        assert r.status_code == 403
+        assert c.put("/keys/A_KEY", json={"value": FAKE}, headers={"host": "localhost:8000"}).status_code == 403
+
+
+@pytest.mark.parametrize("address, local", [("127.0.0.1", True), ("127.0.0.2", True), ("::1", True),
+                                            ("::ffff:127.0.0.1", True), ("192.168.1.50", False), ("10.0.0.1", False),
+                                            ("::ffff:192.168.1.50", False), ("testclient", False), (None, False)])
+def test_what_counts_as_this_machine(address, local):
+    from flowforge.api.keys import _loopback_peer
+
+    assert _loopback_peer(address) is local

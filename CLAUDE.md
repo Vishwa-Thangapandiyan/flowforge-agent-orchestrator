@@ -217,7 +217,7 @@ Fixed in Phase 1: `LLMNode` is no longer NIM-only (D10); `MCPNode` has tool disc
   - A key already written in code is reported (D31) but not moved into the store yet (it edits code: Phase 10).
   - A key is tied to a dependency when the scan sees it read on the dependency's line, when its name names the service (`STRIPE_…` → Stripe), or when its file has only one dependency; otherwise it is listed without a block.
   - `keys.json` (names only) has no lock across processes: two `flowforge key add` at the same moment can lose one name.
-  - Only the key routes check the Host and Origin (against DNS rebinding); the rest of the API (connector edits, `POST /scan`, `POST /checks`) doesn't yet, and should.
+  - Only the key, fix and lock routes check the caller (a loopback address, and a loopback Host and Origin, against DNS rebinding and other machines). The rest of the API (connector edits, `POST /scan`, `POST /checks`) doesn't yet, and should.
 - Issues and fixes (D37) limits:
   - Fix covers a key that is a whole string literal in Python, or in JS/TS that shows it runs on Node (browser code has no `process.env`). A key inside a longer string (`"Bearer …"`), an f-string, a comment, Dart, or any MCP config goes to the agent. A later Fix for `.mcp.json` could wrap the server's command in `flowforge run`, so only the server gets the key.
   - Fix needs git, a first commit, and the file committed; it uses your git identity and runs your hooks (a failing hook leaves no branch).

@@ -8,7 +8,6 @@ DELETE /keys/{name}          → {name, removed}
 
 from __future__ import annotations
 
-import os
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -57,18 +56,28 @@ def stored_scan(s: AppState, repo: Path) -> ScanResult:
 _LOOPBACK = {"localhost", "127.0.0.1", "::1"}
 
 
-def _this_machine(name: str | None) -> bool:
-    chosen = os.getenv("FLOWFORGE_HOST", "")
-    return bool(name) and (name in _LOOPBACK or (name == chosen and chosen not in ("0.0.0.0", "::")))
+def _loopback_peer(address: str | None) -> bool:
+    """The connection itself comes from this machine (127.0.0.0/8 or ::1)."""
+    import ipaddress
+
+    try:
+        ip = ipaddress.ip_address(address or "")
+    except ValueError:
+        return False
+    mapped = getattr(ip, "ipv4_mapped", None)   # ::ffff:127.0.0.1 on a dual-stack socket
+    return (mapped or ip).is_loopback
 
 
 def from_this_machine(request: Request) -> None:
-    """Saving or forgetting a key needs the dashboard's own address (D36). A web page can't do it: through DNS
-    rebinding its Host is its own name, and from another site its Origin is."""
+    """Saving a key, a fix, the lock and the key view need the dashboard on this machine (D36, D37). The caller's real
+    address must be this machine (with --host 0.0.0.0 another machine could fake the headers: Codex review), and
+    Host and Origin must name it too, so a web page can't reach it through DNS rebinding or from another site."""
     host = urlsplit(f"//{request.headers.get('host', '')}").hostname
     origin = request.headers.get("origin")
-    if not _this_machine(host) or (origin is not None and not _this_machine(urlsplit(origin).hostname)):
-        raise HTTPException(403, "Keys can only be saved from the dashboard on this machine.")
+    peer = request.client.host if request.client else None
+    if (not _loopback_peer(peer) or host not in _LOOPBACK
+            or (origin is not None and urlsplit(origin).hostname not in _LOOPBACK)):
+        raise HTTPException(403, "This works only from the dashboard on this machine (open it at localhost).")
 
 
 def _writable(s: AppState) -> Path:

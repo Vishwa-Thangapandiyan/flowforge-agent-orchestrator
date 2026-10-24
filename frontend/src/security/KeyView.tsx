@@ -214,7 +214,7 @@ export function KeyView() {
   let body;
   if (state.open) {
     body = <Values secondsLeft={state.seconds_left} onClosed={() => { setStep("idle"); reload(); }} />;
-  } else if (step === "setup" || state.state === "pending") {
+  } else if (step === "setup") {
     body = <SetUp onDone={() => { setStep("unlock"); reload(); }} onCancel={() => setStep("idle")} />;
   } else if (step === "unlock" && state.state === "on") {
     body = (
@@ -228,7 +228,7 @@ export function KeyView() {
     body = (
       <div className="kv-head">{Icons.lock(16)} <b>See your key values</b>
         <button type="button" className="btn sm agent" onClick={() => setStep(state.state === "on" ? "unlock" : "setup")}>
-          {state.state === "on" ? "Open" : "Set up"} {Icons.arrow(14)}
+          {state.state === "on" ? "Open" : state.state === "pending" ? "Finish setting up" : "Set up"} {Icons.arrow(14)}
         </button>
         <p className="kv-note">{state.state === "on" ? "Needs your password and the code from your phone." : "Needs a password and an authenticator app on your phone."}</p>
       </div>

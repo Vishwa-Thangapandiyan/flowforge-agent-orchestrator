@@ -20,6 +20,7 @@ FAKE = "sk_test_FAKEFAKE12345678"
 OTHER = "rzp_test_FAKE1234567"
 PLAIN = "plainvalue-FAKE-0000-1111"
 LOCAL = "http://127.0.0.1:8000"   # the dashboard's own address: key writes come from this machine only   # no known key shape: only the redactor's memory of saved keys masks it
+HERE = ("127.0.0.1", 50000)   # the caller's real address: this machine
 
 
 def write(root: Path, files: dict[str, str]) -> Path:
@@ -66,7 +67,7 @@ def by_name(keys):
 
 
 def test_the_map_lists_each_key_the_code_reads_with_its_status(real, shop):
-    with TestClient(main.app, base_url=LOCAL) as c:
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         got = c.get("/keys").json()
     keys = by_name(got["keys"])
     assert set(keys) == {"STRIPE_SECRET_KEY", "OPENAI_API_KEY"}   # OLLAMA_HOST isn't a key
@@ -80,7 +81,7 @@ def test_the_map_lists_each_key_the_code_reads_with_its_status(real, shop):
 
 
 def test_a_key_saved_from_the_dashboard_is_never_sent_back(real, shop):
-    with TestClient(main.app, base_url=LOCAL) as c:
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         r = c.put("/keys/STRIPE_SECRET_KEY", json={"value": FAKE})
         assert r.status_code == 200 and FAKE not in r.text
         assert r.json() == {"name": "STRIPE_SECRET_KEY", "status": "saved"}
@@ -90,7 +91,7 @@ def test_a_key_saved_from_the_dashboard_is_never_sent_back(real, shop):
 
 
 def test_the_box_takes_json_only_and_checks_the_name(real):
-    with TestClient(main.app, base_url=LOCAL) as c:
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         assert c.put("/keys/STRIPE_SECRET_KEY", content=f"value={FAKE}",
                      headers={"Content-Type": "application/x-www-form-urlencoded"}).status_code == 422
         assert c.put("/keys/STRIPE_SECRET_KEY", json={"value": FAKE, "extra": 1}).status_code == 422
@@ -105,7 +106,7 @@ def test_the_box_takes_json_only_and_checks_the_name(real):
     {"host": "localhost:8000", "origin": "null"},
 ])
 def test_only_the_dashboard_on_this_machine_can_save_or_forget_a_key(real, shop, headers):
-    with TestClient(main.app, base_url=LOCAL) as c:
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         assert c.put("/keys/STRIPE_SECRET_KEY", json={"value": FAKE}, headers=headers).status_code == 403
         assert c.delete("/keys/STRIPE_SECRET_KEY", headers=headers).status_code == 403
         for ok in ({"host": "localhost:8000", "origin": "http://localhost:5173"}, {"host": "[::1]:8000"}):
@@ -115,7 +116,7 @@ def test_only_the_dashboard_on_this_machine_can_save_or_forget_a_key(real, shop,
 
 def test_delete_forgets_a_key(real, shop):
     KeyStore(shop).add("STRIPE_SECRET_KEY", FAKE)
-    with TestClient(main.app, base_url=LOCAL) as c:
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         assert c.delete("/keys/STRIPE_SECRET_KEY").json() == {"name": "STRIPE_SECRET_KEY", "removed": True}
         assert c.delete("/keys/STRIPE_SECRET_KEY").json()["removed"] is False
     assert KeyStore(shop).names() == []
@@ -125,7 +126,7 @@ def test_example_mode_saves_keys_for_the_example_folder(tmp_path, monkeypatch):
     """D37: the demo works, so a key saves; it belongs to the example's folder, never to yours."""
     monkeypatch.setenv("FLOWFORGE_EXAMPLE", "1")
     monkeypatch.setenv("FLOWFORGE_DB", str(tmp_path / "example.db"))
-    with TestClient(main.app, base_url=LOCAL) as c:
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         assert c.get("/keys").json()["example"] is True
         assert c.put("/keys/OLLAMA_API_KEY", json={"value": FAKE}).status_code == 200
         keys = by_name(c.get("/keys").json()["keys"])
@@ -137,7 +138,7 @@ def test_no_folder_means_no_keys(tmp_path, monkeypatch):
     monkeypatch.delenv("FLOWFORGE_EXAMPLE", raising=False)
     monkeypatch.delenv("FLOWFORGE_REPO", raising=False)
     monkeypatch.setenv("FLOWFORGE_DB", str(tmp_path / "empty.db"))
-    with TestClient(main.app, base_url=LOCAL) as c:
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         assert c.get("/keys").json()["keys"] == []
         assert c.put("/keys/A_KEY", json={"value": FAKE}).status_code == 409
 
@@ -147,7 +148,7 @@ def test_a_saved_key_appears_in_no_answer_row_or_log(real, shop, caplog):
     KeyStore(shop).add("PLAIN_TOKEN", PLAIN)
     write(shop, {"leak.py": f'import httpx\nhttpx.get("https://api.example.test/{PLAIN}")\n'})
     caplog.set_level(logging.DEBUG)
-    with TestClient(main.app, base_url=LOCAL) as c:
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         c.put("/keys/STRIPE_SECRET_KEY", json={"value": FAKE})
         logging.getLogger("flowforge.test").warning("leaked %s and %s", PLAIN, FAKE)
         answers = [c.get(r.path).text for r in main.app.routes

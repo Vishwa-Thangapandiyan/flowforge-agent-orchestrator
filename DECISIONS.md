@@ -1088,6 +1088,21 @@ D23's rule holds: nothing drawn by hand. Vishwa chose Python first, with Dart an
 
 ---
 
+## D35. A map made by an older FlowForge is read again (Vishwa, 2026-10-24)
+
+**Context.** Vishwa's Flutter app showed all 37 actions stacked with every UI-only check: its flow had been saved the day before D33, and FlowForge only draws a map when there is none, so a saved map never benefits from a newer reader. Anyone upgrading the package would see the same.
+
+**Choice:**
+- Every map records the version of the reader that made it (`Flow.reader`, from `flowmap.planner.READER`). The number goes up whenever a change to the scan or the flow reader changes what a map holds.
+- On start, a map whose `reader` is older than the current one is read again from the folder and saved as a new accepted version. Nothing in your code changed, so there is nothing to review; the older versions stay listed, and your edits (overrides) and saved positions are kept, since they are stored apart from the map.
+- A map from the current reader is left as it is, so starting FlowForge never adds versions by itself otherwise.
+
+**Why:** an upgrade should show the better map without the user finding "Re-scan" first.
+
+**Code:** `flowmap/models.py` (`Flow.reader`), `flowmap/planner.py` (`READER`), `flowmap/service.py` (`first_map`).
+
+---
+
 ## Step JSON schema (reference)
 
 ```json

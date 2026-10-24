@@ -56,8 +56,15 @@ class FixturePlanner:
 APP_ID, TOOLS_ID = "app", "tools"
 
 
+# The version of what the scan and the flow reader put on a map. Raise it when a change to either changes a map:
+# maps saved by an older reader are read again on start (D35).
+READER = 1
+
+
 class ScanPlanner:
     """A real repo (D21): scan the folder, draw one block per dependency off the app (or your coding tools)."""
+
+    reader = READER
 
     def __init__(self, root: str | Path):
         self.root = Path(root)
@@ -95,13 +102,15 @@ def draft_from_scan(result: ScanResult) -> Draft:
         files=sorted({e.ref.rsplit(":", 1)[0] for d in deps for e in d.evidence})[:200],
         scan=result.model_dump(mode="json"))
     facts = [(d.id, d.kind, d.target, d.status, [e.ref for e in d.evidence]) for d in deps]
-    return Draft(flow=Flow(kind="dependencies", nodes=nodes, edges=edges), trace=None, analysis=analysis,
+    return Draft(flow=Flow(kind="dependencies", nodes=nodes, edges=edges, reader=READER), trace=None, analysis=analysis,
                  fact_sheet_hash=fact_hash(facts))
 
 
 class CodeFlowPlanner:
     """A real repo's flow (D25): read its Python, draw the order its entry points call their dependencies, weighted
     by the latest checks (D24). `latencies` is asked each time, so a re-scan picks up newer checks."""
+
+    reader = READER
 
     def __init__(self, root: str | Path, latencies: Callable[[], dict[str, float]] = dict):
         self.root = Path(root)
@@ -114,11 +123,12 @@ class CodeFlowPlanner:
         if result.flow is None:
             raise NoFlow(result.message or "No flow to draw.")
         flow = result.flow
+        flow.reader = READER
         steps = [n for n in flow.nodes if n.kind in CALL_KINDS]
         measured = sum(n.estimate_source == "measured" for n in steps)
         analysis = Analysis(
             stages=[
-                AnalysisStage(title="Read your Python", done=f"{len(result.entries)} entry point"
+                AnalysisStage(title="Read your code", done=f"{len(result.entries)} entry point"
                               f"{'s' if len(result.entries) != 1 else ''}, nothing run or sent"),
                 AnalysisStage(title="Followed the calls", done=f"{len(steps)} calls, "
                               f"{sum(n.kind == 'decision' for n in flow.nodes)} decisions"),

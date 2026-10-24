@@ -153,6 +153,7 @@ class Flow(_Model):
     written_ms: float | None = None   # code flows: every call one after another, as the code is written (D25)
     patterns: list[str] = Field(default_factory=list)   # code flows: languages read by patterns, less exact (D32)
     actions: list[Action] = Field(default_factory=list)   # code flows: one per entry point, slowest first (D33)
+    reader: int = 0   # the reader that made it (flowmap.planner.READER); an older one is read again on start (D35)
 
     @model_validator(mode="after")
     def _structure(self) -> Flow:

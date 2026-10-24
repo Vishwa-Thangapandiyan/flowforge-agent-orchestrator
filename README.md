@@ -21,7 +21,7 @@ What makes it different: **it knows which chain of steps is the bottleneck and s
 
 ## Quick start
 
-### Install (from the first release, v0.1.0)
+### Install
 
 ```bash
 uvx flowforge-map --example      # try it: a sample app's maps in your browser, no keys, nothing sent

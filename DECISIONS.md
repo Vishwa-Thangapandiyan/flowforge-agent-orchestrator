@@ -1128,8 +1128,8 @@ The agent only needs the key's **name**: the code it writes reads `os.environ["S
   - The redactor learns every saved value, so a value that reaches a log, a stored row or an answer is masked.
   
   No route, MCP tool or page returns a value, and no MCP tool takes one.
-- **Three statuses**, for each env name the code reads that looks like a key (`is_secret_name`, D31):
-  - **saved** in FlowForge;
+- **Four statuses**, for each env name the code reads that looks like a key (`is_secret_name`, D31):
+  - **saved** in FlowForge, and read back to confirm it (Codex review: a key the keychain or file won't give back is **can't read**, offered to save again, because `flowforge run` couldn't pass it on). The agent's MCP server reads no value, so its "saved" means "on record";
   - **in .env**: only the name is read from the file, and each value is dropped as its line is read;
   - **missing**.
   

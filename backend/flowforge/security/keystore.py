@@ -22,7 +22,7 @@ from flowforge.home import flowforge_home
 from flowforge.scan.models import ScanResult
 
 Store = Literal["keychain", "file"]
-Status = Literal["saved", "env_file", "missing"]
+Status = Literal["saved", "unreadable", "env_file", "missing"]
 
 NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _lock = threading.RLock()   # the dashboard's routes run in a threadpool
@@ -175,7 +175,12 @@ class KeyStore:
         out: dict[str, str] = {}
         with _lock:
             entries = self._entries()
-            from_file = self._file_values() if any(e.get("store") != "keychain" for e in entries.values()) else {}
+            from_file: dict[str, str] = {}
+            if any(e.get("store") != "keychain" for e in entries.values()):
+                try:
+                    from_file = self._file_values()
+                except Exception:   # a damaged file or a changed master key: those keys can't be read
+                    from_file = {}
             for name, entry in entries.items():
                 if entry.get("store") == "keychain":
                     try:
@@ -190,11 +195,20 @@ class KeyStore:
                     out[name] = value
         return out
 
-    def status(self, names: Iterable[str]) -> dict[str, Status]:
-        """saved (in FlowForge), env_file (only named in the repo's .env) or missing, for each name."""
+    def status(self, names: Iterable[str], verify: bool = True) -> dict[str, Status]:
+        """For each name: saved (in FlowForge, and readable when `verify`), unreadable (saved, but the keychain or the
+        file won't give it back, so `flowforge run` can't pass it on), env_file (only named in the repo's .env) or
+        missing. `verify=False` reads no value: the agent's MCP server (D36)."""
         saved = set(self._entries())
+        readable = set(self.env()) if verify and saved else saved
         in_env_file = set(env_file_names(Path(self.repo) / ".env"))
-        return {n: "saved" if n in saved else "env_file" if n in in_env_file else "missing" for n in names}
+
+        def one(n: str) -> Status:
+            if n in saved:
+                return "saved" if n in readable else "unreadable"
+            return "env_file" if n in in_env_file else "missing"
+
+        return {n: one(n) for n in names}
 
     def import_env(self, path: Path) -> list[str]:
         """Save every value a `.env` file sets; returns the names. The file stays: deleting it is the user's call."""
@@ -208,19 +222,20 @@ class KeyStore:
         return saved
 
 
-def report(store: KeyStore, scan: ScanResult) -> list[dict[str, object]]:
+def report(store: KeyStore, scan: ScanResult, verify: bool = True) -> list[dict[str, object]]:
     """Each key the code reads (an env name that looks secret, D31), plus each saved one: its status, where it is
-    read, the dependencies that use it, and the command that fixes it. Names only (D36)."""
+    read, the dependencies that use it, and the command that fixes it. Names only (D36). `verify=False` (the agent's
+    MCP server) reports a saved key as saved without reading it back."""
     from flowforge.home import command_line
     from flowforge.security.finders import is_secret_name
 
     reads = {e.name: e.ref for e in scan.env_names if is_secret_name(e.name)}
     names = sorted({*reads, *store.names()})
-    status = store.status(names)
+    status = store.status(names, verify=verify)
     out = []
     for name in names:
         command = None
-        if status[name] == "missing":
+        if status[name] in ("missing", "unreadable"):
             command = command_line("key", "add", name, "--repo", store.repo)
         elif status[name] == "env_file":
             command = command_line("key", "import", "--repo", store.repo)

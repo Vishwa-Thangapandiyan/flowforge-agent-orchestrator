@@ -188,9 +188,11 @@ def _security_data(result: ScanResult) -> dict[str, Any]:
 
 def _keys_data(root: Path, result: ScanResult) -> dict[str, Any]:
     """Names and statuses only: this server, which the agent starts, never reads a value (D36)."""
-    found = report(KeyStore(root), result)
+    found = report(KeyStore(root), result, verify=False)
     return {"keys": found, "summary": dict(Counter(k["status"] for k in found if k["status"] != "saved")),
-            "run": "flowforge run -- <the command that starts the app>"}
+            "run": "flowforge run -- <the command that starts the app>",
+            "note": "saved means FlowForge has it on record; this server never reads a value, so the user's "
+                    "`flowforge key list` is what confirms it can be read"}
 
 
 def _flow_data(result: Any) -> dict[str, Any]:

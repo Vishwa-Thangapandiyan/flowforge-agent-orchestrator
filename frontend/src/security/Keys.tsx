@@ -5,7 +5,7 @@ import { api } from "../api/client";
 import { Icons } from "../components/icons";
 import { useCopy } from "./Security";
 
-export type KeyStatus = "saved" | "env_file" | "missing";
+export type KeyStatus = "saved" | "unreadable" | "env_file" | "missing";
 
 export interface KeyInfo {
   name: string;
@@ -24,11 +24,12 @@ export interface KeysResponse {
 
 export type KeyNeed = "missing" | "env_file";
 
-const WORD: Record<KeyStatus, string> = { saved: "saved", env_file: "in .env", missing: "missing" };
+const WORD: Record<KeyStatus, string> = { saved: "saved", unreadable: "can't read", env_file: "in .env", missing: "missing" };
 
-/** What a block's keys need, for its 🔑 badge: missing beats "only in .env"; nothing when all are saved. */
+/** What a block's keys need, for its 🔑 badge: missing (or saved but unreadable) beats "only in .env"; nothing when
+ *  all are saved. */
 export function keyNeed(keys: KeyInfo[]): KeyNeed | undefined {
-  if (keys.some((k) => k.status === "missing")) return "missing";
+  if (keys.some((k) => k.status === "missing" || k.status === "unreadable")) return "missing";
   return keys.some((k) => k.status === "env_file") ? "env_file" : undefined;
 }
 
@@ -84,7 +85,7 @@ export function KeyRow({ k, example, onSaved }: { k: KeyInfo; example?: boolean;
           <button type="button" className="btn sm" onClick={() => copy(k.command!)} title={k.command}>
             {Icons.copy(14)} Copy command
           </button>
-          {k.status === "missing" && !example && !adding && (
+          {(k.status === "missing" || k.status === "unreadable") && !example && !adding && (
             <button type="button" className="btn sm" onClick={() => setAdding(true)}>Add here</button>
           )}
         </span>

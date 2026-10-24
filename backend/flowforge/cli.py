@@ -114,7 +114,7 @@ def scan_folder(path: str | None) -> None:
     print(json.dumps(scan(Path(path).expanduser()).model_dump(mode="json"), indent=2))
 
 
-_SHOWN = {"saved": "saved", "env_file": "in .env", "missing": "missing"}
+_SHOWN = {"saved": "saved", "unreadable": "can't read", "env_file": "in .env", "missing": "missing"}
 
 
 def keys_command(argv: list[str]) -> None:
@@ -162,7 +162,7 @@ def keys_command(argv: list[str]) -> None:
             print("No keys: the code reads none, and none are saved.")
         width = max((len(k["name"]) for k in found), default=0)
         for k in found:
-            print(f"{k['name']:<{width}}  {_SHOWN[k['status']]:<8}  {k['ref'] or ''}")
+            print(f"{k['name']:<{width}}  {_SHOWN[k['status']]:<10}  {k['ref'] or ''}")
         todo = [k for k in found if k["command"]]
         if todo:
             print()

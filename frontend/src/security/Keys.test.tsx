@@ -92,3 +92,16 @@ test("example data shows the keys but has no box to save one", async () => {
   expect(screen.queryByRole("button", { name: "Add here" })).not.toBeInTheDocument();
   expect(screen.getAllByRole("button", { name: /Copy command/ })).toHaveLength(2);
 });
+
+test("a saved key FlowForge can't read back asks to be saved again", async () => {
+  mockApi({});
+  const node = DEPS.nodes.find((n) => n.id === "api-nominatim")!;
+  const actions = { close: vi.fn(), approve: vi.fn(), reject: vi.fn(), edit: vi.fn(async () => {}), reset: vi.fn(async () => {}),
+    dismissTip: vi.fn() };
+  const unreadable = { ...MISSING, status: "unreadable" } as KeyInfo;
+  render(<StepPanel node={node} flow={DEPS} tile={null} state="idle" cap="" waiting={false} connectors={[]} tipShown
+    layer="mine" actions={actions} keys={[unreadable]} />);
+  const keys = screen.getByRole("region", { name: "Keys" });
+  expect(keys).toHaveTextContent("can't read");
+  expect(within(keys).getByRole("button", { name: "Add here" })).toBeInTheDocument();
+});

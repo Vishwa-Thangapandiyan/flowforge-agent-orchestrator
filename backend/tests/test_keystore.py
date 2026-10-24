@@ -203,3 +203,32 @@ def test_a_key_belongs_to_the_dependency_that_uses_it(tmp_path):
     got = {k["name"]: k["deps"] for k in report(KeyStore(tmp_path), scan)}
     assert got == {"STRIPE_SECRET_KEY": ["api-stripe"], "OPENAI_API_KEY": ["llm-openai"],
                    "W_TOKEN": ["api-weather"], "LONELY_SECRET": []}
+
+
+def test_a_saved_key_that_cant_be_read_back_says_so(tmp_path, memory):
+    """Codex review: `saved` only when `flowforge run` could pass it on; a keychain entry gone or locked is not."""
+    store = KeyStore(tmp_path)
+    store.add("STRIPE_SECRET_KEY", FAKE)
+    memory.items.clear()   # removed from the keychain behind FlowForge's back, or the keychain is locked
+    assert store.env() == {}
+    assert store.status(["STRIPE_SECRET_KEY"]) == {"STRIPE_SECRET_KEY": "unreadable"}
+    assert store.status(["STRIPE_SECRET_KEY"], verify=False) == {"STRIPE_SECRET_KEY": "saved"}   # reads nothing
+
+
+def test_a_damaged_key_file_makes_its_keys_unreadable_not_a_crash(tmp_path):
+    store = KeyStore(tmp_path)
+    store.add("A_KEY", FAKE)
+    store._file_path().write_bytes(b"not a fernet token")
+    assert store.env() == {}
+    assert store.status(["A_KEY"]) == {"A_KEY": "unreadable"}
+
+
+def test_an_unreadable_key_offers_to_save_it_again(tmp_path):
+    from flowforge.scan.models import EnvName, ScanResult
+    from flowforge.security.keystore import report
+
+    store = KeyStore(tmp_path)
+    store.add("A_KEY", FAKE)
+    store._file_path().write_bytes(b"damaged")
+    [got] = report(store, ScanResult(root="x", env_names=[EnvName(name="A_KEY", ref="a.py:1")]))
+    assert got["status"] == "unreadable" and "key add A_KEY" in got["command"]

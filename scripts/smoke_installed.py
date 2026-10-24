@@ -46,7 +46,8 @@ async def agent(repo: str, db: str) -> dict[str, int]:
     params = StdioServerParameters(command=sys.executable, args=args, env={**os.environ})
     out = {}
     async with Client(params) as client:
-        for tool, key in [("get_map", "dependencies"), ("get_security_findings", "findings"), ("get_keys", "keys")]:
+        for tool, key in [("get_map", "dependencies"), ("get_security_findings", "findings"), ("get_keys", "keys"),
+                          ("get_fix_requests", "requests")]:
             result = await client.call_tool(tool, {})
             out[tool] = -1 if result.is_error else len(json.loads(result.content[0].text)[key])
     return out
@@ -97,6 +98,9 @@ def main() -> None:
         check(sum(n["kind"] != "start" for n in nodes) == EXPECTED_DEPENDENCIES, "the example map has its dependencies")
         findings = httpx.get(f"{base}/security", timeout=10).json()["findings"]
         check(len(findings) == EXPECTED_FINDINGS, "the example's security findings")
+        issues = httpx.get(f"{base}/issues", timeout=10).json()["issues"]
+        actions = sorted(i["action"] for i in issues)
+        check(actions == ["agent", "agent", "fix"], "the Issues page: one Fix, two for the agent")
         command = httpx.get(f"{base}/agent/connect", timeout=10).json()["command"]
         check("--directory" not in command, f"the agent command doesn't need a checkout: {command[:3]}")
     finally:
@@ -122,7 +126,7 @@ def main() -> None:
 
     got = asyncio.run(agent(str(resource("example")), str(Path(home, "agent.db"))))
     check(got == {"get_map": EXPECTED_DEPENDENCIES, "get_security_findings": EXPECTED_FINDINGS,
-                  "get_keys": EXPECTED_KEYS}, f"an agent gets {got}")
+                  "get_keys": EXPECTED_KEYS, "get_fix_requests": 0}, f"an agent gets {got}")
     keys(repo, fresh)
     print("installed FlowForge works", flush=True)
 

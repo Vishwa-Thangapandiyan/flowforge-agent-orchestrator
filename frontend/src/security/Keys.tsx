@@ -1,9 +1,9 @@
-// Keys the coding agent never sees (D36): each key the code reads, whether FlowForge has it, and a write-only box.
-// A value typed here goes to the server once and is cleared at once; nothing ever sends one back.
+// Keys the coding agent never sees (D36, D37): each key the code reads, whether FlowForge has it, and one button or
+// box that fixes it, with no command to copy. A value typed here goes to the server once and is cleared at once;
+// nothing ever sends one back.
 import { type FormEvent, useState } from "react";
 import { api } from "../api/client";
 import { Icons } from "../components/icons";
-import { useCopy } from "./Security";
 
 export type KeyStatus = "saved" | "unreadable" | "env_file" | "missing";
 
@@ -20,11 +20,13 @@ export interface KeysResponse {
   example: boolean;
   summary: Partial<Record<KeyStatus, number>>;
   keys: KeyInfo[];
+  /** `flowforge run --repo … --`, to put before the command that starts your app */
+  run?: string;
 }
 
 export type KeyNeed = "missing" | "env_file";
 
-const WORD: Record<KeyStatus, string> = { saved: "saved", unreadable: "can't read", env_file: "in .env", missing: "missing" };
+export const KEY_WORD: Record<KeyStatus, string> = { saved: "saved", unreadable: "can't read", env_file: "in .env", missing: "missing" };
 
 /** What a block's keys need, for its 🔑 badge: missing (or saved but unreadable) beats "only in .env"; nothing when
  *  all are saved. */
@@ -38,7 +40,7 @@ export function needsAction(keys: KeyInfo[]): KeyInfo[] {
 }
 
 /** A password box that saves one key. The value lives only in this box's state until Save, then is cleared. */
-function KeyBox({ name, onSaved, onClose }: { name: string; onSaved: () => void; onClose: () => void }) {
+function KeyBox({ name, onSaved, onCancel }: { name: string; onSaved: () => void; onCancel?: () => void }) {
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -51,7 +53,6 @@ function KeyBox({ name, onSaved, onClose }: { name: string; onSaved: () => void;
     try {
       await api.put(`/keys/${encodeURIComponent(name)}`, { value: typed });
       onSaved();
-      onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't save");
     } finally {
@@ -63,43 +64,68 @@ function KeyBox({ name, onSaved, onClose }: { name: string; onSaved: () => void;
       <input type="password" autoComplete="off" spellCheck={false} name="flowforge-key" value={value}
         aria-label={`Value of ${name}`} placeholder="Paste the key" onChange={(e) => setValue(e.target.value)} />
       <button className="btn sm primary" type="submit" disabled={busy || !value.trim()}>{Icons.lock(14)} Save</button>
-      <button className="btn sm" type="button" onClick={() => { setValue(""); onClose(); }}>Cancel</button>
+      {onCancel && <button className="btn sm quiet" type="button" onClick={() => { setValue(""); onCancel(); }}>Cancel</button>}
       {error && <span className="key-err" role="alert">{error}</span>}
     </form>
   );
 }
 
-/** One key: name, status, where it's read, and how to fix it (copy the command, or paste it here). */
-export function KeyRow({ k, example, onSaved }: { k: KeyInfo; example?: boolean; onSaved: () => void }) {
-  const [adding, setAdding] = useState(false);
-  const [said, copy] = useCopy();
+/** One key and the one thing that fixes it: paste it (missing, can't read), move it in from .env, or replace it. */
+export function KeyRow({ k, onSaved }: { k: KeyInfo; onSaved: () => void }) {
+  const [replacing, setReplacing] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+  const act = async (call: () => Promise<unknown>) => {
+    setBusy(true);
+    setError(undefined);
+    try {
+      await call();
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "That didn't work");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const path = `/keys/${encodeURIComponent(k.name)}`;
+  const needsValue = k.status === "missing" || k.status === "unreadable";
   return (
-    <li className="key-row">
-      <span className={`key-ic ks-${k.status}`} aria-hidden="true">{Icons.key(14)}</span>
+    <li className={`key-row ks-${k.status}`}>
+      <span className={`key-ic ks-${k.status}`} aria-hidden="true">{Icons.key(16)}</span>
       <span className="key-what">
         <b>{k.name}</b>
-        <span><span className={`key-st ks-${k.status}`}>{WORD[k.status]}</span>{k.ref && <code>{k.ref}</code>}</span>
-      </span>
-      {k.command && (
-        <span className="sec-btns">
-          <button type="button" className="btn sm" onClick={() => copy(k.command!)} title={k.command}>
-            {Icons.copy(14)} Copy command
-          </button>
-          {(k.status === "missing" || k.status === "unreadable") && !example && !adding && (
-            <button type="button" className="btn sm" onClick={() => setAdding(true)}>Add here</button>
-          )}
+        <span><span className={`key-st ks-${k.status}`}>{k.status === "saved" ? "✓ saved" : KEY_WORD[k.status]}</span>
+          {k.ref && <code>{k.ref}</code>}
+          {k.status === "env_file" && <span className="key-hint">a coding agent can read .env</span>}
+          {k.status === "unreadable" && <span className="key-hint">save it again</span>}
         </span>
+      </span>
+      <span className="key-act">
+        {k.status === "env_file" && (
+          <button type="button" className="btn sm primary" disabled={busy} onClick={() => void act(() => api.post(`${path}/import`))}>
+            Move into FlowForge
+          </button>
+        )}
+        {k.status === "saved" && !replacing && (
+          <>
+            <button type="button" className="btn sm" onClick={() => setReplacing(true)}>Replace</button>
+            <button type="button" className="btn sm quiet" disabled={busy} onClick={() => void act(() => api.del(path))}>Remove</button>
+          </>
+        )}
+      </span>
+      {(needsValue || replacing) && (
+        <KeyBox name={k.name} onSaved={() => { setReplacing(false); onSaved(); }}
+          onCancel={replacing ? () => setReplacing(false) : undefined} />
       )}
-      {adding && <KeyBox name={k.name} onSaved={onSaved} onClose={() => setAdding(false)} />}
-      <span className="key-said" aria-live="polite">{said}</span>
+      {error && <span className="key-err" role="alert">{error}</span>}
     </li>
   );
 }
 
-export function KeyList({ keys, example, onSaved }: { keys: KeyInfo[]; example?: boolean; onSaved: () => void }) {
+export function KeyList({ keys, onSaved }: { keys: KeyInfo[]; onSaved: () => void }) {
   return (
     <ul className="key-list">
-      {keys.map((k) => <KeyRow key={k.name} k={k} example={example} onSaved={onSaved} />)}
+      {keys.map((k) => <KeyRow key={k.name} k={k} onSaved={onSaved} />)}
     </ul>
   );
 }

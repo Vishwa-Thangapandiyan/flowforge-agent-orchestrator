@@ -12,3 +12,18 @@ export const HTTP_FINDING = {
   fix: "Use https:// if the service offers it.", prompt: "Change it to https.",
 };
 export const SECURITY = { repo: "trip-planner", scanned: true, summary: { high: 1, medium: 1 }, findings: [KEY_FINDING, HTTP_FINDING] };
+
+// What /issues answers (D37): each finding with the button it gets and where it stands
+export const ISSUES = {
+  repo: "trip-planner", example: false, summary: { high: 1, medium: 1 },
+  issues: [{ ...KEY_FINDING, action: "fix", state: "open", branch: null },
+    { ...HTTP_FINDING, action: "agent", state: "open", branch: null }],
+};
+
+export const KEY_PREVIEW = {
+  id: KEY_FINDING.id, file: "config.py", name: "GOOGLE_STATIC_MAPS_KEY", branch: "flowforge/fix-google-static-maps-key",
+  can_apply: true, why_not: null,
+  lines: [{ kind: "ctx", n: 22, text: "# map image for the day" },
+    { kind: "del", n: 23, text: 'GOOGLE_STATIC_MAPS_KEY = "[REDACTED]"' },
+    { kind: "add", n: 23, text: 'GOOGLE_STATIC_MAPS_KEY = os.environ["GOOGLE_STATIC_MAPS_KEY"]' }],
+};

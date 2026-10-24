@@ -53,7 +53,7 @@ def test_the_preview_is_this_repos_answers(example):
     got = example.get("/agent/preview").json()
     assert got["repo"] == "trip-planner"
     assert [c["tool"] for c in got["cards"]] == ["get_map", "check_health", "get_security_findings", "get_keys",
-                                                  "get_flow", "get_advice", "what_changed"]
+                                                  "get_flow", "get_advice", "get_fix_requests", "what_changed"]
 
 
 def test_no_preview_before_a_folder_is_mapped(tmp_path, monkeypatch):

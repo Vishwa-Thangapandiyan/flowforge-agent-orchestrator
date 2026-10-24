@@ -19,6 +19,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
 
 from flowforge.api.checks import CHECKABLE, check_workflow, command_text, confirmed_commands, target_for
+from flowforge.api.issues import FIX_REQUESTS_SETTING, fix_requests
 from flowforge.api.scan import REPO_SETTING
 from flowforge.checks import starts_process
 from flowforge.connectors.registry import Registry
@@ -43,8 +44,8 @@ INSTRUCTIONS = (
     "each with the file:line it comes from, checks their health, and shows the order the code calls them, the "
     "critical path and which calls could run together, and what is unsafe (keys in code, plain http, risky MCP "
     "servers). It reads code without running it and sends nothing to any "
-    "LLM. Answers are masked: key values never appear. It never edits code: you make the change, then call "
-    "what_changed to confirm."
+    "LLM. Answers are masked: key values never appear. It doesn't edit code for you: you make the change, "
+    "then call what_changed to confirm. When the user says \"do the FlowForge fixes\", call get_fix_requests."
 )
 READ = ToolAnnotations(read_only_hint=True, open_world_hint=False)
 CHECKS = ToolAnnotations(read_only_hint=True, open_world_hint=True)   # makes requests and may start servers
@@ -165,6 +166,8 @@ def headline(tool: str, data: dict[str, Any]) -> str | None:
         counts = data["summary"]
         parts = [f"{counts[k]} {w}" for k, w in (("missing", "missing"), ("env_file", "in .env")) if counts.get(k)]
         return " · ".join(parts) or ("All saved" if data["keys"] else "No keys read")
+    if tool == "get_fix_requests":
+        return _plural(len(data["requests"]), "fix", "fixes") + " sent to you" if data["requests"] else "Nothing sent"
     if tool == "what_changed":
         if not data["saved"]:
             return "No saved map yet"
@@ -193,6 +196,20 @@ def _keys_data(root: Path, result: ScanResult) -> dict[str, Any]:
             "run": "flowforge run -- <the command that starts the app>",
             "note": "saved means FlowForge has it on record; this server never reads a value, so the user's "
                     "`flowforge key list` is what confirms it can be read"}
+
+
+def _fix_requests_data(r: _Repo) -> dict[str, Any]:
+    """The user's queue (D37), without the issues the code no longer has. Only when the dashboard maps this repo."""
+    if not r.shared:
+        return {"requests": [], "message": "The dashboard doesn't map this repo, so nothing was sent from it."}
+    queue = fix_requests(r.storage)
+    here = str(r.root)
+    now = {f.id for f in r.scan().findings}
+    done = [q for q in queue if q["repo"] == here and q["id"] not in now]   # the code no longer has it
+    if done:
+        r.storage.set_setting(FIX_REQUESTS_SETTING, json.dumps([q for q in queue if q not in done]))
+    live = [q for q in queue if q["repo"] == here and q["id"] in now]
+    return {"requests": [{k: q.get(k) for k in ("id", "kind", "title", "ref", "fix", "prompt")} for q in live]}
 
 
 def _flow_data(result: Any) -> dict[str, Any]:
@@ -251,6 +268,8 @@ def preview(repo: Path, storage: Storage) -> dict[str, Any]:
          if advice["available"] else None,
          "sub": f"saves ~{_seconds(advice['saved_ms'])}, the change written out" if advice["available"] else None,
          "tone": "warn" if advice["available"] and advice["advice"] else "plain"},
+        {"tool": "get_fix_requests", "headline": headline("get_fix_requests", _fix_requests_data(r)),
+         "sub": "issues you send from the Issues page", "tone": "plain"},
         {"tool": "what_changed", "headline": None, "sub": "After your agent edits: what it added or removed",
          "tone": "plain"},
     ]
@@ -336,6 +355,13 @@ def build_server(repo: Path, storage: Storage, *, transport: httpx.AsyncBaseTran
         get a value and never need one: write code that reads the name from the environment, then ask the user to
         run the `command` given (they type the key, hidden). Their app gets the keys with `flowforge run -- <app>`."""
         return r.answer("get_keys", _keys_data(r.root, r.scan()))
+
+    @server.tool(annotations=READ)
+    def get_fix_requests() -> dict[str, Any]:
+        """The issues the user sent you from FlowForge's Issues page ("do the FlowForge fixes"): each with its
+        file:line, what is wrong, how to fix it and the whole change described (masked: no key value). An issue leaves
+        the list once the code no longer has it, so call what_changed after your edit to confirm."""
+        return r.answer("get_fix_requests", _fix_requests_data(r))
 
     @server.tool(annotations=READ)
     def what_changed() -> dict[str, Any]:

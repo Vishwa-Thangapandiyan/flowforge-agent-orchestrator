@@ -10,7 +10,8 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, useApi } from "../api/client";
 import { CheckConfirm } from "../checks/Health";
 import { useChecks } from "../checks/useChecks";
-import { type KeyInfo, keyNeed, type KeysResponse } from "../security/Keys";
+import { useCounts } from "../security/counts";
+import { type KeyInfo, keyNeed } from "../security/Keys";
 import { type Finding, SecurityChip, type SecurityResponse, worst } from "../security/Security";
 import type { Connector, ConnectorType, FlowAction, FlowNode, FlowResponse, FlowView, NodeKind, Trace } from "../api/types";
 import { took } from "../checks/Health";
@@ -119,6 +120,7 @@ function ActionPicker({ actions, value, onChange }: { actions: FlowAction[]; val
 /** Name a folder to map. It is read, never run, and nothing is sent (D20). With a map of `current` already, a
  * different folder replaces it, after you confirm (D22, D23). */
 function ScanForm({ onDone, current }: { onDone: () => void; current?: string }) {
+  const counts = useCounts();
   const [path, setPath] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -128,6 +130,7 @@ function ScanForm({ onDone, current }: { onDone: () => void; current?: string })
     setError(undefined);
     try {
       await api.post("/scan", replace ? { path: path.trim(), replace: true } : { path: path.trim() });
+      counts.reload();   // a new folder: its issues and keys (D37; Codex review)
       onDone();
     } catch (err) {
       if (current && err instanceof ApiError && err.status === 409) setConfirming(true);
@@ -221,12 +224,12 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload, action
     for (const f of security.data?.findings ?? []) if (f.dep_id) (out[f.dep_id] ??= []).push(f);
     return out;
   }, [security.data]);
-  const keys = useApi<KeysResponse>(deps ? "/keys" : null);   // the keys its code reads (D36)
+  const counts = useCounts();   // issues and keys (D37), shared with the rail
   const keysOf = useMemo(() => {
     const out: Record<string, KeyInfo[]> = {};
-    for (const k of keys.data?.keys ?? []) for (const id of k.deps) (out[id] ??= []).push(k);
+    for (const k of counts.keysData?.keys ?? []) for (const id of k.deps) (out[id] ??= []).push(k);
     return out;
-  }, [keys.data]);
+  }, [counts.keysData]);
   const [find, setFind] = useState("");
   const [cp, setCp] = useState(code);   // a flow read from code opens on its critical path (D25)
   const [showEvidence, setShowEvidence] = useState(false);   // file:line on hover and in the panel by default (D33)
@@ -550,8 +553,8 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload, action
         </div>
         {oneAction && setAction && <ActionPicker actions={actions} value={action} onChange={setAction} />}
         <div className="fm-actions">
-          {deps && <SecurityChip findings={security.data?.findings ?? []} onShow={focusOn} keys={keys.data?.keys}
-            example={keys.data?.example} onKeySaved={keys.reload} />}
+          {deps && <SecurityChip issues={counts.issues} keys={counts.keys}
+            level={worst(counts.issuesData?.issues ?? []) ?? (counts.keys ? "medium" : undefined)} />}
           {!deps && !code && (
             <button className="btn primary" type="button" onClick={startReplay} disabled={!trace || busy}>
               {Icons.play(18)} {busy ? "Running…" : "Test run"}
@@ -664,7 +667,7 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload, action
         {selected && (
           <StepPanel key={selected.id} node={selected} flow={flow} tile={tileFor(selected)}
             health={deps ? health[selected.id] : undefined} example={meta.example} checking={checks.running}
-            findings={findings[selected.id]} keys={deps ? keysOf[selected.id] : undefined} onKeySaved={keys.reload}
+            findings={findings[selected.id]} keys={deps ? keysOf[selected.id] : undefined} onKeySaved={counts.reload}
             othersUp={checks.items.filter((i) => i.status === "up" && i.id !== selected.id).length}
             onCheck={(id) => void checks.checkNow([id])}
             state={frame?.nodes[selected.id] ?? "idle"} cap={frame?.caps[selected.id] ?? ""} waiting={frame?.waiting === selected.id}

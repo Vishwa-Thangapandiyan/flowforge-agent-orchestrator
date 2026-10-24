@@ -35,6 +35,7 @@ const TOOLS: Record<string, { ask: string; icon: (s?: number) => ReactNode }> = 
   check_health: { ask: "Is anything down?", icon: Icons.activity },
   get_security_findings: { ask: "Is anything unsafe?", icon: Icons.shield },
   get_keys: { ask: "Which keys are missing?", icon: Icons.key },
+  get_fix_requests: { ask: "What did I send it to fix?", icon: Icons.check },
   get_flow: { ask: "What waits for what?", icon: Icons.route },
   get_advice: { ask: "What could run together?", icon: Icons.bolt },
   what_changed: { ask: "What did the edit change?", icon: Icons.refresh },

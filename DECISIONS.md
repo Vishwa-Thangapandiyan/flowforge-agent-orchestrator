@@ -1159,6 +1159,53 @@ The agent only needs the key's **name**: the code it writes reads `os.environ["S
 
 ---
 
+## D37. Issues and Keys pages, fixes you click, and a key view behind 2FA (Vishwa, 2026-10-24)
+
+**Context.** v0.2.0 put keys and findings in a small popover whose fixes were commands to copy and edit. Vishwa: that isn't enough. People should do less, not more. Vishwa asked for:
+- separate pages for issues and for keys;
+- buttons that do the work;
+- a way to see the keys behind two-factor authentication.
+
+The rule from D36 stays: the coding agent never gets a value from FlowForge.
+
+**Choice** (Vishwa picked each option):
+- **Two pages.** **Issues** (`/issues`) and **Keys** (`/keys`) join the rail, with counts: Map · Issues · Keys · Checks · Connect agent. This supersedes D33's "no Security page". On the map, the ⚠ chip opens Issues and a 🔑 badge opens Keys; the popover goes.
+- **Every issue has a button. FlowForge fixes what plain code can fix safely, and sends the rest to the agent ("Both").**
+  - **Fix** handles a key written as a whole string literal in Python code, or in JavaScript or TypeScript that shows it runs on Node (`require`, `node:` or server imports, or `process.env` already; nothing of `window`, `document` or `import.meta.env`). Browser code goes to the agent (Codex review): a browser has no `process`, and a key bundled into a web page is public anyway. FlowForge works out the change without an LLM:
+    - the value goes to the key store (D36), and `flowforge run` gives it to the app;
+    - the literal becomes `os.environ["NAME"]` (adding `import os` when the file lacks it) or `process.env.NAME`.
+    
+    A key in `.mcp.json` goes to the agent (Codex review). The coding tool would read `${NAME}` from its own environment, and FlowForge must not fill that environment, because the agent runs in it.
+    
+    First a preview shows the diff with the key masked. Approve makes the change on a new branch, `flowforge/fix-…`, in a temporary `git worktree`, committed as the user. The branch the user works on is never touched, and the user merges when ready (§9.3).
+    
+    FlowForge refuses, and offers Send to agent instead, when the folder isn't a git repo or the file has uncommitted changes. The commit never holds the key. The fix still says to replace the key, because older commits do.
+  - **Send to agent** covers what needs judgment: a key in `.mcp.json` or Dart, `http://` (the service may have no https), an unpinned server (which version?), a server given the whole disk (which folder?). The issue joins a queue that the agent reads with an eighth MCP tool, `get_fix_requests` (masked, like every answer). An issue leaves the queue when a re-scan no longer finds it. FlowForge doesn't start the agent: the page says to tell it "do the FlowForge fixes" (Phase 10 runs it).
+  - Example mode previews every fix and applies none.
+  - The Issues page reads the code each time it opens (plain code, nothing sent: D20), so a merged fix or an agent's edit shows at once. The map's badges still follow the saved map until a re-scan.
+- **Keys page.**
+  - Each key the code reads has a password box, always open, with no command to copy (§6.5: `autocomplete=off`, emptied after it saves).
+  - A key that is only in `.env` has **Move into FlowForge**: the server reads that one value from the file and saves it.
+  - A saved key has Replace and Remove.
+  - Keys save in example mode too. They belong to the example's folder, so the demo works.
+- **The key view: password + authenticator app.** It shows the values of the keys written in code, saved in FlowForge, and in `.env`. This supersedes D36's "no page that shows keys" and amends §6.5/§9.3: a secret is displayed only here.
+  - **Set-up.** The user picks a password. FlowForge makes a TOTP secret (RFC 6238: SHA-1, 30 s, 6 digits) and shows it as a QR code for the phone. The secret is stored encrypted, with a key derived from the password by scrypt, in `FLOWFORGE_HOME/lock.json` (0600), next to a separate scrypt hash of the password. Without the password, nothing on disk can make a code. The first code must be typed before the lock is on.
+  - **Open.** Password + current code (±1 step, no code used twice) opens a 5-minute session (an httpOnly, SameSite=Strict cookie). Five wrong tries lock the view for 15 minutes.
+  - **View.** Values are masked until **Show**, which hides them again after 30 s. The view locks itself when the session ends.
+  - **Reset.** `flowforge lock reset` asks for the password and a code. `--forget` drops the lock (the keys stay), writes it to `FLOWFORGE_HOME/lock-events.log`, and the dashboard shows "Key view was reset at …" until the next unlock.
+  - **Guards.** The lock and value routes have D36's Host/Origin guard. The MCP server has no way to values.
+
+**Why:** the user does one thing (paste, click Fix, click Approve) and FlowForge does the rest. The values stay where only the person with the password and the phone can open them.
+
+**Honest limits:**
+- An agent running commands as the user can still read the keychain or files directly, or `flowforge lock reset --forget` and set its own lock. The reset banner shows that it happened. The 2FA stops web pages, someone at the browser, and any caller without the phone.
+- Fix covers keys in Python/JS/TS code. The rest goes to the agent.
+- "Send to agent" waits for the user to tell the agent.
+
+**Code:** `security/finders.py` (`key_span`), `security/fixes.py`, `security/lock.py`, `api/issues.py`, `api/keys.py`, `agent/server.py` (`get_fix_requests`), the dashboard's `security/IssuesPage.tsx` and `KeysPage.tsx`.
+
+---
+
 ## Step JSON schema (reference)
 
 ```json

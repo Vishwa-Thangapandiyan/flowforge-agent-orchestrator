@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Issues and Keys artboards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* D37 artboards: the Issues page, the Keys page, the locked key view. Tokens from frontend/src/styles/tokens.css.
+   Example data: the trip planner. Every key shown is fake. */
+:root{--bg:#EEF3F5;--surface:#FFFFFF;--surface-2:#F6F9FA;--fg:#0F1D26;--muted:#4A5E6A;--faint:#8A9BA5;--line:#D3DDE3;
+--teal:#0B7A70;--teal-bg:#DDF2EF;--blue:#2457C5;--blue-bg:#E1EAFB;--amber:#8A5A00;--amber-bg:#FCEFD0;--coral:#B93C2B;--coral-bg:#FBE4DF;
+--green:#1F7A45;--green-bg:#DCF2E4;--violet:#6B46C1;--violet-bg:#ECE6FA;--slate:#3A4756;--slate-bg:#E6EBEF;--on-teal:#FFFFFF;
+--nav-bg:#0F1D26;--nav-fg:#C9D6DC;--nav-active:#1D3340;
+--add:#1F7A45;--add-bg:#E4F5EA;--del:#B93C2B;--del-bg:#FBE9E5;
+--shadow:0 1px 2px rgb(15 29 38 / 6%),0 8px 22px -12px rgb(15 29 38 / 22%);
+--sans:'Geist',ui-sans-serif,system-ui,'Segoe UI',sans-serif;--mono:'Geist Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;color-scheme:light}
+:root[data-theme="dark"]{--bg:#0B1418;--surface:#122128;--surface-2:#0F1B21;--fg:#E8F0F3;--muted:#93A8B3;--faint:#5E7482;--line:#25363F;
+--teal:#4FD1C0;--teal-bg:#12332F;--blue:#7FA8FF;--blue-bg:#16284A;--amber:#F2B84B;--amber-bg:#3A2D0E;--coral:#FF8C7A;--coral-bg:#40201B;
+--green:#66D18F;--green-bg:#133423;--violet:#B79CFF;--violet-bg:#2A2147;--slate:#B6C3CC;--slate-bg:#1E2C34;--on-teal:#062320;
+--nav-bg:#070E11;--nav-active:#16262E;--add:#66D18F;--add-bg:#12301F;--del:#FF8C7A;--del-bg:#3A1C17;
+--shadow:0 1px 2px rgb(0 0 0 / 40%),0 12px 28px -14px rgb(0 0 0 / 60%);color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 var(--sans)}
+.top{display:flex;justify-content:space-between;align-items:center;padding:16px 24px}
+.top h1{margin:0;font-size:15px;font-weight:600;color:var(--muted)}
+.board{margin:0 24px 40px;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--bg);box-shadow:var(--shadow)}
+.label{display:flex;gap:10px;align-items:center;margin:28px 24px 10px;font:600 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.label b{color:var(--fg)}
+.app{display:grid;grid-template-columns:76px 1fr;min-height:330px}
+.rail{background:var(--nav-bg);color:var(--nav-fg);display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 0}
+.rail .logo{width:34px;height:34px;border-radius:10px;background:#13303a;margin-bottom:10px;display:grid;place-items:center;color:#4FD1C0;font-weight:700}
+.rail a{position:relative;width:62px;padding:8px 0 6px;border-radius:12px;text-align:center;font-size:11px;color:var(--nav-fg);text-decoration:none}
+.rail a i{display:block;font-style:normal;font-size:17px;line-height:1.2}
+.rail a.on{background:var(--nav-active);color:#fff;box-shadow:inset 3px 0 0 #4FD1C0}
+.rail .n{position:absolute;top:2px;right:6px;min-width:17px;height:17px;padding:0 4px;border-radius:99px;font:700 10.5px/17px var(--sans)}
+.n.coral{background:var(--coral);color:#fff}.n.amber{background:#F2B84B;color:#2a1d02}
+main{padding:22px 28px 28px;min-width:0}
+.head{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin-bottom:18px}
+.head h2{margin:0;font-size:22px;letter-spacing:-.01em}
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:99px;font:600 12px var(--sans)}
+.chip.high{background:var(--coral-bg);color:var(--coral)}.chip.med{background:var(--amber-bg);color:var(--amber)}
+.chip.ok{background:var(--green-bg);color:var(--green)}.chip.grey{background:var(--slate-bg);color:var(--slate)}
+.btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font:600 13px var(--sans);cursor:pointer;white-space:nowrap}
+.btn.primary{background:var(--teal);border-color:var(--teal);color:var(--on-teal)}
+.btn.violet{background:var(--violet-bg);border-color:transparent;color:var(--violet)}
+.btn.quiet{border-color:transparent;background:transparent;color:var(--muted)}
+.btn.sm{height:30px;padding:0 11px;font-size:12.5px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.right{margin-left:auto}
+.group{margin:18px 0 8px;display:flex;align-items:center;gap:8px;font:600 12px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.group small{font:500 12.5px var(--sans);letter-spacing:0;text-transform:none;color:var(--faint)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:10px;box-shadow:var(--shadow)}
+.row{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center}
+.dot{width:10px;height:10px;border-radius:50%}.dot.high{background:var(--coral)}.dot.med{background:#F2B84B}
+.what b{display:block;font-size:14.5px}
+.meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:3px;color:var(--muted);font-size:12.5px}
+code,.mono{font:12.5px var(--mono)}
+.ref{padding:1px 7px;border-radius:6px;background:var(--surface-2);border:1px solid var(--line);color:var(--muted)}
+.tile{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:5px;font:700 9px var(--sans);color:#fff;background:#2457C5}
+.diff{margin:12px 0 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;font:12.5px/1.7 var(--mono)}
+.diff .f{padding:6px 12px;background:var(--surface-2);border-bottom:1px solid var(--line);color:var(--muted)}
+.diff div.l{padding:0 12px;white-space:pre}
+.diff .del{background:var(--del-bg);color:var(--del)}.diff .add{background:var(--add-bg);color:var(--add)}.diff .ctx{color:var(--muted)}
+.does{display:grid;gap:4px;margin:12px 0;padding:0;list-style:none;font-size:13px}
+.does li::before{content:"✓";color:var(--teal);font-weight:700;margin-right:8px}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.done{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--teal-bg);color:var(--fg);font-size:13px}
+.done b{color:var(--teal)}
+.warnline{margin-top:8px;color:var(--amber);font-size:12.5px}
+.sent{display:flex;gap:8px;align-items:center;margin-top:10px;padding:9px 12px;border-radius:10px;background:var(--violet-bg);font-size:13px}
+.sent b{color:var(--violet)}
+.key{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px 12px;align-items:center}
+.key .ic{font-size:16px}
+.key .name{font:600 13.5px var(--mono)}
+.st{font:700 11px/1.4 var(--mono);letter-spacing:.05em;text-transform:uppercase}
+.st.missing{color:var(--amber)}.st.env{color:var(--muted)}.st.saved{color:var(--green)}
+.box{grid-column:2/-1;display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+input{height:34px;flex:1 1 220px;min-width:0;padding:0 12px;border-radius:9px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);font:13px var(--mono)}
+.run{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.run code{padding:6px 10px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line)}
+.lock{border-color:color-mix(in srgb,var(--violet) 40%,var(--line))}
+.lockhead{display:flex;gap:10px;align-items:center}
+.lockhead b{font-size:15px}
+.fields{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin-top:12px;align-items:end}
+.fields label{display:grid;gap:4px;font-size:12px;color:var(--muted)}
+.code6{letter-spacing:.35em;text-align:center}
+.note{margin:8px 0 0;color:var(--faint);font-size:12px}
+.vals{display:grid;gap:0;margin-top:12px}
+.val{display:grid;grid-template-columns:minmax(0,1.2fr) auto minmax(0,1.6fr) auto;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.val:first-child{border-top:0}
+.where{font:600 11px var(--mono);padding:2px 8px;border-radius:99px;background:var(--slate-bg);color:var(--slate)}
+.where.code{background:var(--coral-bg);color:var(--coral)}.where.saved{background:var(--green-bg);color:var(--green)}
+.mask{font:13px var(--mono);color:var(--muted);letter-spacing:.12em}
+.shown{font:13px var(--mono);color:var(--fg);padding:3px 8px;border-radius:6px;background:var(--amber-bg);overflow-wrap:anywhere}
+.timer{font:600 12.5px var(--mono);color:var(--violet)}
+.setup{display:grid;grid-template-columns:1fr auto;gap:22px;align-items:start}
+.qr{width:148px;height:148px;padding:10px;border-radius:12px;background:#fff;border:1px solid var(--line)}
+.steps{display:grid;gap:14px}
+.step{display:grid;grid-template-columns:auto 1fr;gap:10px}
+.step i{font-style:normal;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--violet-bg);color:var(--violet);font:700 12px var(--sans)}
+.banner{display:flex;gap:10px;align-items:center;padding:10px 14px;border-radius:12px;background:var(--coral-bg);color:var(--coral);font-size:13px;margin-bottom:14px}
+.agentbox{display:flex;gap:10px;align-items:center;padding:12px 14px;border-radius:12px;background:var(--surface);border:1px dashed var(--line);color:var(--muted);font-size:13px}
+@media (max-width:760px){.app{grid-template-columns:1fr}.rail{flex-direction:row;justify-content:center;padding:8px}.rail .logo{display:none}
+ main{padding:16px}.fields{grid-template-columns:1fr}.val{grid-template-columns:1fr auto}.setup{grid-template-columns:1fr}.row{grid-template-columns:auto 1fr}.row>.btn,.row>.btns{grid-column:2}}
+.story{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;align-items:center;margin:34px 24px 12px}
+.story .num{grid-row:span 2;display:grid;place-items:center;width:46px;height:46px;border-radius:50%;background:var(--teal);color:var(--on-teal);font:700 22px var(--sans)}
+.story h3{margin:0;font-size:20px;letter-spacing:-.01em}
+.story .say{display:flex;flex-wrap:wrap;gap:8px}
+.say span{display:inline-flex;gap:6px;align-items:center;padding:4px 10px;border-radius:99px;background:var(--surface);border:1px solid var(--line);font-size:13px}
+.say span b{color:var(--muted);font:600 11px var(--mono);letter-spacing:.05em;text-transform:uppercase}
+.next{margin:6px 24px 0;text-align:center;color:var(--teal);font:600 13px var(--sans)}
+.next::before{content:"";display:block;width:2px;height:26px;margin:0 auto 4px;background:var(--teal);opacity:.5}
+.once{margin-left:8px;padding:2px 8px;border-radius:99px;background:var(--violet-bg);color:var(--violet);font:600 12px var(--sans);vertical-align:middle}
+.mini{max-width:560px}
+</style>
+</head>
+<body>
+<div class="top"><h1>D37 · what you see, step by step · example data, fake keys</h1><button class="btn sm" onclick="document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark'">◐ Light / dark</button></div><div class="story"><span class="num">1</span><h3>Fix what's wrong</h3><div class="say"><span><b>you're on</b>the Issues page</span><span><b>you do</b>click Fix → check the change → Approve</span><span><b>you get</b>the code fixed on a new branch</span></div></div><div class="board"><div class="app"><nav class="rail"><div class="logo">✦</div><a><i>⌗</i>Map</a><a class="on"><i>⚠</i>Issues<span class="n coral">5</span></a><a><i>⚿</i>Keys<span class="n amber">2</span></a><a><i>∿</i>Checks</a><a><i>‹›</i>Connect agent</a></nav><main>
+<div class="head"><h2>Issues</h2><span class="chip high">2 high</span><span class="chip med">3 medium</span><button class="btn sm right">↻ Re-scan</button></div>
+
+<div class="group">⚡ FlowForge fixes <small>new branch · you approve · your branch isn't touched</small></div>
+
+<div class="card">
+ <div class="row"><i class="dot high"></i>
+  <div class="what"><b>A Google API key is written in the code</b>
+   <div class="meta"><span class="ref mono">config.py:23</span><span class="tile">GM</span>Google Maps</div></div>
+  <span class="chip grey">Preview</span></div>
+ <div class="diff"><div class="f">config.py</div>
+  <div class="l ctx"> 22  # map image for the day</div>
+  <div class="l del">-23  GOOGLE_STATIC_MAPS_KEY = "[REDACTED]"</div>
+  <div class="l add">+23  GOOGLE_STATIC_MAPS_KEY = os.environ["GOOGLE_STATIC_MAPS_KEY"]</div>
+  <div class="l ctx"> 24  STATIC_MAP_URL = "https://maps.googleapis.com/…"</div></div>
+ <ul class="does"><li>Saves the key in Keys</li><li>Makes branch <code>flowforge/fix-google-maps-key</code></li><li>Your app keeps working with <code>flowforge run</code></li></ul>
+ <div class="btns"><button class="btn primary">✓ Approve</button><button class="btn quiet">Cancel</button></div>
+</div>
+
+<div class="card">
+ <div class="row"><i class="dot high"></i>
+  <div class="what"><b>A Stripe key is written in the code</b>
+   <div class="meta"><span class="ref mono">web/pay.js:4</span><span class="tile" style="background:#635BFF">St</span>Stripe</div></div>
+  <span class="chip ok">✓ Fixed</span></div>
+ <div class="done"><b>✓ On branch flowforge/fix-stripe-key</b><span>Merge it when you're ready</span><button class="btn sm right">View diff</button></div>
+ <div class="warnline">⚠ Replace this key with the provider: older commits still hold it.</div>
+</div>
+
+<div class="group">🤖 For your agent <small>needs a judgment call</small></div>
+
+<div class="card"><div class="row"><i class="dot med"></i>
+ <div class="what"><b>ip-api.com is called over http://</b><div class="meta"><span class="ref mono">config.py:18</span>its free plan may have no https</div></div>
+ <button class="btn violet">➜ Send to agent</button></div></div>
+
+<div class="card"><div class="row"><i class="dot med"></i>
+ <div class="what"><b>fetch runs whatever version is newest</b><div class="meta"><span class="ref mono">.mcp.json:7</span>which version to pin?</div></div>
+ <span></span></div>
+ <div class="sent">➜ <b>Sent</b> · tell your agent: <i>"do the FlowForge fixes"</i></div></div>
+
+<div class="agentbox">🤖 Your agent reads these with <code>get_fix_requests</code>. Each one clears when a re-scan no longer finds it.</div>
+</main></div></div><div class="next">the fix saved a key · your app needs one more</div><div class="story"><span class="num">2</span><h3>Give FlowForge your keys</h3><div class="say"><span><b>you're on</b>the Keys page</span><span><b>you do</b>paste a key → Save</span><span><b>you get</b>no keys left in files</span></div></div><div class="board"><div class="app"><nav class="rail"><div class="logo">✦</div><a><i>⌗</i>Map</a><a><i>⚠</i>Issues<span class="n coral">5</span></a><a class="on"><i>⚿</i>Keys<span class="n amber">2</span></a><a><i>∿</i>Checks</a><a><i>‹›</i>Connect agent</a></nav><main>
+<div class="head"><h2>Keys</h2><span class="chip med">1 missing</span><span class="chip grey">1 in .env</span><span class="chip ok">1 saved</span></div>
+
+<div class="card key"><span class="ic">🔑</span>
+ <div><div class="name">OLLAMA_API_KEY</div><div class="meta"><span class="st missing">missing</span><span class="ref mono">config.py:30</span>Ollama</div></div><span></span>
+ <div class="box"><input type="password" placeholder="Paste the key" value="sk_test_FAKEFAKE12345678"><button class="btn primary">🔒 Save</button></div></div>
+
+<div class="card key"><span class="ic">🔑</span>
+ <div><div class="name">OPENAI_API_KEY</div><div class="meta"><span class="st env">in .env</span><span class="ref mono">ai.py:4</span>an agent can read .env</div></div>
+ <button class="btn primary">Move into FlowForge</button></div>
+
+<div class="card key"><span class="ic">🔑</span>
+ <div><div class="name">STRIPE_SECRET_KEY</div><div class="meta"><span class="st saved">✓ saved</span><span class="ref mono">pay.py:5</span>in your keychain</div></div>
+ <div class="btns"><button class="btn sm">Replace</button><button class="btn sm quiet">Remove</button></div></div>
+
+<div class="card run">▶ Your app gets them: <code>flowforge run -- python planner.py</code><span class="note" style="margin:0">no .env needed</span></div>
+
+<div class="card lock"><div class="lockhead">🔒 <b>See your key values</b><button class="btn violet right">Open →</button></div><p class="note">Needs your password and the code from your phone.</p></div>
+</main></div></div><div class="next">want to see a key again later?</div><div class="story"><span class="num">3</span><h3>Make a lock for your key values<span class="once">first time only</span></h3><div class="say"><span><b>you're on</b>Keys → Open</span><span><b>you do</b>pick a password → scan the QR with your phone</span><span><b>you get</b>a lock only you can open</span></div></div><div class="board"><div class="app"><nav class="rail"><div class="logo">✦</div><a><i>⌗</i>Map</a><a><i>⚠</i>Issues<span class="n coral">5</span></a><a class="on"><i>⚿</i>Keys<span class="n amber">2</span></a><a><i>∿</i>Checks</a><a><i>‹›</i>Connect agent</a></nav><main>
+
+<div class="card lock"><div class="lockhead">🔒 <b>Set up the key view</b></div>
+<div class="setup" style="margin-top:12px"><div class="steps">
+ <div class="step"><i>1</i><div><b>Pick a password</b><div class="fields" style="grid-template-columns:1fr 1fr;margin-top:6px"><input type="password" value="correcthorse"><input type="password" value="correcthorse"></div></div></div>
+ <div class="step"><i>2</i><div><b>Scan the QR</b> with Google Authenticator, Authy or 1Password</div></div>
+ <div class="step"><i>3</i><div><b>Type the code it shows</b><div class="fields" style="grid-template-columns:160px max-content;margin-top:6px"><input class="code6" value="051374"><button class="btn primary">Turn on</button></div></div></div>
+</div>
+<svg class="qr" viewBox="0 0 29 29" aria-label="QR code (example)"><rect width="29" height="29" fill="#fff"/>
+<g fill="#0F1D26"><path d="M0 0h7v7H0zM22 0h7v7h-7zM0 22h7v7H0z"/><path fill="#fff" d="M1 1h5v5H1zM23 1h5v5h-5zM1 23h5v5H1z"/><path d="M2 2h3v3H2zM24 2h3v3h-3zM2 24h3v3H2z"/>
+<path d="M9 1h2v2H9zM13 0h1v3h-1zM16 2h3v1h-3zM9 5h4v1H9zM15 5h1v3h-1zM18 6h2v2h-2zM8 9h3v1H8zM0 9h2v2H0zM3 10h3v1H3zM12 9h2v3h-2zM16 10h4v1h-4zM22 9h2v2h-2zM25 10h4v1h-4zM9 13h1v4H9zM12 14h3v1h-3zM17 13h2v2h-2zM21 13h3v1h-3zM26 13h2v3h-2zM0 14h3v1H0zM4 15h2v2H4zM11 17h4v1h-4zM16 16h1v4h-1zM19 17h3v2h-3zM24 17h2v1h-2zM9 20h2v3H9zM13 21h2v1h-2zM18 21h1v3h-1zM21 21h4v1h-4zM26 20h2v2h-2zM9 25h3v1H9zM14 24h2v4h-2zM20 24h2v2h-2zM23 25h1v4h-1zM26 26h3v1h-3z"/></g></svg>
+</div>
+<p class="note">The phone code's secret is locked by your password. Without both, nothing on this computer can open the view.</p></div>
+</main></div></div><div class="next">every time after that</div><div class="story"><span class="num">4</span><h3>Open the lock</h3><div class="say"><span><b>you're on</b>Keys → Open</span><span><b>you do</b>password + the 6 digits on your phone</span><span><b>you get</b>5 minutes open</span></div></div><div class="board"><div class="app"><nav class="rail"><div class="logo">✦</div><a><i>⌗</i>Map</a><a><i>⚠</i>Issues<span class="n coral">5</span></a><a class="on"><i>⚿</i>Keys<span class="n amber">2</span></a><a><i>∿</i>Checks</a><a><i>‹›</i>Connect agent</a></nav><main><div class="card lock mini"><div class="lockhead">🔒 <b>Open your key values</b></div><div class="fields"><label>Password<input type="password" value="correcthorse"></label><label>Code from your phone<input class="code6" value="482917"></label><button class="btn primary">Unlock</button></div><p class="note">Opens for 5 minutes. Your coding agent can't do this: it has no phone.</p></div></main></div></div><div class="next">open</div><div class="story"><span class="num">5</span><h3>See a key</h3><div class="say"><span><b>you're on</b>the open key values</span><span><b>you do</b>click Show</span><span><b>you get</b>the value for 30 s, then hidden again</span></div></div><div class="board"><div class="app"><nav class="rail"><div class="logo">✦</div><a><i>⌗</i>Map</a><a><i>⚠</i>Issues<span class="n coral">5</span></a><a class="on"><i>⚿</i>Keys<span class="n amber">2</span></a><a><i>∿</i>Checks</a><a><i>‹›</i>Connect agent</a></nav><main>
+<div class="card lock"><div class="lockhead">🔓 <b>Key values</b><span class="timer right">locks in 4:32</span><button class="btn sm">Lock now</button></div>
+<div class="vals">
+ <div class="val"><span class="name mono">GOOGLE_STATIC_MAPS_KEY</span><span class="where code">in code · config.py:23</span><span class="shown">AIzaFAKEFAKEFAKEFAKEFAKE1234</span><button class="btn sm">Hide · 24 s</button></div>
+ <div class="val"><span class="name mono">STRIPE_SECRET_KEY</span><span class="where saved">saved</span><span class="mask">••••••••••••</span><button class="btn sm">Show</button></div>
+ <div class="val"><span class="name mono">OPENAI_API_KEY</span><span class="where">.env</span><span class="mask">••••••••••••</span><button class="btn sm">Show</button></div>
+</div>
+<p class="note">Shown one at a time, hidden again after 30 s. Never logged, never stored, never sent to your agent.</p></div>
+</main></div></div>
+</body>
+</html>

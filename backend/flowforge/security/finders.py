@@ -125,3 +125,45 @@ def find_keys(text: str, language: str | None) -> list[KeyHit]:
         if name is not None:
             hits.append(KeyHit(n, "secret", name))
     return hits
+
+
+_LITERAL = re.compile(r"""(['"`])((?:\\.|(?!\1).)*)\1""")
+
+
+def _only_key(value: str) -> bool:
+    """The whole string is one key: a known shape from start to end, or one random-looking value."""
+    return any(p.fullmatch(value) for _, p in KEY_SHAPES) or looks_secret(value)
+
+
+def key_span(text: str, language: str | None, line: int) -> tuple[int, int, str] | None:
+    """(start, end, value) of the string literal on `line` (1-based) that is exactly a key, quotes included, so a fix
+    can swap it for an env lookup (D37). None when the key is only part of a string ("Bearer …"), in an f-string or
+    template, in a comment, or the language isn't Python, JS or TS. The only finder that returns a value: for the fix
+    and the locked key view, never for display or storage."""
+    lines = text.splitlines()
+    if not 0 < line <= len(lines):
+        return None
+    source = lines[line - 1]
+    if language == "python":
+        try:
+            tree = ast.parse(text)
+        except SyntaxError:
+            return None
+        inside_f = {id(v) for node in ast.walk(tree) if isinstance(node, ast.JoinedStr) for v in node.values}
+        for node in ast.walk(tree):
+            if (isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) not in inside_f
+                    and node.lineno == line == node.end_lineno and _only_key(node.value)):
+                raw = source.encode()   # AST columns count UTF-8 bytes
+                start = len(raw[:node.col_offset].decode(errors="replace"))
+                end = len(raw[:node.end_col_offset].decode(errors="replace"))
+                return start, end, node.value
+        return None
+    if language not in ("javascript", "typescript"):
+        return None
+    for m in _LITERAL.finditer(source):
+        before = source[:m.start()]
+        if "//" in before or "/*" in before or (m.group(1) == "`" and "${" in m.group(2)):
+            continue
+        if _only_key(m.group(2)):
+            return m.start(), m.end(), m.group(2)
+    return None

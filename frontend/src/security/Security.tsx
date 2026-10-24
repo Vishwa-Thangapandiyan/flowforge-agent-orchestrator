@@ -1,9 +1,8 @@
-// Security on the map (D31, D33): a ⚠ chip in the map's header opens a short list of what to fix: level, title,
-// where, a prompt for your coding agent, and the block on the map; then the keys FlowForge doesn't have yet (D36).
+// Security on the map (D31, D37): the findings' types, and the ⚠ chip in the map's header that opens the Issues page.
 // No key value is ever shown.
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Icons } from "../components/icons";
-import { type KeyInfo, KeyList, needsAction } from "./Keys";
 import "./security.css";
 
 export type Level = "high" | "medium" | "low";
@@ -45,55 +44,13 @@ export function useCopy(): [string | undefined, (text: string) => void] {
   return [said, copy];
 }
 
-/** "⚠ 3 to fix": hidden when there is nothing to fix. */
-export function SecurityChip({ findings, onShow, keys = [], example, onKeySaved }: {
-  findings: Finding[]; onShow: (depId: string) => void; keys?: KeyInfo[]; example?: boolean; onKeySaved?: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [said, copy] = useCopy();
-  const box = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const away = (e: MouseEvent) => { if (box.current && !box.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener("mousedown", away);
-    return () => document.removeEventListener("mousedown", away);
-  }, [open]);
-  const todo = needsAction(keys);
-  if (findings.length === 0 && todo.length === 0) return null;
-  const top = worst(findings) ?? "medium";
+/** "⚠ 3 to fix" on the map: opens the Issues page, or the Keys page when only keys need you (D37). Hidden when there
+ *  is nothing to fix. */
+export function SecurityChip({ issues, keys, level }: { issues: number; keys: number; level?: Level }) {
+  if (issues + keys === 0) return null;
   return (
-    <div className="sec-chip-wrap" ref={box} onKeyDown={(e) => e.key === "Escape" && setOpen(false)}>
-      <button type="button" className={`sec-chip lv-${top}`} aria-expanded={open} aria-haspopup="dialog"
-        onClick={() => setOpen((v) => !v)}>
-        {Icons.shield(16)} {findings.length + todo.length} to fix
-      </button>
-      {open && (
-        <div className="sec-pop" role="dialog" aria-label="To fix">
-          {findings.length > 0 && <ul>
-            {findings.map((f) => (
-              <li key={f.id}>
-                <i className={`sec-dot lv-${f.level}`} aria-label={f.level} />
-                <span className="sec-what"><b>{f.title}</b><code>{f.ref}</code></span>
-                <span className="sec-btns">
-                  <button type="button" className="btn sm" onClick={() => copy(f.prompt)} title={f.fix}>
-                    {Icons.copy(14)} Copy fix
-                  </button>
-                  {f.dep_id && (
-                    <button type="button" className="btn sm" onClick={() => { setOpen(false); onShow(f.dep_id!); }}>Show</button>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>}
-          {todo.length > 0 && (
-            <section className="sec-keys" aria-label="Keys">
-              <h3>{Icons.key(14)} Keys</h3>
-              <KeyList keys={todo} example={example} onSaved={() => onKeySaved?.()} />
-            </section>
-          )}
-          <p className="sec-note">Values are never shown. Catches known key formats, not everything.<span aria-live="polite">{said && ` · ${said}`}</span></p>
-        </div>
-      )}
-    </div>
+    <Link to={issues > 0 ? "/issues" : "/keys"} className={`sec-chip lv-${level ?? "medium"}`}>
+      {Icons.shield(16)} {issues + keys} to fix
+    </Link>
   );
 }

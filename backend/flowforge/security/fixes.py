@@ -1,6 +1,8 @@
-"""Fixes you click (D37): for a key written in the code or in `.mcp.json`, the change plain code can make with no LLM.
+"""Fixes you click (D37): for a key written in the code, the change plain code can make with no LLM.
 
-The value goes to the key store (D36) and the literal becomes an env lookup. `preview` shows that change with the key
+The value goes to the key store (D36) and the literal becomes an env lookup, which `flowforge run` fills in. A key in
+`.mcp.json` goes to the agent instead: the coding tool would read `${NAME}` from its own environment, and handing it
+the key would hand it to the agent (Codex review). `preview` shows that change with the key
 masked; `apply_fix` makes it on a new branch, in a temporary `git worktree`, committed as you, so the branch you work
 on and your files are never touched (§9.3). Everything else goes to your coding agent.
 """
@@ -9,23 +11,21 @@ from __future__ import annotations
 
 import ast
 import difflib
-import json
 import re
 import shutil
 import subprocess
 import tempfile
 from dataclasses import dataclass
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any
 
 from flowforge.scan.files import language
-from flowforge.scan.models import Dependency, Finding
+from flowforge.scan.models import Finding
 from flowforge.security.finders import find_keys, key_span
 from flowforge.security.findings import env_name
 from flowforge.security.keystore import KeyStore
 from flowforge.security.logfilter import REDACTED, redact_code
 
-_CONFIG_PAIR = re.compile(r'"([A-Za-z_][A-Za-z0-9_]*)"\s*:\s*"((?:[^"\\]|\\.)*)"')
 _FIXABLE_CODE = ("python", "javascript", "typescript")
 
 
@@ -97,49 +97,22 @@ def _code_change(root: Path, f: Finding) -> _Change:
     return _Change(path, text, "".join(lines), name, value)
 
 
-def _config_change(root: Path, f: Finding) -> _Change:
-    path, line = _where(f)
-    text = _read(root, path)
-    lines = text.splitlines(keepends=True)
-    m = next((m for m in _CONFIG_PAIR.finditer(lines[line - 1]) if not m.group(2).startswith("${")), None) \
-        if 0 < line <= len(lines) else None
-    if m is None:
-        raise CantFix(f"The key is no longer on {path}:{line}. Re-scan.")
-    name, value = m.group(1), json.loads(f'"{m.group(2)}"')
-    lines[line - 1] = lines[line - 1][:m.start(2)] + "${" + name + "}" + lines[line - 1][m.end(2):]
-    return _Change(path, text, "".join(lines), name, value)
-
-
 def _change(root: Path, f: Finding) -> _Change:
     if f.kind == "key_in_code":
         return _code_change(root, f)
-    if f.kind == "key_in_config":
-        return _config_change(root, f)
     raise CantFix("FlowForge doesn't fix this kind itself: send it to your agent.")
 
 
-def fixable(root: Path, f: Finding, deps: list[Dependency] | None = None) -> bool:
-    """Can plain code make this change safely? A key that is a whole string in Python, JS or TS, or a key in a
-    `.mcp.json` your coding tools read (they fill in `${NAME}`; an app reading its own config might not)."""
+def fixable(root: Path, f: Finding) -> bool:
+    """Can plain code make this change safely? A key that is a whole string literal in Python, JS or TS."""
+    if f.kind != "key_in_code":
+        return False
     path, line = _where(f)
-    if f.kind == "key_in_code":
-        lang = language(path)
-        try:
-            return lang in _FIXABLE_CODE and key_span(_read(root, path), lang, line) is not None
-        except CantFix:
-            return False
-    if f.kind == "key_in_config" and PurePosixPath(path).name == ".mcp.json":
-        if deps is None:
-            from flowforge.scan import scan
-
-            deps = scan(root).dependencies
-        scope = next((d.scope for d in deps if d.id == f.dep_id), "dev_tool")
-        try:
-            _config_change(root, f)
-        except CantFix:
-            return False
-        return scope == "dev_tool"
-    return False
+    lang = language(path)
+    try:
+        return lang in _FIXABLE_CODE and key_span(_read(root, path), lang, line) is not None
+    except CantFix:
+        return False
 
 
 def _slug(name: str) -> str:

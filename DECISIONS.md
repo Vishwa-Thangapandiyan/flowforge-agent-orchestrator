@@ -1171,14 +1171,16 @@ The rule from D36 stays: the coding agent never gets a value from FlowForge.
 **Choice** (Vishwa picked each option):
 - **Two pages.** **Issues** (`/issues`) and **Keys** (`/keys`) join the rail, with counts: Map · Issues · Keys · Checks · Connect agent. This supersedes D33's "no Security page". On the map, the ⚠ chip opens Issues and a 🔑 badge opens Keys; the popover goes.
 - **Every issue has a button. FlowForge fixes what plain code can fix safely, and sends the rest to the agent ("Both").**
-  - **Fix** handles a key written in Python, JavaScript or TypeScript code, and a key written in `.mcp.json`. FlowForge works out the change without an LLM:
-    - the value goes to the key store (D36);
-    - the literal becomes `os.environ["NAME"]` (adding `import os` when the file lacks it), `process.env.NAME`, or `"${NAME}"` in `.mcp.json`.
+  - **Fix** handles a key written in Python, JavaScript or TypeScript code, as a whole string literal. FlowForge works out the change without an LLM:
+    - the value goes to the key store (D36), and `flowforge run` gives it to the app;
+    - the literal becomes `os.environ["NAME"]` (adding `import os` when the file lacks it) or `process.env.NAME`.
+    
+    A key in `.mcp.json` goes to the agent (Codex review). The coding tool would read `${NAME}` from its own environment, and FlowForge must not fill that environment, because the agent runs in it.
     
     First a preview shows the diff with the key masked. Approve makes the change on a new branch, `flowforge/fix-…`, in a temporary `git worktree`, committed as the user. The branch the user works on is never touched, and the user merges when ready (§9.3).
     
     FlowForge refuses, and offers Send to agent instead, when the folder isn't a git repo or the file has uncommitted changes. The commit never holds the key. The fix still says to replace the key, because older commits do.
-  - **Send to agent** covers what needs judgment: a key in Dart, `http://` (the service may have no https), an unpinned server (which version?), a server given the whole disk (which folder?). The issue joins a queue that the agent reads with an eighth MCP tool, `get_fix_requests` (masked, like every answer). An issue leaves the queue when a re-scan no longer finds it. FlowForge doesn't start the agent: the page says to tell it "do the FlowForge fixes" (Phase 10 runs it).
+  - **Send to agent** covers what needs judgment: a key in `.mcp.json` or Dart, `http://` (the service may have no https), an unpinned server (which version?), a server given the whole disk (which folder?). The issue joins a queue that the agent reads with an eighth MCP tool, `get_fix_requests` (masked, like every answer). An issue leaves the queue when a re-scan no longer finds it. FlowForge doesn't start the agent: the page says to tell it "do the FlowForge fixes" (Phase 10 runs it).
   - Example mode previews every fix and applies none.
   - The Issues page reads the code each time it opens (plain code, nothing sent: D20), so a merged fix or an agent's edit shows at once. The map's badges still follow the saved map until a re-scan.
 - **Keys page.**
@@ -1197,7 +1199,7 @@ The rule from D36 stays: the coding agent never gets a value from FlowForge.
 
 **Honest limits:**
 - An agent running commands as the user can still read the keychain or files directly, or `flowforge lock reset --forget` and set its own lock. The reset banner shows that it happened. The 2FA stops web pages, someone at the browser, and any caller without the phone.
-- Fix covers Python/JS/TS keys and `.mcp.json`. The rest goes to the agent.
+- Fix covers keys in Python/JS/TS code. The rest goes to the agent.
 - "Send to agent" waits for the user to tell the agent.
 
 **Code:** `security/finders.py` (`key_span`), `security/fixes.py`, `security/lock.py`, `api/issues.py`, `api/keys.py`, `agent/server.py` (`get_fix_requests`), the dashboard's `security/IssuesPage.tsx` and `KeysPage.tsx`.

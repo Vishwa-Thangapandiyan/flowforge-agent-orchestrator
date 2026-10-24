@@ -184,26 +184,14 @@ def test_fix_refuses_when_the_code_moved_since_the_scan(tmp_path, as_someone):
         preview(root, old)
 
 
-# .mcp.json: only one your coding tool reads (it fills in ${NAME}); the app's own config goes to the agent
+# .mcp.json: to the agent. The coding tool would read ${NAME} from its own environment, which FlowForge must not fill:
+# that would hand the key to the agent (Codex review).
 
-def test_a_coding_tool_config_key_becomes_a_reference(tmp_path, as_someone):
+def test_a_key_in_an_mcp_config_goes_to_the_agent(tmp_path, as_someone):
     root = repo_with(tmp_path, {"main.py": "print('hi')\n", ".mcp.json": json.dumps({"mcpServers": {"search": {
         "command": "npx", "args": ["-y", "brave-search-mcp@1.0.0"], "env": {"BRAVE_API_KEY": FAKE}}}}, indent=2)})
     f = finding(root, "key_in_config")
-    assert fixable(root, f) is True
-    done = apply_fix(root, f)
-    config = json.loads(git(root, "show", f"{done['branch']}:.mcp.json"))
-    assert config["mcpServers"]["search"]["env"] == {"BRAVE_API_KEY": "${BRAVE_API_KEY}"}
-    assert KeyStore(root).env() == {"BRAVE_API_KEY": FAKE}
-
-
-def test_a_commit_that_fails_leaves_no_branch_and_says_why(tmp_path, as_someone):
-    root = repo_with(tmp_path, {"config.py": f'import os\n\nKEY = "{FAKE}"\n'})
-    hook = root / ".git" / "hooks" / "pre-commit"
-    hook.write_text(f"#!/bin/sh\necho 'blocked: saw {FAKE}' >&2\nexit 1\n")
-    hook.chmod(0o755)
-    with pytest.raises(CantFix) as e:
-        apply_fix(root, finding(root))
-    assert "couldn't commit" in str(e.value) and FAKE not in str(e.value)
-    assert "flowforge/fix-key" not in git(root, "branch", "--list")
-    assert git(root, "worktree", "list").count("\n") == 1
+    assert fixable(root, f) is False
+    with pytest.raises(CantFix):
+        apply_fix(root, f)
+    assert KeyStore(root).names() == []

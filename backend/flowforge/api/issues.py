@@ -80,7 +80,7 @@ def issues() -> dict[str, Any]:
         if branch and not _branch_exists(repo, branch):
             branch = None   # the branch was deleted: the issue is open again
         state = "fixed" if branch else "sent" if f.id in sent else "open"
-        out.append({**f.model_dump(mode="json"), "action": "fix" if fixable(repo, f, result.dependencies) else "agent",
+        out.append({**f.model_dump(mode="json"), "action": "fix" if fixable(repo, f) else "agent",
                     "state": state, "branch": branch})
     return {"repo": repo.name, "example": s.example, "summary": dict(Counter(f.level for f in result.findings)),
             "issues": out}

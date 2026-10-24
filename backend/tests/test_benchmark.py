@@ -47,7 +47,8 @@ def test_measured_latencies_are_sampled(tmp_path):
 def test_sim_track_end_to_end(tmp_path, monkeypatch):
     monkeypatch.setattr(run_benchmark, "RESULTS", tmp_path)
     monkeypatch.setattr(run_benchmark, "LATENCIES", tmp_path / "none.json")
-    run_benchmark.main(["sim", "--graphs", "2", "--min-steps", "4", "--max-steps", "6", "--scale", "0.002"])
+    # steps of a few ms, so no run is shorter than Windows' ~15 ms clock tick
+    run_benchmark.main(["sim", "--graphs", "2", "--min-steps", "4", "--max-steps", "6", "--scale", "0.02"])
     csvs = list(tmp_path.glob("sim_*.csv"))
     assert len(csvs) == 1 and len(csvs[0].read_text(encoding="utf-8").splitlines()) == 1 + 2 * 10  # header + graphs × variants
     summary = next(tmp_path.glob("sim_*.md")).read_text(encoding="utf-8")
@@ -58,3 +59,11 @@ def test_mean_ci():
     assert run_benchmark.mean_ci([2.0]) == (2.0, 0.0)
     m, ci = run_benchmark.mean_ci([1.0, 3.0])
     assert m == 2.0 and ci > 0
+
+
+def test_a_run_shorter_than_a_clock_tick_doesnt_break_the_summary():
+    """Windows CI: a run can read 0 ms; the summary skips it instead of dividing by zero."""
+    row = {"graph": 0, "n_steps": 4, "edge_prob": 0.1, "n_edges": 1, "depth": 2, "width": 2, "cp_ms": 1.0, "work_ms": 2.0,
+           "bound_ms": 1.0, "ratio_to_bound": 0.0, "api_calls": 4, "cache_hits": 0, "makespan_ms": 0.0}
+    rows = [{**row, "policy": p, "cache": c} for p in run_benchmark.POLICIES for c in (False, True)]
+    assert "Critical path vs FIFO" in run_benchmark.summarize_sim(rows, k=4)

@@ -85,3 +85,23 @@ def test_a_call_you_keep_against_a_rescan_stays_in_its_actions_time(tmp_path):
     removal = next(c for c in changes if gone in c["nodes"])
     accepted, _ = apply_choices(old, new, changes, {removal["id"]: False})   # keep it
     assert any(gone in p for a in accepted.actions for p in a.parts)
+
+
+def test_a_kept_call_rejoins_the_group_it_ran_in(tmp_path):
+    from flowforge.flowmap.diff import apply_choices, diff
+
+    old = CodeFlowPlanner(TRIP_PLANNER).analyze(0).flow
+    gone, partner = "local-packing-list-1", "mcp-time-1"
+    action = next(a for a in old.actions if any(gone in p for p in a.parts))
+    # as if the code ran the two together
+    action.parts = [p for p in action.parts if gone not in p and partner not in p] + [[partner, gone]]
+    new = old.model_copy(deep=True)
+    new.nodes = [n for n in new.nodes if n.id != gone]
+    new.edges = [e for e in new.edges if gone not in (e.source, e.target)]
+    for a in new.actions:
+        a.parts = [[i for i in p if i != gone] for p in a.parts if p != [gone]]
+    changes = diff(old, new, [], {})
+    removal = next(c for c in changes if gone in c["nodes"])
+    accepted, _ = apply_choices(old, new, changes, {removal["id"]: False})
+    kept = next(a for a in accepted.actions if a.id == action.id)
+    assert [partner, gone] in kept.parts or [gone, partner] in kept.parts

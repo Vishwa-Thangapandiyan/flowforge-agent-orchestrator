@@ -160,6 +160,11 @@ def _actions_kept(old: Flow, new: Flow, kept: set[str]) -> list:
         have = {i for p in parts for i in p}
         for p in old_parts.get(action.id, []):
             if extra := [i for i in p if i in restored and i not in have]:
-                parts.append(extra)
+                # back into the group it ran with, if one of its partners is still there; else on its own
+                group = next((g for g in parts if any(i in g for i in p if i not in restored)), None)
+                if group is None:
+                    parts.append(extra)
+                else:
+                    group += extra
         out.append(action.model_copy(update={"parts": [p for p in parts if p]}))
     return out

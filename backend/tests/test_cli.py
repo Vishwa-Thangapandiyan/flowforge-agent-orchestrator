@@ -267,3 +267,16 @@ def test_no_old_map_means_no_project(tmp_path, monkeypatch, capsys):
     cli.main(["status", "--plain"])
     assert "No projects yet" in capsys.readouterr().out
     assert not (tmp_path / "nothing.db").exists()   # looking doesn't create a database
+
+
+def test_an_old_map_in_a_folder_with_odd_characters_is_still_found(tmp_path, monkeypatch, capsys):
+    """# and % mean something in a SQLite address; the path is quoted (Codex review)."""
+    from flowforge.projects import Projects, adopt_existing
+    from flowforge.storage import Storage
+
+    odd = tmp_path / "my#app 50%"
+    odd.mkdir()
+    old = odd / "flowforge.db"
+    Storage(old).set_setting("repo_path", str(odd.resolve()))
+    monkeypatch.setenv("FLOWFORGE_DB", str(old))
+    assert adopt_existing() is not None and len(Projects().list()) == 1

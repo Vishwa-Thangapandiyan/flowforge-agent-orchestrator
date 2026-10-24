@@ -147,7 +147,7 @@ def adopt_existing() -> Project | None:
     if not db.is_file():
         return None
     try:
-        with sqlite3.connect(f"file:{db}?mode=ro", uri=True) as conn:
+        with sqlite3.connect(f"{db.resolve().as_uri()}?mode=ro", uri=True) as conn:   # quoted: # and % (Codex review)
             row = conn.execute("SELECT value FROM settings WHERE key = 'repo_path'").fetchone()
     except sqlite3.Error:
         return None

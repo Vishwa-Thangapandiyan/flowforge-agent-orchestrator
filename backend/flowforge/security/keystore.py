@@ -117,6 +117,20 @@ class KeyStore:
             return {}
         return json.loads(self._fernet().decrypt(path.read_bytes()))
 
+    def _file_values_to_change(self) -> dict[str, str]:
+        """The file's values before a change. A file that can't be read (damaged, or another master key) is moved
+        aside, never overwritten, so the right master key could still open it; its keys stay listed as unreadable."""
+        try:
+            return self._file_values()
+        except Exception:
+            path = self._file_path()
+            stamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
+            aside, n = path.with_name(f"{path.name}.unreadable-{stamp}"), 1
+            while aside.exists():   # never over an earlier one
+                aside, n = path.with_name(f"{path.name}.unreadable-{stamp}{n}"), n + 1
+            path.replace(aside)
+            return {}
+
     def _save_file_values(self, values: dict[str, str]) -> None:
         if values:
             _write_private(self._file_path(), self._fernet().encrypt(json.dumps(values).encode()))
@@ -144,7 +158,7 @@ class KeyStore:
                 except Exception:   # locked or refused: the encrypted file instead
                     store = "file"
             if store == "file":
-                self._save_file_values({**self._file_values(), name: value})
+                self._save_file_values({**self._file_values_to_change(), name: value})
             entries = self._entries()
             entries[name] = {"store": store, "added": datetime.now(UTC).isoformat(timespec="seconds")}
             self._save_entries(entries)
@@ -164,7 +178,7 @@ class KeyStore:
                 except Exception:   # already gone from the keychain
                     pass
             else:
-                values = self._file_values()
+                values = self._file_values_to_change()
                 values.pop(name, None)
                 self._save_file_values(values)
             self._save_entries(entries)

@@ -232,3 +232,18 @@ def test_an_unreadable_key_offers_to_save_it_again(tmp_path):
     store._file_path().write_bytes(b"damaged")
     [got] = report(store, ScanResult(root="x", env_names=[EnvName(name="A_KEY", ref="a.py:1")]))
     assert got["status"] == "unreadable" and "key add A_KEY" in got["command"]
+
+
+def test_a_damaged_key_file_can_be_saved_over_and_removed_from(tmp_path):
+    """Codex review: "save it again" and remove must work when the file can't be read; the old file is kept aside."""
+    store = KeyStore(tmp_path)
+    store.add("A_KEY", FAKE)
+    store.add("B_KEY", OTHER)
+    store._file_path().write_bytes(b"damaged")
+    assert store.add("A_KEY", FAKE) == "file"
+    assert store.env() == {"A_KEY": FAKE}
+    assert store.status(["A_KEY", "B_KEY"]) == {"A_KEY": "saved", "B_KEY": "unreadable"}
+    assert [p.name.split(".unreadable-")[1].isdigit() for p in store._file_path().parent.glob("*.unreadable-*")] == [True]
+    store._file_path().write_bytes(b"damaged again")
+    assert store.remove("B_KEY") is True and store.names() == ["A_KEY"]
+    assert len(list(store._file_path().parent.glob("*.unreadable-*"))) == 2   # both kept

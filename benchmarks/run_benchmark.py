@@ -99,7 +99,7 @@ async def simulate(args: argparse.Namespace) -> list[dict[str, Any]]:
             bound = bound_for(policy, dag, weights, args.k)
             rows.append({**shape, "policy": policy, "cache": cache,
                          "makespan_ms": result.makespan_ms, "bound_ms": bound,
-                         "ratio_to_bound": result.makespan_ms / bound,
+                         "ratio_to_bound": result.makespan_ms / bound if bound else math.nan,
                          "api_calls": result.api_calls, "cache_hits": result.cache_hits})
         if (g + 1) % max(1, args.graphs // 10) == 0:
             print(f"  {g + 1}/{args.graphs} graphs")
@@ -125,8 +125,9 @@ def summarize_sim(rows: list[dict[str, Any]], k: int) -> str:
     for policy in POLICIES:
         for cache in (False, True):
             group = [g[policy] for key, g in by_graph.items() if key[1] == cache]
+            # a run shorter than one clock tick reads 0 ms (Windows' clock ticks ~15 ms): no speedup to measure
             speedup = [g["sequential"]["makespan_ms"] / g[policy]["makespan_ms"]
-                       for key, g in by_graph.items() if key[1] == cache]
+                       for key, g in by_graph.items() if key[1] == cache and g[policy]["makespan_ms"] > 0]
             lines.append(
                 f"| {policy} | {'on' if cache else 'off'} | {fmt(*mean_ci(speedup), 2)}× | "
                 f"{fmt(*mean_ci([r['ratio_to_bound'] for r in group]))} | "
@@ -139,6 +140,8 @@ def summarize_sim(rows: list[dict[str, Any]], k: int) -> str:
         if cache:
             continue
         cp, fifo = g["critical_path"]["makespan_ms"], g["fifo"]["makespan_ms"]
+        if fifo <= 0:
+            continue   # shorter than one clock tick: nothing to compare
         change = (fifo - cp) / fifo * 100
         diffs.append(change)
         if abs(change) < 2:

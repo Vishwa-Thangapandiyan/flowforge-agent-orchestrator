@@ -27,6 +27,7 @@ from flowforge.security.keystore import _write_private
 STEP_S = 30
 DIGITS = 6
 SESSION_S = 300
+HALF_S = 120   # between the password and the code (D38)
 MAX_TRIES = 5
 LOCKOUT_S = 15 * 60
 MIN_PASSWORD = 8
@@ -35,6 +36,7 @@ _SCRYPT = {"n": 2 ** 14, "r": 8, "p": 1, "dklen": 32}
 State = Literal["none", "pending", "on"]
 
 _SESSIONS: dict[str, float] = {}   # token -> when it ends; this process only, never on disk
+_HALVES: dict[str, tuple[float, bytes]] = {}   # step 1's ticket -> (when it ends, the phone's secret), in memory
 _lock = threading.RLock()
 
 
@@ -67,9 +69,11 @@ def _unb64(text: str) -> bytes:
 
 
 class Lock:
-    def __init__(self, clock: Callable[[], float] = time.time, sessions: dict[str, float] | None = None) -> None:
+    def __init__(self, clock: Callable[[], float] = time.time, sessions: dict[str, float] | None = None,
+                 halves: dict[str, tuple[float, bytes]] | None = None) -> None:
         self.clock = clock
         self.sessions = _SESSIONS if sessions is None else sessions
+        self.halves = _HALVES if halves is None else halves
         self.home = flowforge_home()
 
     # the lock file and the events log
@@ -137,31 +141,30 @@ class Lock:
             code = base64.b32encode(secret).decode().rstrip("=")
             return f"otpauth://totp/{label}?secret={code}&issuer=FlowForge&algorithm=SHA1&digits={DIGITS}&period={STEP_S}"
 
-    def _check(self, password: str, code: str) -> dict[str, Any]:
-        """Password and code both right, within the attempts left; the code's step can't be used again. Raises
-        LockError with the same words for any wrong part, so a try tells nothing about which was wrong."""
+    def _usable(self) -> dict[str, Any]:
+        """The lock file, when it can be tried now: there is one, it can be read, and it isn't locked."""
         data = self._read()
         if data is None:
-            raise LockError("The key view has no lock yet: set one up first.")
+            raise LockError("The vault has no lock yet: set one up first.")
         if data["state"] == "damaged":
             raise LockError("The lock file can't be read: reset it with `flowforge lock reset --forget`.")
         now = self.clock()
         if data.get("locked_until", 0) > now:
             minutes = int((data["locked_until"] - now) // 60) + 1
             raise LockError(f"Locked after {MAX_TRIES} wrong tries: try again in {minutes} min.")
-        step = self._match(data, password, code, now)
-        if step is None:
-            data["failures"] = data.get("failures", 0) + 1
-            if data["failures"] >= MAX_TRIES:
-                data["failures"], data["locked_until"] = 0, now + LOCKOUT_S
-            self._write(data)
-            raise LockError("Wrong password or code.")
-        data.update(failures=0, locked_until=0, last_step=step)
-        self._write(data)
         return data
 
-    def _match(self, data: dict[str, Any], password: str, code: str, now: float) -> int | None:
-        """The time step the code belongs to (this one or the one before or after), or None."""
+    def _wrong(self, data: dict[str, Any], what: str) -> LockError:
+        """Count a wrong try (password or code alike); five lock the vault for 15 minutes."""
+        data["failures"] = data.get("failures", 0) + 1
+        if data["failures"] >= MAX_TRIES:
+            data["failures"], data["locked_until"] = 0, self.clock() + LOCKOUT_S
+        self._write(data)
+        return LockError(what)
+
+    @staticmethod
+    def _secret(data: dict[str, Any], password: str) -> bytes | None:
+        """The phone's secret, when `password` is right; None when it isn't."""
         try:
             salt, want = _unb64(data["password_salt"]), _unb64(data["password_hash"])
             if not hmac.compare_digest(_scrypt(password, salt), want):
@@ -169,15 +172,74 @@ class Lock:
             from cryptography.fernet import Fernet, InvalidToken
 
             key = base64.urlsafe_b64encode(_scrypt(password, _unb64(data["key_salt"])))
-            secret = Fernet(key).decrypt(data["secret_sealed"].encode())
+            return Fernet(key).decrypt(data["secret_sealed"].encode())
         except (KeyError, ValueError, InvalidToken):
             return None
+
+    def _step(self, data: dict[str, Any], secret: bytes, code: str) -> int | None:
+        """The time step the code belongs to (this one, the one before or after), unless it was used already."""
         code = code.strip().replace(" ", "")
-        here, last = int(now // STEP_S), data.get("last_step")
+        here, last = int(self.clock() // STEP_S), data.get("last_step")
         for step in (here - 1, here, here + 1):
             if (last is None or step > last) and hmac.compare_digest(_code(secret, step), code):
                 return step
         return None
+
+    def _used(self, data: dict[str, Any], step: int) -> dict[str, Any]:
+        data.update(failures=0, locked_until=0, last_step=step)
+        self._write(data)
+        return data
+
+    def _check(self, password: str, code: str) -> dict[str, Any]:
+        """Password and code together (set-up's first code, reset): the same words for either wrong part."""
+        data = self._usable()
+        secret = self._secret(data, password)
+        step = self._step(data, secret, code) if secret else None
+        if step is None:
+            raise self._wrong(data, "Wrong password or code.")
+        return self._used(data, step)
+
+    def password(self, password: str) -> str:
+        """Step 1 of opening (D38): a right password gives a ticket for step 2, good for two minutes. Wrong tries
+        count; a right password alone doesn't clear them (only opening does)."""
+        with _lock:
+            if self.state() == "pending":
+                raise LockError("Finish setting up the lock first: type the code your phone shows.")
+            data = self._usable()
+            secret = self._secret(data, password)
+            if secret is None:
+                raise self._wrong(data, "Wrong password.")
+            now = self.clock()
+            for t in [t for t, (end, _s) in self.halves.items() if end <= now]:
+                del self.halves[t]
+            ticket = secrets.token_urlsafe(32)
+            self.halves[ticket] = (now + HALF_S, secret)
+            return ticket
+
+    def code(self, ticket: str | None, code: str) -> str:
+        """Step 2: the phone's code with step 1's ticket opens the vault for five minutes. A wrong code can be typed
+        again while the ticket lasts; the ticket works for one opening."""
+        with _lock:
+            half = self.halves.get(ticket or "")
+            if half is None or half[0] <= self.clock():
+                self.halves.pop(ticket or "", None)
+                raise LockError("Type your password first (step 1 ran out after 2 minutes).")
+            data = self._usable()
+            step = self._step(data, half[1], code)
+            if step is None:
+                raise self._wrong(data, "Wrong code.")
+            self._used(data, step)
+            del self.halves[ticket or ""]
+            return self._session()
+
+    def _session(self) -> str:
+        token = secrets.token_urlsafe(32)
+        now = self.clock()
+        for t in [t for t, end in self.sessions.items() if end <= now]:   # ended ones
+            del self.sessions[t]
+        self.sessions[token] = now + SESSION_S
+        self._event("opened")
+        return token
 
     def confirm(self, password: str, code: str) -> None:
         """The first code from the phone: the lock is on."""
@@ -187,18 +249,8 @@ class Lock:
             self._write(data)
 
     def open(self, password: str, code: str) -> str:
-        """Open the key view for five minutes: a session token, kept in this process only."""
-        with _lock:
-            if self.state() == "pending":
-                raise LockError("Finish setting up the lock first: type the code your phone shows.")
-            self._check(password, code)
-            token = secrets.token_urlsafe(32)
-            now = self.clock()
-            for t in [t for t, end in self.sessions.items() if end <= now]:   # ended ones
-                del self.sessions[t]
-            self.sessions[token] = now + SESSION_S
-            self._event("opened")
-            return token
+        """Both steps at once: password and code, for callers with both in hand."""
+        return self.code(self.password(password), code)
 
     def valid(self, token: str | None) -> bool:
         return bool(token) and self.sessions.get(token, 0) > self.clock()
@@ -215,6 +267,7 @@ class Lock:
             self._check(password, code)
             self._path.unlink(missing_ok=True)
             self.sessions.clear()
+            self.halves.clear()
             self._event("reset")
 
     def forget(self) -> None:
@@ -223,6 +276,7 @@ class Lock:
         with _lock:
             self._path.unlink(missing_ok=True)
             self.sessions.clear()
+            self.halves.clear()
             self._event("forgotten")
 
     def reset_at(self) -> str | None:

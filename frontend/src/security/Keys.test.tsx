@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, test, vi } from "vitest";
 import { StepPanel } from "../flowmap/StepPanel";
@@ -58,7 +59,7 @@ test("a pasted key is sent once, cleared at once, and never shown", async () => 
   const put = calls.find((c) => c.url === "/keys/NOMINATIM_TOKEN");
   expect(put?.init?.method).toBe("PUT");
   expect(JSON.parse(String(put?.init?.body))).toEqual({ value: FAKE });
-  expect(await within(row("NOMINATIM_TOKEN")).findByText("✓ saved")).toBeInTheDocument();
+  expect(await screen.findByText(/saved · .*NOMINATIM_TOKEN/)).toBeInTheDocument();   // folded with the saved ones
   expect(screen.queryByLabelText("Value of NOMINATIM_TOKEN")).not.toBeInTheDocument();
   expect(document.body.innerHTML).not.toContain(FAKE);
 });
@@ -68,12 +69,13 @@ test("a key in .env moves in with one click", async () => {
   renderAt("/keys");
   await userEvent.click(await screen.findByRole("button", { name: "Move into FlowForge" }));
   expect(calls.find((c) => c.url === "/keys/OLLAMA_API_KEY/import")?.init?.method).toBe("POST");
-  expect(await within(row("OLLAMA_API_KEY")).findByText("✓ saved")).toBeInTheDocument();
+  expect(await screen.findByText(/saved · .*OLLAMA_API_KEY/)).toBeInTheDocument();
 });
 
 test("a saved key can be replaced or removed", async () => {
   const calls = keysApi();
   renderAt("/keys");
+  await userEvent.click(await screen.findByText(/1 saved · WIKI_TOKEN/));   // the saved ones are folded
   await userEvent.click(await screen.findByRole("button", { name: "Replace" }));
   expect(within(row("WIKI_TOKEN")).getByLabelText("Value of WIKI_TOKEN")).toBeInTheDocument();
   await userEvent.click(within(row("WIKI_TOKEN")).getByRole("button", { name: "Cancel" }));
@@ -101,9 +103,36 @@ test("the step panel lists the block's keys with the same box", () => {
   const node = DEPS.nodes.find((n) => n.id === "api-nominatim")!;
   const actions = { close: vi.fn(), approve: vi.fn(), reject: vi.fn(), edit: vi.fn(async () => {}), reset: vi.fn(async () => {}),
     dismissTip: vi.fn() };
-  render(<StepPanel node={node} flow={DEPS} tile={null} state="idle" cap="" waiting={false} connectors={[]} tipShown
-    layer="mine" actions={actions} keys={[MISSING as KeyInfo]} />);
+  render(<MemoryRouter><StepPanel node={node} flow={DEPS} tile={null} state="idle" cap="" waiting={false} connectors={[]} tipShown
+    layer="mine" actions={actions} keys={[MISSING as KeyInfo]} /></MemoryRouter>);
   const keys = screen.getByRole("region", { name: "Keys" });
   expect(within(keys).getByText("NOMINATIM_TOKEN")).toBeInTheDocument();
+  expect(within(keys).getByRole("link", { name: /Add the key/ })).toHaveAttribute("href", "/keys?key=NOMINATIM_TOKEN");   // D38
   expect(within(keys).getByLabelText("Value of NOMINATIM_TOKEN")).toHaveAttribute("type", "password");
+});
+
+test("what your agent asked for comes first, with why, and ?key= puts you in its box", async () => {
+  mockApi({
+    "/meta": META, "/flow": DEPS, "/connectors": [], "/security": { findings: [] },
+    "/keys": { repo: "trip", example: false, summary: {}, run: "flowforge run --",
+      requests: [{ name: "STRIPE_SECRET_KEY", why: "for Stripe in pay.py", at: new Date().toISOString() }],
+      keys: [{ name: "STRIPE_SECRET_KEY", status: "missing", ref: null, deps: ["api-stripe"], command: "x", requested: true }, MISSING] },
+  });
+  renderAt("/keys?key=STRIPE_SECRET_KEY");
+  const wait = await screen.findByRole("region", { name: "Your agent is waiting for" });
+  expect(wait).toHaveTextContent(/STRIPE_SECRET_KEY.*for Stripe in pay\.py · asked just now/);
+  await vi.waitFor(() => expect(document.activeElement).toBe(within(wait).getByLabelText("Value of STRIPE_SECRET_KEY")));
+  expect(screen.getByRole("link", { name: /See your keys in the Vault/ })).toHaveAttribute("href", "/vault");
+});
+
+test("the map says when your agent asked for a key, with a way to review its change and to add it", async () => {
+  mockApi({
+    "/meta": META, "/flow": DEPS, "/connectors": [], "/security": { findings: [] },
+    "/keys": { repo: "trip", example: false, summary: {}, requests: [{ name: "STRIPE_SECRET_KEY", why: "for Stripe", at: "2026-10-24T10:00:00Z" }],
+      keys: [] },
+  });
+  renderAt("/");
+  expect(await screen.findByText(/Your agent asked for STRIPE_SECRET_KEY/)).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Add the key" })).toHaveAttribute("href", "/keys?key=STRIPE_SECRET_KEY");
+  expect(screen.getByRole("button", { name: "Review its change" })).toBeInTheDocument();
 });

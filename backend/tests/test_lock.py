@@ -180,3 +180,58 @@ def test_flowforge_lock_reset_forget_asks_first_and_leaves_a_mark(lock, clock, m
     monkeypatch.setattr("builtins.input", lambda prompt="": "y")
     cli.main(["lock", "reset", "--forget"])
     assert lock.state() == "none" and lock.reset_at() is not None
+
+
+# two steps (D38): the password first, then the code, each on its own screen
+
+def test_the_password_gives_a_short_ticket_and_the_code_opens_with_it(lock, clock):
+    secret = turned_on(lock, clock)
+    ticket = lock.password("correct horse")
+    token = lock.code(ticket, totp(secret, clock()))
+    assert lock.valid(token)
+
+
+def test_a_wrong_password_is_refused_at_step_one(lock, clock):
+    turned_on(lock, clock)
+    with pytest.raises(LockError, match="password"):
+        lock.password("wrong password")
+
+
+def test_the_code_needs_a_ticket_from_this_password_step(lock, clock):
+    secret = turned_on(lock, clock)
+    with pytest.raises(LockError, match="password"):
+        lock.code("made-up-ticket", totp(secret, clock()))
+
+
+def test_a_wrong_code_can_be_typed_again_while_the_ticket_lasts(lock, clock):
+    secret = turned_on(lock, clock)
+    ticket = lock.password("correct horse")
+    with pytest.raises(LockError, match="code"):
+        lock.code(ticket, "000000")
+    assert lock.valid(lock.code(ticket, totp(secret, clock())))
+
+
+def test_the_ticket_ends_after_two_minutes_and_works_once(lock, clock):
+    secret = turned_on(lock, clock)
+    ticket = lock.password("correct horse")
+    clock.at += 121
+    with pytest.raises(LockError, match="password"):
+        lock.code(ticket, totp(secret, clock()))
+    ticket = lock.password("correct horse")
+    lock.code(ticket, totp(secret, clock()))
+    clock.at += 30
+    with pytest.raises(LockError, match="password"):
+        lock.code(ticket, totp(secret, clock()))      # used up
+
+
+def test_wrong_tries_count_across_both_steps(lock, clock):
+    secret = turned_on(lock, clock)
+    for _ in range(3):
+        with pytest.raises(LockError):
+            lock.password("wrong password")
+    ticket = lock.password("correct horse")
+    for _ in range(2):
+        with pytest.raises(LockError):
+            lock.code(ticket, "000000")
+    with pytest.raises(LockError, match="Locked"):
+        lock.code(ticket, totp(secret, clock()))

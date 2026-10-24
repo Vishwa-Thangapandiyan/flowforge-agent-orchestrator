@@ -21,7 +21,7 @@ import { EmptyState, ErrorBox } from "../components/ui";
 import { Faster } from "./Faster";
 import { earliest } from "./kinds";
 import { scheduleTrace } from "./schedule";
-import { boxes, readTheme, saveTheme, THEMES, timeColumns, type GraphTheme } from "./themes";
+import { boxes, busPaths, kindLanes, laneEdge, readTheme, saveTheme, THEMES, timeColumns, type GraphTheme } from "./themes";
 import { edgeTypes, Markers, type LineEdge } from "./FlowEdge";
 import { autoLayout, compactSize, handlesFor, placeAll, sizeOf } from "./layout";
 import { mapQuery, useMapId, type MapId } from "./mapId";
@@ -292,8 +292,10 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload, action
   }, [flow.nodes, flow.edges, tileFor, deps, code, theme, frame, query, hits, cp, dismissed, showEvidence, health, pointed,
     findings, compact, keysOf]);
 
-  // Boxed on a flow lays blocks out in time columns (D26); every other style keeps your saved layout
-  const timed = theme === "boxed" && !deps;
+  // Boxed lays blocks out by code: time columns on a flow (D26), one lane per kind on a dependency map (D38); every
+  // other style keeps your saved layout
+  const timed = theme === "boxed";
+  const lanes = timed && deps;
   // lines draw themselves in once, in call order (D26); off with reduced motion (the CSS checks it too)
   const [drawing, setDrawing] = useState(true);
   useEffect(() => {
@@ -320,7 +322,7 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload, action
   const wasCompact = useRef(compact);   // ◆ marks and full boxes need their own layout (D33)
   useEffect(() => {
     const saved = placeAll(flow.nodes, flow.edges, flow.positions, size);
-    const placed = timed ? timeColumns(flow, saved, size) : saved;
+    const placed = lanes ? kindLanes(flow, size) : timed ? timeColumns(flow, saved, size) : saved;
     const switched = wasTimed.current !== timed || wasCompact.current !== compact;
     wasTimed.current = timed;
     wasCompact.current = compact;
@@ -383,7 +385,8 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload, action
     const last = Math.max(1, ...Object.values(start));
     return Object.fromEntries(Object.entries(start).map(([id, t]) => [id, (t / last) * 1.2]));
   }, [flow]);
-  const edges: LineEdge[] = useMemo(() => flow.edges.filter((e) => kinds[e.source] && kinds[e.target]).map((e) => {
+  const edges: LineEdge[] = useMemo(() => flow.edges.filter((e) => kinds[e.source] && kinds[e.target]
+    && (!lanes || laneEdge(flow, e))).map((e) => {
     const h = handlesFor(e, kinds, posNow);
     return {
       id: e.id, source: e.source, target: e.target, type: "flow", sourceHandle: h.s, targetHandle: h.t,
@@ -397,9 +400,10 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload, action
         theme, to: kinds[e.target], delay: drawDelay[e.source] ?? 0,
       },
     };
-  }), [flow.edges, kinds, posNow, frame, cp, cpEdges, query, hits, deps, code, theme, drawDelay]);
+  }), [flow, kinds, posNow, frame, cp, cpEdges, query, hits, deps, code, theme, drawDelay, lanes]);
   // Boxed containers (D26): drawn in map coordinates behind the blocks, never nodes themselves
   const boxRects = useMemo(() => (theme === "boxed" ? boxes(flow, nodes) : []), [theme, flow, nodes]);
+  const bus = useMemo(() => (lanes ? busPaths(flow, nodes, boxRects) : []), [lanes, flow, nodes, boxRects]);
 
   // --- test-run replay ------------------------------------------------------------------------------------
   useEffect(() => {
@@ -469,7 +473,7 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload, action
   const retidy = () => {
     const laid = autoLayout(flow.nodes, flow.edges, size);
     if (timed || oneAction) {   // Boxed's time columns and one action's layout are tidied, never saved (D26, D33)
-      const cols = timed ? timeColumns(flow, laid, size) : laid;
+      const cols = lanes ? kindLanes(flow, size) : timed ? timeColumns(flow, laid, size) : laid;
       setNodes((ns) => ns.map((n) => (cols[n.id] ? { ...n, position: { x: cols[n.id][0], y: cols[n.id][1] } } : n)));
       window.setTimeout(() => rf.fitView({ padding: 0.08, duration: 500 }), 30);
       return;
@@ -584,6 +588,14 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload, action
         </section>
       )}
       {notice && <div className="notice" role="alert" style={{ margin: "8px 16px 0" }}>{notice}</div>}
+      {deps && (counts.keysData?.requests?.length ?? 0) > 0 && (
+        <div className="fm-ask" role="status">
+          {Icons.key(16)} <b>Your agent asked for {counts.keysData!.requests!.map((r) => r.name).join(", ")}</b>
+          <span className="fm-ask-why">{counts.keysData!.requests![0].why}</span>
+          <button type="button" className="btn sm" onClick={() => void recheck()}>Review its change</button>
+          <Link className="btn sm primary" to={`/keys?key=${encodeURIComponent(counts.keysData!.requests![0].name)}`}>Add the key</Link>
+        </div>
+      )}
       <div className="fm-stage">
         <div className="fm-canvas" style={{ backgroundImage: "radial-gradient(var(--dot) 1.1px, transparent 1.4px)",
           backgroundSize: `${22 * zoom}px ${22 * zoom}px` } as CSSProperties}>
@@ -600,6 +612,13 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload, action
             nodesConnectable={false} edgesFocusable={false} elementsSelectable minZoom={0.15} maxZoom={1.8}
             fitView fitViewOptions={{ padding: 0.08, maxZoom: 1.1 }} proOptions={{ hideAttribution: true }}
             aria-label="Flow map" zoomOnDoubleClick={false} deleteKeyCode={null}>
+            {bus.length > 0 && (
+              <ViewportPortal>
+                <svg className="ff-bus" aria-hidden="true">
+                  {bus.map((b) => <path key={b.key} d={b.d} />)}
+                </svg>
+              </ViewportPortal>
+            )}
             {boxRects.length > 0 && (
               <ViewportPortal>
                 {boxRects.map((b) => (

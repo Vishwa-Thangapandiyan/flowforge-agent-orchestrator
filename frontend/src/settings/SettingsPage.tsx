@@ -16,6 +16,7 @@ const THEME_CHOICES: { id: Theme; label: string; icon: (s?: number) => ReactNode
   { id: "dark", label: "Dark", icon: Icons.moon },
 ];
 
+const REFRESH_MS = 3000;
 const INSTALL_WORD = { checkout: "from source", uvx: "with uvx", pip: "with pip" };
 
 function Look() {
@@ -131,7 +132,7 @@ function Data({ data, onChanged }: { data: SettingsData; onChanged: () => void }
 }
 
 export function SettingsPage() {
-  const loaded = useApi<SettingsData>("/settings");
+  const loaded = useApi<SettingsData>("/settings", REFRESH_MS);   // re-read: your agent's first call shows by itself
   const head = (
     <div className="page-head"><div className="titles"><h1>Settings</h1>
       <p className="lede">For every project.</p></div></div>

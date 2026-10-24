@@ -90,3 +90,15 @@ test("a map style that can't be saved says so (Codex review)", async () => {
   await userEvent.selectOptions(await screen.findByRole("combobox", { name: /Maps open in/ }), "metro");
   expect(await screen.findByRole("alert")).toHaveTextContent("Kept in this browser only: Disk full");
 });
+
+test("Settings turns to Connected when your agent's first question arrives while it's open (Codex review)", async () => {
+  let reads = 0;
+  api({ "/settings": () => {
+    reads += 1;
+    return reads === 1 ? { ...SETTINGS, agent: { ...SETTINGS.agent, connected: false, last_call: null } } : SETTINGS;
+  } });
+  renderAt("/settings");
+  const agent = await screen.findByRole("region", { name: /Your agent · paired once/ });
+  expect(agent).toHaveTextContent("Waiting for your agent's first question");
+  await vi.waitFor(() => expect(agent).toHaveTextContent("Connected"), { timeout: 8000 });
+});

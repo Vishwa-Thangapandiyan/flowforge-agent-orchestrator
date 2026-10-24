@@ -216,3 +216,26 @@ def test_the_same_version_is_not_newer(two, monkeypatch):
     monkeypatch.setattr(home, "version", lambda: "0.3.0")
     with client() as c:
         assert c.post("/settings/update-check").json()["newer"] is False
+
+
+@pytest.mark.parametrize(("current", "latest", "newer"), [
+    ("0.3.0", "0.3.0.post1", True),     # a post-release is newer (Codex review)
+    ("0.3.0", "0.4.0rc1", True),        # so is a release candidate of the next version
+    ("0.4.0rc1", "0.4.0", True),
+    ("0.10.0", "0.9.0", False),         # numbers, not text
+    ("0.3.0", "0.3.0", False),
+])
+def test_the_update_check_follows_pythons_version_rules(two, monkeypatch, current, latest, newer):
+    monkeypatch.setattr(settings_api, "UPDATE_TRANSPORT",
+                        httpx.MockTransport(lambda r: httpx.Response(200, json={"info": {"version": latest}})))
+    monkeypatch.setattr(home, "version", lambda: current)
+    with client() as c:
+        assert c.post("/settings/update-check").json()["newer"] is newer
+
+
+def test_a_version_pypi_sends_that_isnt_one_is_reported_not_compared(two, monkeypatch):
+    monkeypatch.setattr(settings_api, "UPDATE_TRANSPORT",
+                        httpx.MockTransport(lambda r: httpx.Response(200, json={"info": {"version": "not a version"}})))
+    with client() as c:
+        got = c.post("/settings/update-check").json()
+    assert got["newer"] is False and got["latest"] is None and "error" in got

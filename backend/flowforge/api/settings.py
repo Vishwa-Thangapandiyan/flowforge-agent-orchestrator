@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -20,6 +19,7 @@ from typing import Any
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
+from packaging.version import InvalidVersion, Version
 from pydantic import BaseModel, ConfigDict
 
 from flowforge import home
@@ -150,10 +150,6 @@ def take_back_yeses(project_id: str) -> dict[str, Any]:
     return {"id": project_id, "confirmed": []}
 
 
-def _numbers(version: str) -> tuple[int, ...]:
-    return tuple(int(n) for n in re.findall(r"\d+", version.split("+")[0])[:3])
-
-
 @router.post("/settings/update-check", dependencies=[Depends(from_this_machine)])
 def update_check() -> dict[str, Any]:
     """The only request Settings makes: pypi.org's latest version of flowforge-map, when you press the button."""
@@ -164,4 +160,9 @@ def update_check() -> dict[str, Any]:
     except (httpx.HTTPError, ValueError, KeyError, TypeError):
         return {"current": current, "latest": None, "newer": False,
                 "error": "Couldn't reach pypi.org. Check your internet and try again."}
-    return {"current": current, "latest": latest, "newer": _numbers(latest) > _numbers(current)}
+    try:   # Python's version rules (PEP 440): 0.3.0.post1 and 0.4.0rc1 are newer than 0.3.0 (Codex review)
+        newer = Version(latest) > Version(current)
+    except InvalidVersion:
+        return {"current": current, "latest": None, "newer": False,
+                "error": "pypi.org answered with no version I can read."}
+    return {"current": current, "latest": latest, "newer": newer}

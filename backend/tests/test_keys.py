@@ -121,13 +121,16 @@ def test_delete_forgets_a_key(real, shop):
     assert KeyStore(shop).names() == []
 
 
-def test_example_mode_shows_keys_but_saves_none(tmp_path, monkeypatch):
+def test_example_mode_saves_keys_for_the_example_folder(tmp_path, monkeypatch):
+    """D37: the demo works, so a key saves; it belongs to the example's folder, never to yours."""
     monkeypatch.setenv("FLOWFORGE_EXAMPLE", "1")
     monkeypatch.setenv("FLOWFORGE_DB", str(tmp_path / "example.db"))
     with TestClient(main.app, base_url=LOCAL) as c:
         assert c.get("/keys").json()["example"] is True
-        assert c.put("/keys/STRIPE_SECRET_KEY", json={"value": FAKE}).status_code == 409
-        assert c.delete("/keys/STRIPE_SECRET_KEY").status_code == 409
+        assert c.put("/keys/OLLAMA_API_KEY", json={"value": FAKE}).status_code == 200
+        keys = by_name(c.get("/keys").json()["keys"])
+        assert keys["OLLAMA_API_KEY"]["status"] == "saved"
+        assert c.delete("/keys/OLLAMA_API_KEY").json()["removed"] is True
 
 
 def test_no_folder_means_no_keys(tmp_path, monkeypatch):

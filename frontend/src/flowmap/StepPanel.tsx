@@ -5,8 +5,9 @@ import { useApi } from "../api/client";
 import type { CheckRecord, Connector, Evidence, FlowNode, FlowView } from "../api/types";
 import { BrandTile } from "../brand/BrandTile";
 import { Dot, InternetWorks, took, WORD } from "../checks/Health";
-import { type Finding, useCopy } from "../security/Security";
+import { type Finding } from "../security/Security";
 import { type KeyInfo, KeyList } from "../security/Keys";
+import { Link } from "react-router-dom";
 import "../security/security.css";
 import type { LiveItem } from "../checks/useChecks";
 import { when } from "../components/format";
@@ -131,7 +132,6 @@ export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, t
   const [name, setName] = useState(node.title);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
-  const [said, copy] = useCopy();
   useEffect(() => { setName(node.title); setError(undefined); }, [node.id, node.title]);
 
   const run = async (body: Record<string, unknown> | null, reset = false) => {
@@ -186,9 +186,7 @@ export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, t
               <li key={f.id}>
                 <span className={`sec-level lv-${f.level}`}>{f.level}</span>
                 <span><b>{f.title}</b> <code>{f.ref}</code>
-                  <span className="sp-fix">{f.fix}</span>
-                  <button className="btn sm" type="button" onClick={() => copy(f.prompt)}>{Icons.copy(14)} Copy fix prompt</button>
-                  <span className="sp-said" aria-live="polite">{said}</span>
+                  <Link className="btn sm" to="/issues">{Icons.bolt(14)} Fix it</Link>
                 </span>
               </li>
             ))}
@@ -197,7 +195,7 @@ export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, t
       )}
       {keys && keys.length > 0 && (
         <div className="sp-sec sp-keys" role="region" aria-label="Keys">
-          <KeyList keys={keys} example={example} onSaved={() => onKeySaved?.()} />
+          <KeyList keys={keys} onSaved={() => onKeySaved?.()} />
         </div>
       )}
       {health && <Health item={health} othersUp={othersUp} example={example} checking={checking} onCheck={onCheck} />}

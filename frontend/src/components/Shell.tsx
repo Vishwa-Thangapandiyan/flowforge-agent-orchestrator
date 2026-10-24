@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, useMatches } from "react-router-dom";
 import { useApi } from "../api/client";
 import type { Meta } from "../api/types";
 import { Icons } from "./icons";
+import { CountsProvider, useCounts } from "../security/counts";
 
 const MetaContext = createContext<Meta>({ project: "My project", example: false, version: "" });
 export const useMeta = () => useContext(MetaContext);
@@ -49,12 +50,16 @@ interface Item {
   /** highlighted on these paths */
   active: RegExp;
   soon?: string;
+  /** what the count beside it counts (D37) */
+  count?: "issues" | "keys";
 }
 
-// Three places (D33): the map (security warnings live on it), its checks, and your coding agent. Apps and workflow
-// runs stay one click away from the map's ⋯ menu and the Checks page.
+// Five places (D33, D37): the map, what to fix, your keys, the checks, and your coding agent. Apps and workflow runs
+// stay one click away from the map's ⋯ menu and the Checks page.
 const ITEMS: Item[] = [
   { to: "/", label: "Map", icon: Icons.map(20), active: /^\/($|map(\/|$)|connectors(\/|$))/ },
+  { to: "/issues", label: "Issues", icon: Icons.shield(20), active: /^\/issues$/, count: "issues" },
+  { to: "/keys", label: "Keys", icon: Icons.key(20), active: /^\/keys$/, count: "keys" },
   { to: "/checks", label: "Checks", icon: Icons.activity(20), active: /^\/(checks|runs|live)(\/|$)/ },
   { to: "/connect", label: "Connect agent", icon: Icons.code(20), active: /^\/connect$/ },
 ];
@@ -62,6 +67,13 @@ const ITEMS: Item[] = [
 /** A route with `handle: { bleed: true }` (the flow map) fills the page edge to edge. */
 function useBleed(): boolean {
   return useMatches().some((m) => (m.handle as { bleed?: boolean } | undefined)?.bleed);
+}
+
+function Count({ of }: { of: "issues" | "keys" }) {
+  const counts = useCounts();
+  const n = counts[of];
+  if (!n) return null;
+  return <span className={`rail-count ${of}`} aria-label={`${n} ${of === "issues" ? "to fix" : "need you"}`}>{n}</span>;
 }
 
 export function Shell() {
@@ -72,6 +84,7 @@ export function Shell() {
 
   return (
     <MetaContext.Provider value={value}>
+      <CountsProvider>
       <a className="skip-link" href="#main">Skip to content</a>
       <div className={`shell${bleed ? " bleed" : ""}`}>
         <nav className="rail" aria-label="Main">
@@ -83,6 +96,7 @@ export function Shell() {
               aria-current={item.active.test(location.pathname) ? "page" : undefined}>
               {item.icon}
               <span>{item.label}</span>
+              {item.count && <Count of={item.count} />}
               {item.soon && <span className="visually-hidden">(arrives in {item.soon})</span>}
             </Link>
           ))}
@@ -95,6 +109,7 @@ export function Shell() {
           </div>
         </main>
       </div>
+      </CountsProvider>
     </MetaContext.Provider>
   );
 }

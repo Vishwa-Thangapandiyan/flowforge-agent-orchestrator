@@ -18,6 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict
 
 from flowforge.api.scan import repo_path
+from flowforge.home import command_line
 from flowforge.scan import ScanResult
 from flowforge.scan import scan as scan_repo
 from flowforge.security.keystore import BadKey, KeyStore, report
@@ -86,7 +87,8 @@ def keys() -> dict[str, Any]:
         return {"repo": None, "example": s.example, "summary": {}, "keys": []}
     found = report(KeyStore(repo), stored_scan(s, repo))
     summary = Counter(k["status"] for k in found if k["status"] != "saved")
-    return {"repo": repo.name, "example": s.example, "summary": dict(summary), "keys": found}
+    return {"repo": repo.name, "example": s.example, "summary": dict(summary), "keys": found,
+            "run": command_line("run", "--repo", str(repo), "--")}   # + how you start your app
 
 
 @router.put("/keys/{name}", dependencies=[Depends(from_this_machine)])

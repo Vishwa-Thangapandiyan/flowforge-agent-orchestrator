@@ -12,6 +12,8 @@ import { ConnectorPage } from "./pages/Connector";
 import { Approvals } from "./pages/Later";
 import { LiveRun, LiveRunLatest } from "./pages/LiveRun";
 import { RunHistory } from "./pages/RunHistory";
+import { IssuesPage } from "./security/IssuesPage";
+import { KeysPage } from "./security/KeysPage";
 
 function NotFound() {
   return (
@@ -41,7 +43,9 @@ export const routes = [
       { path: "/runs", element: <RunHistory /> },
       { path: "/runs/:id", element: <LiveRun /> },
       { path: "/approvals", element: <Approvals /> },
-      { path: "/security", element: <Navigate to="/" replace /> },  // findings live on the map (D33)
+      { path: "/issues", element: <IssuesPage /> },
+      { path: "/keys", element: <KeysPage /> },
+      { path: "/security", element: <Navigate to="/issues" replace /> },  // the Issues page (D37)
       { path: "*", element: <NotFound /> },
     ],
   },

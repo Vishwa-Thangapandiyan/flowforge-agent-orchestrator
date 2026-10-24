@@ -96,7 +96,7 @@ async def test_names_are_checked_and_no_value_is_ever_taken(shop, tmp_path):
         for name in ("request_key", "wait_for_keys"):
             assert "value" not in json.dumps(tools[name].input_schema)
         bad = await client.call_tool("request_key", {"name": "not a name", "why": "x"})
-        assert bad.is_error or "name" in bad.content[0].text.lower()
+        assert bad.is_error and "env var name" in bad.content[0].text   # the agent reads why
 
 
 async def test_the_agents_server_still_never_reads_a_value(shop, tmp_path, monkeypatch):

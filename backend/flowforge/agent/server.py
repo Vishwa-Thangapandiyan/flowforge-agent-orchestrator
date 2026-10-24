@@ -203,10 +203,12 @@ def _fix_requests_data(r: _Repo) -> dict[str, Any]:
     if not r.shared:
         return {"requests": [], "message": "The dashboard doesn't map this repo, so nothing was sent from it."}
     queue = fix_requests(r.storage)
+    here = str(r.root)
     now = {f.id for f in r.scan().findings}
-    live = [q for q in queue if q["id"] in now]
-    if len(live) != len(queue):
-        r.storage.set_setting(FIX_REQUESTS_SETTING, json.dumps(live))
+    done = [q for q in queue if q["repo"] == here and q["id"] not in now]   # the code no longer has it
+    if done:
+        r.storage.set_setting(FIX_REQUESTS_SETTING, json.dumps([q for q in queue if q not in done]))
+    live = [q for q in queue if q["repo"] == here and q["id"] in now]
     return {"requests": [{k: q.get(k) for k in ("id", "kind", "title", "ref", "fix", "prompt")} for q in live]}
 
 

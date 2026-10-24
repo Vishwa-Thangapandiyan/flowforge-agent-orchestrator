@@ -28,8 +28,9 @@ from flowforge.storage import Storage, now_iso
 
 router = APIRouter()
 
-FIX_REQUESTS_SETTING = "fix_requests"   # [{id, kind, title, ref, fix, prompt, sent_at}]: what the agent is asked to do
-FIXES_SETTING = "fixes_made"            # {issue id: {branch, commit, at}}: fixes made on a branch, not yet merged
+FIX_REQUESTS_SETTING = "fix_requests"   # [{repo, id, kind, title, ref, fix, prompt, sent_at}]: what the agent is asked
+FIXES_SETTING = "fixes_made"            # [{repo, id, branch, commit, at}]: fixes made on a branch, not yet merged
+# Issue ids repeat across repos (kind, path, line), so every entry names its folder and only counts there (Codex review)
 EXAMPLE_WHY = "Example data: FlowForge shows the change but makes none. Map your own repo to fix it."
 
 
@@ -40,8 +41,21 @@ def _load(storage: Storage, key: str, empty: Any) -> Any:
         return empty
 
 
-def fix_requests(storage: Storage) -> list[dict[str, Any]]:
-    return _load(storage, FIX_REQUESTS_SETTING, [])
+def _entries(storage: Storage, key: str) -> list[dict[str, Any]]:
+    """A list setting's entries that name their folder (older ones didn't, and are dropped)."""
+    found = _load(storage, key, [])
+    return [e for e in found if isinstance(e, dict) and e.get("repo")] if isinstance(found, list) else []
+
+
+def fix_requests(storage: Storage, repo: Path | None = None) -> list[dict[str, Any]]:
+    """The queue, or only `repo`'s part of it."""
+    queue = _entries(storage, FIX_REQUESTS_SETTING)
+    return queue if repo is None else [r for r in queue if r["repo"] == str(repo.resolve())]
+
+
+def _fixes(storage: Storage, repo: Path) -> dict[str, dict[str, Any]]:
+    """The fixes made in `repo`, by issue id."""
+    return {m["id"]: m for m in _entries(storage, FIXES_SETTING) if m["repo"] == str(repo.resolve())}
 
 
 def _branch_exists(repo: Path, branch: str) -> bool:
@@ -72,8 +86,8 @@ def issues() -> dict[str, Any]:
     if repo is None or not repo.is_dir():
         return {"repo": None, "example": s.example, "summary": {}, "issues": []}
     result = scan_repo(repo)   # the code as it is now: a merged fix or an agent's edit shows at once
-    sent = {r["id"] for r in fix_requests(s.storage)}
-    made = _load(s.storage, FIXES_SETTING, {})
+    sent = {r["id"] for r in fix_requests(s.storage, repo)}
+    made = _fixes(s.storage, repo)
     out = []
     for f in result.findings:
         branch = made.get(f.id, {}).get("branch")
@@ -105,7 +119,7 @@ def fix(issue_id: str) -> dict[str, Any]:
     repo = _repo(s)
     if s.example:
         raise HTTPException(409, EXAMPLE_WHY)
-    made = _load(s.storage, FIXES_SETTING, {})
+    made = _fixes(s.storage, repo)
     if made.get(issue_id) and _branch_exists(repo, made[issue_id]["branch"]):
         raise HTTPException(409, f"Already fixed on {made[issue_id]['branch']}: merge that branch.")
     found = _finding(repo, issue_id)
@@ -116,17 +130,21 @@ def fix(issue_id: str) -> dict[str, Any]:
     except CantFix as e:
         raise HTTPException(409, str(e)) from None
     learn_saved_keys(s, repo)
-    made[issue_id] = {"branch": done["branch"], "commit": done["commit"], "at": now_iso()}
-    s.storage.set_setting(FIXES_SETTING, json.dumps(made))
+    here = str(repo.resolve())
+    kept = [m for m in _entries(s.storage, FIXES_SETTING) if (m["repo"], m.get("id")) != (here, issue_id)]
+    kept.append({"repo": here, "id": issue_id, "branch": done["branch"], "commit": done["commit"], "at": now_iso()})
+    s.storage.set_setting(FIXES_SETTING, json.dumps(kept))
     return done
 
 
 @router.post("/issues/{issue_id}/send", dependencies=[Depends(from_this_machine)])
 def send(issue_id: str) -> dict[str, Any]:
     s = app_state()
-    found = _finding(_repo(s), issue_id)
-    queue = [r for r in fix_requests(s.storage) if r["id"] != issue_id]
-    queue.append({"id": found.id, "kind": found.kind, "title": found.title, "ref": found.ref, "fix": found.fix,
-                  "prompt": found.prompt, "sent_at": now_iso()})
+    repo = _repo(s)
+    found = _finding(repo, issue_id)
+    here = str(repo.resolve())
+    queue = [r for r in fix_requests(s.storage) if (r["repo"], r["id"]) != (here, issue_id)]
+    queue.append({"repo": here, "id": found.id, "kind": found.kind, "title": found.title, "ref": found.ref,
+                  "fix": found.fix, "prompt": found.prompt, "sent_at": now_iso()})
     s.storage.set_setting(FIX_REQUESTS_SETTING, json.dumps(queue))
     return {"id": issue_id, "state": "sent"}

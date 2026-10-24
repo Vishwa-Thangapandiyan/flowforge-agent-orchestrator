@@ -145,3 +145,30 @@ def test_example_mode_saves_keys_and_previews_fixes_but_applies_none(tmp_path, m
         assert shown["can_apply"] is False and "Example" in shown["why_not"]
         assert c.post(f"/issues/{key['id']}/fix").status_code == 409
         c.delete("/keys/OLLAMA_API_KEY")
+
+
+async def test_a_request_belongs_to_the_folder_it_was_sent_from(shop, tmp_path):
+    """Codex review: issue ids repeat across repos (kind, path, line), so a request from one folder must never reach
+    an agent working in another, even at the same file and line."""
+    with TestClient(main.app, base_url=LOCAL) as c:
+        c.post(f"/issues/{issues(c)['plain_http']['id']}/send")
+    twin = tmp_path / "twin"
+    twin.mkdir()
+    (twin / "pay.py").write_text((shop / "pay.py").read_text())   # the same issue at the same place
+    storage = Storage(tmp_path / "flowforge.db")
+    storage.set_setting("repo_path", str(twin.resolve()))          # the dashboard now maps the twin
+    async with Client(build_server(twin, storage)) as client:
+        got = json.loads((await client.call_tool("get_fix_requests", {})).content[0].text)
+    assert got["requests"] == []
+
+
+def test_a_fix_made_in_one_folder_isnt_shown_in_another(shop, tmp_path, monkeypatch):
+    with TestClient(main.app, base_url=LOCAL) as c:
+        c.post(f"/issues/{issues(c)['key_in_code']['id']}/fix")
+    twin = tmp_path / "twin"
+    subprocess.run(["git", "clone", "-q", str(shop), str(twin)], check=True)
+    git(twin, "branch", "-q", "flowforge/fix-stripe-key")          # a branch of the same name exists there too
+    monkeypatch.setenv("FLOWFORGE_REPO", str(twin))
+    monkeypatch.setenv("FLOWFORGE_REPO_REPLACE", "1")
+    with TestClient(main.app, base_url=LOCAL) as c:
+        assert issues(c)["key_in_code"]["state"] == "open"

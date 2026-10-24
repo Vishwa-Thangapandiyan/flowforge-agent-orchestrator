@@ -7,7 +7,7 @@ import { api, setProject, useApi } from "../api/client";
 import type { Meta } from "../api/types";
 import { Icons } from "./icons";
 import { applyTheme, readTheme } from "./theme";
-import { saveTheme as saveMapStyle, type GraphTheme } from "../flowmap/themes";
+import { adoptMapStyle, type GraphTheme } from "../flowmap/themes";
 import { CountsProvider, useCounts } from "../security/counts";
 
 const MetaContext = createContext<Meta>({ project: "My project", example: false, version: "" });
@@ -58,7 +58,7 @@ function useLook(): void {
     let mapStyleSaved = false;
     try { mapStyleSaved = localStorage.getItem("flowforge.graphTheme") !== null; } catch { /* private window */ }
     if (!mapStyleSaved) {
-      api.get<{ map_style: GraphTheme | null }>("/settings").then((s) => { if (s.map_style) saveMapStyle(s.map_style); }, () => {});
+      api.get<{ map_style: GraphTheme | null }>("/settings").then((s) => { if (s.map_style) adoptMapStyle(s.map_style); }, () => {});
     }
   }, []);
 }

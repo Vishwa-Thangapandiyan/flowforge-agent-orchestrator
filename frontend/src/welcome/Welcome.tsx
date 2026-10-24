@@ -84,9 +84,16 @@ function KeysStep({ onDone }: { onDone: () => void }) {
 export function Welcome({ exampleId, onDone }: { exampleId: string; onDone: () => void }) {
   const [step, setStep] = useState(0);
   const [project, setProject] = useState<string>();
+  const [error, setError] = useState<string>();
   const go = useNavigate();
   const finish = async () => {
-    await api.patch("/settings", { welcome_done: true }).catch(() => {});
+    setError(undefined);
+    try {
+      await api.patch("/settings", { welcome_done: true });
+    } catch (err) {   // not saved: it would come back next time with no reason, so it stays and says why (Codex review)
+      setError(`Couldn't save that you're done: ${err instanceof Error ? err.message : "unknown error"}`);
+      return;
+    }
     if (project) { markOpen(project); go(placeOf(project)); }
     onDone();
   };
@@ -107,6 +114,7 @@ export function Welcome({ exampleId, onDone }: { exampleId: string; onDone: () =
         {step === 0 && <AppStep exampleId={exampleId} onMapped={(id) => { setProject(id); setStep(1); }} />}
         {step === 1 && <AgentStep onNext={() => setStep(2)} />}
         {step === 2 && <KeysStep onDone={() => void finish()} />}
+        {error && <p className="key-err" role="alert">{error}</p>}
         <button type="button" className="wc-skip" onClick={() => void finish()}>Skip for now {Icons.arrow(14)}</button>
       </div>
     </div>,

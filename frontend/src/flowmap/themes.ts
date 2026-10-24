@@ -32,6 +32,14 @@ export function saveTheme(theme: GraphTheme): void {
   try { localStorage.setItem(KEY, theme); } catch { /* not remembered */ }
 }
 
+export const MAP_STYLE_EVENT = "flowforge:map-style";
+
+/** The style Settings saved, for a browser that had none (D40): kept, and given to a map that is already open. */
+export function adoptMapStyle(theme: GraphTheme): void {
+  saveTheme(theme);
+  window.dispatchEvent(new CustomEvent(MAP_STYLE_EVENT, { detail: theme }));
+}
+
 const KIND_LANE: Partial<Record<NodeKind, string>> = { llm: "LLMs", mcp: "MCP servers", api: "APIs", local: "Local programs" };
 
 /** A Boxed container (D26), in map coordinates. */

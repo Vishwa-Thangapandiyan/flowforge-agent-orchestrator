@@ -85,3 +85,15 @@ test("the keys step sets the Vault's lock when there is none", async () => {
   expect(await screen.findByRole("region", { name: "Set up the Vault" })).toBeInTheDocument();
   expect(screen.getByLabelText("Password")).toHaveAttribute("type", "password");
 });
+
+test("if being done can't be saved, the welcome stays open and says so (Codex review)", async () => {
+  firstLaunch();
+  renderHome();
+  const skip = await screen.findByRole("button", { name: /Skip for now/ });
+  const original = globalThis.fetch;
+  vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) =>
+    init?.method === "PATCH" ? new Response(JSON.stringify({ detail: "Disk full" }), { status: 500 }) : original(input, init));
+  await userEvent.click(skip);
+  expect(await screen.findByRole("alert")).toHaveTextContent("Disk full");
+  expect(screen.getByRole("dialog", { name: "Welcome to FlowForge" })).toBeInTheDocument();
+});

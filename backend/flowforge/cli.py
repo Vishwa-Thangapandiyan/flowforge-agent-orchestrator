@@ -97,8 +97,30 @@ def main(argv: list[str] | None = None) -> None:
     print(f"FlowForge{' (example data)' if args.example else ''} at {url}")
     if not args.no_open:
         threading.Timer(1.5, webbrowser.open, args=(url,)).start()
+    if os.getenv("FLOWFORGE_STOP_ON_EOF") == "1":
+        stop_when_parent_is_gone()
     uvicorn.run("flowforge.main:app", host=args.host, port=args.port, reload=args.reload,
                 reload_dirs=[str(Path(__file__).parent)] if args.reload else None)
+
+
+def stop_when_parent_is_gone() -> None:
+    """The desktop app holds this server's stdin (D42). When the app quits or crashes the pipe closes: stop, rather
+    than run on in the background holding the port. The main thread is interrupted so uvicorn shuts down cleanly; if it
+    hasn't within 5 s, the process exits."""
+    import _thread
+
+    def watch() -> None:
+        try:
+            while sys.stdin.buffer.read(1024):
+                pass
+        except (OSError, ValueError):
+            pass
+        _thread.interrupt_main()
+        backstop = threading.Timer(5, os._exit, args=(0,))
+        backstop.daemon = True   # a clean shutdown doesn't wait for it
+        backstop.start()
+
+    threading.Thread(target=watch, name="flowforge-parent-watch", daemon=True).start()
 
 
 def serve_agent(repo: str | None, db: str | None = None) -> None:

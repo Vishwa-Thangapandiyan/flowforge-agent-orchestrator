@@ -1324,6 +1324,38 @@ D39 left pairing the agent once to this step.
 
 ---
 
+## D42. A desktop app: the same dashboard, Python inside (Vishwa, 2026-10-25)
+
+**Context.** This is step ④ of Vishwa's order. FlowForge needed Python and a terminal (`uvx flowforge-map`), which keeps out anyone who doesn't live in one. Vishwa chose:
+- a desktop app with **Python bundled inside**;
+- **unsigned builds** for now (§1: zero cost by default);
+- Claude builds, Codex reviews.
+
+**Choice:**
+- **Tauri 2** (`desktop/`), a small Rust shell around the system's web view. It shows **the same dashboard**, served by FlowForge itself. There is no second frontend.
+- **The server is a sidecar.** `flowforge-server` is FlowForge built with PyInstaller from the wheel (D34): Python, the dashboard, the example and the sample workflows, in one folder. The app:
+  1. picks a free port on 127.0.0.1;
+  2. starts `flowforge-server serve --no-open --port N`;
+  3. shows "Starting FlowForge…" until `/meta` answers;
+  4. then points the window at `http://127.0.0.1:N/`.
+  
+  Closing the window stops the server. A second launch focuses the window that's already open (single instance).
+- **The bundled binary is the `flowforge` command.** `home.install_kind()` says `desktop` when frozen, so Settings pairs the agent with `<the bundled binary> mcp` (D39, D40). That is a full path, so an agent started without your shell's PATH still finds it.
+- **What only the desktop app adds:** a **Browse…** button beside the folder box, opening the system's folder picker (D39 left this to ④). The dialog is the only native power the page gets, and only for `http://127.0.0.1:*`.
+- **Unsigned builds.** Signing needs paid certificates (Apple $99/year, a Windows code-signing certificate). The README explains the one-time "Open anyway" on macOS and "Run anyway" on Windows. Signing can be added later in CI without changing the app.
+- **Releases.** On a `v*` tag, or by hand, CI builds the sidecar and the app on Linux (AppImage, deb, rpm), Windows (msi, exe), and macOS on Apple Silicon and Intel (dmg). The installers attach to a draft GitHub Release. Every PR runs `cargo check` and clippy.
+
+**Why:** most people who would use FlowForge will try an app before a command. One installer that opens to the welcome is the shortest path from "heard of it" to "my app's map".
+
+**Honest limits:**
+- Unsigned: macOS and Windows warn once.
+- About 80 MB per download, since Python is inside.
+- No auto-update yet: Settings' **Check for updates** tells you when a new version is out.
+
+**Code:** `desktop/` (Tauri), `scripts/build_sidecar.py`, `scripts/desktop_entry.py`, `home.py` (`install_kind`), `api/agent.py` (`server_command`), the dashboard's folder pickers, `.github/workflows/desktop.yml`.
+
+---
+
 ## Step JSON schema (reference)
 
 ```json

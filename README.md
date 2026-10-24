@@ -105,7 +105,9 @@ flowforge run -- python app.py             # your app starts with the keys in it
 
 Each command takes `--repo PATH` (default: the folder you're in). In the dashboard, the **Keys** page does the same with no commands: paste a missing key into its box, or click **Move into FlowForge** for one that's in `.env`. On the map, a 🔑 badge marks a block whose key is missing. Your agent's `get_keys` tool gets names, statuses and the command to ask you to run, never a value. With no keychain (a server, CI), keys go to an encrypted file in `~/.flowforge`.
 
-What this does and doesn't promise: the key is never handed to your agent and isn't left in a file it reads by habit. An agent that can run commands as you could still run `flowforge run -- printenv`, or read your keychain, so it isn't impossible. MCP servers your coding tool starts get their environment from that tool, not from FlowForge.
+**See a key again**, behind two locks: at the bottom of the Keys page, set a password and scan the QR with an authenticator app (Google Authenticator, Authy, 1Password). After that, your password and the 6-digit code on your phone open the key values for 5 minutes, for keys in your code, in FlowForge and in `.env`. Each value shows for 30 seconds. Forgot the password? `flowforge lock reset --forget` drops the lock (your keys stay) and the dashboard says so.
+
+What this does and doesn't promise: the key is never handed to your agent and isn't left in a file it reads by habit. An agent that can run commands as you could still run `flowforge run -- printenv`, read your keychain, or reset the lock (the dashboard then shows it was reset), so it isn't impossible. The 2FA stops web pages, anyone at your browser, and anything without your phone. MCP servers your coding tool starts get their environment from that tool, not from FlowForge.
 
 ### Send someone the map
 
@@ -232,7 +234,9 @@ FlowForge itself keeps keys out of its runs, events, cache, logs and the dashboa
 | `POST /connectors/{id}/test` | One harmless check (MCP and local apps) |
 | `GET /connectors/{id}/activity`, `GET /connectors/{id}/tools` | What an app has done; an MCP server's tools |
 | `GET /security` | The scan's security findings, by level, with the fix and a prompt for each (D31) |
-| `GET /keys`, `PUT /keys/{name}`, `DELETE /keys/{name}` | The keys the code reads and their status; save one (write-only: the value never comes back) or forget it (D36) |
+| `GET /keys`, `PUT /keys/{name}`, `DELETE /keys/{name}`, `POST /keys/{name}/import` | The keys the code reads and their status; save one (write-only), move one in from `.env`, or forget it (D36, D37) |
+| `GET /issues`, `POST /issues/{id}/preview\|fix\|send` | Every issue with its button; the masked change; make it on a new branch; send it to your agent (D37) |
+| `GET /lock`, `POST /lock/setup\|confirm\|open\|close`, `GET /keys/hidden`, `POST /keys/reveal` | The key view's lock (password + authenticator code) and, once open, one value at a time (D37) |
 | `GET /health/tools`, `GET /stats/savings`, `GET /meta`, `GET /presets` | Tool health, money and time, app info, ready-made apps |
 | `GET /workflows`, `GET /workflows/{name}` | The example workflows |
 | `GET /flow?layer=mine\|planner` | The flow map: blocks, lines, positions, critical path, your edits |

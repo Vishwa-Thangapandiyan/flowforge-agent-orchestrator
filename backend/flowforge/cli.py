@@ -8,6 +8,7 @@
     uv run flowforge serve --reload   (used by `npm run dev`; `serve` is optional)
     uv run flowforge key add NAME     save a key for this folder, typed hidden (D36); also: list, remove, import
     uv run flowforge run -- CMD ...   start your app with the saved keys in its environment (D36)
+    uv run flowforge lock reset       turn off the key view's lock with its password and code (D37); --forget without
 """
 
 from __future__ import annotations
@@ -49,6 +50,9 @@ def main(argv: list[str] | None = None) -> None:
         return
     if argv[:1] == ["run"]:
         run_with_keys(argv[1:])
+        return
+    if argv[:1] == ["lock"]:
+        lock_command(argv[1:])
         return
 
     import uvicorn
@@ -204,6 +208,36 @@ def run_with_keys(argv: list[str]) -> None:
     except KeyboardInterrupt:
         code = 130
     raise SystemExit(code)
+
+
+def lock_command(argv: list[str]) -> None:
+    """`flowforge lock reset [--forget]`: turn off the key view's lock (D37). Saved keys stay either way."""
+    import getpass
+
+    from flowforge.security.lock import Lock, LockError
+
+    parser = argparse.ArgumentParser(prog="flowforge lock", description="The key view's lock. Your saved keys stay.")
+    parser.add_argument("action", choices=["reset"])
+    parser.add_argument("--forget", action="store_true",
+                        help="you forgot the password: drop the lock without it (the dashboard will say so)")
+    args = parser.parse_args(argv)
+    lock = Lock()
+    if lock.state() == "none":
+        print("The key view has no lock.")
+        return
+    if args.forget:
+        if input("Drop the key view's lock without its password? Your keys stay. [y/N] ").strip().lower() != "y":
+            print("Nothing changed.")
+            return
+        lock.forget()
+        print("The lock is off. The dashboard shows that it was reset until you unlock it again.")
+        return
+    try:
+        lock.reset(getpass.getpass("Password (typed hidden): "), input("Code from your phone: "))
+    except LockError as e:
+        print(f"flowforge lock: {e}", file=sys.stderr)
+        raise SystemExit(1) from None
+    print("The lock is off. Set a new one on the Keys page.")
 
 
 if __name__ == "__main__":

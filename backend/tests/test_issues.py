@@ -19,6 +19,7 @@ from flowforge.storage import Storage
 FAKE = "sk_test_FAKEFAKE12345678"
 OTHER = "rzp_test_FAKE1234567"
 LOCAL = "http://127.0.0.1:8000"
+HERE = ("127.0.0.1", 50000)   # the caller's real address: this machine
 
 
 def git(root: Path, *args: str) -> str:
@@ -57,7 +58,7 @@ def issues(c):
 
 
 def test_each_issue_says_which_button_it_gets(shop):
-    with TestClient(main.app, base_url=LOCAL) as c:
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         got = c.get("/issues").json()
     by = {i["kind"]: i for i in got["issues"]}
     assert by["key_in_code"]["action"] == "fix" and by["key_in_code"]["state"] == "open"
@@ -67,7 +68,7 @@ def test_each_issue_says_which_button_it_gets(shop):
 
 
 def test_preview_then_fix_through_the_api(shop):
-    with TestClient(main.app, base_url=LOCAL) as c:
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         key = issues(c)["key_in_code"]
         shown = c.post(f"/issues/{key['id']}/preview")
         assert shown.status_code == 200 and FAKE not in shown.text
@@ -84,7 +85,7 @@ def test_preview_then_fix_through_the_api(shop):
 
 def test_a_fix_that_cant_be_made_says_why(shop):
     (shop / "pay.py").write_text((shop / "pay.py").read_text() + "\n# work in progress\n")
-    with TestClient(main.app, base_url=LOCAL) as c:
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         key = issues(c)["key_in_code"]
         assert c.post(f"/issues/{key['id']}/preview").json()["can_apply"] is False
         r = c.post(f"/issues/{key['id']}/fix")
@@ -95,14 +96,14 @@ def test_a_fix_that_cant_be_made_says_why(shop):
 
 
 def test_fix_and_send_answer_only_to_this_machine(shop):
-    with TestClient(main.app, base_url=LOCAL) as c:
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         key = issues(c)["key_in_code"]
         for path in (f"/issues/{key['id']}/fix", f"/issues/{key['id']}/send"):
             assert c.post(path, headers={"host": "evil.test"}).status_code == 403
 
 
 async def test_send_to_agent_queues_it_for_get_fix_requests(shop, tmp_path):
-    with TestClient(main.app, base_url=LOCAL) as c:
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         plain = issues(c)["plain_http"]
         assert c.post(f"/issues/{plain['id']}/send").json() == {"id": plain["id"], "state": "sent"}
         assert issues(c)["plain_http"]["state"] == "sent"
@@ -117,7 +118,7 @@ async def test_send_to_agent_queues_it_for_get_fix_requests(shop, tmp_path):
 
 
 async def test_a_request_leaves_the_queue_once_the_code_no_longer_has_the_issue(shop, tmp_path):
-    with TestClient(main.app, base_url=LOCAL) as c:
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         c.post(f"/issues/{issues(c)['plain_http']['id']}/send")
     (shop / "pay.py").write_text((shop / "pay.py").read_text().replace("http://", "https://"))
     async with Client(build_server(shop, Storage(tmp_path / "flowforge.db"))) as client:
@@ -126,7 +127,7 @@ async def test_a_request_leaves_the_queue_once_the_code_no_longer_has_the_issue(
 
 
 def test_move_a_key_in_from_env(shop):
-    with TestClient(main.app, base_url=LOCAL) as c:
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         r = c.post("/keys/OPENAI_API_KEY/import")
         assert r.status_code == 200 and OTHER not in r.text
         assert c.post("/keys/NOT_IN_ENV/import").status_code == 404
@@ -137,7 +138,7 @@ def test_move_a_key_in_from_env(shop):
 def test_example_mode_saves_keys_and_previews_fixes_but_applies_none(tmp_path, monkeypatch):
     monkeypatch.setenv("FLOWFORGE_EXAMPLE", "1")
     monkeypatch.setenv("FLOWFORGE_DB", str(tmp_path / "example.db"))
-    with TestClient(main.app, base_url=LOCAL) as c:
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         assert c.put("/keys/OLLAMA_API_KEY", json={"value": FAKE}).status_code == 200
         key = issues(c)["key_in_code"]
         assert key["action"] == "fix"
@@ -150,7 +151,7 @@ def test_example_mode_saves_keys_and_previews_fixes_but_applies_none(tmp_path, m
 async def test_a_request_belongs_to_the_folder_it_was_sent_from(shop, tmp_path):
     """Codex review: issue ids repeat across repos (kind, path, line), so a request from one folder must never reach
     an agent working in another, even at the same file and line."""
-    with TestClient(main.app, base_url=LOCAL) as c:
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         c.post(f"/issues/{issues(c)['plain_http']['id']}/send")
     twin = tmp_path / "twin"
     twin.mkdir()
@@ -163,12 +164,12 @@ async def test_a_request_belongs_to_the_folder_it_was_sent_from(shop, tmp_path):
 
 
 def test_a_fix_made_in_one_folder_isnt_shown_in_another(shop, tmp_path, monkeypatch):
-    with TestClient(main.app, base_url=LOCAL) as c:
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         c.post(f"/issues/{issues(c)['key_in_code']['id']}/fix")
     twin = tmp_path / "twin"
     subprocess.run(["git", "clone", "-q", str(shop), str(twin)], check=True)
     git(twin, "branch", "-q", "flowforge/fix-stripe-key")          # a branch of the same name exists there too
     monkeypatch.setenv("FLOWFORGE_REPO", str(twin))
     monkeypatch.setenv("FLOWFORGE_REPO_REPLACE", "1")
-    with TestClient(main.app, base_url=LOCAL) as c:
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         assert issues(c)["key_in_code"]["state"] == "open"

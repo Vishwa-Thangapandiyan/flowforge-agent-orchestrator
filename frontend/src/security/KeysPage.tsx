@@ -5,6 +5,7 @@ import { Icons } from "../components/icons";
 import { EmptyState, ErrorBox } from "../components/ui";
 import { useCounts } from "./counts";
 import { KeyList, type KeyStatus } from "./Keys";
+import { KeyView } from "./KeyView";
 import { useCopy } from "./Security";
 import "./security.css";
 
@@ -37,6 +38,7 @@ export function KeysPage() {
           action={data.repo ? undefined : <Link className="btn primary" to="/">Scan a folder</Link>}>
           {data.repo ? "Keys show here when the code reads one from its environment." : "Keys come from the scan of a folder."}
         </EmptyState>
+        {data.repo && <KeyView />}
       </div>
     );
   }
@@ -50,6 +52,7 @@ export function KeysPage() {
         <span className="key-hint">no .env needed</span>
         <span aria-live="polite">{said}</span>
       </p>
+      <KeyView />
     </div>
   );
 }

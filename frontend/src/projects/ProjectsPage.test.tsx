@@ -125,3 +125,15 @@ test("old addresses inside a project stay in it: /security opens its Issues, /pl
   await router.navigate("/p/blog/plans");
   await vi.waitFor(() => expect(router.state.location.pathname).toBe("/p/blog"));
 });
+
+test("switching to a project, by any way in, tells the server it was opened (Codex review: the default after a restart)", async () => {
+  const calls = api();
+  const router = createMemoryRouter(routes, { initialEntries: ["/p/shop/keys"] });
+  render(<RouterProvider router={router} />);
+  await screen.findByRole("heading", { level: 1, name: "Keys" });
+  await userEvent.click(screen.getByRole("button", { name: /Project: shop/ }));
+  await userEvent.click(within(screen.getByRole("menu", { name: "Projects" })).getByRole("menuitem", { name: /All projects/ }));
+  await router.navigate("/p/blog");
+  await vi.waitFor(() => expect(calls.filter((c) => c.init?.method === "POST").map((c) => c.url))
+    .toEqual(["/projects/shop/open", "/projects/blog/open"]));
+});

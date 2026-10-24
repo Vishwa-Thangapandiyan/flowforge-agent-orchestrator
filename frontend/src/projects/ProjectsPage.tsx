@@ -56,8 +56,7 @@ function Card({ p, onChanged }: { p: ProjectCard; onChanged: () => void }) {
   const [error, setError] = useState<string>();
   const open = () => {
     markOpen(p.id);
-    void api.post(`/projects/${encodeURIComponent(p.id)}/open`).catch(() => {});
-    go(placeOf(p.id));
+    go(placeOf(p.id));   // the project's shell tells the server it was opened
   };
   const rename = async (e: FormEvent) => {
     e.preventDefault();

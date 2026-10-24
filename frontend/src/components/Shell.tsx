@@ -3,7 +3,7 @@ import { Outlet, useLocation, useMatches } from "react-router-dom";
 import { Link, useProjectId } from "../projects/links";
 import { markOpen, rememberPlace } from "../projects/memory";
 import { ProjectPicker } from "../projects/ProjectPicker";
-import { setProject, useApi } from "../api/client";
+import { api, setProject, useApi } from "../api/client";
 import type { Meta } from "../api/types";
 import { Icons } from "./icons";
 import { CountsProvider, useCounts } from "../security/counts";
@@ -95,6 +95,9 @@ function ProjectShell({ pid }: { pid: string | undefined }) {
   useEffect(() => {   // where you were, so switching back brings you here
     if (pid) { rememberPlace(pid, location.pathname + location.search); markOpen(pid); }
   }, [pid, location.pathname, location.search]);
+  useEffect(() => {   // opened now, however you got here: the default after a restart (D39)
+    if (pid) void api.post(`/projects/${encodeURIComponent(pid)}/open`).catch(() => {});
+  }, [pid]);
   const at = pid ? location.pathname.slice(`/p/${encodeURIComponent(pid)}`.length) || "/" : location.pathname;
 
   return (

@@ -52,8 +52,8 @@ test("adding posts the connector and opens its page", async () => {
   type(/Run in folder/, "tools");
   fireEvent.click(screen.getByRole("radio", { name: "Colour #2F6FD6" }));
   fireEvent.click(screen.getByRole("button", { name: /Add to project/ }));
-  await vi.waitFor(() => expect(calls.some((c) => c.init?.method === "POST")).toBe(true));
-  const body = JSON.parse(String(calls.find((c) => c.init?.method === "POST")!.init!.body));
+  await vi.waitFor(() => expect(calls.some((c) => c.init?.method === "POST" && c.url === "/connectors")).toBe(true));
+  const body = JSON.parse(String(calls.find((c) => c.init?.method === "POST" && c.url === "/connectors")!.init!.body));
   expect(body).toMatchObject({ id: "scan", type: "local", connection: { command: ["./scan.sh", "--quick"], cwd: "tools" },
     style: { color: "#2F6FD6" } });
   expect(await screen.findByRole("heading", { name: "Scan", level: 1 })).toBeInTheDocument();

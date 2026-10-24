@@ -37,7 +37,7 @@ test("a map already open takes the style Settings saved when it arrives (D40, Co
   await screen.findByRole("button", { name: /^Style/ });
   expect(document.querySelector(".fm")).toHaveAttribute("data-graph", "studio");
   act(() => adoptMapStyle("metro"));
-  expect(document.querySelector(".fm")).toHaveAttribute("data-graph", "metro");
+  await vi.waitFor(() => expect(document.querySelector(".fm")).toHaveAttribute("data-graph", "metro"));   // after the redraw
   expect(localStorage.getItem("flowforge.graphTheme")).toBe("metro");
 });
 

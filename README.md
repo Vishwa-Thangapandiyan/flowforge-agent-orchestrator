@@ -31,6 +31,8 @@ flowforge --repo ~/my-app        # map your own repo
 
 You need Python 3.12 or newer ([uv](https://docs.astral.sh/uv/) installs it for you). The dashboard is inside the package: no Node needed. Your data lives in `~/.flowforge`.
 
+The first time, a short welcome walks you through three steps, each one skippable: your app's folder (or the example), pairing your coding agent once, and a lock for your keys. **⚙ Settings** at the bottom of the rail keeps what applies to every project: your agent, the theme and map style, the Vault's lock, and your data (each project's size, the MCP servers it may start, its check history, and the version, with **Check for updates**, which asks pypi.org only when you press it).
+
 ### From source (to work on FlowForge)
 
 You need **[uv](https://docs.astral.sh/uv/)** (it installs Python for you) and **[Node.js](https://nodejs.org/) 20 or newer** for the dashboard.
@@ -77,10 +79,10 @@ The home page lists every app you've mapped, with its dependencies, what needs f
 
 ### Use it from your coding agent
 
-FlowForge is also an **MCP server**, so Claude Code, Codex or Antigravity can ask it about your app and then make the change themselves. Open **Connect agent** in the dashboard: it gives you the one line (or config block) for your agent, with the paths filled in. For Claude Code it looks like:
+FlowForge is also an **MCP server**, so Claude Code, Codex or Antigravity can ask it about your app and then make the change themselves. **Settings → Your agent** (also on **Connect agent**) gives you the one line (or config block) for your agent. With `uvx`, for Claude Code it looks like:
 
 ```bash
-claude mcp add flowforge -- uv --directory /path/to/flowforge run flowforge mcp --repo /path/to/your/app
+claude mcp add flowforge -- uvx flowforge-map mcp
 ```
 
 Pair your agent once and it sees every project: `flowforge mcp` with no folder answers about the project your agent is working in, or any other by name (`list_projects` shows them all). Your agent gets eleven tools: `list_projects`, `get_map`, `get_flow`, `get_advice`, `check_health`, `get_security_findings`, `get_keys`, `get_fix_requests`, `request_key`, `wait_for_keys` and `what_changed`. All read only, except `request_key`, which only asks you for a key by name. Every answer is masked (key values never appear), the agent can't make FlowForge change your code, and a check starts an MCP server only after you said yes to it on the Checks page. FlowForge needs no AI of its own for any of this.
@@ -160,6 +162,7 @@ To use real LLM steps, `cp .env.example .env` and add a free `NVIDIA_API_KEY` fr
 | **MCP Map** (Export) | The map to send: SVG, PNG, PDF, Mermaid or Flow JSON |
 | **Checks** | Check now, each dependency's verdict, why it's down and the likely fix, and the history |
 | **Connect agent** | The set-up for Claude Code, Codex or Antigravity; what your agent gets from this repo (dependencies, health, time, ways to be faster); and, once connected, what it asked |
+| **Settings** (⚙, every project) | Your agent, paired once; the theme and the map style maps open in; the Vault's lock and where keys are kept (never a value); your data, each project's yeses and check history, and Check for updates |
 | **How the Planner drew it** | The analysis replayed: read the repo, run the app in test mode, trace the calls, draft, check. What it read, what it dropped and why |
 | **Re-check** | What changed in your repo since the last map: added, changed, removed, and conflicts with your edits. You pick what to take; the old version stays listed |
 | **Apps and connectors** (Map ⋯) | A catalog of 56 apps with search and categories, honest **Live** / **Demo only** badges, and a mock test run for every one. Apps you connected but your code doesn't call wait here, off the map |
@@ -241,6 +244,7 @@ FlowForge itself keeps keys out of its runs, events, cache, logs and the dashboa
 | `GET /connectors/{id}/activity`, `GET /connectors/{id}/tools` | What an app has done; an MCP server's tools |
 | `GET /security` | The scan's security findings, by level, with the fix and a prompt for each (D31) |
 | `GET /projects`, `POST /projects`, `PATCH\|DELETE /projects/{id}`, `/p/{id}/…` | Every project; add a folder; rename or remove one (its folder is never touched); any route above for one project (D39) |
+| `GET\|PATCH /settings`, `DELETE /projects/{id}/checks\|confirmed`, `POST /settings/update-check` | Settings for every project (no secret in them); clear a project's check history or take back its yeses; ask pypi.org for the newest version, only when pressed (D40) |
 | `GET /keys`, `PUT /keys/{name}`, `DELETE /keys/{name}`, `POST /keys/{name}/import` | The keys the code reads and their status; save one (write-only), move one in from `.env`, or forget it (D36, D37) |
 | `GET /issues`, `POST /issues/{id}/preview\|fix\|send` | Every issue with its button; the masked change; make it on a new branch; send it to your agent (D37) |
 | `GET /lock`, `POST /lock/setup\|confirm\|password\|code\|close`, `GET /vault/keys`, `POST /keys/reveal` | The Vault: its lock (your password, then the authenticator code) and, once open, every key's health and one value at a time (D37, D38) |

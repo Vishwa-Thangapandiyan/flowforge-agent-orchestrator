@@ -103,6 +103,11 @@ def main() -> None:
         check(actions == ["agent", "agent", "fix"], "the Issues page: one Fix, two for the agent")
         command = httpx.get(f"{base}/agent/connect", timeout=10).json()["command"]
         check("--directory" not in command, f"the agent command doesn't need a checkout: {command[:3]}")
+        settings = httpx.get(f"{base}/settings", timeout=10).json()   # D40: a fresh FLOWFORGE_HOME
+        check(settings["welcome_done"] is False and settings["version"] == version(), "Settings: the welcome is due")
+        pair = settings["agent"]["command"]
+        check(pair[-1] == "mcp" and "--repo" not in pair and "--directory" not in pair,
+              f"Settings pairs the agent once, for every project: {pair[-2:]}")
     finally:
         server.terminate()
         server.wait(timeout=20)

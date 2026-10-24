@@ -25,3 +25,6 @@ STATIC_MAP_URL = "https://maps.googleapis.com/maps/api/staticmap"
 
 # MCP servers are listed in .mcp.json; the filesystem server may only touch this folder
 TRIPS_DIR = HERE / "trips"
+
+# Only Ollama's cloud models need a key; a local server ignores it. Keep it out of files: `flowforge key add`
+OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY", "ollama")

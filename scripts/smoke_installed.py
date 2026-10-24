@@ -25,6 +25,8 @@ from mcp import Client, StdioServerParameters
 
 EXPECTED_DEPENDENCIES = 12   # the trip planner's
 EXPECTED_FINDINGS = 3
+EXPECTED_KEYS = 1            # OLLAMA_API_KEY, read in config.py (D36)
+FAKE_KEY = "sk_test_FAKEFAKE12345678"
 
 
 def free_port() -> int:
@@ -44,7 +46,7 @@ async def agent(repo: str, db: str) -> dict[str, int]:
     params = StdioServerParameters(command=sys.executable, args=args, env={**os.environ})
     out = {}
     async with Client(params) as client:
-        for tool, key in [("get_map", "dependencies"), ("get_security_findings", "findings")]:
+        for tool, key in [("get_map", "dependencies"), ("get_security_findings", "findings"), ("get_keys", "keys")]:
             result = await client.call_tool(tool, {})
             out[tool] = -1 if result.is_error else len(json.loads(result.content[0].text)[key])
     return out
@@ -119,8 +121,27 @@ def main() -> None:
     check((fresh / "flowforge.db").is_file(), "its database is created in a new FLOWFORGE_HOME")
 
     got = asyncio.run(agent(str(resource("example")), str(Path(home, "agent.db"))))
-    check(got == {"get_map": EXPECTED_DEPENDENCIES, "get_security_findings": EXPECTED_FINDINGS}, f"an agent gets {got}")
+    check(got == {"get_map": EXPECTED_DEPENDENCIES, "get_security_findings": EXPECTED_FINDINGS,
+                  "get_keys": EXPECTED_KEYS}, f"an agent gets {got}")
+    keys(repo, fresh)
     print("installed FlowForge works", flush=True)
+
+
+def keys(repo: Path, home: Path) -> None:
+    """A key saved with `flowforge key add` (the encrypted file: CI has no keychain) reaches the app through
+    `flowforge run`, and is never printed (D36)."""
+    env = {**os.environ, "FLOWFORGE_HOME": str(home), "FLOWFORGE_KEYSTORE": "file"}
+    cli = [sys.executable, "-m", "flowforge.cli"]
+    added = subprocess.run([*cli, "key", "add", "OLLAMA_API_KEY", "--repo", str(repo)], input=FAKE_KEY + "\n",
+                           capture_output=True, text=True, env=env)
+    check(added.returncode == 0 and FAKE_KEY not in added.stdout + added.stderr, "flowforge key add saves a key")
+    listed = subprocess.run([*cli, "key", "list", "--repo", str(repo)], capture_output=True, text=True, env=env)
+    check("saved" in listed.stdout and FAKE_KEY not in listed.stdout, "flowforge key list shows it saved")
+    probe = f"import os, sys; sys.exit(0 if os.environ.get('OLLAMA_API_KEY') == {FAKE_KEY!r} else 3)"
+    ran = subprocess.run([*cli, "run", "--repo", str(repo), "--", sys.executable, "-c", probe], env=env)
+    check(ran.returncode == 0, "flowforge run hands the key to the app")
+    check(FAKE_KEY.encode() not in b"".join(p.read_bytes() for p in home.rglob("*") if p.is_file() and
+                                            p.suffix != ".db"), "the key is stored encrypted")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,9 @@
 import "@testing-library/jest-dom/vitest";
+import { configure } from "@testing-library/react";
+
+// A map's first render (React Flow + dagre in jsdom) can take several seconds while every test file runs at once;
+// findBy* waits up to this long, and a passing wait returns as soon as the element is there
+configure({ asyncUtilTimeout: 15_000 });
 
 // React Flow measures blocks and the viewport; jsdom has no layout, so give it the few APIs it needs.
 class ResizeObserverStub {

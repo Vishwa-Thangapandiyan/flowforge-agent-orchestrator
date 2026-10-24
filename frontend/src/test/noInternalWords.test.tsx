@@ -20,6 +20,6 @@ test.each([
 ])("%s shows no internal words", async (_, path, ready) => {
   mockApi(routes);
   renderAt(path);
-  await screen.findAllByText(ready, {}, { timeout: 6000 });
+  await screen.findAllByText(ready, {});
   expect(document.body.textContent).not.toMatch(INTERNAL);
 }, 20000);

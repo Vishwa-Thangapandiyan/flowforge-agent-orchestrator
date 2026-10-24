@@ -217,6 +217,7 @@ Fixed in Phase 1: `LLMNode` is no longer NIM-only (D10); `MCPNode` has tool disc
   - A key already written in code is reported (D31) but not moved into the store yet (it edits code: Phase 10).
   - A key is tied to a dependency when the scan sees it read on the dependency's line, when its name names the service (`STRIPE_…` → Stripe), or when its file has only one dependency; otherwise it is listed without a block.
   - `keys.json` (names only) has no lock across processes: two `flowforge key add` at the same moment can lose one name.
+  - Only the key routes check the Host and Origin (against DNS rebinding); the rest of the API (connector edits, `POST /scan`, `POST /checks`) doesn't yet, and should.
 - MCP server (D29) limits:
   - The agent's command follows the install (D34): a checkout uses `uv --directory`, `uvx` pins the version, a `pip` install uses its own Python.
   - The agent's map is as scanned: edits made on the dashboard's map (hidden or added blocks) aren't applied to it.

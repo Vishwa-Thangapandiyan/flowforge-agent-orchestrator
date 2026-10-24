@@ -7,11 +7,13 @@ DELETE /keys/{name}   → {name, removed}
 
 from __future__ import annotations
 
+import os
 from collections import Counter
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict
 
 from flowforge.api.scan import repo_path
@@ -50,6 +52,23 @@ def _scan(s: AppState, repo: Path) -> ScanResult:
     return scan_repo(repo)
 
 
+_LOOPBACK = {"localhost", "127.0.0.1", "::1"}
+
+
+def _this_machine(name: str | None) -> bool:
+    chosen = os.getenv("FLOWFORGE_HOST", "")
+    return bool(name) and (name in _LOOPBACK or (name == chosen and chosen not in ("0.0.0.0", "::")))
+
+
+def from_this_machine(request: Request) -> None:
+    """Saving or forgetting a key needs the dashboard's own address (D36). A web page can't do it: through DNS
+    rebinding its Host is its own name, and from another site its Origin is."""
+    host = urlsplit(f"//{request.headers.get('host', '')}").hostname
+    origin = request.headers.get("origin")
+    if not _this_machine(host) or (origin is not None and not _this_machine(urlsplit(origin).hostname)):
+        raise HTTPException(403, "Keys can only be saved from the dashboard on this machine.")
+
+
 def _writable(s: AppState) -> Path:
     repo = repo_path(s)
     if s.example:
@@ -70,7 +89,7 @@ def keys() -> dict[str, Any]:
     return {"repo": repo.name, "example": s.example, "summary": dict(summary), "keys": found}
 
 
-@router.put("/keys/{name}")
+@router.put("/keys/{name}", dependencies=[Depends(from_this_machine)])
 def save_key(name: str, body: KeyValue) -> dict[str, Any]:
     s = app_state()
     repo = _writable(s)
@@ -82,7 +101,7 @@ def save_key(name: str, body: KeyValue) -> dict[str, Any]:
     return {"name": name, "status": "saved"}
 
 
-@router.delete("/keys/{name}")
+@router.delete("/keys/{name}", dependencies=[Depends(from_this_machine)])
 def remove_key(name: str) -> dict[str, Any]:
     repo = _writable(app_state())
     return {"name": name, "removed": KeyStore(repo).remove(name)}

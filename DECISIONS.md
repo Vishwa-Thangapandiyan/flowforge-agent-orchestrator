@@ -1142,6 +1142,8 @@ The agent only needs the key's **name**: the code it writes reads `os.environ["S
   - the block's keys in the step panel.
   
   Each key offers the command to copy and a password box (`autocomplete=off`, emptied after it saves). Example mode shows the statuses but saves nothing (409).
+  
+  Saving or forgetting a key answers only to the dashboard's own address: a Host of `localhost`, `127.0.0.1`, `::1` or the `FLOWFORGE_HOST` chosen, and an Origin, if sent, of the same. Otherwise a web page could swap in its own key (its own Stripe account, say) through DNS rebinding. On a dashboard bound to `0.0.0.0` and opened from another machine, keys are added with the CLI.
 - **For the agent:** a seventh read-only MCP tool, `get_keys`. It returns names, statuses, where each is read, which dependencies use it, and the command to ask the user to run. The MCP server, which the agent starts, never reads a value: not even to mask with.
 - **No sign-in, no 2FA, no page that shows keys.** FlowForge is local and single-user (§6.5). A page that shows keys is a place keys leak (a screen share, a screenshot). The keychain is already locked by the user's login. To see a key, use the provider's dashboard.
 

@@ -219,3 +219,20 @@ def test_js_that_may_run_in_a_browser_goes_to_the_agent(tmp_path, as_someone, co
 def test_js_that_runs_on_node_is_fixable(tmp_path, as_someone, code):
     root = repo_with(tmp_path, {"server/pay.js": code})
     assert fixable(root, finding(root)) is True
+
+
+@pytest.mark.parametrize("code", [
+    f"// server version: const s = require('stripe')\nconst key = '{FAKE}';\n",                   # only a comment
+    f"/* import fs from 'node:fs' */\nconst key = '{FAKE}';\n",
+    f"const help = \"use require(...) on the server\";\nconst key = '{FAKE}';\n",                    # only a string
+])
+def test_node_words_in_comments_or_strings_dont_count(tmp_path, as_someone, code):
+    """Codex review: runtime evidence comes from code, never from a comment or a string."""
+    root = repo_with(tmp_path, {"src/pay.js": code})
+    assert fixable(root, finding(root)) is False
+
+
+def test_a_browser_word_in_a_comment_doesnt_block_node_code(tmp_path, as_someone):
+    root = repo_with(tmp_path, {"server/pay.js": f"// unlike the window.fetch version\n"
+                                                 f"const stripe = require('stripe')('{FAKE}');\n"})
+    assert fixable(root, finding(root)) is True

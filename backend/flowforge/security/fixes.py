@@ -27,16 +27,30 @@ from flowforge.security.keystore import KeyStore
 from flowforge.security.logfilter import REDACTED, redact_code
 
 _FIXABLE_CODE = ("python", "javascript", "typescript")
-# JS/TS that shows it runs on Node, where `process.env` exists; anything that may run in a browser goes to the agent
-_NODE = re.compile(r"""\brequire\s*\(|\bfrom\s+['"]node:|\bprocess\.env\b"""
-                   r"""|\bfrom\s+['"](?:fs|path|os|http|https|crypto|child_process|express|fastify|koa|@nestjs/[\w-]+)['"]""")
+# JS/TS that shows it runs on Node, where `process.env` exists; anything that may run in a browser goes to the agent.
+# Read from code only: comments and string contents are blanked first (Codex review).
+_NODE_CODE = re.compile(r"\brequire\s*\(|\bprocess\.env\b")
+_IMPORT_FROM = re.compile(r"""\bfrom\s+(?=['"])""")
+_NODE_MODULE = re.compile(r"node:.*|fs|path|os|http|https|crypto|child_process|express|fastify|koa|@nestjs/[\w-]+")
 _BROWSER = re.compile(r"\b(?:window|document|localStorage|navigator)\.|\bimport\.meta\.env\b")
+_QUOTED = re.compile(r"""(['"])([^'"\n]*)\1""")
 
 
-def _runs_on_node(text: str) -> bool:
-    """The file shows it runs on Node and nothing says it runs in a browser (Codex review: a browser has no
+def _runs_on_node(text: str, lang: str) -> bool:
+    """The file's code shows it runs on Node and nothing in it says browser (Codex review: a browser has no
     `process`, and a key bundled into a web page is public anyway)."""
-    return bool(_NODE.search(text)) and not _BROWSER.search(text)
+    from flowforge.flow.curly import mask
+
+    code = mask(text, lang)   # same length: comments and string contents blanked, quotes kept
+    if _BROWSER.search(code):
+        return False
+    if _NODE_CODE.search(code):
+        return True
+    for m in _IMPORT_FROM.finditer(code):
+        source = _QUOTED.match(text, m.end())
+        if source and _NODE_MODULE.fullmatch(source.group(2)):
+            return True
+    return False
 
 
 class CantFix(Exception):
@@ -124,7 +138,7 @@ def fixable(root: Path, f: Finding) -> bool:
         text = _read(root, path)
     except CantFix:
         return False
-    if lang not in _FIXABLE_CODE or (lang != "python" and not _runs_on_node(text)):
+    if lang not in _FIXABLE_CODE or (lang != "python" and not _runs_on_node(text, lang)):
         return False
     return key_span(text, lang, line) is not None
 

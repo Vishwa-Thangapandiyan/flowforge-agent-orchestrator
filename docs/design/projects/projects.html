@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Projects artboards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* D39 artboards: the projects home, the picker, a new project. Tokens and parts from vault.html. Example data. */
+/* D38 artboards: map lanes, keys your agent asks for, the Vault. Tokens and parts from issues-keys.html. Fake keys only. */
+/* D37 artboards: the Issues page, the Keys page, the locked key view. Tokens from frontend/src/styles/tokens.css.
+   Example data: the trip planner. Every key shown is fake. */
+:root{--bg:#EEF3F5;--surface:#FFFFFF;--surface-2:#F6F9FA;--fg:#0F1D26;--muted:#4A5E6A;--faint:#8A9BA5;--line:#D3DDE3;
+--teal:#0B7A70;--teal-bg:#DDF2EF;--blue:#2457C5;--blue-bg:#E1EAFB;--amber:#8A5A00;--amber-bg:#FCEFD0;--coral:#B93C2B;--coral-bg:#FBE4DF;
+--green:#1F7A45;--green-bg:#DCF2E4;--violet:#6B46C1;--violet-bg:#ECE6FA;--slate:#3A4756;--slate-bg:#E6EBEF;--on-teal:#FFFFFF;
+--nav-bg:#0F1D26;--nav-fg:#C9D6DC;--nav-active:#1D3340;
+--add:#1F7A45;--add-bg:#E4F5EA;--del:#B93C2B;--del-bg:#FBE9E5;
+--shadow:0 1px 2px rgb(15 29 38 / 6%),0 8px 22px -12px rgb(15 29 38 / 22%);
+--sans:'Geist',ui-sans-serif,system-ui,'Segoe UI',sans-serif;--mono:'Geist Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;color-scheme:light}
+:root[data-theme="dark"]{--bg:#0B1418;--surface:#122128;--surface-2:#0F1B21;--fg:#E8F0F3;--muted:#93A8B3;--faint:#5E7482;--line:#25363F;
+--teal:#4FD1C0;--teal-bg:#12332F;--blue:#7FA8FF;--blue-bg:#16284A;--amber:#F2B84B;--amber-bg:#3A2D0E;--coral:#FF8C7A;--coral-bg:#40201B;
+--green:#66D18F;--green-bg:#133423;--violet:#B79CFF;--violet-bg:#2A2147;--slate:#B6C3CC;--slate-bg:#1E2C34;--on-teal:#062320;
+--nav-bg:#070E11;--nav-active:#16262E;--add:#66D18F;--add-bg:#12301F;--del:#FF8C7A;--del-bg:#3A1C17;
+--shadow:0 1px 2px rgb(0 0 0 / 40%),0 12px 28px -14px rgb(0 0 0 / 60%);color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 var(--sans)}
+.top{display:flex;justify-content:space-between;align-items:center;padding:16px 24px}
+.top h1{margin:0;font-size:15px;font-weight:600;color:var(--muted)}
+.board{margin:0 24px 40px;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--bg);box-shadow:var(--shadow)}
+.label{display:flex;gap:10px;align-items:center;margin:28px 24px 10px;font:600 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.label b{color:var(--fg)}
+.app{display:grid;grid-template-columns:76px 1fr;min-height:330px}
+.rail{background:var(--nav-bg);color:var(--nav-fg);display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 0}
+.rail .logo{width:34px;height:34px;border-radius:10px;background:#13303a;margin-bottom:10px;display:grid;place-items:center;color:#4FD1C0;font-weight:700}
+.rail a{position:relative;width:62px;padding:8px 0 6px;border-radius:12px;text-align:center;font-size:11px;color:var(--nav-fg);text-decoration:none}
+.rail a i{display:block;font-style:normal;font-size:17px;line-height:1.2}
+.rail a.on{background:var(--nav-active);color:#fff;box-shadow:inset 3px 0 0 #4FD1C0}
+.rail .n{position:absolute;top:2px;right:6px;min-width:17px;height:17px;padding:0 4px;border-radius:99px;font:700 10.5px/17px var(--sans)}
+.n.coral{background:var(--coral);color:#fff}.n.amber{background:#F2B84B;color:#2a1d02}
+main{padding:22px 28px 28px;min-width:0}
+.head{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin-bottom:18px}
+.head h2{margin:0;font-size:22px;letter-spacing:-.01em}
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:99px;font:600 12px var(--sans)}
+.chip.high{background:var(--coral-bg);color:var(--coral)}.chip.med{background:var(--amber-bg);color:var(--amber)}
+.chip.ok{background:var(--green-bg);color:var(--green)}.chip.grey{background:var(--slate-bg);color:var(--slate)}
+.btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font:600 13px var(--sans);cursor:pointer;white-space:nowrap}
+.btn.primary{background:var(--teal);border-color:var(--teal);color:var(--on-teal)}
+.btn.violet{background:var(--violet-bg);border-color:transparent;color:var(--violet)}
+.btn.quiet{border-color:transparent;background:transparent;color:var(--muted)}
+.btn.sm{height:30px;padding:0 11px;font-size:12.5px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.right{margin-left:auto}
+.group{margin:18px 0 8px;display:flex;align-items:center;gap:8px;font:600 12px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.group small{font:500 12.5px var(--sans);letter-spacing:0;text-transform:none;color:var(--faint)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:10px;box-shadow:var(--shadow)}
+.row{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center}
+.dot{width:10px;height:10px;border-radius:50%}.dot.high{background:var(--coral)}.dot.med{background:#F2B84B}
+.what b{display:block;font-size:14.5px}
+.meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:3px;color:var(--muted);font-size:12.5px}
+code,.mono{font:12.5px var(--mono)}
+.ref{padding:1px 7px;border-radius:6px;background:var(--surface-2);border:1px solid var(--line);color:var(--muted)}
+.tile{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:5px;font:700 9px var(--sans);color:#fff;background:#2457C5}
+.diff{margin:12px 0 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;font:12.5px/1.7 var(--mono)}
+.diff .f{padding:6px 12px;background:var(--surface-2);border-bottom:1px solid var(--line);color:var(--muted)}
+.diff div.l{padding:0 12px;white-space:pre}
+.diff .del{background:var(--del-bg);color:var(--del)}.diff .add{background:var(--add-bg);color:var(--add)}.diff .ctx{color:var(--muted)}
+.does{display:grid;gap:4px;margin:12px 0;padding:0;list-style:none;font-size:13px}
+.does li::before{content:"✓";color:var(--teal);font-weight:700;margin-right:8px}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.done{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--teal-bg);color:var(--fg);font-size:13px}
+.done b{color:var(--teal)}
+.warnline{margin-top:8px;color:var(--amber);font-size:12.5px}
+.sent{display:flex;gap:8px;align-items:center;margin-top:10px;padding:9px 12px;border-radius:10px;background:var(--violet-bg);font-size:13px}
+.sent b{color:var(--violet)}
+.key{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px 12px;align-items:center}
+.key .ic{font-size:16px}
+.key .name{font:600 13.5px var(--mono)}
+.st{font:700 11px/1.4 var(--mono);letter-spacing:.05em;text-transform:uppercase}
+.st.missing{color:var(--amber)}.st.env{color:var(--muted)}.st.saved{color:var(--green)}
+.box{grid-column:2/-1;display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+input{height:34px;flex:1 1 220px;min-width:0;padding:0 12px;border-radius:9px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);font:13px var(--mono)}
+.run{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.run code{padding:6px 10px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line)}
+.lock{border-color:color-mix(in srgb,var(--violet) 40%,var(--line))}
+.lockhead{display:flex;gap:10px;align-items:center}
+.lockhead b{font-size:15px}
+.fields{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin-top:12px;align-items:end}
+.fields label{display:grid;gap:4px;font-size:12px;color:var(--muted)}
+.code6{letter-spacing:.35em;text-align:center}
+.note{margin:8px 0 0;color:var(--faint);font-size:12px}
+.vals{display:grid;gap:0;margin-top:12px}
+.val{display:grid;grid-template-columns:minmax(0,1.2fr) auto minmax(0,1.6fr) auto;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.val:first-child{border-top:0}
+.where{font:600 11px var(--mono);padding:2px 8px;border-radius:99px;background:var(--slate-bg);color:var(--slate)}
+.where.code{background:var(--coral-bg);color:var(--coral)}.where.saved{background:var(--green-bg);color:var(--green)}
+.mask{font:13px var(--mono);color:var(--muted);letter-spacing:.12em}
+.shown{font:13px var(--mono);color:var(--fg);padding:3px 8px;border-radius:6px;background:var(--amber-bg);overflow-wrap:anywhere}
+.timer{font:600 12.5px var(--mono);color:var(--violet)}
+.setup{display:grid;grid-template-columns:1fr auto;gap:22px;align-items:start}
+.qr{width:148px;height:148px;padding:10px;border-radius:12px;background:#fff;border:1px solid var(--line)}
+.steps{display:grid;gap:14px}
+.step{display:grid;grid-template-columns:auto 1fr;gap:10px}
+.step i{font-style:normal;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--violet-bg);color:var(--violet);font:700 12px var(--sans)}
+.banner{display:flex;gap:10px;align-items:center;padding:10px 14px;border-radius:12px;background:var(--coral-bg);color:var(--coral);font-size:13px;margin-bottom:14px}
+.agentbox{display:flex;gap:10px;align-items:center;padding:12px 14px;border-radius:12px;background:var(--surface);border:1px dashed var(--line);color:var(--muted);font-size:13px}
+@media (max-width:760px){.app{grid-template-columns:1fr}.rail{flex-direction:row;justify-content:center;padding:8px}.rail .logo{display:none}
+ main{padding:16px}.fields{grid-template-columns:1fr}.val{grid-template-columns:1fr auto}.setup{grid-template-columns:1fr}.row{grid-template-columns:auto 1fr}.row>.btn,.row>.btns{grid-column:2}}
+.story{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;align-items:center;margin:34px 24px 12px}
+.story .num{grid-row:span 2;display:grid;place-items:center;width:46px;height:46px;border-radius:50%;background:var(--teal);color:var(--on-teal);font:700 22px var(--sans)}
+.story h3{margin:0;font-size:20px;letter-spacing:-.01em}
+.story .say{display:flex;flex-wrap:wrap;gap:8px}
+.say span{display:inline-flex;gap:6px;align-items:center;padding:4px 10px;border-radius:99px;background:var(--surface);border:1px solid var(--line);font-size:13px}
+.say span b{color:var(--muted);font:600 11px var(--mono);letter-spacing:.05em;text-transform:uppercase}
+.next{margin:6px 24px 0;text-align:center;color:var(--teal);font:600 13px var(--sans)}
+.next::before{content:"";display:block;width:2px;height:26px;margin:0 auto 4px;background:var(--teal);opacity:.5}
+.once{margin-left:8px;padding:2px 8px;border-radius:99px;background:var(--violet-bg);color:var(--violet);font:600 12px var(--sans);vertical-align:middle}
+.mini{max-width:560px}
+
+.mapc{position:relative;height:470px;background:var(--surface-2);background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:18px 18px;overflow:hidden}
+.lane{position:absolute;top:28px;bottom:18px;border:1px solid var(--line);border-radius:14px;background:color-mix(in srgb,var(--surface) 55%,transparent)}
+.lane h4{margin:10px 12px 6px;font:600 11.5px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.lane h4 small{margin-left:6px;color:var(--faint)}
+.blk{position:absolute;left:12px;right:12px;height:46px;display:flex;gap:8px;align-items:center;padding:0 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface);box-shadow:var(--shadow);font-size:12.5px}
+.blk > span:last-of-type{min-width:0}.blk b{display:block;font-size:12.5px}.blk small{display:block;font:11px var(--mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.blk .tl{display:grid;place-items:center;width:24px;height:24px;border-radius:6px;color:#fff;font:700 9px var(--sans);flex:none}
+.blk.red{border:2px solid var(--coral);box-shadow:0 0 0 4px color-mix(in srgb,var(--coral) 18%,transparent)}
+.blk .cap{margin-left:auto;flex:none;padding:2px 6px;border-radius:99px;background:var(--coral-bg);font:600 10px var(--mono);color:var(--coral)}
+.apppill{position:absolute;left:18px;top:200px;width:110px;height:40px;display:grid;place-items:center;border-radius:99px;border:1px solid var(--line);background:var(--surface);font:600 12.5px var(--sans)}
+.wire{position:absolute;height:1.5px;background:var(--faint);transform-origin:left center}
+.mbanner{position:absolute;left:150px;right:20px;top:-2px;display:flex;gap:10px;align-items:center;padding:8px 12px;border-radius:10px;background:var(--violet-bg);color:var(--fg);font-size:13px;box-shadow:var(--shadow)}
+.mbanner b{color:var(--violet)}
+.panel{position:absolute;right:16px;top:44px;width:300px;padding:16px;border-radius:14px;border:1px solid var(--line);background:var(--surface);box-shadow:var(--shadow)}
+.panel h5{margin:0 0 4px;font-size:16px}
+.bigbtn{display:flex;justify-content:center;align-items:center;gap:8px;width:100%;height:42px;margin-top:12px;border-radius:10px;border:0;background:var(--coral);color:#fff;font:700 14px var(--sans)}
+.wait{border:2px solid var(--coral);background:color-mix(in srgb,var(--coral-bg) 55%,var(--surface))}
+.wait .ttl{display:flex;gap:8px;align-items:center;font:700 12px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--coral);margin-bottom:8px}
+.fold{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:13px}
+.runrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px;color:var(--muted)}
+.runrow code{padding:3px 8px;border-radius:6px;background:var(--surface-2);border:1px solid var(--line);color:var(--fg)}
+.center{display:grid;place-items:center;padding:36px 0}
+.gate{width:min(440px,100%);padding:28px;border-radius:18px;border:1px solid color-mix(in srgb,var(--violet) 40%,var(--line));background:var(--surface);box-shadow:var(--shadow);text-align:center}
+.gate .big{display:grid;place-items:center;width:64px;height:64px;margin:0 auto 12px;border-radius:18px;background:var(--violet-bg);color:var(--violet);font-size:28px}
+.gate h3{margin:0 0 4px;font-size:22px}
+.gate p{margin:0 0 16px;color:var(--muted);font-size:14px}
+.gate input{width:100%;height:44px;font-size:15px;text-align:center}
+.gate .btn{width:100%;justify-content:center;height:42px;margin-top:10px;font-size:14px}
+.dots{display:flex;gap:6px;justify-content:center;margin-bottom:14px}.dots i{width:28px;height:4px;border-radius:99px;background:var(--line)}.dots i.on{background:var(--violet)}
+.digits{display:flex;gap:8px;justify-content:center}.digits span{display:grid;place-items:center;width:44px;height:52px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);font:600 22px var(--mono)}
+.wiz{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.wcard{padding:18px;border-radius:14px;border:1px solid var(--line);background:var(--surface);box-shadow:var(--shadow)}
+.wcard.now{border:2px solid var(--violet)}
+.wcard .n{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--violet-bg);color:var(--violet);font-weight:700;margin-bottom:8px}
+.wcard h4{margin:0 0 6px;font-size:16px}.wcard p{margin:0 0 10px;color:var(--muted);font-size:13px}
+.wcard input{width:100%;margin-bottom:8px}
+.qrbig{width:180px;height:180px;margin:6px auto;display:block;padding:10px;border-radius:12px;background:#fff;border:1px solid var(--line)}
+.stepbar{display:flex;align-items:center;gap:10px;margin:0 0 16px;font:600 12.5px var(--sans);color:var(--muted)}
+.stepbar b{color:var(--violet)}.stepbar i{flex:1;height:4px;border-radius:99px;background:var(--line)}.stepbar i.on{background:var(--violet)}
+table.vt{width:100%;border-collapse:collapse;font-size:13px}
+.vt th{text-align:left;padding:8px 10px;font:600 11px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line)}
+.vt td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle}
+.vt .nm{font:600 12.5px var(--mono)}
+.h{display:inline-flex;gap:5px;align-items:center;padding:2px 9px;border-radius:99px;font:600 11.5px var(--sans);white-space:nowrap}
+.h.ok{background:var(--green-bg);color:var(--green)}.h.warn{background:var(--amber-bg);color:var(--amber)}.h.bad{background:var(--coral-bg);color:var(--coral)}.h.grey{background:var(--slate-bg);color:var(--slate)}
+.vsum{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.vsum div{flex:1 1 120px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface)}
+.vsum b{display:block;font-size:22px}.vsum span{color:var(--muted);font-size:12.5px}
+.tile2{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:5px;color:#fff;font:700 8.5px var(--sans);vertical-align:middle;margin-right:5px}
+@media (max-width:760px){.wiz{grid-template-columns:1fr}.mapc{height:auto}}
+
+.ptile{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:#2457C5;color:#fff;font:700 15px var(--sans);position:relative;margin-bottom:10px}
+.ptile::after{content:"▾";position:absolute;right:-9px;bottom:-4px;width:16px;height:16px;border-radius:50%;background:var(--nav-bg);color:#C9D6DC;font-size:10px;display:grid;place-items:center}
+.rail .ptile.on{box-shadow:0 0 0 3px #4FD1C0}
+.home{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.pcard{min-width:0;justify-items:stretch;align-content:start;padding:16px;border-radius:14px;border:1px solid var(--line);background:var(--surface);box-shadow:var(--shadow);display:grid;gap:10px}
+.pcard .top{display:flex;gap:10px;align-items:center;justify-content:flex-start;min-width:0;text-align:left}.pcard .top > span:last-child{min-width:0}
+.pcard .pt{display:grid;place-items:center;width:38px;height:38px;border-radius:10px;color:#fff;font:700 13px var(--sans)}
+.pcard b{font-size:15.5px}.pcard .path{font:11.5px var(--mono);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pcard .stats{display:flex;flex-wrap:wrap;gap:6px}
+.pcard .when{font-size:12px;color:var(--faint)}
+.pcard.add{border:2px dashed var(--line);background:transparent;box-shadow:none;place-items:center;justify-items:center;align-content:center;text-align:center;color:var(--muted);min-height:150px}
+.pcard.add .plus{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--teal-bg);color:var(--teal);font-size:24px;font-weight:700}
+.pcard.ex{border-style:dashed}
+.pop{position:absolute;left:84px;top:12px;width:300px;padding:8px;border-radius:14px;border:1px solid var(--line);background:var(--surface);box-shadow:0 18px 44px -18px rgb(15 29 38 / 40%);z-index:5}
+.pop h6{margin:6px 10px;font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.prow{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:10px}
+.prow.cur{background:var(--teal-bg)}
+.prow .pt{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;color:#fff;font:700 11px var(--sans);flex:none}
+.prow span{flex:1;min-width:0}.prow small{display:block;color:var(--muted);font-size:11.5px}
+.prow .x{width:24px;height:24px;border-radius:6px;display:grid;place-items:center;color:var(--muted);border:1px solid transparent}
+.prow .x:hover{border-color:var(--line)}
+.pop hr{border:0;border-top:1px solid var(--line);margin:6px 4px}
+.pop .link{display:flex;gap:8px;align-items:center;padding:8px 10px;border-radius:10px;font-weight:600;font-size:13.5px}
+.mini{position:relative;height:280px;border-radius:12px;background:var(--surface-2);background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:18px 18px}
+.wizard{max-width:720px;margin:0 auto}
+.wsteps{display:flex;gap:10px;margin-bottom:16px}.wsteps div{flex:1;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-size:13px;color:var(--muted)}
+.wsteps div.on{border:2px solid var(--teal);color:var(--fg)}.wsteps b{display:block;font-size:14px;color:var(--fg)}
+.big-in{display:flex;gap:8px}.big-in input{flex:1;height:44px;font-size:14px}
+.prog{height:8px;border-radius:99px;background:var(--line);overflow:hidden}.prog i{display:block;height:100%;width:72%;background:var(--teal)}
+.agents{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.agent{padding:14px;border-radius:14px;border:1px solid var(--line);background:var(--surface);display:grid;gap:8px;justify-items:start}
+.agent .lg{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;color:#fff;font:700 12px var(--sans)}
+.done-msg{display:flex;gap:8px;align-items:center;padding:10px 12px;border-radius:10px;background:var(--teal-bg);font-size:13.5px}
+@media (max-width:760px){.agents{grid-template-columns:1fr}.pop{left:8px;top:60px}}
+</style>
+</head>
+<body>
+<div class="top"><h1>D39 · projects, step by step · example data</h1><button class="btn sm" onclick="document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark'">◐ Light / dark</button></div><div class="story"><span class="num">1</span><h3>Every project at a glance</h3><div class="say"><span><b>you're on</b>the home page</span><span><b>you do</b>open one, or + New project</span><span><b>you get</b>its map, its own data</span></div></div><div class="board"><div class="app" style="position:relative"><nav class="rail"><div class="ptile" style="background:#0B7A70">⌂</div><a class="on"><i>⌂</i>Projects</a></nav><main><div class="head"><h2>Projects</h2><span class="chip grey">3 projects</span><button class="btn primary right">+ New project</button></div><div class="home"><div class="pcard"><div class="top"><span class="pt" style="background:#2457C5">TP</span><span><b>trip-planner</b><div class="path">~/code/trip-planner</div></span></div><div class="stats"><span class="chip grey">12 dependencies</span><span class="chip high">⚠ 3 to fix</span><span class="chip med">🔑 1 missing</span></div><div class="when">opened 2 h ago · open now</div></div><div class="pcard"><div class="top"><span class="pt" style="background:#6B46C1">ST</span><span><b>smart-travel-assistant</b><div class="path">~/Documents/smart-travel-assistant</div></span></div><div class="stats"><span class="chip grey">18 dependencies</span><span class="chip high">⚠ 1 to fix</span><span class="chip ok">✓ keys saved</span></div><div class="when">opened yesterday · open now</div></div><div class="pcard"><div class="top"><span class="pt" style="background:#B93C2B">SH</span><span><b>shop-backend</b><div class="path">~/work/shop-backend</div></span></div><div class="stats"><span class="chip grey">9 dependencies</span><span class="chip ok">✓ nothing to fix</span></div><div class="when">opened last week</div></div><div class="pcard ex"><div class="top"><span class="pt" style="background:#3A4756">EX</span><span><b>Example: trip planner</b><div class="path">built in · read-only</div></span></div><div class="stats"><span class="chip grey">try FlowForge without your code</span></div></div><div class="pcard add"><span class="plus">+</span><b>New project</b><span style="font-size:12.5px">pick a folder · FlowForge maps it</span></div></div></main></div></div><div class="next">open trip-planner</div><div class="story"><span class="num">2</span><h3>Switch projects from the rail</h3><div class="say"><span><b>you're on</b>any page of a project</span><span><b>you do</b>click the project tile ▾</span><span><b>you get</b>your open projects; × closes one here</span></div></div><div class="board"><div class="app" style="position:relative"><nav class="rail"><div class="ptile on" style="background:#2457C5">TP</div><a class="on"><i>⌗</i>Map</a><a><i>⚠</i>Issues<span class="n coral">3</span></a><a><i>⚿</i>Keys<span class="n amber">1</span></a><a><i>🔒</i>Vault</a><a><i>∿</i>Checks</a><a><i>‹›</i>Connect agent</a></nav><main><div class="head"><h2 style="font-size:18px">trip-planner</h2><span class="chip grey">Dependencies</span><span class="chip high right">⚠ 3 to fix</span></div><div class="mini"><div class="lane" style="left:40px;top:20px;width:170px;height:110px;bottom:auto"><h4>LLMs<small>1</small></h4><div class="blk red" style="top:40px"><span class="tl" style="background:#1F2328">Ol</span><span><b>Ollama</b><small style="color:var(--coral);font-weight:600">🔑 key missing</small></span></div></div><div class="lane" style="left:230px;top:20px;width:170px;height:230px;bottom:auto"><h4>MCP servers<small>4</small></h4><div class="blk" style="top:40px"><span class="tl" style="background:#1F7A45">Fe</span><span><b>fetch</b><small>uvx mcp-server-fetch</small></span></div><div class="blk" style="top:96px"><span class="tl" style="background:#1F7A45">Ti</span><span><b>time</b><small>uvx mcp-server-time</small></span></div></div><div class="lane" style="left:420px;top:20px;width:170px;height:230px;bottom:auto"><h4>APIs<small>6</small></h4><div class="blk" style="top:40px"><span class="tl" style="background:#2457C5">GM</span><span><b>Google Maps</b><small>maps.googleapis.com</small></span></div><div class="blk" style="top:96px"><span class="tl" style="background:#2457C5">No</span><span><b>Nominatim</b><small>nominatim.osm.org</small></span></div></div></div></main><div class="pop"><h6>Open projects</h6><div class="prow cur"><span class="pt" style="background:#2457C5">TP</span><span><b>trip-planner</b><small>Map · where you left it</small></span><span class="x" title="Close">×</span></div><div class="prow"><span class="pt" style="background:#6B46C1">ST</span><span><b>smart-travel-assistant</b><small>Keys · where you left it</small></span><span class="x" title="Close">×</span></div><hr><a class="link">⌂ All projects</a><a class="link" style="color:var(--teal)">+ New project</a><p class="note" style="margin:6px 10px">× closes it here. The project stays on the home page.</p></div></div></div><div class="next">pick smart-travel-assistant</div><div class="story"><span class="num">3</span><h3>Back where you left it</h3><div class="say"><span><b>you're on</b>the other project</span><span><b>you do</b>nothing</span><span><b>you get</b>its page, map view and open block</span></div></div><div class="board"><div class="app" style="position:relative"><nav class="rail"><div class="ptile" style="background:#6B46C1">ST</div><a><i>⌗</i>Map</a><a><i>⚠</i>Issues<span class="n coral">3</span></a><a class="on"><i>⚿</i>Keys<span class="n amber">1</span></a><a><i>🔒</i>Vault</a><a><i>∿</i>Checks</a><a><i>‹›</i>Connect agent</a></nav><main><div class="head"><h2 style="font-size:18px">smart-travel-assistant</h2><span class="chip ok">restored: Keys page</span></div><div class="card key"><span class="ic">🔑</span><div><div class="name">SUPABASE_ANON_KEY</div><div class="meta"><span class="st saved">✓ saved</span><span class="ref mono">lib/supabase.dart:8</span>Supabase</div></div><span></span></div><p class="note">Switching back brings you to the page you left, with its map view, open block and style.</p></main></div></div><div class="next">or: + New project</div><div class="story"><span class="num">4</span><h3>New project: your app's folder</h3><div class="say"><span><b>you're on</b>+ New project</span><span><b>you do</b>type the folder → Scan</span><span><b>you get</b>its map, made from the code</span></div></div><div class="board"><div class="app" style="position:relative"><nav class="rail"><div class="ptile" style="background:#0B7A70">+</div><a class="on"><i>⌂</i>Projects</a></nav><main><div class="wizard"><div class="wsteps"><div class="on"><b>① Your app's folder</b>FlowForge reads it, never runs it</div><div><b>② Your coding agent</b>so it can ask FlowForge</div></div><div class="card"><h3 style="margin:0 0 6px">Which folder is your app in?</h3><p class="note" style="margin:0 0 10px">The scan is plain code: nothing is run, nothing is sent anywhere.</p><div class="big-in"><input value="~/code/shop-backend"><button class="btn primary">Scan →</button></div><div style="margin-top:14px;display:grid;gap:8px"><div class="prog"><i></i></div><span class="note" style="margin:0">Reading 214 files… found 9 dependencies so far</span></div></div></div></main></div></div><div class="next">then</div><div class="story"><span class="num">5</span><h3>New project: your coding agent</h3><div class="say"><span><b>you're on</b>step ②</span><span><b>you do</b>Add for me (or Skip)</span><span><b>you get</b>your agent can ask FlowForge about this app</span></div></div><div class="board"><div class="app" style="position:relative"><nav class="rail"><div class="ptile" style="background:#0B7A70">+</div><a class="on"><i>⌂</i>Projects</a></nav><main><div class="wizard"><div class="wsteps"><div><b>① Your app's folder</b>✓ 9 dependencies mapped</div><div class="on"><b>② Your coding agent</b>so it can ask FlowForge</div></div><div class="card"><h3 style="margin:0 0 10px">Which coding agent do you use?</h3><div class="agents"><div class="agent"><span class="lg" style="background:#D97757">CC</span><b>Claude Code</b><span class="note" style="margin:0">adds FlowForge with one command</span><button class="btn sm primary">Add for me</button></div><div class="agent"><span class="lg" style="background:#10A37F">Cx</span><b>Codex</b><span class="note" style="margin:0">adds it to ~/.codex/config.toml</span><button class="btn sm primary">Add for me</button></div><div class="agent"><span class="lg" style="background:#3A4756">AG</span><b>Antigravity</b><span class="note" style="margin:0">shows the config to paste</span><button class="btn sm">Show me</button></div></div><div class="done-msg" style="margin-top:12px">✓ <b>Added to Claude Code.</b> Restart it, then ask: "what does my app depend on?"</div><div style="display:flex;gap:8px;margin-top:12px"><button class="btn quiet">Skip for now</button><button class="btn primary right">Open the map →</button></div></div></div></main></div></div>
+</body>
+</html>

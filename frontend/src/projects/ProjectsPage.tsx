@@ -78,7 +78,7 @@ function Card({ p, onChanged }: { p: ProjectCard; onChanged: () => void }) {
           <span className="pj-name"><b>{p.name}</b><span className="pj-path">{p.path}</span></span>
         </span>
         <span className="pj-stats">
-          <span className="chip grey">{s.dependencies} dependencies</span>
+          <span className="chip grey">{s.dependencies} {s.dependencies === 1 ? "dependency" : "dependencies"}</span>
           {s.issues > 0 ? <span className="chip lv-high">⚠ {s.issues} to fix</span> : <span className="chip ok">✓ nothing to fix</span>}
           {s.keys_missing > 0 && <span className="chip lv-medium">🔑 {s.keys_missing} missing</span>}
           {p.missing && <span className="chip lv-high">folder not found</span>}

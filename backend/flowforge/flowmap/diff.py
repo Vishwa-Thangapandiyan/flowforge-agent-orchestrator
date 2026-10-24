@@ -141,5 +141,9 @@ def apply_choices(old: Flow, new: Flow, changes: list[dict[str, Any]],
 
     kept_edges = [e for e in edges if e.source in nodes and e.target in nodes]
     suggestions = [s for s in new.suggestions if s.node in nodes]
-    return Flow(kind=new.kind, nodes=[nodes[i] for i in order if i in nodes], edges=kept_edges,
-                suggestions=suggestions), drop_edits
+    # the new map as it is (its source, reader, advice, times and actions: D25, D33, D35), with the blocks and lines
+    # you chose; advice about a block you declined goes with it
+    advice = [a for a in new.advice if all(i in nodes for i in a.nodes)]
+    return new.model_copy(deep=True, update={
+        "nodes": [nodes[i] for i in order if i in nodes], "edges": kept_edges, "suggestions": suggestions,
+        "advice": advice}), drop_edits

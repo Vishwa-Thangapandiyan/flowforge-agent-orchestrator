@@ -42,3 +42,16 @@ def test_your_edits_survive_the_reread(tmp_path):
     maps.add_override(Override(op="hide", node="api-wikipedia"))
     service(storage, "deps").map_folder(planner, fresh=False)
     assert all(n["id"] != "api-wikipedia" for n in service(storage, "deps").current()["nodes"])
+
+
+def test_accepting_a_rescan_keeps_what_the_map_is(tmp_path):
+    from flowforge.flowmap.diff import apply_choices, diff
+
+    new = CodeFlowPlanner(TRIP_PLANNER).analyze(0).flow
+    old = new.model_copy(deep=True)
+    old.nodes = [n for n in old.nodes if n.id != "local-packing-list-1"]
+    old.edges = [e for e in old.edges if "local-packing-list-1" not in (e.source, e.target)]
+    accepted, _ = apply_choices(old, new, diff(old, new, [], {}), {})
+    assert accepted.source == "code" and accepted.reader == READER
+    assert accepted.actions and accepted.written_ms == new.written_ms and accepted.patterns == new.patterns
+    assert all(all(i in {n.id for n in accepted.nodes} for i in a.nodes) for a in accepted.advice)

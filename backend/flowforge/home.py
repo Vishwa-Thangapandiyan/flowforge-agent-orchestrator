@@ -44,6 +44,20 @@ def install_kind() -> str:
     return "uvx" if "archive-v" in Path(sys.prefix).as_posix() else "pip"
 
 
+def command_line(*args: str) -> str:
+    """A `flowforge …` command for a person to type, matching how FlowForge was installed (D34, D36)."""
+    import shlex
+
+    kind = install_kind()
+    if kind == "checkout":
+        prefix = ["uv", "--directory", str(CHECKOUT), "run", "flowforge"]
+    elif kind == "uvx":
+        prefix = ["uvx", DIST_NAME]
+    else:
+        prefix = ["flowforge"]
+    return shlex.join([*prefix, *args])
+
+
 def flowforge_home() -> Path:
     return Path(os.getenv("FLOWFORGE_HOME") or Path.home() / ".flowforge")
 

@@ -17,7 +17,7 @@ test("re-check shows each change and saves only what you pick", async () => {
     },
   });
   renderAt("/map/recheck");
-  expect(await screen.findByText("New: Refund received", {}, { timeout: 5000 })).toBeInTheDocument();
+  expect(await screen.findByText("New: Refund received", {})).toBeInTheDocument();
   expect(screen.getByText("Needs you")).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "Use the Planner's" }));
   await userEvent.click(screen.getByRole("button", { name: "Keep it" }));

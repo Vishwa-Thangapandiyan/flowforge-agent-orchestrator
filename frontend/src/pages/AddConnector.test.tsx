@@ -56,7 +56,7 @@ test("adding posts the connector and opens its page", async () => {
   const body = JSON.parse(String(calls.find((c) => c.init?.method === "POST")!.init!.body));
   expect(body).toMatchObject({ id: "scan", type: "local", connection: { command: ["./scan.sh", "--quick"], cwd: "tools" },
     style: { color: "#2F6FD6" } });
-  expect(await screen.findByRole("heading", { name: "Scan", level: 1 }, { timeout: 5000 })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Scan", level: 1 })).toBeInTheDocument();
 });
 
 test("a ready-made app fills the form", async () => {

@@ -32,7 +32,7 @@ It sends your IP address to ip-api.com (to guess your city) and the city name to
 | MCP | `currency` (a local Python server) | `.mcp.json:15` |
 | Local | `tools/packing_list.py`, run as a subprocess | `planner.py:37` |
 
-Env var names it reads: `OLLAMA_BASE_URL`, `PLANNER_MODEL` (`config.py:11-12`), and `CURRENCY_API_URL` (`mcp_servers/currency.py:9`).
+Env var names it reads: `OLLAMA_BASE_URL`, `PLANNER_MODEL` (`config.py:11-12`), `OLLAMA_API_KEY` (`config.py:30`: a key, so the map shows it missing until `flowforge key add`), and `CURRENCY_API_URL` (`mcp_servers/currency.py:9`).
 
 These are libraries, not dependencies: `httpx`, `mcp`, `openai` (`requirements.txt`). They are the clients the app uses to reach the dependencies above.
 

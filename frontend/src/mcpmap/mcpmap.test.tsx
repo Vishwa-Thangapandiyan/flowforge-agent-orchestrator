@@ -38,7 +38,7 @@ test("the export page draws the MCP Map and sends it out in every format", async
   vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText: async (t: string) => { writes.push(t); } } });
   mockApi({ "/meta": { ...META, example: false }, "/flow?layer=mine&map=flow": CODEFLOW, "/scan": { name: "trip-planner", example: false } });
   renderAt("/map/export?map=flow");
-  expect(await screen.findByRole("heading", { name: "MCP Map", level: 1 }, { timeout: 5000 })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "MCP Map", level: 1 })).toBeInTheDocument();
   const svg = screen.getByRole("img", { name: /MCP map of trip-planner/ });
   expect(svg).toHaveTextContent("trip-planner");
   expect(svg).toHaveTextContent("MCP servers");

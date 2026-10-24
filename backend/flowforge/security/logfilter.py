@@ -57,12 +57,23 @@ def redact_code(line: str, redactor: Redactor | None = None) -> str:
 class Redactor:
     def __init__(self, values: Iterable[str] = ()) -> None:
         self._values: list[str] = []
+        self._configured: set[str] = set()
+        self._saved: set[str] = set()   # keys saved in FlowForge (D36): kept when connectors change
         self.set_values(values)
 
     def set_values(self, values: Iterable[str]) -> None:
         """Replace the configured secret values (call again when connectors change)."""
+        self._configured = set(values)
+        self._build()
+
+    def learn(self, values: Iterable[str]) -> None:
+        """Also mask these values from now on: the keys saved in FlowForge (D36)."""
+        self._saved.update(values)
+        self._build()
+
+    def _build(self) -> None:
         found: set[str] = set()
-        for value in values:
+        for value in self._configured | self._saved:
             if value and len(value) >= MIN_SECRET_LEN:
                 found.add(value)
                 found.add(base64.b64encode(value.encode()).decode())

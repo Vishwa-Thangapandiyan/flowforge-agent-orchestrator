@@ -12,7 +12,7 @@ const REAL = { ...META, example: false };
 test("the map shows each dependency's health on its block, with no extra strip (D33)", async () => {
   mockApi({ "/meta": REAL, "/flow": DEPS, "/connectors": CONNECTORS, "/checks": CHECKS, "/checks/plan": PLAN });
   renderAt("/");
-  await screen.findByText("Nominatim", { selector: ".ff-title" }, { timeout: 5000 });
+  await screen.findByText("Nominatim", { selector: ".ff-title" });
   await vi.waitFor(() => expect(document.querySelector(".ff-block.h-down")).toHaveTextContent("Ollama"));
   expect(screen.queryByRole("img", { name: /up, .* down/ })).not.toBeInTheDocument();
   expect(document.querySelector(".ff-block.h-warn")).toHaveTextContent("fetch");
@@ -29,7 +29,7 @@ test("the first Check now lists what will start and waits for a yes", async () =
     },
   });
   renderAt("/");
-  await screen.findByText("Nominatim", { selector: ".ff-title" }, { timeout: 5000 });
+  await screen.findByText("Nominatim", { selector: ".ff-title" });
   await userEvent.click(await screen.findByRole("button", { name: /Check now/ }));
   const panel = await screen.findByRole("region", { name: "Before checking" });
   expect(within(panel).getByText("Checking starts 2 MCP servers on this computer")).toBeInTheDocument();
@@ -50,7 +50,7 @@ test("Check without them leaves the MCP servers out", async () => {
     },
   });
   renderAt("/");
-  await screen.findByText("Nominatim", { selector: ".ff-title" }, { timeout: 5000 });
+  await screen.findByText("Nominatim", { selector: ".ff-title" });
   await userEvent.click(await screen.findByRole("button", { name: /Check now/ }));
   await userEvent.click(await screen.findByRole("button", { name: "Check without them" }));
   await vi.waitFor(() => expect(posted).toEqual([{ ids: ["llm-ollama", "api-nominatim", "api-wikipedia"] }]));

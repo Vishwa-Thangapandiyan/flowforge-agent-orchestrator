@@ -6,6 +6,8 @@
     uv run flowforge scan PATH        print the folder's dependencies as JSON; nothing stored, nothing sent
     uv run flowforge mcp [--repo P]   an MCP server for your coding agent, over stdio (D29); P defaults to here
     uv run flowforge serve --reload   (used by `npm run dev`; `serve` is optional)
+    uv run flowforge key add NAME     save a key for this folder, typed hidden (D36); also: list, remove, import
+    uv run flowforge run -- CMD ...   start your app with the saved keys in its environment (D36)
 """
 
 from __future__ import annotations
@@ -41,6 +43,14 @@ def parse(argv: list[str] | None) -> argparse.Namespace:
 
 
 def main(argv: list[str] | None = None) -> None:
+    argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ["key"]:
+        keys_command(argv[1:])
+        return
+    if argv[:1] == ["run"]:
+        run_with_keys(argv[1:])
+        return
+
     import uvicorn
 
     args = parse(argv)
@@ -102,6 +112,98 @@ def scan_folder(path: str | None) -> None:
         print(f"flowforge scan: {path} is not a folder", file=sys.stderr)
         raise SystemExit(2)
     print(json.dumps(scan(Path(path).expanduser()).model_dump(mode="json"), indent=2))
+
+
+_SHOWN = {"saved": "saved", "unreadable": "can't read", "env_file": "in .env", "missing": "missing"}
+
+
+def keys_command(argv: list[str]) -> None:
+    """`flowforge key add|list|remove|import`: keys for one folder, which only `flowforge run` hands out (D36).
+    Values are never printed."""
+    from flowforge.security.keystore import NAME, BadKey, KeyStore, report
+
+    parser = argparse.ArgumentParser(prog="flowforge key", description="Keep your app's keys out of files and away "
+                                     "from your coding agent. Values are never shown.")
+    parser.add_argument("action", choices=["add", "list", "remove", "import"])
+    parser.add_argument("name", nargs="?", help="add/remove: the env var name, e.g. STRIPE_SECRET_KEY; "
+                                                "import: the file (default .env in the folder)")
+    parser.add_argument("--repo", default=".", help="the app's folder (default: here)")
+    args = parser.parse_args(argv)
+    repo = Path(args.repo).expanduser()
+    if not repo.is_dir():
+        parser.error(f"{args.repo} is not a folder")
+    store = KeyStore(repo)
+    if args.action in ("add", "remove") and not (args.name and NAME.fullmatch(args.name)):
+        parser.error("name the key as an env var name, e.g. STRIPE_SECRET_KEY")
+
+    if args.action == "add":
+        value = _read_value(args.name)
+        try:
+            where = store.add(args.name, value)
+        except BadKey as e:
+            parser.error(str(e))
+        print(f"Saved {args.name} in {'your keychain' if where == 'keychain' else 'FlowForge (encrypted file)'}.")
+        print("  Your app gets it with: flowforge run -- <the command that starts it>")
+    elif args.action == "remove":
+        print(f"Removed {args.name}." if store.remove(args.name) else f"{args.name} wasn't saved.")
+    elif args.action == "import":
+        source = Path(args.name).expanduser() if args.name else repo / ".env"
+        if not source.is_file():
+            parser.error(f"{source} isn't a file")
+        names = store.import_env(source)
+        print(f"Saved {len(names)} from {source.name}: {', '.join(names) or 'nothing to save'}.")
+        if names:
+            print(f"  Delete {source.name} once your app runs with `flowforge run -- ...`: a coding agent can read it.")
+    else:
+        from flowforge.scan import scan
+
+        found = report(store, scan(repo))
+        if not found:
+            print("No keys: the code reads none, and none are saved.")
+        width = max((len(k["name"]) for k in found), default=0)
+        for k in found:
+            print(f"{k['name']:<{width}}  {_SHOWN[k['status']]:<10}  {k['ref'] or ''}")
+        todo = [k for k in found if k["command"]]
+        if todo:
+            print()
+            for k in todo:
+                print(f"  {k['command']}")
+
+
+def _read_value(name: str) -> str:
+    """The key, typed hidden; or one line from a pipe (`pass show x | flowforge key add X`). Never echoed."""
+    import getpass
+
+    if sys.stdin.isatty():
+        return getpass.getpass(f"{name} (typed hidden): ")
+    return sys.stdin.readline().rstrip("\r\n")
+
+
+def run_with_keys(argv: list[str]) -> None:
+    """`flowforge run [--repo P] -- CMD ...`: CMD starts with this folder's saved keys added to its environment.
+    The command is a list (never a shell), and its exit code is FlowForge's (D36)."""
+    import subprocess
+
+    from flowforge.security.keystore import KeyStore
+
+    parser = argparse.ArgumentParser(prog="flowforge run", description="Start your app with its saved keys.")
+    parser.add_argument("--repo", default=".", help="the folder whose keys to use (default: here)")
+    parser.add_argument("command", nargs=argparse.REMAINDER, help="-- then the command that starts your app")
+    args = parser.parse_args(argv)
+    command = args.command[1:] if args.command[:1] == ["--"] else args.command
+    if not command:
+        parser.error("give the command after --, e.g. flowforge run -- python app.py")
+    if not Path(args.repo).expanduser().is_dir():
+        parser.error(f"{args.repo} is not a folder")
+    env = {**os.environ, **KeyStore(Path(args.repo)).env()}
+    try:
+        code = subprocess.call(command, env=env)
+    except FileNotFoundError:
+        print(f"flowforge run: {command[0]} not found", file=sys.stderr)
+        code = 127
+    except KeyboardInterrupt:
+        code = 130
+    raise SystemExit(code)
 
 
 if __name__ == "__main__":

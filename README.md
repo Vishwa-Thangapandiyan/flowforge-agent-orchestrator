@@ -79,7 +79,22 @@ FlowForge is also an **MCP server**, so Claude Code, Codex or Antigravity can as
 claude mcp add flowforge -- uv --directory /path/to/flowforge run flowforge mcp --repo /path/to/your/app
 ```
 
-Your agent gets six read-only tools: `get_map`, `get_flow`, `get_advice`, `check_health`, `get_security_findings` and `what_changed`. Every answer is masked (key values never appear), FlowForge never edits your code, and a check starts an MCP server only after you said yes to it on the Checks page. FlowForge needs no AI of its own for any of this.
+Your agent gets seven read-only tools: `get_map`, `get_flow`, `get_advice`, `check_health`, `get_security_findings`, `get_keys` and `what_changed`. Every answer is masked (key values never appear), FlowForge never edits your code, and a check starts an MCP server only after you said yes to it on the Checks page. FlowForge needs no AI of its own for any of this.
+
+### Keys your coding agent never sees
+
+Your agent only needs a key's **name**: the code it writes reads `os.environ["STRIPE_SECRET_KEY"]`. You give FlowForge the value once, and your app gets it when it starts:
+
+```bash
+flowforge key add STRIPE_SECRET_KEY        # typed hidden; saved in your OS keychain
+flowforge key list                         # each key the code reads: saved · in .env · missing
+flowforge key import                       # move a .env into FlowForge (then delete the .env)
+flowforge run -- python app.py             # your app starts with the keys in its environment
+```
+
+Each command takes `--repo PATH` (default: the folder you're in). On the map, a 🔑 badge marks a block whose key is missing, and the ⚠ list has a box to paste it into. Your agent's `get_keys` tool gets names, statuses and the command to ask you to run, never a value. With no keychain (a server, CI), keys go to an encrypted file in `~/.flowforge`.
+
+What this does and doesn't promise: the key is never handed to your agent and isn't left in a file it reads by habit. An agent that can run commands as you could still run `flowforge run -- printenv`, or read your keychain, so it isn't impossible. MCP servers your coding tool starts get their environment from that tool, not from FlowForge.
 
 ### Send someone the map
 
@@ -206,6 +221,7 @@ FlowForge itself keeps keys out of its runs, events, cache, logs and the dashboa
 | `POST /connectors/{id}/test` | One harmless check (MCP and local apps) |
 | `GET /connectors/{id}/activity`, `GET /connectors/{id}/tools` | What an app has done; an MCP server's tools |
 | `GET /security` | The scan's security findings, by level, with the fix and a prompt for each (D31) |
+| `GET /keys`, `PUT /keys/{name}`, `DELETE /keys/{name}` | The keys the code reads and their status; save one (write-only: the value never comes back) or forget it (D36) |
 | `GET /health/tools`, `GET /stats/savings`, `GET /meta`, `GET /presets` | Tool health, money and time, app info, ready-made apps |
 | `GET /workflows`, `GET /workflows/{name}` | The example workflows |
 | `GET /flow?layer=mine\|planner` | The flow map: blocks, lines, positions, critical path, your edits |

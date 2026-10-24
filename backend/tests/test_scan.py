@@ -316,7 +316,8 @@ def test_the_trip_planner_scan_matches_its_readme(no_network):
     assert {d.scope for d in result.dependencies} == {"app"}
     assert deps["api-wikipedia"].via == "mcp-fetch"
     assert deps["llm-ollama"].model == "llama3.1:8b" and deps["llm-ollama"].target == "localhost:11434"
-    assert {e.name for e in result.env_names} == {"OLLAMA_BASE_URL", "PLANNER_MODEL", "CURRENCY_API_URL"}
+    assert {e.name for e in result.env_names} == {"OLLAMA_BASE_URL", "PLANNER_MODEL", "OLLAMA_API_KEY",
+                                                       "CURRENCY_API_URL"}
 
 
 def test_the_planted_fake_key_is_never_in_the_result(no_network):

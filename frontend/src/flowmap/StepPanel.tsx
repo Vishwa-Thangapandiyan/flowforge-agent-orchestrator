@@ -6,6 +6,7 @@ import type { CheckRecord, Connector, Evidence, FlowNode, FlowView } from "../ap
 import { BrandTile } from "../brand/BrandTile";
 import { Dot, InternetWorks, took, WORD } from "../checks/Health";
 import { type Finding, useCopy } from "../security/Security";
+import { type KeyInfo, KeyList } from "../security/Keys";
 import "../security/security.css";
 import type { LiveItem } from "../checks/useChecks";
 import { when } from "../components/format";
@@ -54,6 +55,9 @@ interface Props {
   onCheck?: (id: string) => void;
   /** its security findings (D31) */
   findings?: Finding[];
+  /** the keys it reads, and whether FlowForge has them (D36) */
+  keys?: KeyInfo[];
+  onKeySaved?: () => void;
 }
 
 const HISTORY_BARS = 8;
@@ -123,7 +127,7 @@ function EvidenceItem({ ev }: { ev: Evidence }) {
 }
 
 export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, tipShown, layer, actions, health, othersUp,
-  example, checking, onCheck, findings }: Props) {
+  example, checking, onCheck, findings, keys, onKeySaved }: Props) {
   const [name, setName] = useState(node.title);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -189,6 +193,11 @@ export function StepPanel({ node, flow, tile, state, cap, waiting, connectors, t
               </li>
             ))}
           </ul>
+        </div>
+      )}
+      {keys && keys.length > 0 && (
+        <div className="sp-sec sp-keys" role="region" aria-label="Keys">
+          <KeyList keys={keys} example={example} onSaved={() => onKeySaved?.()} />
         </div>
       )}
       {health && <Health item={health} othersUp={othersUp} example={example} checking={checking} onCheck={onCheck} />}

@@ -1,4 +1,4 @@
-"""FlowForge as an MCP server (D28, D29): five read-only tools a coding agent can ask about the repo it works in.
+"""FlowForge as an MCP server (D28, D29, D36): read-only tools a coding agent can ask about the repo it works in.
 
 The map and the flow are read fresh from the repo on every call (plain code, nothing run, no LLM: D20). The
 dashboard's database supplies what only it knows, when it maps the same repo: measured latencies, past checks,
@@ -28,6 +28,7 @@ from flowforge.flowmap.validate import code_writes, critical
 from flowforge.nodes.check_node import CheckNode
 from flowforge.scan import ScanResult, scan
 from flowforge.scheduler.executor import StepState, run_workflow
+from flowforge.security.keystore import KeyStore, report
 from flowforge.security.logfilter import Redactor, redact_code, secret_values_for
 from flowforge.storage import Storage, now_iso
 
@@ -160,6 +161,10 @@ def headline(tool: str, data: dict[str, Any]) -> str | None:
     if tool == "get_security_findings":
         counts = data["summary"]
         return " · ".join(f"{counts[k]} {k}" for k in ("high", "medium", "low") if counts.get(k)) or "Nothing found"
+    if tool == "get_keys":
+        counts = data["summary"]
+        parts = [f"{counts[k]} {w}" for k, w in (("missing", "missing"), ("env_file", "in .env")) if counts.get(k)]
+        return " · ".join(parts) or ("All saved" if data["keys"] else "No keys read")
     if tool == "what_changed":
         if not data["saved"]:
             return "No saved map yet"
@@ -179,6 +184,15 @@ def _security_data(result: ScanResult) -> dict[str, Any]:
     findings = [f.model_dump(mode="json") for f in result.findings]
     return {"findings": findings, "summary": dict(Counter(f["level"] for f in findings)),
             "note": "Catches known key formats and these patterns, not everything. Values are never shown."}
+
+
+def _keys_data(root: Path, result: ScanResult) -> dict[str, Any]:
+    """Names and statuses only: this server, which the agent starts, never reads a value (D36)."""
+    found = report(KeyStore(root), result, verify=False)
+    return {"keys": found, "summary": dict(Counter(k["status"] for k in found if k["status"] != "saved")),
+            "run": "flowforge run -- <the command that starts the app>",
+            "note": "saved means FlowForge has it on record; this server never reads a value, so the user's "
+                    "`flowforge key list` is what confirms it can be read"}
 
 
 def _flow_data(result: Any) -> dict[str, Any]:
@@ -218,7 +232,8 @@ def preview(repo: Path, storage: Storage) -> dict[str, Any]:
     tone = "bad" if "down" in checked else "warn" if "warn" in checked else "ok" if checked else "plain"
     read = r.flow()
     flow, advice = _flow_data(read), _advice_data(read)
-    security = _security_data(read.scan or r.scan())
+    scanned = read.scan or r.scan()
+    security, keys = _security_data(scanned), _keys_data(r.root, scanned)
     worst = next((lv for lv in ("high", "medium", "low") if security["summary"].get(lv)), None)
     cards = [
         {"tool": "get_map", "headline": headline("get_map", deps), "sub": kinds, "tone": "plain"},
@@ -228,6 +243,8 @@ def preview(repo: Path, storage: Storage) -> dict[str, Any]:
         {"tool": "get_security_findings", "headline": headline("get_security_findings", security),
          "sub": "keys in code, plain http, risky MCP servers",
          "tone": {"high": "bad", "medium": "warn"}.get(worst or "", "ok")},
+        {"tool": "get_keys", "headline": headline("get_keys", keys),
+         "sub": "names only: the user types each key, hidden", "tone": "warn" if keys["summary"] else "ok"},
         {"tool": "get_flow", "headline": headline("get_flow", flow) if flow["available"] else None,
          "sub": "as written → could be" if flow["available"] else flow["message"], "tone": "plain"},
         {"tool": "get_advice", "headline": (_plural(len(advice["advice"]), "way") + " to be faster")
@@ -311,6 +328,14 @@ def build_server(repo: Path, storage: Storage, *, transport: httpx.AsyncBaseTran
         dependency it belongs to, a masked excerpt, the fix, and a prompt describing the change. Values are never
         shown. Catches known key formats and these patterns, not everything."""
         return r.answer("get_security_findings", _security_data(r.scan()))
+
+    @server.tool(annotations=READ)
+    def get_keys() -> dict[str, Any]:
+        """The keys the repo's code reads from its environment (names that look like keys), each with where it is
+        read, the dependencies that use it, and its status: saved in FlowForge, only in .env, or missing. You never
+        get a value and never need one: write code that reads the name from the environment, then ask the user to
+        run the `command` given (they type the key, hidden). Their app gets the keys with `flowforge run -- <app>`."""
+        return r.answer("get_keys", _keys_data(r.root, r.scan()))
 
     @server.tool(annotations=READ)
     def what_changed() -> dict[str, Any]:

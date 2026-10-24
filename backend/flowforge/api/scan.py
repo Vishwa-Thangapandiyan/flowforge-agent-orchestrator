@@ -110,6 +110,9 @@ def post_scan(body: ScanRequest) -> dict[str, Any]:
     if not path.is_dir():
         raise HTTPException(422, "that isn't a folder on this machine")
     path = path.resolve()
+    from flowforge.api.keys import learn_saved_keys  # here: keys imports this module
+
+    learn_saved_keys(s, path)   # before the map is stored, so a saved key's value is masked in it (D36)
     try:
         choose_repo(s.storage, s.flows, path, body.replace)
     except RepoChangeError as err:

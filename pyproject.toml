@@ -30,6 +30,8 @@ dependencies = [
     "anthropic>=1.11.0",
     "jsonschema>=4.26.0",
     "python-multipart>=0.0.32",
+    "keyring>=25",
+    "cryptography>=43",
 ]
 
 [project.urls]

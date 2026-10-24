@@ -1103,6 +1103,62 @@ D23's rule holds: nothing drawn by hand. Vishwa chose Python first, with Dart an
 
 ---
 
+## D36. Keys the coding agent never sees (Vishwa, 2026-10-24)
+
+**Context.** A map that only points at problems isn't enough. Keys are the problem people hit most when a coding agent adds a dependency:
+- they paste the key into the chat;
+- or they leave it in a `.env` the agent reads;
+- or they leave it in the code.
+
+The agent only needs the key's **name**: the code it writes reads `os.environ["STRIPE_SECRET_KEY"]`. Vishwa proposed a sign-in with 2FA to view the keys; we chose not to (below).
+
+**Choice:**
+- **Three ways in, one store.**
+  - `flowforge key add NAME`, typed hidden (`getpass`).
+  - The dashboard's password box (`PUT /keys/{name}`, the "form door" of §6.2).
+  - `flowforge key import [.env]`.
+  
+  Each saves the value in `security/keystore.py`:
+  - the OS keychain (`keyring`: macOS Keychain, Windows Credential Manager, the Secret Service on Linux), under the service `flowforge:<repo path>`;
+  - else a Fernet-encrypted file in `FLOWFORGE_HOME/keys/`, whose key is `FLOWFORGE_MASTER_KEY` or `FLOWFORGE_HOME/master.key` (mode 0600, §6.3). The file store is used when no keychain works (CI, a headless Linux) or when `FLOWFORGE_KEYSTORE=file`.
+  
+  Keychains can't list their entries, so the **names** (never values) are kept in `FLOWFORGE_HOME/keys.json`. Keys belong to one repo folder.
+- **Two ways out.**
+  - `flowforge run -- CMD …` starts the user's app with the keys added to its environment. It is a list, never a shell, and the exit code is passed through.
+  - The redactor learns every saved value, so a value that reaches a log, a stored row or an answer is masked.
+  
+  No route, MCP tool or page returns a value, and no MCP tool takes one.
+- **Four statuses**, for each env name the code reads that looks like a key (`is_secret_name`, D31):
+  - **saved** in FlowForge, and read back to confirm it (Codex review: a key the keychain or file won't give back is **can't read**, offered to save again, because `flowforge run` couldn't pass it on). The agent's MCP server reads no value, so its "saved" means "on record";
+  - **in .env**: only the name is read from the file, and each value is dropped as its line is read;
+  - **missing**.
+  
+  The names and where they are read come from the scan as it is (`Dependency.env_names`, `ScanResult.env_names`), so `READER` doesn't change.
+  
+  A key belongs to a dependency when the scan sees it read on the dependency's own lines; else when its name names the service (`STRIPE_SECRET_KEY` → Stripe); else when its file has only one dependency.
+- **On the map** (D33: no new page or header control):
+  - a 🔑 badge on a block whose keys are missing (amber) or only in `.env` (grey);
+  - a "Keys" part in the ⚠ chip;
+  - the block's keys in the step panel.
+  
+  Each key offers the command to copy and a password box (`autocomplete=off`, emptied after it saves). Example mode shows the statuses but saves nothing (409).
+  
+  Saving or forgetting a key answers only to the dashboard's own address: a Host of `localhost`, `127.0.0.1`, `::1` or the `FLOWFORGE_HOST` chosen, and an Origin, if sent, of the same. Otherwise a web page could swap in its own key (its own Stripe account, say) through DNS rebinding. On a dashboard bound to `0.0.0.0` and opened from another machine, keys are added with the CLI.
+- **For the agent:** a seventh read-only MCP tool, `get_keys`. It returns names, statuses, where each is read, which dependencies use it, and the command to ask the user to run. The MCP server, which the agent starts, never reads a value: not even to mask with.
+- **No sign-in, no 2FA, no page that shows keys.** FlowForge is local and single-user (§6.5). A page that shows keys is a place keys leak (a screen share, a screenshot). The keychain is already locked by the user's login. To see a key, use the provider's dashboard.
+
+**Why:** the user hands a key over once, and the agent wires it in by name. The key isn't left in a file the agent reads by habit.
+
+**Honest limits** (the README says the same):
+- An agent that can run commands as the user can still run `flowforge run -- printenv` or read the keychain. The promise is "never handed to the agent and not left lying in files", not "impossible to get".
+- MCP servers that a coding tool starts get their env from that tool. FlowForge can't feed them without giving the agent the keys.
+- A key already written in the code is reported (D31) but not moved yet: moving it edits code, so it needs a branch and the user's approval (Phase 10).
+- On Linux, the Secret Service lets any program of the same user read the key without asking.
+
+**Code:** `security/keystore.py`, `api/keys.py`, `cli.py` (`key`, `run`), `agent/server.py` (`get_keys`), the dashboard's `security/Keys.tsx`.
+
+---
+
 ## Step JSON schema (reference)
 
 ```json

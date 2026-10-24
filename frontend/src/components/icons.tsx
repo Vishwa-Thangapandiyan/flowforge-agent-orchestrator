@@ -43,6 +43,7 @@ export const Icons = {
   code: (s?: number) => <Icon size={s}><path d="M8 8l-4 4 4 4M16 8l4 4-4 4" /></Icon>,
   flag: (s?: number) => <Icon size={s}><path d="M5 21V4M5 4h11l-2 4 2 4H5" /></Icon>,
   question: (s?: number) => <Icon size={s}><circle cx="12" cy="12" r="9" /><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.4c-.6.3-1 .8-1 1.5v.5M12 17v.01" /></Icon>,
+  gear: (s?: number) => <Icon size={s}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></Icon>,
   key: (s?: number) => <Icon size={s}><circle cx="8" cy="15" r="4" /><path d="M10.8 12.2L20 3M16 7l3 3M14 9l2 2" /></Icon>,
   pencil: (s?: number) => <Icon size={s}><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4" /></Icon>,
   download: (s?: number) => <Icon size={s}><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></Icon>,

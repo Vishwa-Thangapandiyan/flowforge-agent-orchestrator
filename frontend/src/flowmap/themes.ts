@@ -1,5 +1,6 @@
 // Graph themes (D26, docs/design/flow-artboards/themes.html): how the map looks, picked per viewer. Every theme keeps
 // the same meanings: health colours, the critical path as the thickest line, measured versus estimated weights.
+import { useEffect, useState } from "react";
 import type { Node } from "@xyflow/react";
 import type { FlowView, NodeKind } from "../api/types";
 import { CALL_KINDS, earliest, isThrough } from "./kinds";
@@ -17,10 +18,20 @@ export const THEMES: { id: GraphTheme; name: string; note: string }[] = [
 
 const KEY = "flowforge.graphTheme";   // a viewer convenience: kept in this browser only (D26)
 
+/** The style a link asks for (?style=boxed), if it names one. */
+export function styleInLink(): GraphTheme | null {
+  try {
+    const asked = new URLSearchParams(window.location.search).get("style");
+    return THEMES.some((t) => t.id === asked) ? (asked as GraphTheme) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function readTheme(): GraphTheme {
   try {
-    const asked = new URLSearchParams(window.location.search).get("style");   // a link to one style: ?style=boxed
-    if (THEMES.some((t) => t.id === asked)) return asked as GraphTheme;
+    const asked = styleInLink();
+    if (asked) return asked;
     const saved = localStorage.getItem(KEY);
     return THEMES.some((t) => t.id === saved) ? (saved as GraphTheme) : "studio";
   } catch {
@@ -30,6 +41,26 @@ export function readTheme(): GraphTheme {
 
 export function saveTheme(theme: GraphTheme): void {
   try { localStorage.setItem(KEY, theme); } catch { /* not remembered */ }
+}
+
+export const MAP_STYLE_EVENT = "flowforge:map-style";
+
+/** The map style in this browser, kept in step when Settings' saved style arrives later (D40). */
+export function useMapStyle(): [GraphTheme, (theme: GraphTheme) => void] {
+  const [theme, setTheme] = useState<GraphTheme>(readTheme);
+  useEffect(() => {
+    const take = (e: Event) => setTheme((e as CustomEvent<GraphTheme>).detail);
+    window.addEventListener(MAP_STYLE_EVENT, take);
+    setTheme(readTheme());   // a style adopted between the first render and now
+    return () => window.removeEventListener(MAP_STYLE_EVENT, take);
+  }, []);
+  return [theme, (t: GraphTheme) => { setTheme(t); saveTheme(t); }];
+}
+
+/** The style Settings saved, for a browser that had none (D40): kept, and given to a map that is already open. */
+export function adoptMapStyle(theme: GraphTheme): void {
+  saveTheme(theme);
+  window.dispatchEvent(new CustomEvent(MAP_STYLE_EVENT, { detail: theme }));
 }
 
 const KIND_LANE: Partial<Record<NodeKind, string>> = { llm: "LLMs", mcp: "MCP servers", api: "APIs", local: "Local programs" };

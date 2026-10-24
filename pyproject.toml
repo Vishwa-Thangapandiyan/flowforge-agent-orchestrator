@@ -33,6 +33,7 @@ dependencies = [
     "keyring>=25",
     "cryptography>=43",
     "segno>=1.6",
+    "packaging>=24",
 ]
 
 [project.urls]

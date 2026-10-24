@@ -1271,6 +1271,36 @@ This is step ① of Vishwa's order (① projects, ② settings + first run, ③ 
 
 ---
 
+## D40. Settings, and a welcome the first time (Vishwa, 2026-10-24)
+
+**Context.** This is step ② of Vishwa's order. A first-time user landed on "No projects yet" and was never shown the agent or the Vault. Settings were scattered:
+- the theme sat in the rail;
+- the agent was paired per project on Connect agent;
+- the MCP servers you said yes to lived under Checks.
+
+D39 left pairing the agent once to this step.
+
+**Choice** (Vishwa picked the welcome, the four cards and the gear):
+- **A welcome, once.** It is full-screen and shows on a launch with no projects, until it is finished or skipped. It has three steps, and each can be skipped:
+  1. **your app:** a folder to map, or the example;
+  2. **your agent:** one line for Claude Code, Codex or Antigravity that serves every project (`flowforge mcp` with no folder, D39), then "Waiting for your agent…" until its first call;
+  3. **your keys:** the Vault's lock, a password then an authenticator code (D37), optional.
+  
+  Finishing or skipping sets `welcome_done` in `FLOWFORGE_HOME/settings.json`, which never holds a secret.
+- **Settings** (`/settings`, for every project) sits behind a ⚙ at the bottom of the rail. The theme moves out of the rail into it. Four cards:
+  - **Your agent:** connected or not (the newest call in any project) and the pair-once line per agent.
+  - **Look:** the theme, and the map style a new map opens in. Each map's Style ▾ stays.
+  - **Keys & Vault:** whether the lock is set, and where keys are kept (keychain or encrypted file), with a link to the Vault. No value and no way to change the lock here.
+  - **Data & checks:** where FlowForge keeps its data and how big each project's database is, the MCP servers each project said yes to (take the yeses back), clearing a project's check history, the version, and **Check for updates**.
+- **No login for Settings** (Vishwa asked whether one is needed). Settings shows nothing secret and can't open the key view or change the lock: those stay behind the Vault's password and code. Every change in Settings answers only to the dashboard on this machine (`from_this_machine`, D36).
+- **The update check** is the only request Settings makes to the internet: one GET to pypi.org for `flowforge-map`'s latest version, and only when you press the button. Nothing is sent but that request.
+
+**Why:** the first five minutes decide whether someone stays. The welcome gets them to a map, a paired agent and locked keys. Settings puts what applies to every project in one place.
+
+**Code:** `backend/flowforge/settings.py`, `api/settings.py`, `api/agent.py` (pair once), the dashboard's `settings/SettingsPage.tsx`, `welcome/Welcome.tsx`, `components/Shell.tsx`.
+
+---
+
 ## Step JSON schema (reference)
 
 ```json

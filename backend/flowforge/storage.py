@@ -417,6 +417,15 @@ class Storage:
             " GROUP BY dep_id)").fetchall()
         return {dep: float(ms) for dep, ms in rows}
 
+    def count_checks(self) -> int:
+        return self.conn.execute("SELECT COUNT(*) FROM checks").fetchone()[0]
+
+    def clear_check_history(self) -> None:
+        """Settings' "Clear check history" (D40): the results go, the yes to start MCP servers stays."""
+        self.conn.execute("DELETE FROM checks")
+        self.conn.execute("DELETE FROM settings WHERE key = 'checks_last_run'")
+        self.conn.commit()
+
     def clear_checks(self) -> None:
         """A different repo starts with no check history and no yes to start its MCP servers (D21, D24)."""
         self.conn.execute("DELETE FROM checks")

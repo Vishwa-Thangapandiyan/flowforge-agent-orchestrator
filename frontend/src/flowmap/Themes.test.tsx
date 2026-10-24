@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { act, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { META, mockApi, renderAt } from "../test/api";
@@ -6,7 +6,7 @@ import { CONNECTORS } from "../test/fixtures";
 import type { FlowNode } from "../api/types";
 import { CODEFLOW, DEPS } from "../test/flowFixture";
 import { autoLayout, sizeOf } from "./layout";
-import { timeColumns } from "./themes";
+import { adoptMapStyle, timeColumns } from "./themes";
 
 const NO_CHECKS = { run_id: null, checked_at: null, summary: {}, items: [], example: false };
 const routes = {
@@ -29,6 +29,16 @@ test("the theme menu switches how the map looks, and remembers it for this viewe
   expect(document.querySelector(".fm")).toHaveAttribute("data-graph", "blueprint");
   expect(screen.getByRole("menuitemradio", { name: /Blueprint/ })).toHaveAttribute("aria-checked", "true");
   expect(localStorage.getItem("flowforge.graphTheme")).toBe("blueprint");
+});
+
+test("a map already open takes the style Settings saved when it arrives (D40, Codex review)", async () => {
+  mockApi(routes);
+  renderAt("/?map=flow");
+  await screen.findByRole("button", { name: /^Style/ });
+  expect(document.querySelector(".fm")).toHaveAttribute("data-graph", "studio");
+  act(() => adoptMapStyle("metro"));
+  expect(document.querySelector(".fm")).toHaveAttribute("data-graph", "metro");
+  expect(localStorage.getItem("flowforge.graphTheme")).toBe("metro");
 });
 
 test("Boxed puts what starts together in one box", async () => {

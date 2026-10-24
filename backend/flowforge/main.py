@@ -30,6 +30,7 @@ from flowforge.api import projects as projects_api
 from flowforge.api import runs as runs_api
 from flowforge.api import scan as scan_api
 from flowforge.api import security as security_api
+from flowforge.api import settings as settings_api
 from flowforge.api import stats as stats_api
 from flowforge.connectors.registry import load_connectors_file
 from flowforge.connectors.runtime import build_nodes  # noqa: F401 (re-exported for callers)
@@ -151,6 +152,7 @@ app.include_router(keys_api.router)
 app.include_router(issues_api.router)
 app.include_router(lock_api.router)
 app.include_router(projects_api.router)
+app.include_router(settings_api.router)
 
 
 @app.get("/workflows")

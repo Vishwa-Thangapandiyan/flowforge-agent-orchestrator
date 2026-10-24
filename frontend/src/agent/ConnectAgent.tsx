@@ -8,7 +8,7 @@ import { Icons } from "../components/icons";
 import { CardSkeleton, ErrorBox } from "../components/ui";
 import "./agent.css";
 
-interface AgentSetup {
+export interface AgentSetup {
   name: string;
   how: "terminal" | "file";
   checked: boolean;
@@ -17,7 +17,7 @@ interface AgentSetup {
   file_text?: string;
 }
 
-interface Call { tool: string; repo: string; at: string; got?: string | null }
+export interface Call { tool: string; repo: string; at: string; got?: string | null }
 
 interface Connect {
   repo: string | null;
@@ -55,14 +55,15 @@ function useCopy(): [string | undefined, (text: string) => void] {
   return [said, copy];
 }
 
-function Setup({ c }: { c: Connect }) {
+/** One agent's set-up: pick the agent, copy one line, and see whether it has asked anything yet. */
+export function Setup({ c, title = "Set up" }: { c: Pick<Connect, "agents" | "last_call">; title?: string }) {
   const [tab, setTab] = useState("claude");
   const [said, copy] = useCopy();
   const agent = c.agents[tab];
   const last = c.last_call;
   return (
-    <section className="card ca-setup" aria-label="Set-up">
-      <h2 className="ca-label">Set up</h2>
+    <section className="card ca-setup" aria-label={title}>
+      <h2 className="ca-label">{title}</h2>
       <div className="ca-agents" role="tablist" aria-label="Agent" aria-orientation="vertical">
         {Object.entries(c.agents).map(([id, a]) => (
           <button key={id} type="button" role="tab" id={`ca-tab-${id}`} aria-selected={tab === id} aria-controls="ca-panel"
@@ -155,6 +156,7 @@ function Asked({ calls }: { calls: Call[] }) {
 
 export function ConnectAgent() {
   const data = useApi<Connect>("/agent/connect", 5000);   // re-read, so the agent's calls show up by themselves
+  const once = useApi<{ agent: { agents: Record<string, AgentSetup> } }>("/settings");   // paired once (D39, D40)
   if (data.error) return <ErrorBox error={data.error} what="the agent set-up" />;
   if (!data.data) return <CardSkeleton lines={6} />;
   const c = data.data;
@@ -171,7 +173,7 @@ export function ConnectAgent() {
       </header>
 
       <div className="ca-grid">
-        <Setup c={c} />
+        <Setup c={{ agents: once.data?.agent.agents ?? c.agents, last_call: c.last_call }} title="Set up · once, for every project" />
         <div className="ca-right">
           <Gets repo={c.repo} />
           {calls.length > 0 && <Asked calls={calls} />}

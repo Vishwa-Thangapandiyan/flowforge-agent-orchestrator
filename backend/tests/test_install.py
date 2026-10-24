@@ -58,7 +58,7 @@ def test_install_kind_reads_where_python_runs(monkeypatch):
 
 
 def test_version_is_the_packages():
-    assert home.version() == "0.1.0"
+    assert home.version() == "0.2.0"
 
 
 def test_the_first_launch_creates_the_data_folder(tmp_path):

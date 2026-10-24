@@ -69,3 +69,19 @@ def test_a_rescan_waiting_for_review_is_discarded_when_the_map_is_read_again(tmp
     service(storage, "deps").map_folder(planner, fresh=False)
     assert store.latest_flow_version("pending") is None
     assert store.flow_version(2)["status"] == "discarded"
+
+
+def test_a_call_you_keep_against_a_rescan_stays_in_its_actions_time(tmp_path):
+    from flowforge.flowmap.diff import apply_choices, diff
+
+    old = CodeFlowPlanner(TRIP_PLANNER).analyze(0).flow
+    gone = "local-packing-list-1"
+    new = old.model_copy(deep=True)
+    new.nodes = [n for n in new.nodes if n.id != gone]
+    new.edges = [e for e in new.edges if gone not in (e.source, e.target)]
+    new.actions = [a.model_copy(update={"parts": [[i for i in p if i != gone] for p in a.parts if p != [gone]]})
+                   for a in new.actions]
+    changes = diff(old, new, [], {})
+    removal = next(c for c in changes if gone in c["nodes"])
+    accepted, _ = apply_choices(old, new, changes, {removal["id"]: False})   # keep it
+    assert any(gone in p for a in accepted.actions for p in a.parts)

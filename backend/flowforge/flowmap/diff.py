@@ -146,4 +146,20 @@ def apply_choices(old: Flow, new: Flow, changes: list[dict[str, Any]],
     advice = [a for a in new.advice if all(i in nodes for i in a.nodes)]
     return new.model_copy(deep=True, update={
         "nodes": [nodes[i] for i in order if i in nodes], "edges": kept_edges, "suggestions": suggestions,
-        "advice": advice}), drop_edits
+        "advice": advice, "actions": _actions_kept(old, new, set(nodes))}), drop_edits
+
+
+def _actions_kept(old: Flow, new: Flow, kept: set[str]) -> list:
+    """Each action's call groups (D33) for the blocks you kept: a call you kept against the re-scan comes back
+    into its action's "as written", in the group it had; a call you declined leaves it."""
+    restored = kept - {n.id for n in new.nodes}
+    old_parts = {a.id: a.parts for a in old.actions}
+    out = []
+    for action in new.actions:
+        parts = [[i for i in p if i in kept] for p in action.parts]
+        have = {i for p in parts for i in p}
+        for p in old_parts.get(action.id, []):
+            if extra := [i for i in p if i in restored and i not in have]:
+                parts.append(extra)
+        out.append(action.model_copy(update={"parts": [p for p in parts if p]}))
+    return out

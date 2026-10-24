@@ -24,11 +24,12 @@ from flowforge.state import app_state
 router = APIRouter()
 
 
-def _command(repo: str, db: str) -> list[str]:
+def server_command(repo: str | None, db: str | None) -> list[str]:
     """How the agent starts FlowForge's MCP server, matching how FlowForge was installed (D34): from the checkout
     through uv, through uvx with the version pinned (as FlowForge advises for MCP servers, D31), or the same Python.
-    Full paths: an agent started from a desktop app may not have your shell's PATH."""
-    tail = ["mcp", "--repo", repo, "--db", db]
+    Full paths: an agent started from a desktop app may not have your shell's PATH. With no folder it serves every
+    project: the agent is paired once (D39, D40)."""
+    tail = ["mcp", "--repo", repo, "--db", db] if repo else ["mcp"]
     kind = home.install_kind()
     if kind == "checkout":
         return [shutil.which("uv") or "uv", "--directory", str(home.CHECKOUT), "run", "flowforge", *tail]
@@ -37,16 +38,42 @@ def _command(repo: str, db: str) -> list[str]:
     return [sys.executable, "-m", "flowforge.cli", *tail]
 
 
+def _command(repo: str, db: str) -> list[str]:
+    return server_command(repo, db)
+
+
+def agents_for(command: list[str], env: dict[str, str] | None = None) -> dict[str, dict[str, Any]]:
+    """Each coding agent's set-up for `command`: a line to paste, or a file to edit. `env` is passed to the server
+    (FLOWFORGE_HOME when it isn't the default, so the agent finds the same projects)."""
+    env = env or {}
+    line = shlex.join(command)
+    flags = "".join(f" -e {shlex.quote(f'{k}={v}')}" for k, v in env.items())
+    codex_flags = "".join(f" --env {shlex.quote(f'{k}={v}')}" for k, v in env.items())
+    server: dict[str, Any] = {"command": command[0], "args": command[1:]}
+    if env:
+        server["env"] = env
+    # JSON strings are valid TOML basic strings, Windows backslashes included
+    args = ", ".join(map(json.dumps, command[1:]))
+    toml = f"[mcp_servers.flowforge]\ncommand = {json.dumps(command[0])}\nargs = [{args}]"
+    if env:
+        toml += "\n\n[mcp_servers.flowforge.env]\n" + "\n".join(f"{k} = {json.dumps(v)}" for k, v in env.items())
+    return {
+        "claude": {"name": "Claude Code", "how": "terminal", "checked": True,
+                   "text": f"claude mcp add flowforge{flags} -- {line}"},
+        "codex": {"name": "Codex", "how": "terminal", "checked": True,
+                  "text": f"codex mcp add flowforge{codex_flags} -- {line}",
+                  "file": "~/.codex/config.toml", "file_text": toml},
+        "antigravity": {"name": "Antigravity", "how": "file", "checked": False,
+                        "file": "mcp_config.json (… menu → MCP Servers → Manage MCP Servers → View raw config)",
+                        "text": json.dumps({"mcpServers": {"flowforge": server}}, indent=2)},
+    }
+
+
 @router.get("/agent/connect")
 def agent_connect() -> dict[str, Any]:
     s = app_state()
     repo = repo_path(s)
     command = _command(str(repo) if repo else ".", str(s.storage.path.resolve()))
-    line = shlex.join(command)
-    config = {"mcpServers": {"flowforge": {"command": command[0], "args": command[1:]}}}
-    # JSON strings are valid TOML basic strings, Windows backslashes included
-    args = ", ".join(map(json.dumps, command[1:]))
-    toml = f"[mcp_servers.flowforge]\ncommand = {json.dumps(command[0])}\nargs = [{args}]"
     try:
         calls = json.loads(s.storage.setting(AGENT_CALLS_SETTING) or "[]")
     except ValueError:
@@ -54,17 +81,7 @@ def agent_connect() -> dict[str, Any]:
     return {
         "repo": str(repo) if repo else None,
         "command": command,
-        "agents": {
-            "claude": {"name": "Claude Code", "how": "terminal", "checked": True,
-                       "text": f"claude mcp add flowforge -- {line}"},
-            "codex": {"name": "Codex", "how": "terminal", "checked": True,
-                      "text": f"codex mcp add flowforge -- {line}",
-                      "file": "~/.codex/config.toml",
-                      "file_text": toml},
-            "antigravity": {"name": "Antigravity", "how": "file", "checked": False,
-                            "file": "mcp_config.json (… menu → MCP Servers → Manage MCP Servers → View raw config)",
-                            "text": json.dumps(config, indent=2)},
-        },
+        "agents": agents_for(command),
         "last_call": calls[0] if calls else None,
         "calls": calls,
     }

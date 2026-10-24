@@ -115,3 +115,13 @@ test("inside a project, the rail's links stay in it", async () => {
   expect(within(nav).getByRole("link", { name: /Issues/ })).toHaveAttribute("href", "/p/test/issues");
   expect(within(nav).getByRole("link", { name: /^Map/ })).toHaveAttribute("href", "/p/test");
 });
+
+test("old addresses inside a project stay in it: /security opens its Issues, /plans its map (Codex review)", async () => {
+  api();
+  const router = createMemoryRouter(routes, { initialEntries: ["/p/blog/security"] });
+  render(<RouterProvider router={router} />);
+  await screen.findByRole("heading", { level: 1, name: "Issues" });
+  expect(router.state.location.pathname).toBe("/p/blog/issues");
+  await router.navigate("/p/blog/plans");
+  await vi.waitFor(() => expect(router.state.location.pathname).toBe("/p/blog"));
+});

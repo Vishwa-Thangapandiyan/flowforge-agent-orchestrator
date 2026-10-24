@@ -1,7 +1,8 @@
 /* Settings (D40): four cards, one idea each */
 .st-page { display: flex; flex-direction: column; gap: 18px; max-width: 1100px; }
-.st-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
-.st-agent, .st-wide { grid-column: 1 / -1; }
+.st-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto 1fr; gap: 16px; align-items: start; }
+.st-agent { grid-row: span 2; min-width: 0; }
+.st-wide { grid-column: 1 / -1; }
 .st-card { display: grid; gap: 12px; min-width: 0; }
 .st-card h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 16px; }
 .st-row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; }
@@ -33,4 +34,4 @@
 .st-version { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding-top: 10px; border-top: 1px solid var(--line); font-size: 13.5px; }
 .st-update { color: var(--muted); font-size: 13px; }
 .st-update.new { color: var(--teal); font-weight: 600; }
-@media (max-width: 760px) { .st-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 760px) { .st-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; } .st-agent { grid-row: auto; } }

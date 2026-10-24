@@ -1,6 +1,7 @@
 // The welcome (D40): once, full-screen, on a launch with no projects. Three steps, each can be skipped: your app,
 // your agent (paired once, for every project), your keys (the Vault's lock). Finishing or skipping marks it done.
 import { type FormEvent, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { Setup } from "../agent/ConnectAgent";
 import { api, useApi } from "../api/client";
@@ -89,7 +90,8 @@ export function Welcome({ exampleId, onDone }: { exampleId: string; onDone: () =
     if (project) { markOpen(project); go(placeOf(project)); }
     onDone();
   };
-  return (
+  // on the page itself: inside the shell, the page's entry animation would make "fixed" mean "fixed to the page"
+  return createPortal(
     <div className="wc" role="dialog" aria-modal="true" aria-labelledby="wc-title">
       <div className="wc-box">
         <header className="wc-head">
@@ -107,6 +109,7 @@ export function Welcome({ exampleId, onDone }: { exampleId: string; onDone: () =
         {step === 2 && <KeysStep onDone={() => void finish()} />}
         <button type="button" className="wc-skip" onClick={() => void finish()}>Skip for now {Icons.arrow(14)}</button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -88,6 +89,23 @@ def _agent(last_calls: list[dict[str, Any]]) -> dict[str, Any]:
             "agents": agents_for(command, env)}
 
 
+HOME_SIZE_S = 60
+_home_size: dict[str, tuple[float, int]] = {}   # folder -> (when walked, bytes): Settings re-reads every 3 s
+
+
+def _walk_bytes(folder: Path) -> int:
+    return sum(f.stat().st_size for f in folder.rglob("*") if f.is_file()) if folder.is_dir() else 0
+
+
+def _home_bytes(folder: Path) -> int:
+    """Everything in FLOWFORGE_HOME, walked at most once a minute (Codex review)."""
+    at, size = _home_size.get(str(folder), (0.0, 0))
+    if time.monotonic() - at > HOME_SIZE_S or str(folder) not in _home_size:
+        size = _walk_bytes(folder)
+        _home_size[str(folder)] = (time.monotonic(), size)
+    return size
+
+
 def _settings_data() -> dict[str, Any]:
     rows, last_calls, outside = [], [], 0
     folder = home.flowforge_home()
@@ -98,8 +116,7 @@ def _settings_data() -> dict[str, Any]:
             last_calls.append(last)
         if not Path(p.db).resolve().is_relative_to(folder.resolve()):   # e.g. a checkout's flowforge.db
             outside += row["size_bytes"]
-    inside = sum(f.stat().st_size for f in folder.rglob("*") if f.is_file()) if folder.is_dir() else 0
-    total = inside + outside
+    total = _home_bytes(folder) + outside
     saved = settings_file.load()
     redactor = app_state_module.current.redactor if app_state_module.current else None
     data = {**saved.model_dump(), "version": home.version(), "install": home.install_kind(), "home": str(folder),

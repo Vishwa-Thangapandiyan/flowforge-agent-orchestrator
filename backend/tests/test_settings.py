@@ -239,3 +239,15 @@ def test_a_version_pypi_sends_that_isnt_one_is_reported_not_compared(two, monkey
     with client() as c:
         got = c.post("/settings/update-check").json()
     assert got["newer"] is False and got["latest"] is None and "error" in got
+
+
+def test_settings_walk_the_data_folder_at_most_once_a_minute(two, monkeypatch):
+    """Settings re-reads every few seconds; the folder's total is kept for a minute (Codex review)."""
+    walks = []
+    real = settings_api._walk_bytes
+    monkeypatch.setattr(settings_api, "_walk_bytes", lambda folder: walks.append(folder) or real(folder))
+    settings_api._home_size.clear()
+    with client() as c:
+        first = c.get("/settings").json()["total_bytes"]
+        second = c.get("/settings").json()["total_bytes"]
+    assert len(walks) == 1 and first == second

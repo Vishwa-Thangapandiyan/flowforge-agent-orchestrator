@@ -73,7 +73,17 @@ fn serde_json_string(text: &str) -> String {
     format!("\"{escaped}\"")
 }
 
+/// On Linux, WebKitGTK's DMA-BUF renderer leaves the window blank on many NVIDIA setups ("Failed to create GBM
+/// buffer"). Draw without it unless the user chose otherwise.
+fn linux_webview_workarounds() {
+    #[cfg(target_os = "linux")]
+    if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+    }
+}
+
 fn main() {
+    linux_webview_workarounds();
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             // a second launch brings the open window forward instead of starting another server

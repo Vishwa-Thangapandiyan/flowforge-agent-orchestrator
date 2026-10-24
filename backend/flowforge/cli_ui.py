@@ -121,7 +121,7 @@ def project_command(command: str, argv: list[str], plain: bool = False) -> None:
     """Route the offline project commands without starting the API (D41)."""
     from flowforge import home, settings
     from flowforge.api.projects import summary
-    from flowforge.projects import Projects
+    from flowforge.projects import Projects, adopt_existing
     from flowforge.scan import ScanResult
     from flowforge.security.keystore import KeyStore, report
     from flowforge.storage import Storage
@@ -140,6 +140,7 @@ def project_command(command: str, argv: list[str], plain: bool = False) -> None:
             ["Welcome done", str(saved.welcome_done).lower()], ["Map style", saved.map_style or "studio"],
             ["Data", str(home.flowforge_home())], ["Version", home.version()], ["Install", home.install_kind()]])
         return
+    adopt_existing()   # a map made before projects counts, as it does when the dashboard starts (D39)
     registry = Projects()
     projects = sorted(registry.list(), key=lambda p: p.opened or p.added, reverse=True)
     if command != "projects":

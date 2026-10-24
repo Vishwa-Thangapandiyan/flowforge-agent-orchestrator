@@ -133,3 +133,26 @@ class Projects:
             if hit:
                 self._save([p for p in found if p.id != project_id])
             return hit
+
+
+def adopt_existing() -> Project | None:
+    """The database made before projects (D39), and the folder it maps, listed as a project if they aren't yet: what
+    the dashboard does at start, for commands that read the list without starting it (the CLI, D41). Reading only:
+    a database that doesn't exist isn't created."""
+    import sqlite3
+
+    from flowforge.home import database_path
+
+    db = database_path()
+    if not db.is_file():
+        return None
+    try:
+        with sqlite3.connect(f"file:{db}?mode=ro", uri=True) as conn:
+            row = conn.execute("SELECT value FROM settings WHERE key = 'repo_path'").fetchone()
+    except sqlite3.Error:
+        return None
+    folder = Path(row[0]) if row and row[0] else None
+    if folder is None or not folder.is_dir():
+        return None
+    registry = Projects()
+    return registry.by_folder(folder) or registry.add(folder, db=db)

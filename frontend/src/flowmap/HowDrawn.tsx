@@ -2,7 +2,7 @@
 // short log, the files it read, the calls it traced and what it dropped; its engine is never named. The
 // dependency map (D21): what the scan read and found, said plainly, because nothing ran and no AI saw it.
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "../projects/links";
 import { useApi } from "../api/client";
 import type { Analysis, Connector, FlowNode, FlowResponse } from "../api/types";
 import { BrandTile } from "../brand/BrandTile";

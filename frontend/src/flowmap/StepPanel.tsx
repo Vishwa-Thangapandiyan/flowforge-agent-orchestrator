@@ -7,7 +7,7 @@ import { BrandTile } from "../brand/BrandTile";
 import { Dot, InternetWorks, took, WORD } from "../checks/Health";
 import { type Finding } from "../security/Security";
 import { type KeyInfo, KeyList } from "../security/Keys";
-import { Link } from "react-router-dom";
+import { Link } from "../projects/links";
 import "../security/security.css";
 import type { LiveItem } from "../checks/useChecks";
 import { when } from "../components/format";

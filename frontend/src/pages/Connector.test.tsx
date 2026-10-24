@@ -23,7 +23,7 @@ test("the zoom panel shows the connection, never a key value, and recent activit
   expect(screen.getByRole("button", { name: "Swap app" })).toBeDisabled();
   expect(screen.getByRole("button", { name: "Test connection" })).toBeDisabled(); // http testing is Phase 4
   const activity = screen.getByRole("region", { name: "Recent activity" });
-  expect(within(activity).getByRole("link", { name: "Payment risk check" })).toHaveAttribute("href", "/runs/r1");
+  expect(within(activity).getByRole("link", { name: "Payment risk check" })).toHaveAttribute("href", "/p/test/runs/r1");
   expect(screen.getByRole("region", { name: "Suggested by the Planner" })).toHaveTextContent("Arrives in Phase 5");
 });
 

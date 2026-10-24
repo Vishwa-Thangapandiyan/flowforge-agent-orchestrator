@@ -1,7 +1,7 @@
 // The connector catalog (D17): many apps, honest Live / Demo only badges, and a mock test run for each.
 // Only apps your code calls go on the map; the rest wait here as "connected, not in your code".
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "../projects/links";
 import { api, useApi } from "../api/client";
 import type { Catalog as CatalogData, CatalogItem, MockTest } from "../api/types";
 import { BrandTile } from "../brand/BrandTile";

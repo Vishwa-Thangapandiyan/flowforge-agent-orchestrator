@@ -1,6 +1,6 @@
 // The ⋯ menu (D33): everything that isn't one of the header's three controls, one click away.
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "../projects/links";
 import { Icons } from "../components/icons";
 
 export type MenuItem =

@@ -3,7 +3,7 @@
 // each on its own screen, then five minutes open with every key's health. Values come one at a time and hide again
 // after 30 s; nothing is kept in the browser.
 import { type FormEvent, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "../projects/links";
 import { api, useApi } from "../api/client";
 import { Icons } from "../components/icons";
 import { useCounts } from "./counts";

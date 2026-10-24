@@ -1,6 +1,9 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { Link, Outlet, useLocation, useMatches } from "react-router-dom";
-import { useApi } from "../api/client";
+import { Outlet, useLocation, useMatches } from "react-router-dom";
+import { Link, useProjectId } from "../projects/links";
+import { markOpen, rememberPlace } from "../projects/memory";
+import { ProjectPicker } from "../projects/ProjectPicker";
+import { setProject, useApi } from "../api/client";
 import type { Meta } from "../api/types";
 import { Icons } from "./icons";
 import { CountsProvider, useCounts } from "../security/counts";
@@ -78,29 +81,42 @@ function Count({ of }: { of: "issues" | "keys" }) {
 }
 
 export function Shell() {
-  const meta = useApi<Meta>("/meta");
+  const pid = useProjectId();
+  setProject(pid);   // before any page renders: its requests go to this project (D39)
+  return <ProjectShell key={pid ?? "home"} pid={pid} />;
+}
+
+/** One project's shell, or the home page's (D39). Keyed by project, so switching starts each one afresh. */
+function ProjectShell({ pid }: { pid: string | undefined }) {
+  const meta = useApi<Meta>(pid ? "/meta" : null);
   const location = useLocation();
   const bleed = useBleed();
   const value = meta.data ?? { project: "My project", example: false, version: "" };
+  useEffect(() => {   // where you were, so switching back brings you here
+    if (pid) { rememberPlace(pid, location.pathname + location.search); markOpen(pid); }
+  }, [pid, location.pathname, location.search]);
+  const at = pid ? location.pathname.slice(`/p/${encodeURIComponent(pid)}`.length) || "/" : location.pathname;
 
   return (
     <MetaContext.Provider value={value}>
-      <CountsProvider>
+      <CountsProvider active={!!pid}>
       <a className="skip-link" href="#main">Skip to content</a>
       <div className={`shell${bleed ? " bleed" : ""}`}>
         <nav className="rail" aria-label="Main">
-          <Link to="/" className="rail-brand" aria-label="FlowForge, flow map">
-            <img src="/favicon.svg" width={34} height={34} alt="" />
-          </Link>
-          {ITEMS.map((item) => (
+          <ProjectPicker current={pid} />
+          {pid ? ITEMS.map((item) => (
             <Link key={item.to} to={item.to} className="rail-item" title={item.soon ? `${item.label}: arrives in ${item.soon}` : item.label}
-              aria-current={item.active.test(location.pathname) ? "page" : undefined}>
+              aria-current={item.active.test(at) ? "page" : undefined}>
               {item.icon}
               <span>{item.label}</span>
               {item.count && <Count of={item.count} />}
               {item.soon && <span className="visually-hidden">(arrives in {item.soon})</span>}
             </Link>
-          ))}
+          )) : (
+            <Link to="/" className="rail-item" aria-current={location.pathname === "/" ? "page" : undefined}>
+              {Icons.hub(20)}<span>Projects</span>
+            </Link>
+          )}
           <span className="rail-gap" />
           <ThemeToggle />
         </nav>

@@ -90,10 +90,10 @@ test("open: every key with its health, where it lives, what uses it, and the act
   renderAt("/vault");
   const row = async (name: string) => (await screen.findByText(name, { selector: ".vt-name" })).closest("tr")!;
   expect(await row("STRIPE_SECRET_KEY")).toHaveTextContent(/✓ healthy.*keychain.*Stripe.*live/);
-  expect(within(await row("GOOGLE_KEY")).getByRole("link", { name: "Fix" })).toHaveAttribute("href", "/issues");
+  expect(within(await row("GOOGLE_KEY")).getByRole("link", { name: "Fix" })).toHaveAttribute("href", "/p/test/issues");
   expect(within(await row("OPENAI_API_KEY")).getByRole("button", { name: "Move in" })).toBeInTheDocument();
   expect(within(await row("OLD_TOKEN")).getByRole("button", { name: "Remove" })).toBeInTheDocument();
-  expect(within(await row("NOT_SAVED_TOKEN")).getByRole("link", { name: "Add" })).toHaveAttribute("href", "/keys?key=NOT_SAVED_TOKEN");
+  expect(within(await row("NOT_SAVED_TOKEN")).getByRole("link", { name: "Add" })).toHaveAttribute("href", "/p/test/keys?key=NOT_SAVED_TOKEN");
   expect(screen.getByText("written in code").previousSibling).toHaveTextContent("1");
   expect(document.body.innerHTML).not.toContain(FAKE);
 });

@@ -1,6 +1,7 @@
 import type * as React from "react";
 import { useEffect, useMemo, useState } from "react";
-import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "../projects/links";
 import { api, ApiError, useApi } from "../api/client";
 import { useRunEvents } from "../api/sse";
 import type { RunDetail, RunSummary, Workflow } from "../api/types";

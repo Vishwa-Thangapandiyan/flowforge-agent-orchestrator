@@ -107,7 +107,7 @@ test("the step panel lists the block's keys with the same box", () => {
     layer="mine" actions={actions} keys={[MISSING as KeyInfo]} /></MemoryRouter>);
   const keys = screen.getByRole("region", { name: "Keys" });
   expect(within(keys).getByText("NOMINATIM_TOKEN")).toBeInTheDocument();
-  expect(within(keys).getByRole("link", { name: /Add the key/ })).toHaveAttribute("href", "/keys?key=NOMINATIM_TOKEN");   // D38
+  expect(within(keys).getByRole("link", { name: /Add the key/ })).toHaveAttribute("href", "/keys?key=NOMINATIM_TOKEN");   // D38, outside a project
   expect(within(keys).getByLabelText("Value of NOMINATIM_TOKEN")).toHaveAttribute("type", "password");
 });
 
@@ -122,7 +122,7 @@ test("what your agent asked for comes first, with why, and ?key= puts you in its
   const wait = await screen.findByRole("region", { name: "Your agent is waiting for" });
   expect(wait).toHaveTextContent(/STRIPE_SECRET_KEY.*for Stripe in pay\.py · asked just now/);
   await vi.waitFor(() => expect(document.activeElement).toBe(within(wait).getByLabelText("Value of STRIPE_SECRET_KEY")));
-  expect(screen.getByRole("link", { name: /See your keys in the Vault/ })).toHaveAttribute("href", "/vault");
+  expect(screen.getByRole("link", { name: /See your keys in the Vault/ })).toHaveAttribute("href", "/p/test/vault");
 });
 
 test("the map says when your agent asked for a key, with a way to review its change and to add it", async () => {
@@ -133,6 +133,6 @@ test("the map says when your agent asked for a key, with a way to review its cha
   });
   renderAt("/");
   expect(await screen.findByText(/Your agent asked for STRIPE_SECRET_KEY/)).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "Add the key" })).toHaveAttribute("href", "/keys?key=STRIPE_SECRET_KEY");
+  expect(screen.getByRole("link", { name: "Add the key" })).toHaveAttribute("href", "/p/test/keys?key=STRIPE_SECRET_KEY");
   expect(screen.getByRole("button", { name: "Review its change" })).toBeInTheDocument();
 });

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "../projects/links";
 import { api, useApi } from "../api/client";
 import type { Connector, ConnectorType, Preset } from "../api/types";
 import { BrandTile } from "../brand/BrandTile";

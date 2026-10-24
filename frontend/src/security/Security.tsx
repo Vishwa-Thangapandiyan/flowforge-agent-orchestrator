@@ -1,7 +1,7 @@
 // Security on the map (D31, D37): the findings' types, and the ⚠ chip in the map's header that opens the Issues page.
 // No key value is ever shown.
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "../projects/links";
 import { Icons } from "../components/icons";
 import "./security.css";
 

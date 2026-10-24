@@ -2,7 +2,7 @@
 // it shows what changed, and you pick what to take. Saving makes a new version; the old one stays listed.
 import { ReactFlow, ReactFlowProvider } from "@xyflow/react";
 import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "../projects/links";
 import { api, useApi } from "../api/client";
 import type { Change, Connector, FlowEdge, FlowNode, FlowResponse, NodeKind, PendingVersion } from "../api/types";
 import { when } from "../components/format";

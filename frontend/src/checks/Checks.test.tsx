@@ -78,7 +78,7 @@ test("the Checks page puts problems first, filters them, and shows one dependenc
   const side = await screen.findByRole("region", { name: "Ollama history" });
   expect(within(side).getByText("Up, llama3.1:8b is ready")).toBeInTheDocument();
   expect(within(side).getByText("Start Ollama (`ollama serve`).")).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "Workflow runs (advanced)" })).toHaveAttribute("href", "/runs");
+  expect(screen.getByRole("link", { name: "Workflow runs (advanced)" })).toHaveAttribute("href", "/p/test/runs");
 });
 
 test("a block's caption shows its latency once, then what needs a look", async () => {

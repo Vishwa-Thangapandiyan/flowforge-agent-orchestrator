@@ -81,5 +81,5 @@ test("after the agent calls, the page says connected and lists what it asked, ne
 test("the rail has a way in", async () => {
   mockApi({ "/meta": META, "/agent/connect": CONNECT, "/agent/preview": PREVIEW });
   renderAt("/connect");
-  expect(await screen.findByRole("link", { name: /Connect agent/ })).toHaveAttribute("href", "/connect");
+  expect(await screen.findByRole("link", { name: /Connect agent/ })).toHaveAttribute("href", "/p/test/connect");
 });

@@ -27,3 +27,27 @@
 .sec-level.lv-low { background: var(--blue-bg); color: var(--blue); }
 
 @media (max-width: 560px) { .sec-pop li { grid-template-columns: auto 1fr; } .sec-btns { grid-column: 2; } }
+
+/* keys (D36): in the ⚠ list and the step panel */
+.sec-keys { border-top: 1px solid var(--line); padding-top: 4px; }
+.sec-keys h3 { display: flex; align-items: center; gap: 6px; margin: 6px 8px 0; font: 600 12px var(--mono);
+  letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.key-list { display: grid; margin: 0; padding: 0; list-style: none; }
+.key-row { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; align-items: center; padding: 10px 8px;
+  border-top: 1px solid var(--line); }
+.key-row:first-child { border-top: 0; }
+.key-ic { display: grid; place-items: center; }
+.key-ic.ks-missing { color: var(--amber); } .key-ic.ks-env_file { color: var(--muted); } .key-ic.ks-saved { color: var(--green); }
+.key-what { display: grid; gap: 2px; min-width: 0; font-size: 13.5px; }
+.key-what b { overflow-wrap: anywhere; font: 600 13px var(--mono); }
+.key-what > span { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.key-what code { font: 12px var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+.key-st { font: 600 11px/1.4 var(--mono); letter-spacing: .04em; text-transform: uppercase; }
+.key-st.ks-missing { color: var(--amber); } .key-st.ks-env_file { color: var(--muted); } .key-st.ks-saved { color: var(--green); }
+.key-box { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.key-box input { flex: 1 1 180px; min-width: 0; height: 30px; padding: 0 10px; border-radius: var(--r-sm, 6px);
+  border: 1px solid var(--line); background: var(--canvas); color: var(--fg); font: 13px var(--mono); }
+.key-err { flex-basis: 100%; color: var(--coral); font-size: 12.5px; }
+.key-said:empty { display: none; }
+.key-said { grid-column: 2 / -1; color: var(--muted); font-size: 12px; }
+@media (max-width: 560px) { .key-row { grid-template-columns: auto 1fr; } .key-row .sec-btns { grid-column: 2; } }

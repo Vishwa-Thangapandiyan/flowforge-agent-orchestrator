@@ -10,6 +10,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, useApi } from "../api/client";
 import { CheckConfirm } from "../checks/Health";
 import { useChecks } from "../checks/useChecks";
+import { type KeyInfo, keyNeed, type KeysResponse } from "../security/Keys";
 import { type Finding, SecurityChip, type SecurityResponse, worst } from "../security/Security";
 import type { Connector, ConnectorType, FlowAction, FlowNode, FlowResponse, FlowView, NodeKind, Trace } from "../api/types";
 import { took } from "../checks/Health";
@@ -220,6 +221,12 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload, action
     for (const f of security.data?.findings ?? []) if (f.dep_id) (out[f.dep_id] ??= []).push(f);
     return out;
   }, [security.data]);
+  const keys = useApi<KeysResponse>(deps ? "/keys" : null);   // the keys its code reads (D36)
+  const keysOf = useMemo(() => {
+    const out: Record<string, KeyInfo[]> = {};
+    for (const k of keys.data?.keys ?? []) for (const id of k.deps) (out[id] ??= []).push(k);
+    return out;
+  }, [keys.data]);
   const [find, setFind] = useState("");
   const [cp, setCp] = useState(code);   // a flow read from code opens on its critical path (D25)
   const [showEvidence, setShowEvidence] = useState(false);   // file:line on hover and in the panel by default (D33)
@@ -277,9 +284,10 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload, action
       showTip: !dismissed.has(id) && !frame, showEvidence, retryMax: retry?.max ?? null,
       health: deps && health[id] ? health[id] : undefined,
       risk: findings[id] ? worst(findings[id]) : undefined, compact,
+      keyNeed: keysOf[id] ? keyNeed(keysOf[id]) : undefined,
     };
   }, [flow.nodes, flow.edges, tileFor, deps, code, theme, frame, query, hits, cp, dismissed, showEvidence, health, pointed,
-    findings, compact]);
+    findings, compact, keysOf]);
 
   // Boxed on a flow lays blocks out in time columns (D26); every other style keeps your saved layout
   const timed = theme === "boxed" && !deps;
@@ -542,7 +550,8 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload, action
         </div>
         {oneAction && setAction && <ActionPicker actions={actions} value={action} onChange={setAction} />}
         <div className="fm-actions">
-          {deps && <SecurityChip findings={security.data?.findings ?? []} onShow={focusOn} />}
+          {deps && <SecurityChip findings={security.data?.findings ?? []} onShow={focusOn} keys={keys.data?.keys}
+            example={keys.data?.example} onKeySaved={keys.reload} />}
           {!deps && !code && (
             <button className="btn primary" type="button" onClick={startReplay} disabled={!trace || busy}>
               {Icons.play(18)} {busy ? "Running…" : "Test run"}
@@ -655,7 +664,7 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload, action
         {selected && (
           <StepPanel key={selected.id} node={selected} flow={flow} tile={tileFor(selected)}
             health={deps ? health[selected.id] : undefined} example={meta.example} checking={checks.running}
-            findings={findings[selected.id]}
+            findings={findings[selected.id]} keys={deps ? keysOf[selected.id] : undefined} onKeySaved={keys.reload}
             othersUp={checks.items.filter((i) => i.status === "up" && i.id !== selected.id).length}
             onCheck={(id) => void checks.checkNow([id])}
             state={frame?.nodes[selected.id] ?? "idle"} cap={frame?.caps[selected.id] ?? ""} waiting={frame?.waiting === selected.id}

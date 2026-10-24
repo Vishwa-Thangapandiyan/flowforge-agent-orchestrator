@@ -32,6 +32,8 @@ export interface BlockData extends Record<string, unknown> {
   health?: { status: LiveStatus; summary: string; latency_ms?: number | null };
   /** the worst level of its security findings (D31) */
   risk?: "high" | "medium" | "low";
+  /** a key it needs that FlowForge doesn't have: missing, or only in .env (D36) */
+  keyNeed?: "missing" | "env_file";
   /** a decision drawn as a small ◆ on the line (D33) */
   compact?: boolean;
   state: NodeState;
@@ -109,7 +111,7 @@ function Shell({ d, selected, children }: { d: BlockData; selected: boolean; chi
   return (
     <div className={classes(d, selected)} style={{ width: size.w, height: size.h }}
       title={hoverText(d)}
-      aria-label={`${n.title}, ${KIND_WORD[n.kind] ?? n.kind}${d.tile ? `, ${d.tile.name}` : ""}${n.status === "unconfirmed" ? ", unconfirmed" : ""}${d.risk ? `, ${d.risk} security finding` : ""}`}>
+      aria-label={`${n.title}, ${KIND_WORD[n.kind] ?? n.kind}${d.tile ? `, ${d.tile.name}` : ""}${n.status === "unconfirmed" ? ", unconfirmed" : ""}${d.risk ? `, ${d.risk} security finding` : ""}${d.keyNeed ? `, ${d.keyNeed === "missing" ? "key missing" : "key only in .env"}` : ""}`}>
       <span className="ff-focus" />
       {children}
       {d.diffTag ? <span className={`ff-dtag ${d.diffOff ? "off" : d.diff}`}>{d.diffTag}</span>
@@ -118,6 +120,7 @@ function Shell({ d, selected, children }: { d: BlockData; selected: boolean; chi
       <Status d={d} />
       {d.health && n.kind !== "start" && <span className={`hdot ff-hdot ${d.health.status}`} aria-hidden="true" />}
       {d.risk && <span className={`ff-risk lv-${d.risk}`} aria-hidden="true">!</span>}
+      {d.keyNeed && <span className={`ff-key kn-${d.keyNeed}${d.risk ? " beside" : ""}`} aria-hidden="true">{Icons.key(11)}</span>}
       <Handles />
     </div>
   );

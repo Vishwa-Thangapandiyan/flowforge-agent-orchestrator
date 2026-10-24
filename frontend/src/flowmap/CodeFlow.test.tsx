@@ -17,7 +17,7 @@ const routes = (flow: unknown) => ({
 test("the Flow switch shows the order the code calls its dependencies, and how it could be faster", async () => {
   mockApi(routes(CODEFLOW));
   renderAt("/");
-  await screen.findByText("Nominatim", { selector: ".ff-title" }, { timeout: 5000 });
+  await screen.findByText("Nominatim", { selector: ".ff-title" });
   await userEvent.click(screen.getByRole("button", { name: "Flow" }));
   // a block leads with what it does, in the code's own words; the service is underneath (D25)
   expect(await screen.findByText("About the city", { selector: ".ff-title" })).toBeInTheDocument();
@@ -47,7 +47,7 @@ test("each piece of advice shows the code change and copies a prompt for a codin
   vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText: async (t: string) => { copied.push(t); } } });
   mockApi(routes(CODEFLOW));
   renderAt("/?map=flow");
-  const faster = await screen.findByRole("region", { name: "Faster" }, { timeout: 5000 });
+  const faster = await screen.findByRole("region", { name: "Faster" });
   await userEvent.click(within(faster).getByRole("button", { name: "Show the change" }));
   const change = within(faster).getByRole("region", { name: "The change" });
   expect(change).toHaveTextContent("planner.py · lines 60–61");
@@ -63,7 +63,7 @@ test("each piece of advice shows the code change and copies a prompt for a codin
 test("pointing at a piece of advice lights up its blocks", async () => {
   mockApi(routes(CODEFLOW));
   renderAt("/?map=flow");
-  await screen.findByText("About the city", { selector: ".ff-title" }, { timeout: 5000 });
+  await screen.findByText("About the city", { selector: ".ff-title" });
   await userEvent.hover(screen.getByRole("button", { name: /Start these 2 together/ }));
   const lit = [...document.querySelectorAll(".ff-block.hit")].map((b) => b.querySelector(".ff-title")?.textContent);
   expect(lit.sort()).toEqual(["About the city", "Today's weather"]);
@@ -79,14 +79,14 @@ test("a repo without Python says why its flow waits", async () => {
 test("Watch it run plays the could-be schedule, said plainly", async () => {
   mockApi(routes(CODEFLOW));
   renderAt("/?map=flow");
-  await userEvent.click(await screen.findByRole("button", { name: /Watch it run/ }, { timeout: 5000 }));
+  await userEvent.click(await screen.findByRole("button", { name: /Watch it run/ }));
   expect(await screen.findByRole("status")).toHaveTextContent("Watch it run · the could-be schedule, not a recording");
 });
 
 test("pointing at a block lights what it waits for and what waits for it", async () => {
   mockApi(routes(CODEFLOW));
   renderAt("/?map=flow");
-  const weather = await screen.findByText("Today's weather", { selector: ".ff-title" }, { timeout: 5000 });
+  const weather = await screen.findByText("Today's weather", { selector: ".ff-title" });
   await userEvent.hover(weather.closest(".react-flow__node")!);
   const lit = [...document.querySelectorAll(".ff-block.hit .ff-title")].map((t) => t.textContent).sort();
   // up: the city lookup and its check; down: the plan it feeds. fetch runs beside it, so it stays dim.
@@ -107,7 +107,7 @@ test("a flow read from Dart says it was read by patterns and names Dart's import
   };
   mockApi(routes(dart));
   renderAt("/?map=flow");
-  const faster = await screen.findByRole("region", { name: "Faster" }, { timeout: 5000 });
+  const faster = await screen.findByRole("region", { name: "Faster" });
   expect(within(faster).getByText("Dart read by patterns: less exact than Python.")).toBeInTheDocument();
   await userEvent.click(within(faster).getByRole("button", { name: "Show the change" }));
   expect(within(faster).getByText("import 'dart:async';")).toBeInTheDocument();
@@ -123,7 +123,7 @@ test("with several entry points, Faster shows the slowest action's calls, not ev
   };
   mockApi(routes(second));
   renderAt("/?map=flow");
-  const faster = await screen.findByRole("region", { name: "Faster" }, { timeout: 5000 });
+  const faster = await screen.findByRole("region", { name: "Faster" });
   const entry = CODEFLOW.nodes.find((n) => n.id === CODEFLOW.critical_path.path[0])!;
   expect(faster).toHaveTextContent(`The slowest of 2 actions, ${entry.title}: its 4 calls`);
 });
@@ -142,12 +142,12 @@ test("with several actions, the flow shows one at a time, the slowest first (D33
   };
   mockApi(routes(twoActions));
   renderAt("/?map=flow");
-  const picker = await screen.findByRole("combobox", { name: /Action/ }, { timeout: 5000 });
+  const picker = await screen.findByRole("combobox", { name: /Action/ });
   expect(Array.from((picker as HTMLSelectElement).options).map((o) => o.textContent)).toEqual(["plan() · 9.4 s", "other() · 300 ms"]);
   expect(await screen.findByText("About the city", { selector: ".ff-title" })).toBeInTheDocument();
   expect(screen.queryByText("Extra call", { selector: ".ff-title" })).not.toBeInTheDocument();
   await userEvent.selectOptions(picker, "start-other");
-  expect(await screen.findByText("Extra call", { selector: ".ff-title" }, { timeout: 5000 })).toBeInTheDocument();
+  expect(await screen.findByText("Extra call", { selector: ".ff-title" })).toBeInTheDocument();
   expect(screen.queryByText("About the city", { selector: ".ff-title" })).not.toBeInTheDocument();
   expect(within(screen.getByRole("region", { name: "Faster" })).getAllByText("300 ms").length).toBeGreaterThan(0);
 }, 20000);
@@ -171,7 +171,7 @@ test("Show every check lays the flow out again for full-size checks", async () =
   };
   mockApi(routes(two));
   renderAt("/?map=flow");
-  await screen.findByText("About the city", { selector: ".ff-title" }, { timeout: 5000 });
+  await screen.findByText("About the city", { selector: ".ff-title" });
   const at = () => (document.querySelector('.react-flow__node[data-id="llm-ollama-1"]') as HTMLElement).style.transform;
   const before = at();
   await userEvent.click(screen.getByRole("button", { name: /^More/ }));
@@ -184,7 +184,7 @@ test("with one action, as written comes from the action, so edits count", async 
     actions: [{ id: "start-plan", title: "plan()", written_ms: 6100, could_ms: 6000, path: CODEFLOW.critical_path.path, calls: 3 }] };
   mockApi(routes(one));
   renderAt("/?map=flow");
-  const faster = await screen.findByRole("region", { name: "Faster" }, { timeout: 5000 });
+  const faster = await screen.findByRole("region", { name: "Faster" });
   expect(within(faster).getByText("6.1 s")).toBeInTheDocument();
   expect(within(faster).queryByText("9.4 s")).not.toBeInTheDocument();
   expect(screen.queryByRole("combobox", { name: /Action/ })).not.toBeInTheDocument();   // no picker for one action

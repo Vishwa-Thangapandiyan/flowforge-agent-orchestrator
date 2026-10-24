@@ -6,7 +6,7 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-from flowforge import main
+from flowforge import home, main
 from flowforge.storage import Storage
 
 
@@ -81,7 +81,7 @@ def test_rate_limit_left_this_minute(db, tmp_path):
 
 def test_meta(db, monkeypatch):
     with TestClient(main.app) as client:
-        assert client.get("/meta").json() == {"project": "My project", "example": False, "version": "0.1.0"}
+        assert client.get("/meta").json() == {"project": "My project", "example": False, "version": home.version()}
     monkeypatch.setenv("FLOWFORGE_PROJECT_NAME", "Baby-care shop")
     with TestClient(main.app) as client:
         assert client.get("/meta").json()["project"] == "Baby-care shop"

@@ -6,7 +6,7 @@ import { api, useApi } from "../api/client";
 import { Icons } from "../components/icons";
 import { applyTheme, readTheme, type Theme } from "../components/theme";
 import { CardSkeleton, ErrorBox } from "../components/ui";
-import { readTheme as readMapStyle, saveTheme as saveMapStyle, THEMES, type GraphTheme } from "../flowmap/themes";
+import { THEMES, type GraphTheme, useMapStyle } from "../flowmap/themes";
 import { Link } from "../projects/links";
 import { size, type ProjectData, type SettingsData } from "./types";
 import "./settings.css";
@@ -20,12 +20,15 @@ const INSTALL_WORD = { checkout: "from source", uvx: "with uvx", pip: "with pip"
 
 function Look() {
   const [theme, setTheme] = useState<Theme>(readTheme);
-  const [style, setStyle] = useState<GraphTheme>(readMapStyle);
+  const [style, setStyle] = useMapStyle();
+  const [error, setError] = useState<string>();
   const pickTheme = (t: Theme) => { setTheme(t); applyTheme(t); };
   const pickStyle = (s: GraphTheme) => {
     setStyle(s);
-    saveMapStyle(s);
-    void api.patch("/settings", { map_style: s }).catch(() => {});
+    setError(undefined);
+    api.patch("/settings", { map_style: s }).catch((err: unknown) => {   // this browser keeps it; say the rest didn't
+      setError(`Kept in this browser only: ${err instanceof Error ? err.message : "couldn't save it"}`);
+    });
   };
   return (
     <section className="card st-card" aria-labelledby="st-look">
@@ -46,6 +49,7 @@ function Look() {
           {THEMES.map((t) => <option key={t.id} value={t.id}>{t.name} · {t.note}</option>)}
         </select>
       </label>
+      {error && <p className="key-err" role="alert">{error}</p>}
     </section>
   );
 }

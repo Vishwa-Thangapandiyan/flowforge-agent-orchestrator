@@ -71,3 +71,22 @@ test("Settings opens from the home page too, outside any project", async () => {
   expect(await screen.findByRole("heading", { level: 1, name: "Settings" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("aria-current", "page");
 });
+
+test("the Look card follows a map style that arrives after it opened (Codex review)", async () => {
+  const { act } = await import("@testing-library/react");
+  const { adoptMapStyle } = await import("../flowmap/themes");
+  api();
+  renderAt("/settings");
+  const select = await screen.findByRole("combobox", { name: /Maps open in/ });
+  expect(select).toHaveValue("studio");
+  act(() => adoptMapStyle("blueprint"));
+  expect(select).toHaveValue("blueprint");
+});
+
+test("a map style that can't be saved says so (Codex review)", async () => {
+  api({ "/settings": (init?: RequestInit) => (init?.method === "PATCH"
+    ? new Response(JSON.stringify({ detail: "Disk full" }), { status: 500 }) : SETTINGS) });
+  renderAt("/settings");
+  await userEvent.selectOptions(await screen.findByRole("combobox", { name: /Maps open in/ }), "metro");
+  expect(await screen.findByRole("alert")).toHaveTextContent("Kept in this browser only: Disk full");
+});

@@ -23,7 +23,7 @@ import { EmptyState, ErrorBox } from "../components/ui";
 import { Faster } from "./Faster";
 import { earliest } from "./kinds";
 import { scheduleTrace } from "./schedule";
-import { boxes, busPaths, kindLanes, laneEdge, MAP_STYLE_EVENT, readTheme, saveTheme, THEMES, timeColumns, type GraphTheme } from "./themes";
+import { boxes, busPaths, kindLanes, laneEdge, THEMES, timeColumns, useMapStyle } from "./themes";
 import { edgeTypes, Markers, type LineEdge } from "./FlowEdge";
 import { autoLayout, compactSize, handlesFor, placeAll, sizeOf } from "./layout";
 import { mapQuery, useMapId, type MapId } from "./mapId";
@@ -248,13 +248,7 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload, action
   const compact = code && !allChecks;
   const size = compact ? compactSize : sizeOf;
   const oneAction = actions.length > 1;   // one action of many, laid out fresh: its layout isn't saved
-  const [theme, setThemeState] = useState<GraphTheme>(readTheme);   // how the map looks, per viewer (D26)
-  const setTheme = (t: GraphTheme) => { setThemeState(t); saveTheme(t); };
-  useEffect(() => {   // the style Settings saved, arriving after this map opened (D40)
-    const take = (e: Event) => setThemeState((e as CustomEvent<GraphTheme>).detail);
-    window.addEventListener(MAP_STYLE_EVENT, take);
-    return () => window.removeEventListener(MAP_STYLE_EVENT, take);
-  }, []);
+  const [theme, setTheme] = useMapStyle();   // how the map looks, per viewer (D26), in step with Settings (D40)
   const [dismissed, setDismissed] = useState(readDismissed);
   const [play, setPlay] = useState<Play | null>(null);
   const [rechecking, setRechecking] = useState(false);

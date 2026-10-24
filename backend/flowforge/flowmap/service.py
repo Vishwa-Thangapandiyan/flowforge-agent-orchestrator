@@ -222,9 +222,17 @@ class FlowService:
         return self.first_map()
 
     def first_map(self) -> int | None:
-        """Draw the first map if there is none. Returns its version, or None without a Planner."""
-        if self.planner is None or self.store.count_flow_versions():
+        """Draw the first map if there is none, or read the folder again when the saved map was made by an older
+        reader (D35). Returns the new version, or None when nothing was drawn."""
+        if self.planner is None:
             return None
+        if self.store.count_flow_versions():
+            latest = self.store.latest_flow_version("accepted")
+            if latest is None or (latest["flow"] or {}).get("reader", 0) >= getattr(self.planner, "reader", 0):
+                return None
+            pending = self.store.latest_flow_version("pending")
+            if pending is not None:   # a re-scan made by the older reader: read again below, so it is out of date
+                self.store.update_flow_version(pending["version"], "discarded")
         try:
             draft = self.planner.analyze(0)
         except NoFlow as why:

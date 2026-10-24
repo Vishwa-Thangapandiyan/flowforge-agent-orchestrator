@@ -141,5 +141,30 @@ def apply_choices(old: Flow, new: Flow, changes: list[dict[str, Any]],
 
     kept_edges = [e for e in edges if e.source in nodes and e.target in nodes]
     suggestions = [s for s in new.suggestions if s.node in nodes]
-    return Flow(kind=new.kind, nodes=[nodes[i] for i in order if i in nodes], edges=kept_edges,
-                suggestions=suggestions), drop_edits
+    # the new map as it is (its source, reader, advice, times and actions: D25, D33, D35), with the blocks and lines
+    # you chose; advice about a block you declined goes with it
+    advice = [a for a in new.advice if all(i in nodes for i in a.nodes)]
+    return new.model_copy(deep=True, update={
+        "nodes": [nodes[i] for i in order if i in nodes], "edges": kept_edges, "suggestions": suggestions,
+        "advice": advice, "actions": _actions_kept(old, new, set(nodes))}), drop_edits
+
+
+def _actions_kept(old: Flow, new: Flow, kept: set[str]) -> list:
+    """Each action's call groups (D33) for the blocks you kept: a call you kept against the re-scan comes back
+    into its action's "as written", in the group it had; a call you declined leaves it."""
+    restored = kept - {n.id for n in new.nodes}
+    old_parts = {a.id: a.parts for a in old.actions}
+    out = []
+    for action in new.actions:
+        parts = [[i for i in p if i in kept] for p in action.parts]
+        have = {i for p in parts for i in p}
+        for p in old_parts.get(action.id, []):
+            if extra := [i for i in p if i in restored and i not in have]:
+                # back into the group it ran with, if one of its partners is still there; else on its own
+                group = next((g for g in parts if any(i in g for i in p if i not in restored)), None)
+                if group is None:
+                    parts.append(extra)
+                else:
+                    group += extra
+        out.append(action.model_copy(update={"parts": [p for p in parts if p]}))
+    return out

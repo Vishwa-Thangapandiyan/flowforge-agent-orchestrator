@@ -102,3 +102,33 @@ def test_the_route_answers_only_the_desktop_app(tmp_path, monkeypatch):
     with TestClient(main.app, base_url="http://127.0.0.1:8000", client=("127.0.0.1", 5000)) as c:
         assert c.get("/settings/terminal").json()["available"] is False   # a checkout isn't the desktop app
         assert c.post("/settings/terminal").status_code == 409
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="symlinks need admin rights on Windows")
+def test_macos_never_deletes_a_command_that_isnt_flowforges(mac, tmp_path):
+    """Codex review: a file or link of your own at ~/.flowforge/cmd/flowforge stays, and the card says so."""
+    home, app = mac
+    cmd = home / ".flowforge" / "cmd"
+    cmd.mkdir(parents=True)
+    mine = cmd / "flowforge"
+    mine.write_text("#!/bin/sh\necho mine\n")
+    done = terminal.add(platform="darwin", home=home, exe=app, environ={})
+    assert done["added"] is False and "isn't FlowForge's" in done["message"]
+    assert mine.read_text() == "#!/bin/sh\necho mine\n"
+    mine.unlink()
+    elsewhere = tmp_path / "other-tool"
+    elsewhere.write_text("x")
+    mine.symlink_to(elsewhere)
+    assert terminal.add(platform="darwin", home=home, exe=app, environ={})["added"] is False
+    assert Path(os.readlink(mine)) == elsewhere
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="symlinks need admin rights on Windows")
+def test_macos_replaces_its_own_link_when_the_app_moved(mac, tmp_path):
+    home, app = mac
+    terminal.add(platform="darwin", home=home, exe=app, environ={})
+    moved = tmp_path / "Elsewhere" / "FlowForge.app" / "Contents" / "MacOS" / "flowforge"
+    moved.parent.mkdir(parents=True)
+    moved.write_text("#!/bin/sh\n")
+    assert terminal.add(platform="darwin", home=home, exe=moved, environ={})["added"] is True
+    assert Path(os.readlink(home / ".flowforge" / "cmd" / "flowforge")) == moved

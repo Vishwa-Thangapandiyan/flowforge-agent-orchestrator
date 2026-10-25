@@ -108,11 +108,22 @@ def _add_windows(exe: Path, registry: Registry) -> dict[str, Any]:
     return {"added": True, "message": "Done. Open a new terminal and type: flowforge status"}
 
 
+def _flowforges_link(link: Path) -> bool:
+    """A link this button made: it points at a FlowForge app's program (…/FlowForge.app/Contents/MacOS/flowforge)."""
+    if not link.is_symlink():
+        return False
+    target = Path(os.readlink(link))
+    return target.name == "flowforge" and any(p.endswith(".app") and "flowforge" in p.lower() for p in target.parts)
+
+
 def _add_macos(exe: Path, home: Path) -> dict[str, Any]:
     cmd = home / CMD_DIR
     cmd.mkdir(parents=True, exist_ok=True)
     link = cmd / "flowforge"
     if link.is_symlink() or link.exists():
+        if not _flowforges_link(link):   # yours: never deleted (Codex review)
+            return {"added": False, "message": f"{link} already exists and isn't FlowForge's: left as it is. "
+                                               "Move it, then try again."}
         link.unlink()
     link.symlink_to(exe)
     for name in PROFILES:

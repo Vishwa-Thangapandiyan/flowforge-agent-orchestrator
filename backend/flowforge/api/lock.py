@@ -15,6 +15,7 @@ POST /keys/reveal     open only: {where, name, ref} → {value}
 from __future__ import annotations
 
 import base64
+import io
 import re
 from pathlib import Path
 from typing import Any
@@ -131,8 +132,10 @@ def setup(body: Password, response: Response) -> dict[str, Any]:
         uri = Lock().setup(body.password)
     except LockError as e:
         raise HTTPException(409, str(e)) from None
-    svg = segno.make(uri, error="m").svg_inline(scale=6, border=2, dark="#0F1D26", light="#FFFFFF")
-    return {"uri": uri, "qr": "data:image/svg+xml;base64," + base64.b64encode(svg.encode()).decode()}
+    # a whole SVG file: an <img> draws nothing from inline SVG, which has no xmlns (the QR showed as an empty box)
+    svg = io.BytesIO()
+    segno.make(uri, error="m").save(svg, kind="svg", scale=6, border=2, dark="#0F1D26", light="#FFFFFF", xmldecl=False)
+    return {"uri": uri, "qr": "data:image/svg+xml;base64," + base64.b64encode(svg.getvalue()).decode()}
 
 
 @router.post("/lock/confirm")

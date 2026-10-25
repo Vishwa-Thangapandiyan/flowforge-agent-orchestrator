@@ -78,6 +78,18 @@ def test_the_lock_starts_off_and_says_so(shop):
         assert c.get("/vault/keys").status_code == 401
 
 
+def test_the_qr_is_an_image_a_browser_draws(shop):
+    """An <img> only draws an SVG that names its namespace: the setup's QR showed as an empty box without it."""
+    import xml.etree.ElementTree as ET
+
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
+        qr = c.post("/lock/setup", json={"password": PASSWORD}).json()["qr"]
+    svg = ET.fromstring(base64.b64decode(qr.split(",", 1)[1]))
+    assert svg.tag == "{http://www.w3.org/2000/svg}svg"
+    assert svg.get("viewBox") or (svg.get("width") and svg.get("height"))
+    assert svg.findall(".//{http://www.w3.org/2000/svg}path")   # the modules are drawn
+
+
 def test_open_the_view_list_the_keys_and_reveal_one_at_a_time(shop):
     with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         secret = set_up(c)

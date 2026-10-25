@@ -130,22 +130,30 @@ Fix needs a git repo and the file committed. FlowForge works out the change itse
 
 ### Keys your coding agent never sees
 
-Your agent only needs a key's **name**: the code it writes reads `os.environ["STRIPE_SECRET_KEY"]`. You give FlowForge the value once, and your app gets it when it starts:
+You paste a key once, on the **Keys** page. Your coding agent never gets it; it gets a **mask**:
 
+```
+you paste STRIPE_SECRET_KEY once  →  your agent sees  ffkey://STRIPE_SECRET_KEY
+the agent writes the mask where the key goes (or reads the env var STRIPE_SECRET_KEY in code)
+the agent calls run_app(["flutter", "run", "--dart-define=STRIPE_SECRET_KEY=ffkey://STRIPE_SECRET_KEY"])
+FlowForge asks you once: "Your agent wants to run flutter run … with STRIPE_SECRET_KEY"   [Deny] [Allow]
+FlowForge (plain code, no AI) fills the mask and starts the app → the output comes back masked
+```
+
+After you allow a command once, the same command runs without asking (**Settings** can turn the question off). The Keys page lists your agent's runs with **Stop**. This covers keys read when the app is *built* too, such as Flutter's `--dart-define` and Vite's `import.meta.env`. On the map, a 🔑 badge marks a block whose key is missing. With no keychain (a server, CI), keys go to an encrypted file in `~/.flowforge`.
+
+**No agent?** The same works by hand:
 ```bash
 flowforge key add STRIPE_SECRET_KEY        # typed hidden; saved in your OS keychain
 flowforge key list                         # each key the code reads: saved · in .env · missing
-flowforge key import                       # move a .env into FlowForge (then delete the .env)
-flowforge run -- python app.py             # your app starts with the keys in its environment
+flowforge run -- python app.py             # your app starts with the keys (masks filled)
 ```
-
-Each command takes `--repo PATH` (default: the folder you're in). In the dashboard, the **Keys** page does the same with no commands: paste a missing key into its box, or click **Move into FlowForge** for one that's in `.env`. On the map, a 🔑 badge marks a block whose key is missing. Your agent's `get_keys` tool gets names, statuses and the command to ask you to run, never a value. With no keychain (a server, CI), keys go to an encrypted file in `~/.flowforge`.
 
 **When your agent adds a dependency that needs a key**, it calls `request_key("STRIPE_SECRET_KEY", "for Stripe in pay.py")`. The map says "Your agent asked for a key", and the new block shows in coral, "key missing". Click it, paste the key on the Keys page, and the agent's `wait_for_keys` returns the moment it's saved. The agent only ever sees the name.
 
 **See a key again** in the **Vault**: set a password and scan the QR with an authenticator app (Google Authenticator, Authy, 1Password), once. After that, your password, then the 6-digit code on your phone, open it for 5 minutes. It lists every key with its health: healthy, written in code, in `.env`, can't read, unused, or old. It also shows where each key lives, what uses it, and whether it's a live or test key. Each value shows for 30 seconds. Forgot the password? `flowforge lock reset --forget` drops the lock (your keys stay) and the dashboard says so.
 
-What this does and doesn't promise: the key is never handed to your agent and isn't left in a file it reads by habit. An agent that can run commands as you could still run `flowforge run -- printenv`, read your keychain, or reset the lock (the dashboard then shows it was reset), so it isn't impossible. The 2FA stops web pages, anyone at your browser, and anything without your phone. MCP servers your coding tool starts get their environment from that tool, not from FlowForge.
+What FlowForge promises: a key is never in anything your agent receives (answers, its own process, files FlowForge writes, the output it returns), never in a stored row or a log. Outside FlowForge: what your own app does with a key, a key built into an app (anyone holding the app can read it, so use publishable keys there), and other programs running as your user. The 2FA on the Vault stops web pages, anyone at your browser, and anything without your phone.
 
 ### Send someone the map
 

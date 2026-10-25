@@ -1417,7 +1417,8 @@ Masking is FlowForge's job and the user shouldn't have to think about it. The co
   3. writes the value where the app reads it, never in a code file:
      - Dart `fromEnvironment` → `.flowforge/dart-defines.json`, plus `--dart-define-from-file=.flowforge/dart-defines.json` added once to the Flutter Run configs (`.idea/runConfigurations/*.xml`, `.vscode/launch.json`), so Run works as before;
      - flutter_dotenv, and Python or Node apps that load `.env` → `.env`;
-     - Vite → `.env.local`;
+     - Vite → `.env.local`, under the name the code reads (a placeholder gets a `VITE_` name; a line that already reads `import.meta.env.X` keeps `X`: Codex review);
+     - an IntelliJ / Android Studio project with no Flutter Run config gets one for `lib/main.dart`. With no IDE folder at all, the note shows the one complete command, `flutter run --dart-define-from-file=.flowforge/dart-defines.json`, with Copy (Codex review);
   4. makes sure that file is git-ignored, and refuses if git already tracks it;
   5. adds "don't read" rules for those files to `.claude/settings.local.json`;
   6. edits one line, and only if that line is still what the dashboard showed. Everything is checked before the first write.
@@ -1430,7 +1431,7 @@ Masking is FlowForge's job and the user shouldn't have to think about it. The co
 **Honest limits:**
 - The value sits in a hidden, git-ignored file next to the app, like `.env`. That is what lets Run work with no command, and it supersedes D36's "not left in files" for keys added this way. Claude Code is told not to read the file; other agents could read it.
 - A key built into an app (Flutter, Vite) is readable by anyone who has the app (D43).
-- A terminal `flutter run` needs `--dart-define-from-file=.flowforge/dart-defines.json`; the Run button doesn't.
+- A terminal `flutter run` needs `--dart-define-from-file=.flowforge/dart-defines.json`; the Run button doesn't. The page shows that command only when no Run config passes it.
 - A key built from parts, or read through a helper of the app's own, isn't recognised as a spot.
 
 **Code:** `security/finders.py` (`spots_in`), `security/wire.py` (`key_spots`, `add_to_code`), `api/keys.py` (`POST /keys/{name}/add-to-code`, spots in `GET /keys`), `agent/server.py` (spots in `get_keys`), the Keys page.

@@ -226,5 +226,8 @@ a.sec-chip { text-decoration: none; }
 .key-added p { margin: 0; display: flex; align-items: center; gap: 6px; color: var(--teal-ink); font-size: 14px; }
 .key-added b { font: 600 13.5px var(--mono); }
 .key-added .key-changed { grid-column: 1; color: var(--muted); font-size: 12.5px; overflow-wrap: anywhere; }
-.key-added button { grid-row: 1 / span 2; grid-column: 2; }
+.key-added .key-close { grid-row: 1; grid-column: 2; }
+.key-added .key-terminal { grid-column: 1; flex-wrap: wrap; }
+.key-terminal code { font: 12.5px var(--mono); padding: 3px 8px; border-radius: 6px; background: var(--surface);
+  border: 1px solid var(--line); color: var(--fg); overflow-wrap: anywhere; }
 .key-why { flex-basis: 100%; }

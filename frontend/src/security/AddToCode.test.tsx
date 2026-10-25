@@ -19,13 +19,19 @@ const SAVED_NOT_IN_APP = { name: "MAPS_KEY", status: "saved", ref: "lib/maps.dar
 const NO_FILE = { name: "OPENAI_API_KEY", status: "missing", ref: "tool.py:2", deps: [], command: "x",
   spot: spot("OPENAI_API_KEY", "reads", "tool.py:2", null, "This app can't take keys from a file: it doesn't load .env."),
   in_app: false };
+const TERMINAL = "flutter run --dart-define-from-file=.flowforge/dart-defines.json";
 const CHANGED = ["lib/dev/app_config.dart:8", ".flowforge/dart-defines.json", "Run config (main_dart.xml)", "Vault"];
 
 function keysApi(example = false) {
   const added = new Set<string>();
   const keys = () => [MISSING, OPEN, SAVED_NOT_IN_APP, NO_FILE]
     .map((k) => added.has(k.name) ? { ...k, status: "saved", in_app: true, command: null } : k);
-  const route = (name: string) => () => { added.add(name); return { name, ref: "x", changed: CHANGED }; };
+  const route = (name: string) => () => {
+    added.add(name);
+    return name === "STRIPE_KEY"   // a Flutter app with no Run config: the one command, to copy
+      ? { name, ref: "x", changed: CHANGED.slice(0, 2), run_config: false, terminal: TERMINAL }
+      : { name, ref: "x", changed: CHANGED, run_config: true, terminal: TERMINAL };
+  };
   return mockApi({
     "/meta": { ...META, example }, "/flow": DEPS, "/connectors": [], "/security": { findings: [] },
     "/keys": () => ({ repo: "travel", example, summary: {}, keys: keys() }),
@@ -50,6 +56,7 @@ test("paste a key, press Add to code: it goes into the app, the box clears, and 
   expect(body(calls, "/keys/SUPABASE_ANON_KEY/add-to-code")).toEqual({ value: FAKE, ref: "lib/dev/app_config.dart:8", check: "abc123" });
   expect(await screen.findByText(/Changed: .*Run config/)).toBeInTheDocument();
   expect(screen.getByText(/Press Run as always/)).toBeInTheDocument();
+  expect(screen.queryByText(TERMINAL)).not.toBeInTheDocument();   // Run does it: nothing to copy
   expect(document.body.innerHTML).not.toContain(FAKE);
   expect(document.body.textContent).not.toMatch(/<how you start|Copy the start command/);
 });
@@ -63,6 +70,8 @@ test("a key written in the open is hidden with one click, with nothing to type",
   await userEvent.click(within(row("STRIPE_KEY")).getByRole("button", { name: /Hide it/ }));
   expect(body(calls, "/keys/STRIPE_KEY/add-to-code")).toEqual({ ref: "lib/pay.dart:3", check: "abc123" });
   expect(await screen.findByText(/is in your app/)).toBeInTheDocument();
+  expect(screen.getByText(TERMINAL)).toBeInTheDocument();   // no Run config here: the one complete command
+  expect(screen.queryByText(/Press Run as always/)).not.toBeInTheDocument();
 });
 
 test("a key saved before goes into the app with one click, with no retyping", async () => {

@@ -348,3 +348,38 @@ def test_a_key_saved_before_goes_into_the_app_with_no_retyping(served, flutter):
         r = c.post("/keys/SUPABASE_ANON_KEY/add-to-code", json={"ref": k["spot"]["ref"], "check": k["spot"]["check"]})
         assert r.status_code == 200, r.text
     assert json.loads((flutter / ".flowforge/dart-defines.json").read_text()) == {"SUPABASE_ANON_KEY": FAKE}
+
+
+def test_an_existing_vite_read_keeps_its_own_name(tmp_path):
+    """Codex review: the code reads API_KEY, so API_KEY is what goes in .env.local (a custom envPrefix, say)."""
+    root = write(tmp_path / "web", {"package.json": json.dumps({"devDependencies": {"vite": "^5"}}),
+                                    "src/a.ts": "export const k = import.meta.env.API_KEY;\n"})
+    s = spot(root, "API_KEY")
+    add_to_code(root, s.name, s.ref, s.check, FAKE)
+    assert (root / ".env.local").read_text() == f"API_KEY={FAKE}\n"
+
+
+def test_flutter_with_an_idea_folder_but_no_flutter_run_config_gets_one(tmp_path):
+    root = write(tmp_path / "app", {"pubspec.yaml": "name: a\n", "lib/main.dart": "void main() {}\n",
+                                    "lib/k.dart": "const k = String.fromEnvironment('API_KEY');\n",
+                                    ".idea/modules.xml": "<project/>\n"})
+    s = spot(root, "API_KEY")
+    done = add_to_code(root, s.name, s.ref, s.check, FAKE)
+    made = list((root / ".idea/runConfigurations").glob("*.xml"))
+    assert len(made) == 1 and "--dart-define-from-file=.flowforge/dart-defines.json" in made[0].read_text()
+    assert "lib/main.dart" in made[0].read_text() and done["run_config"] is True
+
+
+def test_flutter_with_no_ide_gets_the_one_complete_terminal_command(tmp_path):
+    root = write(tmp_path / "app", {"pubspec.yaml": "name: a\n", "lib/k.dart": "const k = String.fromEnvironment('API_KEY');\n"})
+    s = spot(root, "API_KEY")
+    done = add_to_code(root, s.name, s.ref, s.check, FAKE)
+    assert done["run_config"] is False
+    assert done["terminal"] == "flutter run --dart-define-from-file=.flowforge/dart-defines.json"
+
+
+def test_a_second_key_still_says_the_run_config_has_it(flutter):
+    for name in ("SUPABASE_ANON_KEY", "MAPS_KEY"):
+        s = spot(flutter, name)
+        done = add_to_code(flutter, s.name, s.ref, s.check, FAKE)
+    assert done["run_config"] is True   # added by the first key, still there

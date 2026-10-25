@@ -105,10 +105,10 @@ def _place(hit: SpotHit, lang: str, text: str, facts: _Facts) -> tuple[str, str 
         return (hit.name, ".env", None) if facts.python_env else (hit.name, None, NO_FILE)
     from flowforge.security.fixes import _runs_on_node
 
-    vite = hit.reader == "vite" or (hit.kind != "reads" and facts.vite and not _runs_on_node(text, lang))
-    if vite:
-        name = hit.name if hit.name.startswith("VITE_") else f"VITE_{hit.name}"
-        return name, ".env.local", None
+    if hit.reader == "vite":   # the code's own name: its envPrefix may not be VITE_ (Codex review)
+        return hit.name, ".env.local", None
+    if hit.kind != "reads" and facts.vite and not _runs_on_node(text, lang):
+        return (hit.name if hit.name.startswith("VITE_") else f"VITE_{hit.name}"), ".env.local", None
     return (hit.name, ".env", None) if facts.node_env else (hit.name, None, NO_FILE)
 
 
@@ -192,9 +192,31 @@ def _rewrite(text: str, spot: Spot, hit: SpotHit) -> str:
     return "".join(lines)
 
 
+_NEW_RUN_CONFIG = """<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="main.dart (keys from FlowForge)" type="FlutterRunConfigurationType" \
+factoryName="Flutter">
+    <option name="additionalArgs" value="{arg}" />
+    <option name="filePath" value="$PROJECT_DIR$/lib/main.dart" />
+    <method />
+  </configuration>
+</component>
+"""
+
+
+def _has_run_config(root: Path) -> bool:
+    """A Flutter Run config already passes the defines file."""
+    files = [*(root / ".idea" / "runConfigurations").glob("*.xml"), root / ".vscode" / "launch.json"]
+    return any(DEFINE_ARG in _read(f) for f in files if f.is_file())
+
+
 def _flutter_configs(root: Path) -> dict[Path, str]:
-    """Flutter Run configs that gain `--dart-define-from-file` (IntelliJ / Android Studio, VS Code): path → new text."""
+    """Flutter Run configs that gain `--dart-define-from-file` (IntelliJ / Android Studio, VS Code): path → new text.
+    An IntelliJ project with none of its own gets one for lib/main.dart (Codex review: else Run wouldn't pass it)."""
     out: dict[Path, str] = {}
+    configs = root / ".idea" / "runConfigurations"
+    has_flutter = any("FlutterRunConfigurationType" in _read(f) for f in configs.glob("*.xml"))
+    if (root / ".idea").is_dir() and not has_flutter and (root / "lib" / "main.dart").is_file():
+        out[configs / "main_dart_flowforge.xml"] = _NEW_RUN_CONFIG.format(arg=DEFINE_ARG)
     for path in sorted((root / ".idea" / "runConfigurations").glob("*.xml")):
         try:
             tree = ET.parse(path)
@@ -336,5 +358,6 @@ def add_to_code(root: Path, name: str, ref: str, check: str, value: str | None) 
     changed.append("Vault")
     out: dict[str, Any] = {"name": spot.name, "ref": ref, "changed": changed}
     if spot.sink == "dart-defines":
-        out["terminal"] = f"flutter run {DEFINE_ARG}"   # complete: the Run button needs nothing
+        out["run_config"] = _has_run_config(root)   # Run passes the key; else the one command that does
+        out["terminal"] = f"flutter run {DEFINE_ARG}"
     return out

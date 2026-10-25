@@ -4,6 +4,7 @@
 import { type FormEvent, useState } from "react";
 import { api } from "../api/client";
 import { Icons } from "../components/icons";
+import { useCopy } from "./Security";
 
 export type KeyStatus = "saved" | "unreadable" | "env_file" | "missing";
 
@@ -32,7 +33,13 @@ export interface KeyInfo {
   in_app?: boolean;
 }
 
-export interface Added { name: string; changed: string[]; terminal?: string }
+export interface Added {
+  name: string;
+  changed: string[];
+  /** Flutter: a Run config passes the defines file (else `terminal` is the one command that does) */
+  run_config?: boolean;
+  terminal?: string;
+}
 
 export interface KeysResponse {
   repo: string | null;
@@ -187,12 +194,20 @@ export function KeyList({ keys, onSaved, example, onAdded }: {
 
 /** What "Add to code" just changed, kept on the page after the key moves to the saved ones (D44). */
 export function AddedNote({ added, onClose }: { added: Added; onClose: () => void }) {
-  const run = added.changed.some((c) => c.startsWith("Run config"));
+  const [said, copy] = useCopy();
+  const flutter = added.run_config !== undefined;
+  const command = flutter && !added.run_config ? added.terminal : undefined;
   return (
     <div className="key-added" role="status">
-      <p>{Icons.check(16)} <b>{added.name}</b> is in your app. {run ? "Press Run as always." : "Start your app as always."}</p>
+      <p>{Icons.check(16)} <b>{added.name}</b> is in your app.
+        {command ? " Start it with:" : flutter ? " Press Run as always." : " Start your app as always."}</p>
+      {command && (
+        <p className="key-terminal"><code>{command}</code>
+          <button type="button" className="btn sm" onClick={() => copy(command)}>{Icons.copy(14)} Copy</button>
+          <span aria-live="polite">{said}</span></p>
+      )}
       <p className="key-changed">Changed: {added.changed.join(" · ")}</p>
-      <button type="button" className="btn sm quiet" onClick={onClose} aria-label="Close">×</button>
+      <button type="button" className="btn sm quiet key-close" onClick={onClose} aria-label="Close">×</button>
     </div>
   );
 }

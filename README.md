@@ -1,21 +1,27 @@
 # FlowForge
 
-**An LLMOps tool for apps that already use AI: a map of how your app's LLM, MCP and API calls fit together, and a scheduler that runs them.**
+**See everything your AI app depends on: whether it's up, whether it's safe, and what's slowing it down.**
 
-You connect the apps your project uses (LLMs, MCP servers, HTTP APIs, local commands). The **Planner** reads your repo and runs the app in test mode, then draws the flow on the home page: the calls, the decisions, what runs together, the retries and fallbacks, and a gate in front of anything that moves money or sends a message. Only apps your code actually calls go on the map, and every block cites its evidence (a `file:line` or a traced call). You read the map, edit it if you want (your edits never touch your code), and re-check it when the code changes.
+```bash
+npx flowforge-map --example      # a sample app's map in your browser: no keys, nothing sent
+```
 
-Underneath, FlowForge runs workflows as a DAG: it orders the steps, runs independent ones together under rate limits, caches repeat calls, and (on the roadmap) holds the secrets and pauses risky steps for a human to approve.
+![The dependency map: every LLM, MCP server and API the app calls, with live health](docs/images/map.png)
 
-What makes it different: **it knows which chain of steps is the bottleneck and schedules around it.**
+| | |
+|---|---|
+| 🗺 **Map** | Every LLM, MCP server, HTTP API and local program your code calls, each with the `file:line` it came from |
+| 💚 **Check now** | Green, amber or red for each one, with its latency. When something is down, it tells you why |
+| ⚡ **Faster** | Reads the order your code makes its calls and shows which ones could run together, with the time you'd save |
+| 🛡 **Issues** | Keys written in code, plain `http://`, MCP servers that aren't pinned. Fix one on a new branch, or send it to your agent |
+| 🔑 **Keys** | Paste a key once. **Add to code** puts it where your app reads it, and your coding agent only ever sees a mask |
+| 🤖 **Your agent** | One MCP entry gives Claude Code, Codex or Antigravity the map, the advice and the issues |
 
-- orders steps with **topological sort** (Kahn's), and reports the exact loop if there is a cycle
-- finds the bottleneck chain with a **longest-path DP** (critical path), predicted before the run and measured after it
-- runs independent steps concurrently under limited resources (`k` slots + per-provider rate limits) using **critical-path list scheduling** (HLFET), which is within `(2 − 1/k)` of optimal (Graham's bound)
-- makes duplicate calls only once through **memoization** (single-flight in-run cache + a safe persistent cache)
+![Flow: 16.5 s as written, 11.6 s if four calls start together](docs/images/flow.png)
 
-**Free by default.** The default install, the tests and CI need no paid service: LLM steps use NVIDIA NIM's free tier, and local models (Ollama) are planned. Paid providers will work if you bring your own key, but are never needed.
+**Free and local.** MIT, no account, no paid service. Everything stays in `~/.flowforge`, and the scan is plain code that sends nothing to any LLM.
 
-**Local first.** One process, SQLite, files on disk. No cloud account, no Docker, no Redis.
+**Under the hood:** a DAG scheduler runs the checks concurrently under rate limits. It uses a topological sort, a critical-path DP and HLFET list scheduling (within `(2 − 1/k)` of optimal), and it caches repeat calls. See [Scheduling policies and benchmarks](#scheduling-policies-and-benchmarks).
 
 > FlowForge started as a Design and Analysis of Algorithms course project. That version is frozen on the [`DAA`](../../tree/DAA) branch. `main` is the product.
 
@@ -110,7 +116,6 @@ Switch the map to **Flow**. FlowForge reads your Python (by its syntax tree), Da
 - **Faster** compares "as written" (the slowest action, one call after another) with "could be", and lists the calls that don't need each other's results. **Show the change** writes out the `asyncio.gather`, Dart's `(a, b).wait` or `Promise.all` (now → could be, ready to copy) when it's safe; **Copy prompt for your coding agent** hands the rest to Claude Code, Codex or any agent. FlowForge never edits your code.
 - **Watch it run** plays the could-be schedule; pointing at a block lights up its path. Five map styles: Studio, Boxed, Blueprint, Metro, Soft.
 
-
 ### Many projects
 
 The home page lists every app you've mapped, with its dependencies, what needs fixing and missing keys. **+ New project** takes your app's folder, scans it and shows its map. The project tile at the top of the rail switches between the projects you have open, and each one comes back where you left it. **×** closes a project from that list without deleting it. Each project keeps its own map, checks, issues and keys; `flowforge --repo PATH` opens (or adds) that folder's project.
@@ -127,6 +132,8 @@ Pair your agent once and it sees every project: `flowforge mcp` with no folder a
 
 ### Fix what's unsafe, with one click
 
+![Issues: a key in the code, an unpinned MCP server, plain http](docs/images/issues.png)
+
 The **Issues** page lists what the scan found unsafe, and every issue has one button:
 
 | Issue | Button | What happens |
@@ -137,6 +144,8 @@ The **Issues** page lists what the scan found unsafe, and every issue has one bu
 Fix needs a git repo and the file committed. FlowForge works out the change itself, with no AI. Replace a key that was in your code with its provider anyway: older commits still hold it.
 
 ### Keys your coding agent never sees
+
+![Keys: paste once, Add to code, the agent sees a mask](docs/images/keys.png)
 
 **Add to code.** The **Keys** page lists each place your code needs a key, with its `file:line`. Paste the key and press **Add to code**:
 

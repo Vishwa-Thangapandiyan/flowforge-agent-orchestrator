@@ -5,18 +5,17 @@ import {
   MiniMap, ReactFlow, ReactFlowProvider, useNodesState, useReactFlow, useViewport, ViewportPortal,
   type NodeChange, type OnSelectionChangeParams,
 } from "@xyflow/react";
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Link, useNavigate, useProjectId } from "../projects/links";
 import { rememberView, viewOf } from "../projects/memory";
-import { api, ApiError, useApi } from "../api/client";
+import { api, useApi } from "../api/client";
 import { CheckConfirm } from "../checks/Health";
 import { useChecks } from "../checks/useChecks";
 import { useCounts } from "../security/counts";
 import { type KeyInfo, keyNeed } from "../security/Keys";
 import { type Finding, SecurityChip, type SecurityResponse, worst } from "../security/Security";
 import type { Connector, ConnectorType, FlowAction, FlowNode, FlowResponse, FlowView, NodeKind, Trace } from "../api/types";
-import { took } from "../checks/Health";
 import { Icons } from "../components/icons";
 import { useMeta } from "../components/Shell";
 import { EmptyState, ErrorBox } from "../components/ui";
@@ -31,6 +30,9 @@ import { MoreMenu, type MenuItem } from "./MoreMenu";
 import { nodeTypes, typeFor, type BlockData, type BlockNode, type TileSource } from "./nodes";
 import { buildReplay, frameAt, type Frame } from "./replay";
 import { StepPanel } from "./StepPanel";
+import { ActionPicker, only } from "./actions";
+import { CodeLegend, DepsLegend, Legend } from "./Legend";
+import { ScanForm, ScanHint } from "./ScanForm";
 import "./flowmap.css";
 
 const TIPS_KEY = "flowforge.tips.dismissed";
@@ -82,100 +84,6 @@ export function FlowMapPage() {
         trace={trace.data ?? null} connectors={connectors.data ?? []} layer={layer} setLayer={setLayer} reload={flow.reload}
         actions={actions} action={current?.id ?? null} setAction={setAction} />
     </ReactFlowProvider>
-  );
-}
-
-/** One action of a code flow (D33): what its start reaches, with its own times, critical path and advice. Laid out
- * fresh: the saved layout is for the whole flow. */
-export function only(flow: FlowView, a: FlowAction): FlowView {
-  // steps you added stay in view, so you can connect and edit them (they reach nothing yet)
-  const keep = new Set([a.id, ...flow.nodes.filter((n) => n.added_by === "user").map((n) => n.id)]);
-  for (let grew = true; grew;) {
-    grew = false;
-    for (const e of flow.edges) if (keep.has(e.source) && !keep.has(e.target)) { keep.add(e.target); grew = true; }
-  }
-  const onPath = new Set(a.path);
-  const pathEdges = new Set(a.path.slice(1).map((id, i) => `${a.path[i]}>${id}`));
-  const nodes = flow.nodes.filter((n) => keep.has(n.id)).map((n) => ({ ...n, on_critical_path: onPath.has(n.id) }));
-  const slowest = nodes.filter((n) => onPath.has(n.id)).sort((x, y) => (y.estimate_ms ?? 0) - (x.estimate_ms ?? 0))[0];
-  return {
-    ...flow, nodes, positions: {},
-    edges: flow.edges.filter((e) => keep.has(e.source) && keep.has(e.target))
-      .map((e) => ({ ...e, on_critical_path: pathEdges.has(`${e.source}>${e.target}`) })),
-    critical_path: { path: a.path, length_ms: a.could_ms, bottleneck: slowest?.id ?? null },
-    written_ms: a.written_ms, advice: (flow.advice ?? []).filter((x) => x.nodes.every((id) => keep.has(id))),
-  };
-}
-
-/** Which action the flow shows: every entry point, slowest first, with its time (D33). */
-function ActionPicker({ actions, value, onChange }: { actions: FlowAction[]; value: string | null; onChange: (id: string) => void }) {
-  return (
-    <label className="fm-action">
-      <span>Action</span>
-      <select value={value ?? ""} onChange={(e) => onChange(e.target.value)}>
-        {actions.map((a) => <option key={a.id} value={a.id}>{a.title} · {took(a.written_ms)}</option>)}
-      </select>
-    </label>
-  );
-}
-
-/** Name a folder to map. It is read, never run, and nothing is sent (D20). With a map of `current` already, a
- * different folder replaces it, after you confirm (D22, D23). */
-function ScanForm({ onDone, current }: { onDone: () => void; current?: string }) {
-  const counts = useCounts();
-  const [path, setPath] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string>();
-  const [confirming, setConfirming] = useState(false);
-  const scan = async (replace: boolean) => {
-    setBusy(true);
-    setError(undefined);
-    try {
-      await api.post("/scan", replace ? { path: path.trim(), replace: true } : { path: path.trim() });
-      counts.reload();   // a new folder: its issues and keys (D37; Codex review)
-      onDone();
-    } catch (err) {
-      if (current && err instanceof ApiError && err.status === 409) setConfirming(true);
-      else setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
-  };
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    void scan(false);
-  };
-  return (
-    <form className="scan-form" onSubmit={submit}>
-      <label className="field">
-        <span>Folder to scan</span>
-        <input value={path} onChange={(e) => { setPath(e.target.value); setConfirming(false); }}
-          placeholder="/home/you/my-app" className="mono" autoComplete="off" spellCheck={false} />
-      </label>
-      {confirming ? (
-        <div className="notice" role="alert">
-          <p style={{ margin: "0 0 10px" }}>A different folder: {current}'s map and its versions are deleted.</p>
-          <button className="btn warn" type="button" onClick={() => void scan(true)} disabled={busy}>
-            {busy ? "Scanning…" : "Replace the map"}
-          </button>
-        </div>
-      ) : (
-        <button className="btn primary" type="submit" disabled={busy || !path.trim()}>{busy ? "Scanning…" : "Scan this folder"}</button>
-      )}
-      {error && <div className="notice" role="alert">{error}</div>}
-      <small>Read on this machine only. Nothing in it runs, and nothing is sent.</small>
-    </form>
-  );
-}
-
-/** Example data never mixes with yours (D16), so example mode says how to map your own folder instead. */
-function ScanHint() {
-  return (
-    <div className="scan-form">
-      <span>This is example data. To map your own folder, stop FlowForge and run:</span>
-      <code className="mono">uv run flowforge --repo /home/you/my-app</code>
-      <small>Read on this machine only. Nothing in it runs, and nothing is sent.</small>
-    </div>
   );
 }
 
@@ -711,58 +619,5 @@ function MapView({ map, flow, trace, connectors, layer, setLayer, reload, action
           onWatch={startReplay} watching={busy} canWatch={!!replay} />}
       </div>
     </div>
-  );
-}
-
-function DepsLegend() {
-  return (
-    <>
-      <div className="fm-lrow"><span className="fm-lg"><span className="lg-card lg-llm" /></span>LLM</div>
-      <div className="fm-lrow"><span className="fm-lg"><span className="lg-card" /></span>API, MCP server or local command</div>
-      <div className="fm-lrow"><span className="fm-lg"><span className="lg-card lg-unc" /></span>Unconfirmed: mentioned, no call found</div>
-      <div className="fm-ldiv" />
-      <div className="fm-lrow"><span className="fm-lg"><svg width="28" height="8" viewBox="0 0 28 8" aria-hidden="true"><path d="M1 4h26" style={{ stroke: "var(--edge)", strokeWidth: 2 }} /></svg></span>Uses</div>
-      <div className="fm-lrow"><span className="fm-lg" style={{ color: "var(--teal)" }}>{Icons.shield(16)}</span>Scanned on your machine. Nothing sent</div>
-      <div className="fm-lhint">Drag to pan · scroll to zoom · drag a block to move it</div>
-    </>
-  );
-}
-
-/** A flow read from code (D25): no gates, no fallbacks, no redaction claims; the app's own calls are its own. */
-function CodeLegend() {
-  return (
-    <>
-      <div className="fm-lrow"><span className="fm-lg"><span className="lg-card" /></span>A call to a dependency</div>
-      <div className="fm-lrow"><span className="fm-lg"><span className="lg-card lg-llm" /></span>An LLM call</div>
-      <div className="fm-lrow"><span className="fm-lg"><span className="lg-dia" /></span>An if in the code</div>
-      <div className="fm-ldiv" />
-      <div className="fm-lrow"><span className="fm-lg"><svg width="28" height="8" viewBox="0 0 28 8" aria-hidden="true"><path d="M1 4h26" style={{ stroke: "var(--edge)", strokeWidth: 2 }} /></svg></span>Waits for the call before it</div>
-      <div className="fm-lrow"><span className="fm-lg"><svg width="28" height="8" viewBox="0 0 28 8" aria-hidden="true"><path d="M1 4h26" style={{ stroke: "var(--teal)", strokeWidth: 3.5 }} /></svg></span>Critical path: sets the total time</div>
-      <div className="fm-lhint">Every block and line points to its file:line</div>
-    </>
-  );
-}
-
-function Legend() {
-  return (
-    <>
-      <div className="fm-lrow"><span className="fm-lg"><span className="lg-card" /></span>App call or your code</div>
-      <div className="fm-lrow"><span className="fm-lg"><span className="lg-card lg-llm" /></span>LLM call</div>
-      <div className="fm-lrow"><span className="fm-lg"><span className="lg-dia" /></span>Decision (yes / no)</div>
-      <div className="fm-lrow"><span className="fm-lg"><span className="lg-bar" /></span>Run together / wait for all</div>
-      <div className="fm-lrow"><span className="fm-lg"><span className="lg-card lg-gate" /></span>You approve (payments, messages)</div>
-      <div className="fm-lrow"><span className="fm-lg"><span className="lg-card lg-unc" /></span>Unconfirmed: no evidence</div>
-      <div className="fm-ldiv" />
-      <div className="fm-lrow"><span className="fm-lg"><svg width="28" height="8" viewBox="0 0 28 8" aria-hidden="true"><path d="M1 4h26" style={{ stroke: "var(--edge)", strokeWidth: 2 }} /></svg></span>Data flows this way</div>
-      <div className="fm-lrow"><span className="fm-lg"><svg width="28" height="8" viewBox="0 0 28 8" aria-hidden="true"><path d="M1 4h26" style={{ stroke: "var(--coral)", strokeWidth: 2, strokeDasharray: "5 4" }} /></svg></span>Fallback when a call fails</div>
-      <div className="fm-lrow"><span className="fm-lg" style={{ color: "var(--teal)" }}>{Icons.shield(16)}</span>Keys and personal data removed first</div>
-      <div className="fm-ldiv" />
-      <div className="fm-ldots">
-        <span><i style={{ background: "var(--teal)" }} />done</span><span><i style={{ background: "var(--blue)" }} />running</span>
-        <span><i style={{ background: "var(--amber-strong)" }} />waits for you</span><span><i style={{ background: "var(--coral)" }} />failed</span>
-        <span><i style={{ background: "var(--violet)" }} />Planner</span>
-      </div>
-      <div className="fm-lhint">Drag to pan · scroll to zoom · drag a step to move it</div>
-    </>
   );
 }

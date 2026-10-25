@@ -92,18 +92,26 @@ function Status({ d }: { d: BlockData }) {
   return null;
 }
 
+/** The block's second line: its check result or a missing key first, then what it is. Inside the block, because a
+ *  line drawn under it read as the next block's (Vishwa took Overpass's "no answer" for Supabase's). */
+function SubLine({ d }: { d: BlockData }) {
+  const sub = subOf(d);
+  if (d.keyNeed === "missing") return <span className="ff-sub"><em className="ff-h key-missing">key missing · click to add</em></span>;   // D38
+  const h = d.health ? healthCaption(d.health.status, d.health.summary, d.health.latency_ms) : "";
+  if (!h) return <span className="ff-sub">{sub}</span>;
+  return <span className="ff-sub"><em className={`ff-h ${d.health?.status}`}>{h}</em>{sub ? ` · ${sub}` : ""}</span>;
+}
+
+/** Below a block: only a replay's step note, or the file:line when evidence is shown. */
 function Caption({ d, evidence }: { d: BlockData; evidence: boolean }) {
   if (d.cap) return <span className={`ff-cap ${d.state}`}>{d.cap}</span>;
-  if (d.keyNeed === "missing") return <span className="ff-cap"><em className="ff-h key-missing">key missing · click to add</em></span>;   // D38
-  const h = d.health ? healthCaption(d.health.status, d.health.summary, d.health.latency_ms) : "";
-  if (!evidence) return h ? <span className="ff-cap"><em className={`ff-h ${d.health?.status}`}>{h}</em></span> : null;
+  if (!evidence) return null;
   const first = d.node.evidence[0];
   if (!first || ["fork", "join"].includes(d.node.kind)) return null;
   const text = first.type === "code" && first.ref ? first.ref.split("/").pop()
     : first.type === "policy" ? "added by code" : first.type === "user" ? "added by you"
       : d.node.status === "unconfirmed" ? "no call found" : "";
-  if (!text && !h) return null;
-  return <span className="ff-cap">{text}{h && <em className={`ff-h ${d.health?.status}`}>{h}</em>}</span>;
+  return text ? <span className="ff-cap">{text}</span> : null;
 }
 
 function Shell({ d, selected, children }: { d: BlockData; selected: boolean; children: ReactNode }) {
@@ -143,7 +151,7 @@ export function CardNode({ data, selected }: NodeProps<BlockNode>) {
         <span className="ff-metro">
           <span className="ff-title">{titleOf(data)}</span>
           <span className="ff-track"><i className="ff-station" /></span>
-          <span className="ff-sub">{subOf(data)}</span>
+          <SubLine d={data} />
         </span>
         <Caption d={data} evidence={data.showEvidence} />
       </Shell>
@@ -153,7 +161,7 @@ export function CardNode({ data, selected }: NodeProps<BlockNode>) {
     <Shell d={data} selected={selected}>
       <span className="ff-card">
         <Tile d={data} />
-        <span className="ff-text"><span className="ff-title">{titleOf(data)}</span><span className="ff-sub">{subOf(data)}</span></span>
+        <span className="ff-text"><span className="ff-title">{titleOf(data)}</span><SubLine d={data} /></span>
       </span>
       {n.kind === "gate" && <span className="ff-tag gate">{TAG.gate}</span>}
       {data.retryMax && data.state === "idle" && <span className="ff-retry">{Icons.refresh(10)} {data.retryMax}×</span>}
@@ -168,7 +176,7 @@ export function PillNode({ data, selected }: NodeProps<BlockNode>) {
     <Shell d={data} selected={selected}>
       <span className="ff-pill">
         <Tile d={data} />
-        <span className="ff-text"><span className="ff-title">{n.title}</span><span className="ff-sub">{subOf(data)}</span></span>
+        <span className="ff-text"><span className="ff-title">{n.title}</span><SubLine d={data} /></span>
       </span>
       <Caption d={data} evidence={data.showEvidence} />
     </Shell>

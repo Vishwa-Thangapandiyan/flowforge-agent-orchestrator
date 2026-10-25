@@ -19,6 +19,18 @@ test("the map shows each dependency's health on its block, with no extra strip (
   expect(screen.getByText("420 ms", { exact: false })).toBeInTheDocument();
 });
 
+test("each block's result sits inside that block, never under it where the next block starts", async () => {
+  // Vishwa read Overpass's "no answer within 10 s", drawn under Overpass, as Supabase's (the block below it)
+  mockApi({ "/meta": REAL, "/flow": DEPS, "/connectors": CONNECTORS, "/checks": CHECKS, "/checks/plan": PLAN });
+  renderAt("/");
+  await screen.findByText("Nominatim", { selector: ".ff-title" });
+  await vi.waitFor(() => expect(document.querySelector(".ff-block.h-down")).toBeTruthy());
+  const block = (title: string) => screen.getByText(title, { selector: ".ff-title" }).closest(".ff-block")!;
+  expect(block("Nominatim").querySelector(".ff-sub")).toHaveTextContent("420 ms");
+  expect(block("Ollama").querySelector(".ff-sub .ff-h.down")).toBeTruthy();
+  expect(document.querySelectorAll(".ff-cap .ff-h")).toHaveLength(0);   // nothing hangs below a block
+});
+
 test("the first Check now lists what will start and waits for a yes", async () => {
   const posted: unknown[] = [];
   mockApi({

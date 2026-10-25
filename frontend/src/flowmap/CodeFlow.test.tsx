@@ -4,7 +4,7 @@ import { afterEach, expect, test, vi } from "vitest";
 import { META, mockApi, renderAt } from "../test/api";
 import { CONNECTORS } from "../test/fixtures";
 import { CODEFLOW, DEPS } from "../test/flowFixture";
-import { only } from "./FlowMapPage";
+import { only } from "./actions";
 
 afterEach(() => vi.unstubAllGlobals());
 

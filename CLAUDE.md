@@ -196,7 +196,7 @@ Fixed in Phase 1: `LLMNode` is no longer NIM-only (D10); `MCPNode` has tool disc
   - A block reached through a server is recognised by its `what` ("through fetch"), not a field of its own.
   - On a dependency map's MCP Map, a through-a-server line can cross other labels.
   - The MCP Map's PNG uses system fonts (an SVG drawn as an image can't load web fonts); Mermaid output isn't checked against GitHub's renderer in tests.
-  - `FlowMapPage.tsx` is about 720 lines and switches on dependency / code / Planner maps in many places; splitting it per map kind is due.
+  - `FlowMapPage.tsx` is about 620 lines (the scan form, action picker and legends are their own files); its `MapView` still switches on dependency / code / Planner maps in many places, and splitting that per map kind is due.
 - Repo scan (D21, D22) limits:
   - JS/TS and Dart are read by patterns, line by line, so a call split across lines can be missed. Python uses the AST.
   - The dependency map is laid out by dagre in one column, ordered by kind; it isn't drawn in lanes per kind yet.

@@ -3,18 +3,10 @@
 **See everything your AI app depends on: whether it's up, whether it's safe, and what's slowing it down.**
 
 ```bash
-npx flowforge-map --example
+npx flowforge-map
 ```
-
-One command opens a sample app's map in your browser. You don't need keys or sign-ups, and nothing about your code is sent anywhere.
 
 ![The dependency map: every LLM, MCP server and API the app calls, with live health](https://raw.githubusercontent.com/Vishwa-Thangapandiyan/flowforge-agent-orchestrator/main/docs/images/map.png)
-
-## Point it at your repo
-
-```bash
-npx flowforge-map --repo .
-```
 
 | | |
 |---|---|
@@ -23,26 +15,10 @@ npx flowforge-map --repo .
 | ⚡ **Faster** | Reads the order your code makes its calls and shows which ones could run together, with the time you'd save |
 | 🛡 **Issues** | Keys written in code, plain `http://`, MCP servers that aren't pinned. Fix one on a new branch, or send it to your agent |
 | 🔑 **Keys** | Paste a key once. **Add to code** writes it to a git-ignored file your app reads; FlowForge only ever hands your agent a mask |
+| 🤖 **Your agent** | Claude Code, Codex and Antigravity can read the map, the advice and the issues |
 
 ![Flow: 16.5 s as written, 11.6 s if four calls start together](https://raw.githubusercontent.com/Vishwa-Thangapandiyan/flowforge-agent-orchestrator/main/docs/images/flow.png)
 
-## Works with your coding agent
-
-Add FlowForge to Claude Code, Codex or Antigravity with one entry:
-
-```json
-{ "command": "npx", "args": ["-y", "flowforge-map", "mcp"] }
-```
-
-Your agent can then ask for the map, the advice and the issues, and run your app with keys it never sees.
-
 ![Issues: a key in the code, an unpinned MCP server, plain http](https://raw.githubusercontent.com/Vishwa-Thangapandiyan/flowforge-agent-orchestrator/main/docs/images/issues.png)
 
-## Free, local, private
-
-- **Free and open source (MIT).** No account and no paid service.
-- **Local.** FlowForge keeps its data on your machine. Keys you add go to the Vault and to git-ignored files in your repo.
-- **The scan is plain code.** It sends nothing to any LLM.
-- **Desktop app** for Windows, macOS (Apple chips) and Linux, if you'd rather click than type.
-
-**[Source, docs and the desktop app on GitHub →](https://github.com/Vishwa-Thangapandiyan/flowforge-agent-orchestrator)**
+Free and open source (MIT) · runs on your machine · the scan sends nothing to any LLM

@@ -25,11 +25,13 @@ What makes it different: **it knows which chain of steps is the bottleneck and s
 
 ```bash
 uvx flowforge-map --example      # try it: a sample app's maps in your browser, no keys, nothing sent
-pip install flowforge-map        # or install it (the command is `flowforge`)
+pipx install flowforge-map       # or install it (the command is `flowforge`)
 flowforge --repo ~/my-app        # map your own repo
 ```
 
 You need Python 3.12 or newer ([uv](https://docs.astral.sh/uv/) installs it for you). The dashboard is inside the package: no Node needed. Your data lives in `~/.flowforge`.
+
+**Using pip?** Install inside a virtual environment (`python -m venv .venv && . .venv/bin/activate && pip install flowforge-map`). Many systems refuse a plain `pip install` outside one ("externally managed environment", PEP 668). `pipx` and `uvx` make that environment for you.
 
 The first time, a short welcome walks you through three steps, each one skippable: your app's folder (or the example), pairing your coding agent once, and a lock for your keys. **⚙ Settings** at the bottom of the rail keeps what applies to every project: your agent, the theme and map style, the Vault's lock, and your data (each project's size, the MCP servers it may start, its check history, and the version, with **Check for updates**, which asks pypi.org only when you press it).
 

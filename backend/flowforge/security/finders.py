@@ -183,9 +183,7 @@ class SpotHit:
 
 
 _READS = {
-    "python": [(re.compile(r"""\bos\.environ\[\s*['"]([A-Za-z_]\w*)['"]\s*\]"""
-                           r"""|\bos\.environ\.get\(\s*['"]([A-Za-z_]\w*)['"]"""
-                           r"""|\b(?:os\.)?getenv\(\s*['"]([A-Za-z_]\w*)['"]"""), "env")],
+    "python": [],   # read by the AST (_python_reads)
     "javascript": [(re.compile(r"""\bprocess\.env\.([A-Za-z_]\w*)"""
                                r"""|\bprocess\.env\[\s*['"]([A-Za-z_]\w*)['"]\s*\]"""), "env"),
                    (re.compile(r"""\bimport\.meta\.env\.([A-Za-z_]\w*)"""), "vite")],
@@ -216,11 +214,6 @@ def _asks_for_key(name: str, value: str) -> bool:
     if not value.strip():
         return bool(set(parts) & _EMPTY_OK)
     return is_placeholder(value) or bool(_ASKS.search(value))
-
-
-def _comment(source: str, language: str) -> bool:
-    head = source.lstrip()
-    return head.startswith("#") if language == "python" else head.startswith(("//", "/*", "*"))
 
 
 def _python_literals(text: str) -> list[tuple[int, int, int, str, str]]:
@@ -269,28 +262,75 @@ def _curly_literals(source: str, language: str) -> list[tuple[int, int, str, str
     return out
 
 
+def _python_reads(text: str) -> list[tuple[int, str]]:
+    """(line, name) for os.environ["X"], os.environ.get("X"), os.getenv("X"), getenv("X"): from the AST, so a comment
+    or a string that mentions one isn't a read (Codex review)."""
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return []
+
+    def environ(node: ast.AST) -> bool:
+        return isinstance(node, ast.Attribute) and node.attr == "environ" or isinstance(node, ast.Name) \
+            and node.id == "environ"
+
+    def name_of(node: ast.AST | None) -> str | None:
+        return node.value if isinstance(node, ast.Constant) and isinstance(node.value, str) else None
+
+    out = []
+    for node in ast.walk(tree):
+        name = None
+        if isinstance(node, ast.Subscript) and environ(node.value):
+            name = name_of(node.slice)
+        elif isinstance(node, ast.Call) and node.args:
+            f = node.func
+            if isinstance(f, ast.Attribute) and f.attr == "get" and environ(f.value) \
+                    or isinstance(f, ast.Attribute) and f.attr == "getenv" \
+                    or isinstance(f, ast.Name) and f.id == "getenv":
+                name = name_of(node.args[0])
+        if name and re.fullmatch(r"[A-Za-z_]\w*", name):
+            out.append((node.lineno, name))
+    return out
+
+
 def spots_in(text: str, language: str | None) -> list[SpotHit]:
     """Every place in one file where a key goes (D44), in line order: lines that read a key-like env name, key-like
-    names given a placeholder, and keys written whole in a string."""
+    names given a placeholder, and keys written whole in a string. Comments and string contents never count: Python
+    by its AST, JS/TS/Dart by matching only where the code reader's blanked text still has code (Codex review)."""
     if language not in _READS:
         return []
     from flowforge.security.findings import env_name
 
     lines = text.splitlines()
     found: dict[tuple[int, str], SpotHit] = {}
-    for n, source in enumerate(lines, 1):
-        if _comment(source, language):
-            continue
-        for pattern, reader in _READS[language]:
-            for m in pattern.finditer(source):
-                name = next(g for g in m.groups() if g)
-                if is_secret_name(name):
-                    found.setdefault((n, name), SpotHit(n, "reads", name, reader))
-    literals = ([(line, start, end, name, value) for line, start, end, name, value in _python_literals(text)]
-                if language == "python" else
-                [(n, start, end, name, value) for n, source in enumerate(lines, 1) if not _comment(source, language)
-                 for start, end, name, value in _curly_literals(source, language)])
-    open_lines = {hit.line: hit for hit in find_keys(text, language)}
+    literals: list[tuple[int, int, int, str, str]]
+    if language == "python":
+        for n, name in _python_reads(text):
+            if is_secret_name(name):
+                found.setdefault((n, name), SpotHit(n, "reads", name, "env"))
+        literals = _python_literals(text)
+    else:
+        from flowforge.flow.curly import mask
+
+        code_lines = mask(text, language).splitlines()
+
+        def is_code(n: int, at: int) -> bool:
+            code = code_lines[n - 1] if n <= len(code_lines) else ""
+            return at < len(code) and code[at] == lines[n - 1][at] and not code[at].isspace()
+
+        literals = []
+        for n, source in enumerate(lines, 1):
+            for pattern, reader in _READS[language]:
+                for m in pattern.finditer(source):
+                    name = next(g for g in m.groups() if g)
+                    if is_secret_name(name) and is_code(n, m.start()):
+                        found.setdefault((n, name), SpotHit(n, "reads", name, reader))
+            for start, end, name, value in _curly_literals(source, language):
+                quote = start + 1 if source[start] == "r" else start
+                at_name = source.rfind(name, 0, start)
+                if is_code(n, quote) and at_name >= 0 and is_code(n, at_name):
+                    literals.append((n, start, end, name, value))
+    open_lines = {hit.line for hit in find_keys(text, language)}
     for line, start, end, name, value in literals:
         env = env_name(name, "API_KEY")
         if line in open_lines and _only_key(value) and key_span(text, language, line) is not None:

@@ -524,3 +524,17 @@ def test_an_open_key_in_an_app_with_no_env_loader_can_still_be_hidden(tmp_path):
     assert KeyStore(root).env() == {"STRIPE_KEY": FAKE}
     assert done["changed"] == ["tool.py:1", "Vault"] and "run_app" in done["note"]
     assert not (root / ".env").exists()
+
+
+def test_comments_and_strings_are_not_spots():
+    """Codex review: a read or a placeholder inside a comment or a string isn't a place in the code."""
+    ts = ('const note = "process.env.STRIPE_SECRET_KEY";  // apiKey = "ENTER KEY HERE"\n'
+          'const doc = `use import.meta.env.VITE_MAPS_KEY`;\n'
+          'const real = process.env.OPENAI_API_KEY; // process.env.HF_TOKEN\n')
+    assert {(s.line, s.name) for s in spots_in(ts, "typescript")} == {(3, "OPENAI_API_KEY")}
+    dart = ("const help = \"String.fromEnvironment('X_API_KEY')\"; // const apiKey = 'your-key';\n"
+            "const k = String.fromEnvironment('MAPS_KEY');\n")
+    assert {(s.line, s.name) for s in spots_in(dart, "dart")} == {(2, "MAPS_KEY")}
+    py = ('MSG = "set os.environ[\'STRIPE_KEY\'] first"  # os.getenv("HF_TOKEN")\n'
+          'import os\nK = os.environ.get("OPENAI_API_KEY")\n')
+    assert {(s.line, s.name) for s in spots_in(py, "python")} == {(3, "OPENAI_API_KEY")}

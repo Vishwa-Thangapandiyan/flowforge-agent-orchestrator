@@ -346,6 +346,17 @@ def _check_destination(root: Path, path: Path) -> None:
         raise CantAdd(f"{rel.as_posix()} is outside this folder.")
 
 
+def _hide_only(root: Path, spot: Spot, hit: SpotHit, text: str, target: Path, value: str) -> dict[str, Any]:
+    """A key written in the code of an app that loads no key file: the line reads it, the value goes to the Vault
+    (Codex review: getting it out of the code comes first)."""
+    _check_destination(root, target)
+    mode = target.stat().st_mode & 0o777
+    _write_private(target, _rewrite(text, spot, hit).encode("utf-8"), mode)
+    KeyStore(root).add(spot.name, value)
+    return {"name": spot.name, "ref": spot.ref, "changed": [spot.ref, "Vault"],
+            "note": "This app loads no key file, so your agent's run_app passes the key when it starts the app."}
+
+
 def add_to_code(root: Path, name: str, ref: str, check: str, value: str | None) -> dict[str, Any]:
     """Put one key into the app (D44). `value` is what the user typed; None for a key written in the open, whose value
     is taken from the code. Raises CantAdd, having written nothing."""
@@ -382,7 +393,9 @@ def add_to_code(root: Path, name: str, ref: str, check: str, value: str | None) 
     if not NAME.fullmatch(spot.name):
         raise CantAdd(f"{spot.name} isn't a name an app can read.")
     if spot.sink is None:
-        raise CantAdd(spot.why_not or NO_FILE)
+        if spot.kind != "open":
+            raise CantAdd(spot.why_not or NO_FILE)
+        return _hide_only(root, spot, hit, text, target, value)   # out of the code first, even with no file to fill
     sink_rel = DEFINES if spot.sink == "dart-defines" else spot.sink
     if _tracked(root, sink_rel):
         raise CantAdd(f"git tracks {sink_rel}, so the key would be committed. Remove it from git first "

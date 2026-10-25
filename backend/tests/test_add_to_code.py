@@ -512,3 +512,15 @@ def test_a_project_rule_that_already_covers_it_isnt_repeated(tmp_path):
 def test_dotenv_loads_in_code_not_in_strings(tmp_path, code, loads):
     root = write(tmp_path / "api", {"package.json": "{}", "server.js": code + "const k = process.env.STRIPE_SECRET_KEY;\n"})
     assert (spot(root, "STRIPE_SECRET_KEY").sink == ".env") is loads
+
+
+def test_an_open_key_in_an_app_with_no_env_loader_can_still_be_hidden(tmp_path):
+    """Codex review: getting a key out of the code matters most; with no file the app reads, it goes to the Vault."""
+    root = write(tmp_path / "cli", {"tool.py": f'STRIPE_KEY = "{FAKE}"\n'})
+    s = spot(root, "STRIPE_KEY")
+    assert s.sink is None
+    done = add_to_code(root, s.name, s.ref, s.check, None)
+    assert FAKE.encode() not in code_bytes(root) and 'os.environ["STRIPE_KEY"]' in (root / "tool.py").read_text()
+    assert KeyStore(root).env() == {"STRIPE_KEY": FAKE}
+    assert done["changed"] == ["tool.py:1", "Vault"] and "run_app" in done["note"]
+    assert not (root / ".env").exists()

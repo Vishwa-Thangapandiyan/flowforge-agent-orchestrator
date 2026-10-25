@@ -39,6 +39,8 @@ export interface Added {
   /** Flutter: a Run config passes the defines file (else `terminal` is the one command that does) */
   run_config?: boolean;
   terminal?: string;
+  /** what the user should know, in one sentence (an app that loads no key file) */
+  note?: string;
 }
 
 export interface KeysResponse {
@@ -151,7 +153,7 @@ export function KeyRow({ k, onSaved, note, example, onAdded }: {
         </span>
       </span>
       <span className="key-act">
-        {open && canWire && (
+        {open && !!spot && !example && (   // out of the code even when the app reads no key file (Codex review)
           <button type="button" className="btn sm primary" disabled={busy} onClick={() => void act(() => wire(), true)}>
             {Icons.lock(14)} Hide it
           </button>
@@ -199,13 +201,14 @@ export function AddedNote({ added, onClose }: { added: Added; onClose: () => voi
   const command = flutter && !added.run_config ? added.terminal : undefined;
   return (
     <div className="key-added" role="status">
-      <p>{Icons.check(16)} <b>{added.name}</b> is in your app.
+      <p>{Icons.check(16)} <b>{added.name}</b> {added.note ? "is out of your code." : "is in your app."}
         {command ? " Start it with:" : flutter ? " Press Run as always." : " Start your app as always."}</p>
       {command && (
         <p className="key-terminal"><code>{command}</code>
           <button type="button" className="btn sm" onClick={() => copy(command)}>{Icons.copy(14)} Copy</button>
           <span aria-live="polite">{said}</span></p>
       )}
+      {added.note && <p className="key-changed">{added.note}</p>}
       <p className="key-changed">Changed: {added.changed.join(" · ")}</p>
       <button type="button" className="btn sm quiet key-close" onClick={onClose} aria-label="Close">×</button>
     </div>

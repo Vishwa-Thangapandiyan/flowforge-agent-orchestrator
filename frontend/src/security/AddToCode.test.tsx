@@ -101,3 +101,20 @@ test("example data never adds to code", async () => {
   await screen.findByLabelText("Value of SUPABASE_ANON_KEY");
   expect(screen.queryByRole("button", { name: /Add to code|Hide it/ })).not.toBeInTheDocument();
 });
+
+test("a key in the open in an app that loads no key file can still be hidden", async () => {
+  const OPEN_NO_FILE = { name: "OPENAI_API_KEY", status: "missing", ref: "tool.py:1", deps: [], command: "x",
+    spot: spot("OPENAI_API_KEY", "open", "tool.py:1", null, "This app can't take keys from a file."), in_app: false };
+  const calls = mockApi({
+    "/meta": META, "/flow": DEPS, "/connectors": [], "/security": { findings: [] },
+    "/keys": { repo: "cli", example: false, summary: {}, keys: [OPEN_NO_FILE] },
+    "/keys/OPENAI_API_KEY/add-to-code": { name: "OPENAI_API_KEY", ref: "tool.py:1", changed: ["tool.py:1", "Vault"],
+      note: "This app loads no key file, so your agent's run_app passes the key when it starts the app." },
+  });
+  renderAt("/keys");
+  await screen.findByText("OPENAI_API_KEY");
+  await userEvent.click(within(row("OPENAI_API_KEY")).getByRole("button", { name: /Hide it/ }));
+  expect(body(calls, "/keys/OPENAI_API_KEY/add-to-code")).toEqual({ ref: "tool.py:1", check: "abc123" });
+  expect(await screen.findByText(/is out of your code/)).toBeInTheDocument();
+  expect(screen.getByText(/run_app passes the key/)).toBeInTheDocument();
+});

@@ -220,3 +220,14 @@ a.sec-chip { text-decoration: none; }
 .run-out pre { max-height: 240px; overflow: auto; margin: 6px 0 0; padding: 8px; border-radius: var(--r-sm); background: var(--surface-2);
   font: 12px var(--mono); white-space: pre-wrap; }
 @media (max-width: 560px) { .run-row { grid-template-columns: auto 1fr; } }
+/* Add to code (D44): what changed, after the click */
+.key-added { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: start; padding: 12px 14px;
+  border-radius: var(--r-md); border: 1px solid color-mix(in srgb, var(--teal) 35%, transparent); background: var(--teal-bg); }
+.key-added p { margin: 0; display: flex; align-items: center; gap: 6px; color: var(--teal-ink); font-size: 14px; }
+.key-added b { font: 600 13.5px var(--mono); }
+.key-added .key-changed { grid-column: 1; color: var(--muted); font-size: 12.5px; overflow-wrap: anywhere; }
+.key-added .key-close { grid-row: 1; grid-column: 2; }
+.key-added .key-terminal { grid-column: 1; flex-wrap: wrap; }
+.key-terminal code { font: 12.5px var(--mono); padding: 3px 8px; border-radius: 6px; background: var(--surface);
+  border: 1px solid var(--line); color: var(--fg); overflow-wrap: anywhere; }
+.key-why { flex-basis: 100%; }

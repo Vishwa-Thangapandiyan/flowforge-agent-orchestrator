@@ -206,9 +206,15 @@ def _security_data(result: ScanResult) -> dict[str, Any]:
 
 def _keys_data(root: Path, result: ScanResult) -> dict[str, Any]:
     """Names and statuses only: this server, which the agent starts, never reads a value (D36)."""
-    found = report(KeyStore(root), result, verify=False)
+    from flowforge.security.wire import key_spots
+
+    spots: dict[str, Any] = {}
+    for sp in key_spots(root):   # where each key goes (D44): names and places, never a value
+        spots.setdefault(sp.name, sp.public())
+    found = report(KeyStore(root), result, verify=False, also=list(spots))
     for k in found:
         k["mask"] = mask(str(k["name"]))   # what you write where the value goes (D43)
+        k["spot"] = spots.get(str(k["name"]))
     return {"keys": found, "summary": dict(Counter(k["status"] for k in found if k["status"] != "saved")),
             "how": HOW_KEYS,
             "note": "saved means FlowForge has it on record; this server never reads a value"}

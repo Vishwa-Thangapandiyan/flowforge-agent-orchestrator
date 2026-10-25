@@ -132,7 +132,29 @@ Fix needs a git repo and the file committed. FlowForge works out the change itse
 
 ### Keys your coding agent never sees
 
-You paste a key once, on the **Keys** page. Your coding agent never gets it; it gets a **mask**:
+**Add to code.** The **Keys** page lists each place your code needs a key, with its `file:line`. Paste the key and press **Add to code**:
+
+```
+lib/config.dart:8   String.fromEnvironment('SUPABASE_ANON_KEY')      ← FlowForge found the spot
+[ •••••••••••• ]  [ Add to code ]                                      ← you paste, one click
+✓ SUPABASE_ANON_KEY is in your app. Press Run as always.
+  Changed: .flowforge/dart-defines.json · Run config · .gitignore · Claude Code told not to read it · Vault
+```
+
+The key goes where your app reads it, and **never into a code file**:
+
+| Your app | The key goes to | Then |
+|---|---|---|
+| Flutter (`String.fromEnvironment`) | `.flowforge/dart-defines.json`, and `--dart-define-from-file` is added to your Run config (Android Studio, IntelliJ, VS Code) | press Run |
+| Python, Node or Flutter with a `.env` loader | `.env` | start it as always |
+| Vite | `.env.local` (as `VITE_…`) | start it as always |
+
+- A placeholder like `apiKey = "ENTER KEY HERE"` is rewritten to read the key.
+- A real key written in the code gets **Hide it**: one click moves it out the same way.
+- The file is git-ignored, and nothing is committed: you see the change in `git diff`.
+- An app that loads no file gets **Save**, and the Keys page says why.
+
+**With an agent**, the agent never gets a key; it gets a **mask**:
 
 ```
 you paste STRIPE_SECRET_KEY once  →  your agent sees  ffkey://STRIPE_SECRET_KEY
@@ -155,7 +177,7 @@ flowforge run -- python app.py             # your app starts with the keys (mask
 
 **See a key again** in the **Vault**: set a password and scan the QR with an authenticator app (Google Authenticator, Authy, 1Password), once. After that, your password, then the 6-digit code on your phone, open it for 5 minutes. It lists every key with its health: healthy, written in code, in `.env`, can't read, unused, or old. It also shows where each key lives, what uses it, and whether it's a live or test key. Each value shows for 30 seconds. Forgot the password? `flowforge lock reset --forget` drops the lock (your keys stay) and the dashboard says so.
 
-What FlowForge promises: a key is never in anything your agent receives (answers, its own process, files FlowForge writes, the output it returns), never in a stored row or a log. Outside FlowForge: what your own app does with a key, a key built into an app (anyone holding the app can read it, so use publishable keys there), and other programs running as your user. The 2FA on the Vault stops web pages, anyone at your browser, and anything without your phone.
+What FlowForge promises: a key is never in anything your agent receives (answers, its own process, the output it returns), never in a code file, a stored row or a log. **Add to code** puts it in one hidden, git-ignored file next to your app (like `.env`), which Claude Code is told not to read; other agents could still read it. Outside FlowForge: what your own app does with a key, a key built into an app (anyone holding the app can read it, so use publishable keys there), and other programs running as your user. The 2FA on the Vault stops web pages, anyone at your browser, and anything without your phone.
 
 ### Send someone the map
 

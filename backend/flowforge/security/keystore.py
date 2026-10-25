@@ -41,15 +41,21 @@ def env_file_names(path: Path) -> list[str]:
     return [name for name in dotenv_values(path) if NAME.fullmatch(name)]
 
 
-def _write_private(path: Path, data: bytes) -> None:
-    """Write a file only its owner can read (0600), replacing it in one step."""
+def _write_private(path: Path, data: bytes, mode: int = 0o600) -> None:
+    """Write a file (only its owner can read it, by default), replacing it in one step. The temporary file has a new,
+    unpredictable name and is created, never opened through a link someone planted (Codex review)."""
+    import tempfile
+
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tmp")
-    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "wb") as f:
-        f.write(data)
-    os.chmod(tmp, 0o600)
-    os.replace(tmp, path)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+        os.chmod(tmp, mode)
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
 
 
 def _keychain_works() -> bool:

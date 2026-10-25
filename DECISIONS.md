@@ -1475,6 +1475,25 @@ The same request with a browser's name answered in half a second.
 
 ---
 
+## D47. The whole API answers only to this machine (Vishwa, 2026-10-25)
+
+**Context.** Only the key, fix and lock routes checked who was asking (D36, D37). Any web page you visit could reach the rest, because FlowForge listens on `127.0.0.1`:
+- through DNS rebinding (its own name pointed at your computer), it could read the map or edit a connector;
+- by sending a form from another site, it could start a scan or a check.
+
+**Choice:**
+- **Every request** must name this machine in its `Host`: `localhost`, `127.0.0.1`, `::1`, or the address chosen with `--host` (`FLOWFORGE_HOST`), unless that is `0.0.0.0` or `::`. A page reached through DNS rebinding carries its own name, so it gets 403.
+- **Every change** (any method but GET, HEAD and OPTIONS) that carries an `Origin` must come from one of those names too. Browsers send `Origin` with every cross-site POST, so another site's form gets 403. A command-line client sends none and is let through.
+- It is one ASGI middleware in front of everything (`security/local_only.py`), so a new route can't forget it. The key routes keep their stricter check: the caller's real address must be this machine.
+
+**Why:** FlowForge reads your code, starts MCP servers and holds your keys. Only you, at this computer, should be able to drive it.
+
+**Honest limits:** a program running as you on this machine can still call the API; that is §6.5's single local user. Binding to `0.0.0.0` lets other machines connect only to the address you named with `--host`, and there is still no token (§6.5, later).
+
+**Code:** `security/local_only.py`, `main.py`, `cli.py` (`--host` sets `FLOWFORGE_HOST`).
+
+---
+
 ## Step JSON schema (reference)
 
 ```json

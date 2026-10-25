@@ -91,6 +91,7 @@ def main(argv: list[str] | None = None) -> None:
         os.environ.setdefault("FLOWFORGE_DB", str(flowforge_home() / "example.db"))
         flowforge_home().mkdir(parents=True, exist_ok=True)
     banner(console(plain))
+    os.environ["FLOWFORGE_HOST"] = args.host   # the address the API answers to, besides this machine's names (D47)
     url = f"http://{args.host}:{args.port}/"
     if not DIST.exists():
         print("The dashboard isn't built yet: run `npm run build` in frontend/ (the classic page is at /classic).")

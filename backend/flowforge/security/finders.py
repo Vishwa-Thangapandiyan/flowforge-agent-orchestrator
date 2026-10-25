@@ -158,7 +158,7 @@ def key_span(text: str, language: str | None, line: int) -> tuple[int, int, str]
                 end = len(raw[:node.end_col_offset].decode(errors="replace"))
                 return start, end, node.value
         return None
-    if language not in ("javascript", "typescript"):
+    if language not in ("javascript", "typescript", "dart"):
         return None
     for m in _LITERAL.finditer(source):
         before = source[:m.start()]
@@ -167,3 +167,129 @@ def key_span(text: str, language: str | None, line: int) -> tuple[int, int, str]
         if _only_key(m.group(2)):
             return m.start(), m.end(), m.group(2)
     return None
+
+
+# Spots (D44): where a key goes in the code, for "Add to code". A line that already reads the key, a key-like name
+# given a placeholder, or a key written in the open. Names and places only: never a value.
+
+@dataclass(frozen=True)
+class SpotHit:
+    line: int
+    kind: str                # "reads" | "placeholder" | "open"
+    name: str                # the env var the app reads: SUPABASE_ANON_KEY, API_KEY
+    reader: str              # how the line reads it: env, vite, dart-define, dart-dotenv; "" for a literal
+    start: int | None = None  # the literal's span on the line, quotes included (placeholder, open)
+    end: int | None = None
+
+
+_READS = {
+    "python": [(re.compile(r"""\bos\.environ\[\s*['"]([A-Za-z_]\w*)['"]\s*\]"""
+                           r"""|\bos\.environ\.get\(\s*['"]([A-Za-z_]\w*)['"]"""
+                           r"""|\b(?:os\.)?getenv\(\s*['"]([A-Za-z_]\w*)['"]"""), "env")],
+    "javascript": [(re.compile(r"""\bprocess\.env\.([A-Za-z_]\w*)"""
+                               r"""|\bprocess\.env\[\s*['"]([A-Za-z_]\w*)['"]\s*\]"""), "env"),
+                   (re.compile(r"""\bimport\.meta\.env\.([A-Za-z_]\w*)"""), "vite")],
+    "dart": [(re.compile(r"""\bString\.fromEnvironment\(\s*['"]([A-Za-z_]\w*)['"]"""), "dart-define"),
+             (re.compile(r"""\bdotenv\.(?:env\[|get\(|maybeGet\()\s*['"]([A-Za-z_]\w*)['"]"""), "dart-dotenv")],
+}
+_READS["typescript"] = _READS["javascript"]
+# a value that asks for a key, rather than holding one or being ordinary text
+_ASKS = re.compile(r"\b(?:enter|insert|paste|put|add)\b.*\b(?:key|token|secret|here)\b"
+                   r"|^\s*(?:tbd|fixme|todo|none|null|n/?a|-+)\s*$", re.IGNORECASE)
+# a name ending in one of these describes a key (apiKeyHint, TOKEN_URL); it doesn't hold one
+_LABEL_ENDS = frozenset({"hint", "label", "title", "text", "placeholder", "message", "msg", "error", "field", "prompt",
+                         "pattern", "regex", "name", "type", "length", "len", "url", "uri", "path", "header", "prefix",
+                         "suffix", "id", "count", "min", "max", "format", "controller", "visible", "obscure", "icon",
+                         "button", "file", "env", "var"})
+_EMPTY_OK = frozenset({"key", "apikey", "token", "secret"})   # "" counts only for these: a form's password = "" doesn't
+
+
+def _asks_for_key(name: str, value: str) -> bool:
+    parts = [p.lower() for p in _WORDS.findall(name)]
+    if not is_secret_name(name) or (parts and parts[-1] in _LABEL_ENDS):
+        return False
+    if not value.strip():
+        return bool(set(parts) & _EMPTY_OK)
+    return is_placeholder(value) or bool(_ASKS.search(value))
+
+
+def _comment(source: str, language: str) -> bool:
+    head = source.lstrip()
+    return head.startswith("#") if language == "python" else head.startswith(("//", "/*", "*"))
+
+
+def _python_literals(text: str) -> list[tuple[int, int, int, str, str]]:
+    """(line, start, end, name, value) for each one-line string literal given to a name; columns in characters."""
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return []
+    lines = text.splitlines()
+    out = []
+
+    def target(t: ast.AST) -> str | None:
+        return t.id if isinstance(t, ast.Name) else t.attr if isinstance(t, ast.Attribute) else None
+
+    for node in ast.walk(tree):
+        pairs: list[tuple[str | None, ast.AST]] = []
+        if isinstance(node, ast.Assign):
+            pairs = [(target(t), node.value) for t in node.targets]
+        elif isinstance(node, ast.AnnAssign) and node.value is not None:
+            pairs = [(target(node.target), node.value)]
+        elif isinstance(node, ast.keyword) and node.arg:
+            pairs = [(node.arg, node.value)]
+        elif isinstance(node, ast.Dict):
+            pairs = [(k.value, v) for k, v in zip(node.keys, node.values, strict=True)
+                     if isinstance(k, ast.Constant) and isinstance(k.value, str)]
+        for name, value in pairs:
+            if name and isinstance(value, ast.Constant) and isinstance(value.value, str) \
+                    and value.lineno == value.end_lineno:
+                raw = lines[value.lineno - 1].encode()   # AST columns count UTF-8 bytes
+                start = len(raw[:value.col_offset].decode(errors="replace"))
+                end = len(raw[:value.end_col_offset].decode(errors="replace"))
+                out.append((value.lineno, start, end, name, value.value))
+    return out
+
+
+def _curly_literals(source: str, language: str) -> list[tuple[int, int, str, str]]:
+    """(start, end, name, value) for each `name = "…"` / `name: '…'` on one line of JS, TS or Dart."""
+    out = []
+    for m in _GIVEN.finditer(source):
+        if m.group(2) == "`" and "${" in m.group(3):
+            continue
+        start = m.start(2)
+        if language == "dart" and start > 0 and source[start - 1] == "r":   # a raw string: r'…'
+            start -= 1
+        out.append((start, m.end(), m.group(1), m.group(3)))
+    return out
+
+
+def spots_in(text: str, language: str | None) -> list[SpotHit]:
+    """Every place in one file where a key goes (D44), in line order: lines that read a key-like env name, key-like
+    names given a placeholder, and keys written whole in a string."""
+    if language not in _READS:
+        return []
+    from flowforge.security.findings import env_name
+
+    lines = text.splitlines()
+    found: dict[tuple[int, str], SpotHit] = {}
+    for n, source in enumerate(lines, 1):
+        if _comment(source, language):
+            continue
+        for pattern, reader in _READS[language]:
+            for m in pattern.finditer(source):
+                name = next(g for g in m.groups() if g)
+                if is_secret_name(name):
+                    found.setdefault((n, name), SpotHit(n, "reads", name, reader))
+    literals = ([(line, start, end, name, value) for line, start, end, name, value in _python_literals(text)]
+                if language == "python" else
+                [(n, start, end, name, value) for n, source in enumerate(lines, 1) if not _comment(source, language)
+                 for start, end, name, value in _curly_literals(source, language)])
+    open_lines = {hit.line: hit for hit in find_keys(text, language)}
+    for line, start, end, name, value in literals:
+        env = env_name(name, "API_KEY")
+        if line in open_lines and _only_key(value) and key_span(text, language, line) is not None:
+            found.setdefault((line, env), SpotHit(line, "open", env, "", start, end))
+        elif _asks_for_key(name, value):
+            found.setdefault((line, env), SpotHit(line, "placeholder", env, "", start, end))
+    return sorted(found.values(), key=lambda h: (h.line, h.name))

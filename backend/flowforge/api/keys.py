@@ -3,6 +3,7 @@
 GET    /keys          {repo, example, summary: {missing, env_file}, keys: [{name, status, ref, deps, command}]}
 PUT    /keys/{name}          {"value": "..."} → {name, status: "saved"}; the value is never sent back
 POST   /keys/{name}/import   the value of `name` in the folder's .env, saved (D37) → {name, status: "saved"}
+POST   /keys/{name}/add-to-code   {value, ref, check}: the key into the app at its spot (D44) → {name, ref, changed}
 DELETE /keys/{name}          → {name, removed}
 """
 
@@ -19,10 +20,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict
 
 from flowforge.api.scan import repo_path
-from flowforge.home import command_line
 from flowforge.scan import ScanResult
 from flowforge.scan import scan as scan_repo
-from flowforge.security.keystore import BadKey, KeyStore, report
+from flowforge.security.keystore import BadKey, KeyStore, env_file_names, report
+from flowforge.security.wire import DEFINES, CantAdd, Spot, add_to_code, key_spots
 from flowforge.state import AppState, app_state
 from flowforge.storage import Storage, now_iso
 
@@ -68,6 +69,37 @@ def clear_key_requests(storage: Storage, repo: Path, names: Iterable[str]) -> No
 class KeyValue(BaseModel):
     model_config = ConfigDict(extra="forbid")
     value: str
+
+
+class AddToCode(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    ref: str
+    check: str
+    value: str | None = None   # none for a key written in the open: its value comes from the code
+
+
+_FIRST = {"open": 0, "placeholder": 1, "reads": 2}
+
+
+def _spots(repo: Path) -> dict[str, Spot]:
+    """Each key's spot (D44): an open key first, then a placeholder, then a line that reads it."""
+    out: dict[str, Spot] = {}
+    for spot in sorted(key_spots(repo), key=lambda sp: (_FIRST[sp.kind], sp.path, sp.line)):
+        out.setdefault(spot.name, spot)
+    return out
+
+
+def _in_app(repo: Path) -> set[str]:
+    """Names already in a file the app reads: `.flowforge/dart-defines.json`, `.env`, `.env.local`. Names only."""
+    names: set[str] = set()
+    try:
+        defines = json.loads((repo / DEFINES).read_text()) if (repo / DEFINES).is_file() else {}
+        names |= set(defines) if isinstance(defines, dict) else set()
+    except (OSError, ValueError):
+        pass
+    for env in (".env", ".env.local"):
+        names |= set(env_file_names(repo / env))
+    return names
 
 
 def learn_saved_keys(s: AppState, repo: Path | None) -> None:
@@ -137,13 +169,19 @@ def keys() -> dict[str, Any]:
     asked = key_requests(s.storage, repo)
     clear_key_requests(s.storage, repo, [n for n in store.names() if any(r["name"] == n for r in asked)])
     asked = [r for r in asked if r["name"] not in set(store.names())]
-    found = report(store, stored_scan(s, repo), also=[r["name"] for r in asked])
+    spots = _spots(repo)
+    found = report(store, stored_scan(s, repo), also=[*(r["name"] for r in asked), *spots])
+    in_app = _in_app(repo)
     for k in found:
         k["requested"] = any(r["name"] == k["name"] for r in asked)
+        spot = spots.get(str(k["name"]))
+        k["spot"] = spot.public() if spot else None   # where "Add to code" puts it (D44)
+        k["in_app"] = k["name"] in in_app
+        if spot and not k["ref"]:
+            k["ref"] = spot.ref
     summary = Counter(k["status"] for k in found if k["status"] != "saved")
     return {"repo": repo.name, "example": s.example, "summary": dict(summary), "keys": found,
-            "requests": [{"name": r["name"], "why": r["why"], "at": r["at"]} for r in asked],
-            "run": command_line("run", "--repo", str(repo), "--")}   # + how you start your app
+            "requests": [{"name": r["name"], "why": r["why"], "at": r["at"]} for r in asked]}
 
 
 @router.put("/keys/{name}", dependencies=[Depends(from_this_machine)])
@@ -176,6 +214,24 @@ def import_key(name: str) -> dict[str, Any]:
     s.redactor.learn([value.strip()])
     clear_key_requests(s.storage, repo, [name])
     return {"name": name, "status": "saved"}
+
+
+@router.post("/keys/{name}/add-to-code", dependencies=[Depends(from_this_machine)])
+def add_key_to_code(name: str, body: AddToCode) -> dict[str, Any]:
+    """The box's one click (D44): the Vault, the code's read and the file the app reads, never a value back."""
+    s = app_state()
+    if s.example:
+        raise HTTPException(409, "The example's code isn't changed. Open your own project to add keys to code.")
+    repo = _writable(s)
+    try:
+        done = add_to_code(repo, name, body.ref, body.check, body.value)
+    except CantAdd as e:
+        raise HTTPException(409, str(e)) from None
+    saved = KeyStore(repo).env().get(str(done["name"]))
+    if saved:
+        s.redactor.learn([saved])
+    clear_key_requests(s.storage, repo, [str(done["name"])])
+    return done
 
 
 @router.delete("/keys/{name}", dependencies=[Depends(from_this_machine)])

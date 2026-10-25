@@ -1400,6 +1400,43 @@ Masking is FlowForge's job and the user shouldn't have to think about it. The co
 
 ---
 
+## D44. "Add to code": the key box puts the key into your app (Vishwa, 2026-10-25)
+
+**Context.** The box only saved a key, then handed out a command to copy. The command didn't even run: `flowforge run … -- <how you start your app>` is a bash syntax error. Vishwa, in his words: "I enter the key in the box and you add it automatically, not just save it. Not me copying a prompt, not me searching for the key's spot by hand." Agreed as four steps: FlowForge finds the spot, shows a box, writes the key in with one click, and the agent only ever sees a mask.
+
+**Choice:**
+- **Spots.** FlowForge finds where each key goes, with its `file:line` (`security/finders.py` `spots_in`, `security/wire.py` `key_spots`):
+  - a key-like name given a placeholder: `apiKey = "ENTER KEY HERE"`, `""`, `"your-api-key"`, `"xxx"`;
+  - a line that already reads the key: `String.fromEnvironment('SUPABASE_ANON_KEY')`, `os.environ["X"]`, `process.env.X`, `import.meta.env.VITE_X`, `dotenv.env['X']`;
+  - a real key written in the open (D31's `key_in_code`).
+  
+  Python is read by the AST; Dart, JS and TS by patterns.
+- **One click** (`security/wire.py`, `add_to_code`). It writes **directly to the working files**: no branch, no commit, so the change shows in `git diff`. This supersedes D37's "a fix is a branch" for key spots only. It:
+  1. saves the value in the Vault (D36's store);
+  2. rewrites a placeholder or open key so the code reads the key: `const String.fromEnvironment('NAME')` (Dart), `os.environ["NAME"]` (Python), `process.env.NAME` (Node), `import.meta.env.VITE_NAME` (Vite). A line that already reads the key isn't touched;
+  3. writes the value where the app reads it, never in a code file:
+     - Dart `fromEnvironment` → `.flowforge/dart-defines.json`, plus `--dart-define-from-file=.flowforge/dart-defines.json` added once to the Flutter Run configs (`.idea/runConfigurations/*.xml`, `.vscode/launch.json`), so Run works as before;
+     - flutter_dotenv, and Python or Node apps that load `.env` → `.env`;
+     - Vite → `.env.local`;
+  4. makes sure that file is git-ignored, and refuses if git already tracks it;
+  5. adds "don't read" rules for those files to `.claude/settings.local.json`;
+  6. edits one line, and only if that line is still what the dashboard showed. Everything is checked before the first write.
+- **Python or Node that doesn't load `.env`**: there's no file the app reads, so the box says so in one line and only saves to the Vault. Your agent's `run_app` (D43) still works.
+- **Example data** is never rewritten (409).
+- **No command with a `<placeholder>` is shown anywhere.** A command is shown only when it is complete and works. The "Copy the start command" box goes.
+
+**Why:** the user gives the key once and the app has it, with nothing to copy, run or search for. The real key stays out of code files, so git doesn't push it and an agent opening the file sees only the read.
+
+**Honest limits:**
+- The value sits in a hidden, git-ignored file next to the app, like `.env`. That is what lets Run work with no command, and it supersedes D36's "not left in files" for keys added this way. Claude Code is told not to read the file; other agents could read it.
+- A key built into an app (Flutter, Vite) is readable by anyone who has the app (D43).
+- A terminal `flutter run` needs `--dart-define-from-file=.flowforge/dart-defines.json`; the Run button doesn't.
+- A key built from parts, or read through a helper of the app's own, isn't recognised as a spot.
+
+**Code:** `security/finders.py` (`spots_in`), `security/wire.py` (`key_spots`, `add_to_code`), `api/keys.py` (`POST /keys/{name}/add-to-code`, spots in `GET /keys`), `agent/server.py` (spots in `get_keys`), the Keys page.
+
+---
+
 ## Step JSON schema (reference)
 
 ```json

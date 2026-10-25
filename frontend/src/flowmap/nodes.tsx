@@ -96,7 +96,9 @@ function Status({ d }: { d: BlockData }) {
  *  line drawn under it read as the next block's (Vishwa took Overpass's "no answer" for Supabase's). */
 function SubLine({ d }: { d: BlockData }) {
   const sub = subOf(d);
-  if (d.keyNeed === "missing") return <span className="ff-sub"><em className="ff-h key-missing">key missing · click to add</em></span>;   // D38
+  if (d.keyNeed === "missing") {   // D38; what the block is stays visible after it (Codex review)
+    return <span className="ff-sub"><em className="ff-h key-missing">key missing · click to add</em>{sub ? ` · ${sub}` : ""}</span>;
+  }
   const h = d.health ? healthCaption(d.health.status, d.health.summary, d.health.latency_ms) : "";
   if (!h) return <span className="ff-sub">{sub}</span>;
   return <span className="ff-sub"><em className={`ff-h ${d.health?.status}`}>{h}</em>{sub ? ` · ${sub}` : ""}</span>;

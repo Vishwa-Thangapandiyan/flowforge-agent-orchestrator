@@ -31,6 +31,19 @@ test("each block's result sits inside that block, never under it where the next 
   expect(document.querySelectorAll(".ff-cap .ff-h")).toHaveLength(0);   // nothing hangs below a block
 });
 
+test("a block with a missing key keeps what it is next to the notice", async () => {
+  const { render } = await import("@testing-library/react");
+  const { ReactFlowProvider } = await import("@xyflow/react");
+  const { CardNode } = await import("../flowmap/nodes");
+  const node = DEPS.nodes.find((n) => n.id === "api-nominatim")!;
+  const data = { node, tile: null, deps: true, code: false, state: "idle", cap: "", cp: false, search: null, keyNeed: "missing" };
+  const props = { id: node.id, data, selected: false } as unknown as Parameters<typeof CardNode>[0];
+  render(<ReactFlowProvider><CardNode {...props} /></ReactFlowProvider>);
+  const sub = document.querySelector(".ff-sub")!;
+  expect(sub).toHaveTextContent("key missing · click to add");
+  expect(sub).toHaveTextContent("nominatim.openstreetmap.org");
+});
+
 test("the first Check now lists what will start and waits for a yes", async () => {
   const posted: unknown[] = [];
   mockApi({

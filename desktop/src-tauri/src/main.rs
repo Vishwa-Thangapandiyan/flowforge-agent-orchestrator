@@ -106,7 +106,7 @@ fn main() {
             let port = free_port()?;
             let (mut events, child) = app
                 .shell()
-                .sidecar("flowforge-server")?
+                .sidecar("flowforge")?
                 .args(server_args(port))
                 .env("FLOWFORGE_STOP_ON_EOF", "1")
                 .spawn()?;
@@ -131,7 +131,7 @@ fn main() {
                 while let Some(event) = events.recv().await {
                     match event {
                         CommandEvent::Stderr(line) | CommandEvent::Stdout(line) => {
-                            eprintln!("[flowforge-server] {}", String::from_utf8_lossy(&line).trim_end());
+                            eprintln!("[flowforge] {}", String::from_utf8_lossy(&line).trim_end());
                         }
                         CommandEvent::Terminated(status) => {
                             show_failure(

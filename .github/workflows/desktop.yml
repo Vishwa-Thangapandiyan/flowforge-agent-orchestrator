@@ -26,7 +26,7 @@ jobs:
         with:
           workspaces: desktop/src-tauri
       - name: A stand-in for the bundled server (the real one is built for releases)
-        run: mkdir -p binaries && touch binaries/flowforge-server-x86_64-unknown-linux-gnu
+        run: mkdir -p binaries && touch binaries/flowforge-x86_64-unknown-linux-gnu
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test
@@ -71,7 +71,7 @@ jobs:
             macos-15-intel) name=flowforge-darwin-x64 ;;
           esac
           mkdir -p npx-dist
-          cp desktop/src-tauri/binaries/flowforge-server-* "npx-dist/$name"
+          cp desktop/src-tauri/binaries/flowforge-* "npx-dist/$name"   # the one program build_sidecar.py made
           echo "NPX_ASSET=$name" >> "$GITHUB_ENV"
       - name: Tauri's command line
         run: npm ci

@@ -35,7 +35,7 @@ That's all: no Python, no virtual env. The first run downloads FlowForge's ready
 | Node (most developers) | `npx flowforge-map` | ⭐ no Python needed |
 | Node, every day | `npm i -g flowforge-map`, then just `flowforge` | installs the launcher; the program comes on first run |
 | Python people | `uvx flowforge-map` or `pipx install flowforge-map` | Python 3.12+; no virtual env to manage |
-| No terminal | the desktop app (Releases) | download and open |
+| No terminal | the desktop app (Releases) | download and open; **Settings → Terminal** adds the `flowforge` command too (Linux .rpm/.deb have it already) |
 
 Every way gives the same `flowforge` command: `npx flowforge-map status`, `npx flowforge-map key add STRIPE_KEY`, and so on. Linux ARM and Windows ARM have no ready-made build yet, so `npx` uses `uvx` there.
 

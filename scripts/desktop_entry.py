@@ -1,4 +1,4 @@
-"""The desktop app's server (D42): PyInstaller freezes this into `flowforge-server`, the `flowforge` command."""
+"""The desktop app's server (D42): PyInstaller freezes this into `flowforge`, the `flowforge` command (D50)."""
 
 from flowforge.cli import main
 

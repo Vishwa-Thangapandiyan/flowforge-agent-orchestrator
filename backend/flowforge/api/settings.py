@@ -184,3 +184,21 @@ def update_check() -> dict[str, Any]:
         return {"current": current, "latest": None, "newer": False,
                 "error": "pypi.org answered with no version I can read."}
     return {"current": current, "latest": latest, "newer": newer}
+
+
+@router.get("/settings/terminal")
+def terminal_status() -> dict[str, Any]:
+    """Does `flowforge` work in a terminal, and can the desktop app add it (D50)?"""
+    from flowforge import terminal
+
+    return terminal.status()
+
+
+@router.post("/settings/terminal", dependencies=[Depends(from_this_machine)])
+def terminal_add() -> dict[str, Any]:
+    """Put `flowforge` in new terminals: only the desktop app's own program, without admin rights (D50)."""
+    from flowforge import terminal
+
+    if not terminal.status()["available"]:
+        raise HTTPException(409, "Only the desktop app adds the flowforge command. Elsewhere use npx flowforge-map.")
+    return {**terminal.add(), **terminal.status()}

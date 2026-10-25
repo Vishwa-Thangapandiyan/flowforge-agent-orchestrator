@@ -29,8 +29,7 @@ function assetFor(platform, arch, { musl = platform === "linux" && isMusl() } = 
   if (platform === "linux" && musl) return null;
   const builds = {
     "linux-x64": "flowforge-linux-x64",
-    "darwin-arm64": "flowforge-darwin-arm64",
-    "darwin-x64": "flowforge-darwin-x64",
+    "darwin-arm64": "flowforge-darwin-arm64",   // Intel Macs: not yet (v0.4.0's build didn't start there): uv fallback
     "win32-x64": "flowforge-windows-x64.exe",
   };
   return builds[`${platform}-${arch}`] ?? null;

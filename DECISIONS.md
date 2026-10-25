@@ -1520,7 +1520,7 @@ The same request with a browser's name answered in half a second.
   - its SHA-256 must match the release's `SHA256SUMS` before anything runs (a mismatch deletes the file);
   - it is written under a temporary name, then renamed;
   - arguments are a list, never a shell, and the exit code is passed through.
-- **Platforms:** linux-x64, macOS arm64 and x64, windows-x64. Any other platform, or a failed download, falls back to `uvx flowforge-map==<version>` when uv is there, else says in one line what to install.
+- **Platforms:** linux-x64, macOS arm64, windows-x64. (Intel macOS was planned, but v0.4.0's frozen program didn't start there, because its cryptography library failed to load, so Intel Macs use the fallback until that is fixed.) Any other platform, or a failed download, falls back to `uvx flowforge-map==<version>` when uv is there, else says in one line what to install.
 - **Agents:** run through npx, the Connect page gives `npx -y flowforge-map@<version> mcp`.
 - **Releases:** a `v*` tag builds the frozen program on each platform (desktop.yml), attaches it as `flowforge-<platform>` with `SHA256SUMS`, **publishes** the GitHub Release (it was a draft), then publishes the npm package. Its version must equal the Python package's.
 

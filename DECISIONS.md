@@ -1117,32 +1117,32 @@ The agent only needs the key's **name**: the code it writes reads `os.environ["S
   - `flowforge key add NAME`, typed hidden (`getpass`).
   - The dashboard's password box (`PUT /keys/{name}`, the "form door" of §6.2).
   - `flowforge key import [.env]`.
-  
+
   Each saves the value in `security/keystore.py`:
   - the OS keychain (`keyring`: macOS Keychain, Windows Credential Manager, the Secret Service on Linux), under the service `flowforge:<repo path>`;
   - else a Fernet-encrypted file in `FLOWFORGE_HOME/keys/`, whose key is `FLOWFORGE_MASTER_KEY` or `FLOWFORGE_HOME/master.key` (mode 0600, §6.3). The file store is used when no keychain works (CI, a headless Linux) or when `FLOWFORGE_KEYSTORE=file`.
-  
+
   Keychains can't list their entries, so the **names** (never values) are kept in `FLOWFORGE_HOME/keys.json`. Keys belong to one repo folder.
 - **Two ways out.**
   - `flowforge run -- CMD …` starts the user's app with the keys added to its environment. It is a list, never a shell, and the exit code is passed through.
   - The redactor learns every saved value, so a value that reaches a log, a stored row or an answer is masked.
-  
+
   No route, MCP tool or page returns a value, and no MCP tool takes one.
 - **Four statuses**, for each env name the code reads that looks like a key (`is_secret_name`, D31):
   - **saved** in FlowForge, and read back to confirm it (Codex review: a key the keychain or file won't give back is **can't read**, offered to save again, because `flowforge run` couldn't pass it on). The agent's MCP server reads no value, so its "saved" means "on record";
   - **in .env**: only the name is read from the file, and each value is dropped as its line is read;
   - **missing**.
-  
+
   The names and where they are read come from the scan as it is (`Dependency.env_names`, `ScanResult.env_names`), so `READER` doesn't change.
-  
+
   A key belongs to a dependency when the scan sees it read on the dependency's own lines; else when its name names the service (`STRIPE_SECRET_KEY` → Stripe); else when its file has only one dependency.
 - **On the map** (D33: no new page or header control):
   - a 🔑 badge on a block whose keys are missing (amber) or only in `.env` (grey);
   - a "Keys" part in the ⚠ chip;
   - the block's keys in the step panel.
-  
+
   Each key offers the command to copy and a password box (`autocomplete=off`, emptied after it saves). Example mode shows the statuses but saves nothing (409).
-  
+
   Saving or forgetting a key answers only to the dashboard's own address: a Host of `localhost`, `127.0.0.1`, `::1` or the `FLOWFORGE_HOST` chosen, and an Origin, if sent, of the same. Otherwise a web page could swap in its own key (its own Stripe account, say) through DNS rebinding. On a dashboard bound to `0.0.0.0` and opened from another machine, keys are added with the CLI. *(Changed by D37: the caller's real address must be this machine, and `FLOWFORGE_HOST` no longer counts.)*
 - **For the agent:** a seventh read-only MCP tool, `get_keys`. It returns names, statuses, where each is read, which dependencies use it, and the command to ask the user to run. The MCP server, which the agent starts, never reads a value: not even to mask with.
 - **No sign-in, no 2FA, no page that shows keys.** FlowForge is local and single-user (§6.5). A page that shows keys is a place keys leak (a screen share, a screenshot). The keychain is already locked by the user's login. To see a key, use the provider's dashboard.
@@ -1174,11 +1174,11 @@ The rule from D36 stays: the coding agent never gets a value from FlowForge.
   - **Fix** handles a key written as a whole string literal in Python code, or in JavaScript or TypeScript that shows it runs on Node (`require`, `node:` or server imports, or `process.env` already; nothing of `window`, `document` or `import.meta.env`). Browser code goes to the agent (Codex review): a browser has no `process`, and a key bundled into a web page is public anyway. FlowForge works out the change without an LLM:
     - the value goes to the key store (D36), and `flowforge run` gives it to the app;
     - the literal becomes `os.environ["NAME"]` (adding `import os` when the file lacks it) or `process.env.NAME`.
-    
+
     A key in `.mcp.json` goes to the agent (Codex review). The coding tool would read `${NAME}` from its own environment, and FlowForge must not fill that environment, because the agent runs in it.
-    
+
     First a preview shows the diff with the key masked. Approve makes the change on a new branch, `flowforge/fix-…`, in a temporary `git worktree`, committed as the user. The branch the user works on is never touched, and the user merges when ready (§9.3).
-    
+
     FlowForge refuses, and offers Send to agent instead, when the folder isn't a git repo or the file has uncommitted changes. The commit never holds the key. The fix still says to replace the key, because older commits do.
   - **Send to agent** covers what needs judgment: a key in `.mcp.json` or Dart, `http://` (the service may have no https), an unpinned server (which version?), a server given the whole disk (which folder?). The issue joins a queue that the agent reads with an eighth MCP tool, `get_fix_requests` (masked, like every answer). An issue leaves the queue when a re-scan no longer finds it. FlowForge doesn't start the agent: the page says to tell it "do the FlowForge fixes" (Phase 10 runs it).
   - Example mode previews every fix and applies none.
@@ -1219,7 +1219,7 @@ The rule from D36 stays: the coding agent never gets a value from FlowForge.
 - **The agent asks (amends D29).** Two MCP tools, neither of which ever holds a value:
   - `request_key(name, why)` records a request: the env name, one line of why, the folder. It is the one tool that writes anything, and it writes only that request.
   - `wait_for_keys(names, seconds)` returns as soon as each key is saved, or when the time is up (at most 110 s; call again to keep waiting). It reads the store's list of names, never a value.
-  
+
   The Keys page shows requests first ("Your agent is waiting for …"). A request counts in the rail and clears once its key is saved. When a request arrives, the map shows "Your agent asked for a key · Review", which opens the usual re-scan diff, so the user sees what the agent added before it lands on the map (D17).
 - **The Keys page** only adds keys. The order is the agent's requests, then missing, then in `.env`, then saved (folded). The `flowforge run` line is one short row with Copy.
 - **The Vault (amends D37).** A rail page of its own, `/vault`, and the only place values show.
@@ -1260,7 +1260,7 @@ This is step ① of Vishwa's order (① projects, ② settings + first run, ③ 
   - each tool takes an optional `project` (an id or a name);
   - without one, it answers about the project whose folder holds the agent's working directory, else the last one opened;
   - a new read-only tool, `list_projects`, lists every project with its status.
-  
+
   `flowforge mcp --repo PATH` still works as before. The screen that pairs the agent belongs to step ② (Settings + first run).
 - Removing a project from FlowForge deletes only FlowForge's copy of its map and checks, after you confirm. It never touches the folder. Removing the default project hands over to the project opened most recently; with none left, FlowForge offers to scan a folder (Codex review).
 - **Amends D21:** a different folder is a new project, so `--replace` and the one-folder rule go. `flowforge --repo PATH` opens that folder's project, adding it if new.
@@ -1285,7 +1285,7 @@ D39 left pairing the agent once to this step.
   1. **your app:** a folder to map, or the example;
   2. **your agent:** one line for Claude Code, Codex or Antigravity that serves every project (`flowforge mcp` with no folder, D39), then "Waiting for your agent…" until its first call;
   3. **your keys:** the Vault's lock, a password then an authenticator code (D37), optional.
-  
+
   Finishing or skipping sets `welcome_done` in `FLOWFORGE_HOME/settings.json`, which never holds a secret.
 - **Settings** (`/settings`, for every project) sits behind a ⚙ at the bottom of the rail. The theme moves out of the rail into it. Four cards:
   - **Your agent:** connected or not (the newest call in any project) and the pair-once line per agent.
@@ -1338,7 +1338,7 @@ D39 left pairing the agent once to this step.
   2. starts `flowforge-server serve --no-open --port N`;
   3. shows "Starting FlowForge…" until `/meta` answers;
   4. then points the window at `http://127.0.0.1:N/`.
-  
+
   Closing the window stops the server. A second launch focuses the window that's already open (single instance).
 - **The bundled binary is the `flowforge` command.** `home.install_kind()` says `desktop` when frozen, so Settings pairs the agent with `<the bundled binary> mcp` (D39, D40). That is a full path, so an agent started without your shell's PATH still finds it.
 - **What only the desktop app adds:** a **Browse…** button beside the folder box, opening the system's folder picker (D39 left this to ④). The dialog is the only native power the page gets, and only for `http://127.0.0.1:*`.
@@ -1371,15 +1371,15 @@ Masking is FlowForge's job and the user shouldn't have to think about it. The co
   - code that reads the env var `NAME`;
   - a command-line argument, e.g. `--dart-define=NAME=ffkey://NAME`;
   - a `.env` line `NAME=ffkey://NAME`. FlowForge sets the real `NAME` first, and `.env` loaders keep a variable that is already set (python-dotenv's default, like Node's dotenv and Vite).
-  
+
   Other files (YAML, JSON, a bundled asset such as flutter_dotenv's) are never filled, because that would write the key to disk: there, read the env var (Codex review).
-  
+
   The agent's MCP server still never reads a value (D36).
 - **The run happens in the dashboard's process**, which holds the keys, never in the agent's.
   - `run_app` (MCP) asks the running FlowForge, the desktop app or `flowforge`, through `FLOWFORGE_HOME/server.json`. That file holds its port and a random token, mode 0600.
   - With no FlowForge running, the tool says to open it.
 - **You approve each new command once** (Vishwa's choice, to try out). The first time the agent asks to run a command (its exact argument list) in a project, every page shows "Your agent wants to run … with KEY (masked)" with Allow / Deny. After Allow, the same command runs without asking.
-  
+
   The setting `approve_runs` (on by default) can turn the question off later. Approval is what stops anyone from using FlowForge itself to leak a key with a crafted command.
 - **The runner is plain code doing what you would do by hand:**
   - It runs an argument list, never a shell, in the project's folder.
@@ -1409,7 +1409,7 @@ Masking is FlowForge's job and the user shouldn't have to think about it. The co
   - a key-like name given a placeholder: `apiKey = "ENTER KEY HERE"`, `""`, `"your-api-key"`, `"xxx"`;
   - a line that already reads the key: `String.fromEnvironment('SUPABASE_ANON_KEY')`, `os.environ["X"]`, `process.env.X`, `import.meta.env.VITE_X`, `dotenv.env['X']`;
   - a real key written in the open (D31's `key_in_code`).
-  
+
   Python is read by the AST; Dart, JS and TS by patterns.
 - **One click** (`security/wire.py`, `add_to_code`). It writes **directly to the working files**: no branch, no commit, so the change shows in `git diff`. This supersedes D37's "a fix is a branch" for key spots only. It:
   1. saves the value in the Vault (D36's store), before any file, so a key moved out of the code is never lost if the Vault fails (Codex review);

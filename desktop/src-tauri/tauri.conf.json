@@ -17,7 +17,7 @@
     "category": "DeveloperTool",
     "shortDescription": "Map what your app depends on, and keep it healthy and safe",
     "longDescription": "FlowForge reads your repo (nothing is run or sent) and maps every LLM, MCP server, HTTP API and local program it calls, checks their health and security, and keeps your keys away from your coding agent.",
-    "externalBin": ["binaries/flowforge-server"],
+    "externalBin": ["binaries/flowforge"],
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"]
   }
 }

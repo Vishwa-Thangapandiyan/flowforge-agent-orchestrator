@@ -17,7 +17,47 @@ const THEME_CHOICES: { id: Theme; label: string; icon: (s?: number) => ReactNode
 ];
 
 const REFRESH_MS = 3000;
-const INSTALL_WORD = { checkout: "from source", desktop: "as the desktop app", uvx: "with uvx", pip: "with pip" };
+const INSTALL_WORD = { checkout: "from source", desktop: "as the desktop app", npx: "with npx", uvx: "with uvx", pip: "with pip" };
+
+interface TerminalStatus { available: boolean; works: boolean; ours: boolean; finds: string | null; system: string }
+
+/** The desktop app puts `flowforge` in your terminal (D50): one install for the window, the command and your agent. */
+function Terminal() {
+  const status = useApi<TerminalStatus>("/settings/terminal");
+  const [busy, setBusy] = useState(false);
+  const [said, setSaid] = useState<string>();
+  const t = status.data;
+  if (!t?.available) return null;
+  const add = async () => {
+    setBusy(true);
+    try {
+      const done = await api.post<{ message: string }>("/settings/terminal");
+      setSaid(done.message);
+      status.reload();
+    } catch (err) {
+      setSaid(err instanceof Error ? err.message : "That didn't work");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="card st-card" aria-labelledby="st-terminal">
+      <h2 id="st-terminal">{Icons.code(18)} Terminal</h2>
+      {t.works && t.ours ? (
+        <p className="st-ok">{Icons.check(14)} <code>flowforge</code> works in your terminal.</p>
+      ) : (
+        <>
+          <p>Use FlowForge from a terminal too: <code>flowforge status</code>, <code>flowforge key add</code>.</p>
+          {t.works && <p className="st-note">A different <code>flowforge</code> comes first now: {t.finds}</p>}
+          <button className="btn primary" type="button" disabled={busy} onClick={() => void add()}>
+            Add the <code>flowforge</code> command to my terminal
+          </button>
+        </>
+      )}
+      {said && <p className="st-note" role="status">{said}</p>}
+    </section>
+  );
+}
 
 function Look() {
   const [theme, setTheme] = useState<Theme>(readTheme);
@@ -172,6 +212,7 @@ export function SettingsPage() {
         </div>
         <Look />
         <Vault data={data} />
+        <Terminal />
         <Data data={data} onChanged={loaded.reload} />
       </div>
     </div>

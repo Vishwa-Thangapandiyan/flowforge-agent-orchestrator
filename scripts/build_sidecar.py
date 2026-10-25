@@ -1,5 +1,5 @@
 """Build the desktop app's server (D42): FlowForge's wheel, frozen by PyInstaller into one file named the way Tauri
-expects a sidecar (`flowforge-server-<target triple>`), then smoke-tested.
+expects a sidecar (`flowforge-<target triple>`; installed as the `flowforge` command, D50), then smoke-tested.
 
     uv run python scripts/build_sidecar.py           # needs frontend/dist (npm run build in frontend/)
     uv run python scripts/build_sidecar.py --skip-smoke
@@ -46,13 +46,13 @@ def build() -> Path:
     python = venv / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
     wheel = next((WORK / "wheel").glob("*.whl"))
     run("uv", "pip", "install", "-q", "--python", python, wheel, "pyinstaller>=6")
-    run(python, "-m", "PyInstaller", ROOT / "scripts" / "desktop_entry.py", "--name", "flowforge-server", "--onefile",
+    run(python, "-m", "PyInstaller", ROOT / "scripts" / "desktop_entry.py", "--name", "flowforge", "--onefile",
         "--noconfirm", "--distpath", WORK / "dist", "--workpath", WORK / "work", "--specpath", WORK,
         "--collect-all", "flowforge", "--copy-metadata", "flowforge-map",   # home.version() reads the metadata
         "--collect-submodules", "uvicorn", "--collect-submodules", "keyring")   # mcp: from imports (not its cli)
     BINARIES.mkdir(parents=True, exist_ok=True)
-    target = BINARIES / f"flowforge-server-{target_triple()}{EXE}"
-    shutil.copy2(WORK / "dist" / f"flowforge-server{EXE}", target)
+    target = BINARIES / f"flowforge-{target_triple()}{EXE}"
+    shutil.copy2(WORK / "dist" / f"flowforge{EXE}", target)
     print(f"built {target} ({target.stat().st_size // 2**20} MB)", flush=True)
     return target
 

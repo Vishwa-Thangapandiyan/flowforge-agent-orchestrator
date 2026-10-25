@@ -16,7 +16,7 @@ export interface SettingsData {
   approve_runs: boolean;
   map_style: GraphTheme | null;
   version: string;
-  install: "checkout" | "desktop" | "uvx" | "pip";
+  install: "checkout" | "desktop" | "npx" | "uvx" | "pip";
   home: string;
   total_bytes: number;
   projects: ProjectData[];

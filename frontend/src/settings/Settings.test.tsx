@@ -102,3 +102,26 @@ test("Settings turns to Connected when your agent's first question arrives while
   expect(agent).toHaveTextContent("Waiting for your agent's first question");
   await vi.waitFor(() => expect(agent).toHaveTextContent("Connected"), { timeout: 8000 });
 });
+
+test("the desktop app's Settings adds the flowforge command to the terminal (D50)", async () => {
+  let added = false;
+  const calls = api({
+    "/settings/terminal": (init?: RequestInit) => {
+      if (init?.method === "POST") { added = true; return { message: "Done. Open a new terminal and type: flowforge status" }; }
+      return { available: true, works: added, ours: added, finds: added ? "/x/flowforge" : null, system: "macos" };
+    },
+  });
+  renderAt("/settings");
+  const card = await screen.findByRole("region", { name: /Terminal/ });
+  await userEvent.click(within(card).getByRole("button", { name: /Add the flowforge command/ }));
+  expect(calls.some((c) => c.url === "/settings/terminal" && c.init?.method === "POST")).toBe(true);
+  expect(await within(card).findByText(/Open a new terminal/)).toBeInTheDocument();
+  expect(await within(card).findByText(/works in your terminal/)).toBeInTheDocument();
+});
+
+test("outside the desktop app there is no Terminal card", async () => {
+  api({ "/settings/terminal": { available: false, works: true, ours: false, finds: null, system: "linux" } });
+  renderAt("/settings");
+  await screen.findByRole("region", { name: /Your agent · paired once/ });
+  expect(screen.queryByRole("region", { name: /Terminal/ })).not.toBeInTheDocument();
+});

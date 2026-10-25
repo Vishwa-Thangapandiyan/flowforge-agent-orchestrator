@@ -37,3 +37,4 @@
 @media (max-width: 760px) { .st-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; } .st-agent { grid-row: auto; } }
 .st-check { justify-content: flex-start; gap: 8px; font-size: 13.5px; cursor: pointer; }
 .st-check input { width: 16px; height: 16px; accent-color: var(--teal); }
+.st-ok { display: flex; align-items: center; gap: 6px; color: var(--teal-ink); }   /* the Terminal card: flowforge works (D50) */

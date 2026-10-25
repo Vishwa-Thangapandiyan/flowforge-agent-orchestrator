@@ -75,12 +75,12 @@ def test_a_bundled_desktop_app_is_its_own_command(monkeypatch):
 
     monkeypatch.setattr(home, "IN_CHECKOUT", False)
     monkeypatch.setattr(sys, "frozen", True, raising=False)
-    monkeypatch.setattr(sys, "executable", "/Applications/FlowForge.app/Contents/MacOS/flowforge-server")
+    monkeypatch.setattr(sys, "executable", "/Applications/FlowForge.app/Contents/MacOS/flowforge")
     assert home.install_kind() == "desktop"
-    assert server_command(None, None) == ["/Applications/FlowForge.app/Contents/MacOS/flowforge-server", "mcp"]
+    assert server_command(None, None) == ["/Applications/FlowForge.app/Contents/MacOS/flowforge", "mcp"]
     assert server_command("/home/me/app", "/x.db")[1:] == ["mcp", "--repo", "/home/me/app", "--db", "/x.db"]
     assert home.command_line("key", "add", "A_KEY") == \
-        "/Applications/FlowForge.app/Contents/MacOS/flowforge-server key add A_KEY"
+        "/Applications/FlowForge.app/Contents/MacOS/flowforge key add A_KEY"
 
 
 def test_the_desktop_apps_server_stops_when_the_app_is_gone(tmp_path):
@@ -120,8 +120,8 @@ def test_a_desktop_development_build_never_hands_out_its_build_path(monkeypatch)
     monkeypatch.setattr(sys, "executable", "/home/me/flowforge/desktop/src-tauri/target/debug/flowforge-server")
     line = home.command_line("key", "add", "API_KEY")
     assert "target/debug" not in line and line.split()[0] in ("flowforge", "uvx") and line.endswith("key add API_KEY")
-    monkeypatch.setattr(sys, "executable", "/opt/FlowForge/flowforge-server")   # an installed app: its own path
-    assert home.command_line("key", "list").startswith("/opt/FlowForge/flowforge-server")
+    monkeypatch.setattr(sys, "executable", "/opt/FlowForge/flowforge")   # an installed app: its own path
+    assert home.command_line("key", "list").startswith("/opt/FlowForge/flowforge")
 
 
 def test_started_by_npx_the_agent_and_you_get_npx_commands(monkeypatch):

@@ -1535,6 +1535,30 @@ The same request with a browser's name answered in half a second.
 
 ---
 
+## D50. One install does everything: the window, the `flowforge` command, the agent (Vishwa, 2026-10-25)
+
+**Context.** Vishwa: a friend who installs the desktop app should also get the terminal command; installing two things "on every OS" is a let-down. Also, `flowforge` opened the browser on a 1.5 s timer, so a slow start showed a page that needed a refresh.
+
+**Choice:**
+- **The browser opens when FlowForge answers.** `flowforge` (and `npx flowforge-map`) waits until `/meta` answers, for up to 60 s, then opens the page. A start that never answers opens nothing and says so.
+- **The desktop app's bundled program is named `flowforge`** (it was `flowforge-server`). The Linux `.deb` and `.rpm` put it in `/usr/bin`, so after installing the app, `flowforge` works in a terminal with nothing else to do.
+- **Windows and macOS: Settings → "Add the `flowforge` command to my terminal".** No admin rights:
+  - on Windows it adds the app's folder to your user `Path`;
+  - on macOS it links `~/.flowforge/cmd/flowforge` to the app's program and adds that folder to `PATH` in `~/.zprofile` and `~/.bash_profile`, once.
+  
+  The card says when `flowforge` already works, and which program it finds. Only the desktop app shows the button.
+
+**Why:** one download gives the window, the command and the agent's pairing.
+
+**Honest limits:**
+- A terminal already open keeps its old `PATH`; open a new one.
+- The Linux AppImage has no fixed place to link to: use the `.deb`/`.rpm`, or `npx`.
+- An agent paired before the rename pointed at `flowforge-server`: pair it again from Settings.
+
+**Code:** `cli.py` (`open_when_ready`), `scripts/build_sidecar.py`, `desktop/src-tauri` (sidecar `flowforge`), `api/settings.py` (`/settings/terminal`), Settings' Terminal card.
+
+---
+
 ## Step JSON schema (reference)
 
 ```json

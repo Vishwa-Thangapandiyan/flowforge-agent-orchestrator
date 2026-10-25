@@ -18,8 +18,10 @@ import json
 import os
 import sys
 import threading
+import time
 import webbrowser
 from pathlib import Path
+from typing import Any
 
 from flowforge.home import flowforge_home, resource, version
 
@@ -46,6 +48,29 @@ def parse(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--no-open", action="store_true", help="don't open the browser")
     parser.add_argument("--reload", action="store_true", help="restart when Python files change (development)")
     return parser.parse_args(argv)
+
+
+def browser_url(host: str, port: int) -> str:
+    """Where the page opens: this machine (D47), also when FlowForge listens on every address."""
+    return f"http://{'127.0.0.1' if host in ('0.0.0.0', '::', '') else host}:{port}/"
+
+
+def open_when_ready(url: str, *, opener: Any = webbrowser.open, timeout: float = 60, interval: float = 0.25) -> bool:
+    """Open `url` once FlowForge answers there (`/meta`), at most `timeout` seconds after starting (D50)."""
+    import urllib.request
+
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            with urllib.request.urlopen(f"{url}meta", timeout=2) as r:
+                if r.status == 200:
+                    opener(url)
+                    return True
+        except OSError:
+            pass
+        time.sleep(interval)
+    print(f"FlowForge didn't answer at {url} within {timeout:g} s: open it yourself when it's ready.", file=sys.stderr)
+    return False
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -91,12 +116,12 @@ def main(argv: list[str] | None = None) -> None:
         os.environ.setdefault("FLOWFORGE_DB", str(flowforge_home() / "example.db"))
         flowforge_home().mkdir(parents=True, exist_ok=True)
     banner(console(plain))
-    url = f"http://{args.host}:{args.port}/"
+    url = browser_url(args.host, args.port)
     if not DIST.exists():
         print("The dashboard isn't built yet: run `npm run build` in frontend/ (the classic page is at /classic).")
     print(f"FlowForge{' (example data)' if args.example else ''} at {url}")
-    if not args.no_open:
-        threading.Timer(1.5, webbrowser.open, args=(url,)).start()
+    if not args.no_open:   # when it answers, not on a timer: no page that needs a refresh (D50)
+        threading.Thread(target=open_when_ready, args=(url,), daemon=True).start()
     if os.getenv("FLOWFORGE_STOP_ON_EOF") == "1":
         stop_when_parent_is_gone()
     os.environ["FLOWFORGE_PORT"] = str(args.port)   # server.json tells the agent's MCP server where this is (D43)

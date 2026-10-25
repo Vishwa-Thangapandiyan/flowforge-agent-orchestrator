@@ -153,6 +153,7 @@ The key goes where your app reads it, and **never into a code file**:
 - A real key written in the code gets **Hide it**: one click moves it out the same way.
 - The file is git-ignored, and nothing is committed: you see the change in `git diff`.
 - An app that loads no file gets **Save**, and the Keys page says why.
+- The settings a key needs come too: `SUPABASE_URL` is listed under **Your app also needs**, filled in from your Supabase key, with the same **Add to code** (a setting isn't secret, so it doesn't go to the Vault).
 
 **With an agent**, the agent never gets a key; it gets a **mask**:
 

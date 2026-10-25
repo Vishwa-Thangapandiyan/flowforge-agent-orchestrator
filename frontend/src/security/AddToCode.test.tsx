@@ -140,3 +140,18 @@ test("a setting the key needs is offered too, filled in, in a plain box, and goe
   expect(await within(section).findByText("✓ in your app")).toBeInTheDocument();
   expect(screen.getByRole("status")).toHaveTextContent("SUPABASE_URL is in your app. Press Run as always.");
 });
+
+test("a suggestion that arrives after the box is shown still fills it, unless you typed (found by running it)", async () => {
+  const { render } = await import("@testing-library/react");
+  const { SettingRow } = await import("./Keys");
+  const base = { ...spot("SUPABASE_URL", "setting", "lib/dev/app_config.dart:7", "dart-defines"), kind: "setting" as const, in_app: false };
+  const { rerender } = render(<ul><SettingRow st={{ ...base, suggestion: null }} onSaved={() => {}} /></ul>);
+  const box = screen.getByLabelText("Value of SUPABASE_URL");
+  expect(box).toHaveValue("");
+  rerender(<ul><SettingRow st={{ ...base, suggestion: "https://p12345.supabase.co" }} onSaved={() => {}} /></ul>);
+  expect(box).toHaveValue("https://p12345.supabase.co");
+  await userEvent.clear(box);
+  await userEvent.type(box, "https://mine.example");
+  rerender(<ul><SettingRow st={{ ...base, suggestion: "https://other.supabase.co" }} onSaved={() => {}} /></ul>);
+  expect(box).toHaveValue("https://mine.example");   // what you typed wins
+});

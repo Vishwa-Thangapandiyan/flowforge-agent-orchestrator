@@ -1,7 +1,7 @@
 // Keys the coding agent never sees (D36, D37): each key the code reads, whether FlowForge has it, and one button or
 // box that fixes it, with no command to copy. A value typed here goes to the server once and is cleared at once;
 // nothing ever sends one back.
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { api } from "../api/client";
 import { Icons } from "../components/icons";
 import { useCopy } from "./Security";
@@ -11,7 +11,7 @@ export type KeyStatus = "saved" | "unreadable" | "env_file" | "missing";
 /** Where a key goes in the code, for "Add to code" (D44) */
 export interface KeySpot {
   name: string;
-  kind: "reads" | "placeholder" | "open";
+  kind: "reads" | "placeholder" | "open" | "setting";
   ref: string;
   /** the file the app reads it from; null when the app reads none */
   sink: string | null;
@@ -227,6 +227,10 @@ export function SettingRow({ st, example, onSaved, onAdded }: {
   st: SettingInfo; example?: boolean; onSaved: () => void; onAdded?: (added: Added) => void;
 }) {
   const [value, setValue] = useState(st.suggestion ?? "");
+  const [typed, setTyped] = useState(false);
+  useEffect(() => {   // a suggestion can arrive after the box is shown (the key saved a moment ago)
+    if (!typed && st.suggestion) setValue(st.suggestion);
+  }, [st.suggestion, typed]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const add = async (e: FormEvent) => {
@@ -256,7 +260,7 @@ export function SettingRow({ st, example, onSaved, onAdded }: {
       {!st.in_app && st.sink && !example && (
         <form className="key-box" onSubmit={add}>
           <input type="text" autoComplete="off" spellCheck={false} value={value} aria-label={`Value of ${st.name}`}
-            placeholder="https://…" onChange={(e) => setValue(e.target.value)} />
+            placeholder="https://…" onChange={(e) => { setTyped(true); setValue(e.target.value); }} />
           <button className="btn sm primary" type="submit" disabled={busy || !value.trim()}>{Icons.code(14)} Add to code</button>
         </form>
       )}

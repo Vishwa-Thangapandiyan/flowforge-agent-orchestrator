@@ -16,7 +16,7 @@ test("Settings has four cards for every project, and nothing secret", async () =
   api();
   renderAt("/settings");
   expect(await screen.findByRole("heading", { level: 1, name: "Settings" })).toBeInTheDocument();
-  expect(screen.getByRole("region", { name: /Your agent · paired once/ })).toHaveTextContent("Connected");
+  expect(await screen.findByRole("region", { name: /Your agent · paired once/ })).toHaveTextContent("Connected");
   const vault = screen.getByRole("region", { name: /Keys & Vault/ });
   expect(vault).toHaveTextContent("Set");
   expect(vault).toHaveTextContent("your keychain");

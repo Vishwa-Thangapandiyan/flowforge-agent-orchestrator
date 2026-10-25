@@ -247,3 +247,19 @@ def test_a_damaged_key_file_can_be_saved_over_and_removed_from(tmp_path):
     store._file_path().write_bytes(b"damaged again")
     assert store.remove("B_KEY") is True and store.names() == ["A_KEY"]
     assert len(list(store._file_path().parent.glob("*.unreadable-*"))) == 2   # both kept
+
+
+def test_two_processes_adding_keys_at_once_lose_none(tmp_path):
+    """keys.json is read, changed and written: two `flowforge key add` at the same moment must not lose a name."""
+    import subprocess
+    import sys
+
+    script = ("import sys\nfrom pathlib import Path\nfrom flowforge.security.keystore import KeyStore\n"
+              "s = KeyStore(Path(sys.argv[1]))\n"
+              "for i in range(15):\n    s.add(f'{sys.argv[2]}_{i}_KEY', 'sk_test_FAKEFAKE12345678')\n")
+    env = {**os.environ, "FLOWFORGE_KEYSTORE": "file"}
+    procs = [subprocess.Popen([sys.executable, "-c", script, str(tmp_path), who], env=env) for who in ("A", "B")]
+    assert all(p.wait(timeout=120) == 0 for p in procs)
+    names = KeyStore(tmp_path).names()
+    assert len(names) == 30, f"lost {30 - len(names)} names"
+    assert len(KeyStore(tmp_path).env()) == 30   # and their values

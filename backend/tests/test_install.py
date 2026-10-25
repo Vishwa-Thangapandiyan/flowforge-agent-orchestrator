@@ -112,3 +112,13 @@ def test_the_desktop_apps_server_stops_when_the_app_is_gone(tmp_path):
     finally:
         if server.poll() is None:
             server.kill()
+
+
+def test_a_desktop_development_build_never_hands_out_its_build_path(monkeypatch):
+    """A cargo build's binary moves with every rebuild (desktop/src-tauri/target/debug/…): never put it in a command."""
+    monkeypatch.setattr(home, "install_kind", lambda: "desktop")
+    monkeypatch.setattr(sys, "executable", "/home/me/flowforge/desktop/src-tauri/target/debug/flowforge-server")
+    line = home.command_line("key", "add", "API_KEY")
+    assert "target/debug" not in line and line.split()[0] in ("flowforge", "uvx") and line.endswith("key add API_KEY")
+    monkeypatch.setattr(sys, "executable", "/opt/FlowForge/flowforge-server")   # an installed app: its own path
+    assert home.command_line("key", "list").startswith("/opt/FlowForge/flowforge-server")

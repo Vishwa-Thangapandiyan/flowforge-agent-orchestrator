@@ -47,6 +47,12 @@ def install_kind() -> str:
     return "uvx" if "archive-v" in Path(sys.prefix).as_posix() else "pip"
 
 
+def _cargo_build(path: Path) -> bool:
+    """A binary inside a Rust `target/debug` or `target/release` folder: a desktop development build."""
+    parts = [p.lower() for p in path.parts]
+    return any(a == "target" and b in ("debug", "release") for a, b in zip(parts, parts[1:], strict=False))
+
+
 def command_line(*args: str) -> str:
     """A `flowforge …` command for a person to type, matching how FlowForge was installed (D34, D36)."""
     import shlex
@@ -56,8 +62,12 @@ def command_line(*args: str) -> str:
         prefix = ["uv", "--directory", str(CHECKOUT), "run", "flowforge"]
     elif kind == "uvx":
         prefix = ["uvx", DIST_NAME]
-    elif kind == "desktop":   # the app's bundled binary, by its full path (D42)
+    elif kind == "desktop" and not _cargo_build(Path(sys.executable)):   # the installed app's binary (D42)
         prefix = [sys.executable]
+    elif kind == "desktop":   # a development build moves with every rebuild: the command that stays
+        import shutil
+
+        prefix = ["flowforge"] if shutil.which("flowforge") else ["uvx", DIST_NAME]
     else:
         prefix = ["flowforge"]
     return shlex.join([*prefix, *args])

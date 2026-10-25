@@ -86,3 +86,25 @@ def test_a_saved_key_that_cant_be_read_says_so(shop):
         opened(c)
         rows = {r["name"]: r for r in c.get("/vault/keys").json()["keys"]}
     assert rows["STRIPE_SECRET_KEY"]["health"] == ["can't read"]
+
+
+def test_the_vault_opens_and_stays_open_through_a_projects_address(shop, tmp_path):
+    """The loop Vishwa hit: the dashboard calls /p/<project>/lock/…, and step 2's ticket was scoped to Path=/lock, so
+    the browser never sent it to /p/<project>/lock/code and the Vault asked for the password again, forever."""
+    blog = tmp_path / "blog"
+    blog.mkdir()
+    (blog / "app.py").write_text("import httpx\nhttpx.get('https://api.blog.test/v1')\n")
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
+        secret = secret_of(c.post("/p/shop/lock/setup", json={"password": "correct horse"}).json()["uri"])
+        c.post("/p/shop/lock/confirm", json={"password": "correct horse", "code": totp(secret, time.time())})
+        assert c.post("/p/shop/lock/password", json={"password": "correct horse"}).status_code == 200
+        step = c.cookies.jar
+        ticket = next(k for k in step if k.name == "ff_vault_step")
+        assert ticket.path == "/" and ticket.has_nonstandard_attr("HttpOnly")
+        r = c.post("/p/shop/lock/code", json={"code": totp(secret, time.time() + 30)})
+        assert r.status_code == 200 and r.json()["open"] is True
+        assert not any(k.name == "ff_vault_step" for k in c.cookies.jar)   # used once
+        assert c.get("/p/shop/lock").json()["open"] is True                 # a reload
+        assert c.get("/p/shop/vault/keys").status_code == 200                # another page
+        assert c.post("/projects", json={"path": str(blog)}).status_code == 201
+        assert c.get("/p/blog/lock").json()["open"] is True                  # one lock for every project (D39)

@@ -151,7 +151,9 @@ def vault_password(body: Password, response: Response) -> dict[str, Any]:
         ticket = Lock().password(body.password)
     except LockError as e:
         raise HTTPException(403, str(e)) from None
-    response.set_cookie(STEP_COOKIE, ticket, max_age=HALF_S, httponly=True, samesite="strict", path="/lock")
+    # Path=/: the dashboard calls /p/<project>/lock/code (D39); a narrower path kept the ticket from step 2, so the
+    # Vault asked for the password again, forever
+    response.set_cookie(STEP_COOKIE, ticket, max_age=HALF_S, httponly=True, samesite="strict", path="/")
     _no_store(response)
     return {"next": "code", "seconds_left": HALF_S}
 
@@ -164,7 +166,7 @@ def vault_code(body: Code, request: Request, response: Response) -> dict[str, An
         token = lock.code(request.cookies.get(STEP_COOKIE), body.code)
     except LockError as e:
         raise HTTPException(403, str(e)) from None
-    response.delete_cookie(STEP_COOKIE, path="/lock")
+    response.delete_cookie(STEP_COOKIE, path="/")
     response.set_cookie(COOKIE, token, max_age=SESSION_S, httponly=True, samesite="strict", path="/")
     _no_store(response)
     return {"open": True, "seconds_left": lock.seconds_left(token)}

@@ -347,6 +347,8 @@ def _bare_url(value: str) -> str | None:
         port = parts.port
     except ValueError:   # a port that isn't a number
         return None
+    if port is not None and not 0 < port < 65536:   # Python lets 70000 through (Codex review)
+        return None
     if parts.scheme not in ("http", "https") or not parts.hostname or re.search(r"\s", value.strip()):
         return None   # the whole URL, not just how it starts (Codex review)
     host = f"[{parts.hostname}]" if ":" in parts.hostname else parts.hostname

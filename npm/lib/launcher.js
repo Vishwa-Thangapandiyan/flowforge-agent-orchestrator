@@ -51,19 +51,42 @@ function parseSums(text) {
   return out;
 }
 
-/** GET `url`, following redirects only to trusted hosts. Returns the body as a Buffer. */
-async function fetchTrusted(url, trusted, maxRedirects = 5) {
+const STALL_MS = 30000;   // no data for this long: the download has stalled (a slow one that moves goes on)
+
+/** GET `url`, following redirects only to trusted hosts. Returns the body as a Buffer. Gives up when no data
+ *  arrives for `stallMs`, so a stalled download reaches the fallback instead of waiting forever (Codex review). */
+async function fetchTrusted(url, trusted, { stallMs = STALL_MS, maxRedirects = 5 } = {}) {
   let current = url;
   for (let hop = 0; hop <= maxRedirects; hop++) {
     const host = new URL(current).host;
     if (!trusted(host)) throw new Error(`refused a download from ${host}: not this release's host`);
-    const res = await fetch(current, { redirect: "manual", headers: { "user-agent": `${PACKAGE}-npx` } });
-    if (res.status >= 300 && res.status < 400 && res.headers.get("location")) {
-      current = new URL(res.headers.get("location"), current).toString();
-      continue;
+    const abort = new AbortController();
+    let timer = setTimeout(() => abort.abort(), stallMs);
+    const alive = () => { clearTimeout(timer); timer = setTimeout(() => abort.abort(), stallMs); };
+    try {
+      const res = await fetch(current, { redirect: "manual", signal: abort.signal,
+                                         headers: { "user-agent": `${PACKAGE}-npx` } });
+      if (res.status >= 300 && res.status < 400 && res.headers.get("location")) {
+        current = new URL(res.headers.get("location"), current).toString();
+        await res.body?.cancel();
+        continue;
+      }
+      if (!res.ok) throw new Error(`${new URL(current).pathname.split("/").pop()}: HTTP ${res.status}`);
+      const chunks = [];
+      const reader = res.body.getReader();
+      for (;;) {
+        alive();
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(Buffer.from(value));
+      }
+      return Buffer.concat(chunks);
+    } catch (err) {
+      if (abort.signal.aborted) throw new Error(`no data for ${Math.round(stallMs / 1000)} s: the download stalled`);
+      throw err;
+    } finally {
+      clearTimeout(timer);
     }
-    if (!res.ok) throw new Error(`${new URL(current).pathname.split("/").pop()}: HTTP ${res.status}`);
-    return Buffer.from(await res.arrayBuffer());
   }
   throw new Error("too many redirects");
 }
@@ -71,7 +94,7 @@ async function fetchTrusted(url, trusted, maxRedirects = 5) {
 /** The program for `version`: already in ~/.flowforge/bin/<version>/, or downloaded and checked now.
  *  Returns { path } or { path: null, reason }. Nothing that fails its checksum is kept or run. */
 async function ensureProgram({ version, home = flowforgeHome(), base = releaseBase(version),
-                               platform = process.platform, arch = process.arch }) {
+                               platform = process.platform, arch = process.arch, stallMs = STALL_MS }) {
   const asset = assetFor(platform, arch);
   if (!asset) return { path: null, reason: `no FlowForge build for ${platform}-${arch} yet` };
   const dir = path.join(home, "bin", version);
@@ -81,8 +104,8 @@ async function ensureProgram({ version, home = flowforgeHome(), base = releaseBa
   let body;
   let sums;
   try {
-    sums = parseSums((await fetchTrusted(new URL("SHA256SUMS", base).toString(), trusted)).toString("utf8"));
-    body = await fetchTrusted(new URL(asset, base).toString(), trusted);
+    sums = parseSums((await fetchTrusted(new URL("SHA256SUMS", base).toString(), trusted, { stallMs })).toString("utf8"));
+    body = await fetchTrusted(new URL(asset, base).toString(), trusted, { stallMs });
   } catch (err) {
     return { path: null, reason: `couldn't download FlowForge ${version}: ${err.message}` };
   }

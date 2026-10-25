@@ -137,3 +137,22 @@ test("with no build for this computer, uv runs the same version; with no uv eith
   assert.equal(none.command, null);
   assert.match(none.message, /uv|desktop app/);
 });
+
+test("a download that stalls gives up, so the fallback still runs (Codex review)", async () => {
+  const server = http.createServer((req, res) => {
+    res.writeHead(200, { "content-length": "1000000" });
+    res.write("partial");   // then nothing: GitHub accepted, and stopped sending
+  });
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  const base = `http://127.0.0.1:${server.address().port}/v9.9.9/`;
+  try {
+    const started = Date.now();
+    const got = await L.ensureProgram({ version: "9.9.9", home: home(), base, stallMs: 300 });
+    assert.equal(got.path, null);
+    assert.match(got.reason, /no data|stalled|timed out/i);
+    assert.ok(Date.now() - started < 5000, "gave up quickly");
+  } finally {
+    server.closeAllConnections();
+    await new Promise((r) => server.close(r));
+  }
+});

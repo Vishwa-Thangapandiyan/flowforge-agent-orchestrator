@@ -118,3 +118,40 @@ test("a key in the open in an app that loads no key file can still be hidden", a
   expect(await screen.findByText(/is out of your code/)).toBeInTheDocument();
   expect(screen.getByText(/run_app passes the key/)).toBeInTheDocument();
 });
+
+test("a setting the key needs is offered too, filled in, in a plain box, and goes into the app", async () => {
+  const URL_SETTING = { ...spot("SUPABASE_URL", "setting", "lib/dev/app_config.dart:7", "dart-defines"),
+    in_app: false, suggestion: "https://myproject12345.supabase.co" };
+  let added = false;
+  const calls = mockApi({
+    "/meta": META, "/flow": DEPS, "/connectors": [], "/security": { findings: [] },
+    "/keys": () => ({ repo: "travel", example: false, summary: {}, keys: [{ ...MISSING, status: "saved", in_app: true }],
+      settings: [{ ...URL_SETTING, in_app: added, suggestion: added ? null : URL_SETTING.suggestion }] }),
+    "/keys/SUPABASE_URL/add-to-code": () => { added = true; return { name: "SUPABASE_URL", ref: "x", changed: [".flowforge/dart-defines.json", "Run config (main_dart.xml)"], run_config: true }; },
+  });
+  renderAt("/keys");
+  const section = await screen.findByRole("region", { name: "Your app also needs" });
+  const box = within(section).getByLabelText("Value of SUPABASE_URL");
+  expect(box).toHaveAttribute("type", "text");   // not secret
+  expect(box).toHaveValue("https://myproject12345.supabase.co");
+  expect(within(section).getByText("filled in from your key")).toBeInTheDocument();
+  await userEvent.click(within(section).getByRole("button", { name: /Add to code/ }));
+  expect(body(calls, "/keys/SUPABASE_URL/add-to-code")).toEqual({ value: "https://myproject12345.supabase.co", ref: "lib/dev/app_config.dart:7", check: "abc123" });
+  expect(await within(section).findByText("✓ in your app")).toBeInTheDocument();
+  expect(screen.getByRole("status")).toHaveTextContent("SUPABASE_URL is in your app. Press Run as always.");
+});
+
+test("a suggestion that arrives after the box is shown still fills it, unless you typed (found by running it)", async () => {
+  const { render } = await import("@testing-library/react");
+  const { SettingRow } = await import("./Keys");
+  const base = { ...spot("SUPABASE_URL", "setting", "lib/dev/app_config.dart:7", "dart-defines"), kind: "setting" as const, in_app: false };
+  const { rerender } = render(<ul><SettingRow st={{ ...base, suggestion: null }} onSaved={() => {}} /></ul>);
+  const box = screen.getByLabelText("Value of SUPABASE_URL");
+  expect(box).toHaveValue("");
+  rerender(<ul><SettingRow st={{ ...base, suggestion: "https://p12345.supabase.co" }} onSaved={() => {}} /></ul>);
+  expect(box).toHaveValue("https://p12345.supabase.co");
+  await userEvent.clear(box);
+  await userEvent.type(box, "https://mine.example");
+  rerender(<ul><SettingRow st={{ ...base, suggestion: "https://other.supabase.co" }} onSaved={() => {}} /></ul>);
+  expect(box).toHaveValue("https://mine.example");   // what you typed wins
+});

@@ -209,13 +209,15 @@ def _keys_data(root: Path, result: ScanResult) -> dict[str, Any]:
     from flowforge.security.wire import key_spots
 
     spots: dict[str, Any] = {}
+    settings: dict[str, Any] = {}
     for sp in key_spots(root):   # where each key goes (D44): names and places, never a value
-        spots.setdefault(sp.name, sp.public())
+        (settings if sp.kind == "setting" else spots).setdefault(sp.name, sp.public())
     found = report(KeyStore(root), result, verify=False, also=list(spots))
     for k in found:
         k["mask"] = mask(str(k["name"]))   # what you write where the value goes (D43)
         k["spot"] = spots.get(str(k["name"]))
     return {"keys": found, "summary": dict(Counter(k["status"] for k in found if k["status"] != "saved")),
+            "settings": list(settings.values()),   # what the keys need too, such as SUPABASE_URL (D45)
             "how": HOW_KEYS,
             "note": "saved means FlowForge has it on record; this server never reads a value"}
 

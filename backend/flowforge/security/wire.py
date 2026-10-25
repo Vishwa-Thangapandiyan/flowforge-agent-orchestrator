@@ -264,7 +264,76 @@ def key_spots(root: Path) -> list[Spot]:
         for hit in spots_in(text, lang):
             name, sink, why = _place(hit, lang, text, facts)
             out.append(Spot(name, hit.kind, rel, hit.line, lang, hit.reader, sink, why, _check(lines[hit.line - 1])))
-    return out
+    services = {_service(s.name) for s in out if s.kind != "setting"} - {""}
+    return [s for s in out if s.kind != "setting" or _service(s.name) in services]   # a key's settings only (D45)
+
+
+_PREFIXES = ("VITE_", "NEXT_PUBLIC_", "EXPO_PUBLIC_", "REACT_APP_", "PUBLIC_")
+_NOT_A_SERVICE = {"api", "app", "my", "the", "default", "base", "public", "env", "secret", "key", "token", "auth"}
+
+
+def _service(name: str) -> str:
+    """The service a name is for: its first word after a framework prefix (SUPABASE_URL → supabase)."""
+    for prefix in _PREFIXES:
+        name = name.removeprefix(prefix)
+    first = name.split("_", 1)[0].lower()
+    return "" if first in _NOT_A_SERVICE else first
+
+
+def suggest(name: str, saved: dict[str, str]) -> str | None:
+    """A setting's likely value, from what is saved: Supabase's old JWT anon key names its project, so its URL is
+    https://<project>.supabase.co (D45). Only the URL leaves this function, never the key."""
+    if _service(name) != "supabase" or not name.endswith("_URL"):
+        return None
+    import base64
+
+    for key_name, value in saved.items():
+        if _service(key_name) != "supabase" or value.count(".") != 2:
+            continue
+        try:
+            claims = json.loads(base64.urlsafe_b64decode(value.split(".")[1] + "=="))
+        except ValueError:
+            continue
+        ref = claims.get("ref") if isinstance(claims, dict) else None
+        if isinstance(ref, str) and re.fullmatch(r"[a-z0-9]{6,40}", ref):
+            return f"https://{ref}.supabase.co"
+    return None
+
+
+def app_settings(root: Path) -> dict[str, str]:
+    """The URL settings the app is given (`dart-defines.json`, `.env`, `.env.local`), for a health check's address
+    (D45). A key-like name is never read here."""
+    from dotenv import dotenv_values
+
+    from flowforge.security.finders import is_secret_name
+
+    found: dict[str, str] = {}
+    try:
+        defines = json.loads(_read(root / DEFINES) or "{}")
+    except ValueError:
+        defines = {}
+    if isinstance(defines, dict):
+        found.update({k: v for k, v in defines.items() if isinstance(v, str)})
+    for env in (".env", ".env.local"):
+        if (root / env).is_file():
+            found.update({k: v for k, v in dotenv_values(root / env).items() if v})
+    return {k: clean for k, v in found.items() if not is_secret_name(k) and (clean := _bare_url(v))}
+
+
+def _bare_url(value: str) -> str | None:
+    """scheme://host[:port]/path of an http(s) URL: no user, password, query or fragment, which a check never sends
+    (D24; Codex review)."""
+    from urllib.parse import urlsplit
+
+    try:
+        parts = urlsplit(value.strip())
+        port = parts.port
+    except ValueError:
+        return None
+    if parts.scheme not in ("http", "https") or not parts.hostname:
+        return None
+    host = f"[{parts.hostname}]" if ":" in parts.hostname else parts.hostname
+    return f"{parts.scheme}://{host}{f':{port}' if port else ''}{parts.path}"
 
 
 # the writes, prepared in memory first
@@ -518,7 +587,8 @@ def add_to_code(root: Path, name: str, ref: str, check: str, value: str | None) 
         try:
             writes[sink_path] = (_merge_dotenv(_read(sink_path), spot.name, value), True)
         except CantAdd:   # a value .env would change: kept in the Vault, as the message says (Codex review)
-            _save(root, spot.name, value)
+            if spot.kind != "setting":
+                _save(root, spot.name, value)
             raise
     changed.insert(0, sink_rel)
     if spot.kind in ("placeholder", "open"):
@@ -537,11 +607,14 @@ def add_to_code(root: Path, name: str, ref: str, check: str, value: str | None) 
         changed.append("Claude Code told not to read it")
     for file in writes:
         _check_destination(root, file)   # every write checked before the first (Codex review, P1)
-    _save(root, spot.name, value)   # the Vault before any file: an open key is never lost (Codex review)
+    secret = spot.kind != "setting"   # decided by the spot, never the caller (D45)
+    if secret:
+        _save(root, spot.name, value)   # the Vault before any file: an open key is never lost (Codex review)
     for file, (new, private) in sorted(writes.items(), key=lambda w: w[0] != sink_path):   # the key's file first
         mode = 0o600 if private else (file.stat().st_mode & 0o777 if file.exists() else 0o644)
         _write_private(file, new.encode("utf-8"), mode)
-    changed.append("Vault")
+    if secret:
+        changed.append("Vault")
     out: dict[str, Any] = {"name": spot.name, "ref": ref, "changed": changed}
     if spot.sink == "dart-defines":
         out["run_config"] = _has_run_config(root)   # Run passes the key; else the one command that does

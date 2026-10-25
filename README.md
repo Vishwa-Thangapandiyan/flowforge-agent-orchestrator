@@ -23,7 +23,7 @@ npx flowforge-map --example      # a sample app's map in your browser: no keys, 
 
 **Under the hood:** a DAG scheduler runs the checks concurrently under rate limits. It uses a topological sort, a critical-path DP and HLFET list scheduling (within `(2 − 1/k)` of optimal), and it caches repeat calls. See [Scheduling policies and benchmarks](#scheduling-policies-and-benchmarks).
 
-> FlowForge started as a Design and Analysis of Algorithms course project. That version is frozen on the [`DAA`](../../tree/DAA) branch. `main` is the product.
+> FlowForge started as a Design and Analysis of Algorithms course project. That version is commit [`233a681`](../../tree/233a681c3e17fa4081c883193f8456a53a4c049c) in `main`'s history.
 
 ## Quick start
 

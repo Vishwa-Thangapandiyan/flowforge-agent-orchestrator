@@ -26,8 +26,11 @@ from flowforge.security.keystore import NAME, KeyStore, _write_private
 
 DEFINES = ".flowforge/dart-defines.json"
 DEFINE_ARG = f"--dart-define-from-file={DEFINES}"
-NO_FILE = ("This app can't take keys from a file: it doesn't load .env. The key is saved in the Vault, and your "
-           "agent's run_app passes it to the app.")
+UNKNOWN = "?"
+CANT_TELL = ("This app loads a key file FlowForge can't tell from the code, so nothing is written there. Save keeps "
+             "the key in the Vault, and your agent's run_app passes it.")
+NO_FILE = ("This app can't take keys from a file: it doesn't load .env. Save keeps the key in the Vault, and your "
+           "agent's run_app passes it.")
 _CODE = ("python", "dart", "javascript", "typescript")
 _PLAIN_VALUE = re.compile(r"[A-Za-z0-9_\-.+/=:@]+")
 
@@ -74,8 +77,8 @@ def _read(path: Path) -> str:
 @dataclass
 class _Facts:
     """What the repo uses to load keys."""
-    python_env: bool
-    node_env: bool
+    python_env: str | None   # the dotenv file Python loads; UNKNOWN when FlowForge can't tell; None: none
+    node_env: str | None
     vite: bool
     dart_dotenv: str | None = None   # the file flutter_dotenv loads, when the code loads one listed in the assets
     dart_dotenv_why: str | None = None
@@ -111,34 +114,67 @@ def _dart_dotenv(root: Path, texts: dict[str, str]) -> tuple[str | None, str | N
     return loaded, None
 
 
-def _py_loads_env(text: str) -> bool:
-    """The code calls load_dotenv() / dotenv_values(), or gives a settings class env_file=".env": a real call, not a
-    word in a comment or docstring (Codex review)."""
+def _relative(path: str) -> str:
+    """A loader's path, as a path inside the repo, or UNKNOWN (absolute, or climbing out)."""
+    clean = path.strip().removeprefix("./")
+    return UNKNOWN if not clean or clean.startswith("/") or ".." in Path(clean).parts or ":" in clean else clean
+
+
+def _py_env_file(text: str) -> str | None:
+    """The dotenv file the code loads: load_dotenv() / dotenv_values() (default `.env`, or their path), a settings
+    class's env_file. Only a real call counts, not a comment or docstring; a path built at run time is UNKNOWN
+    (Codex review)."""
     try:
         tree = ast.parse(text)
     except SyntaxError:
-        return False
+        return None
+
+    def name_of(f: ast.AST) -> str:
+        return f.id if isinstance(f, ast.Name) else f.attr if isinstance(f, ast.Attribute) else ""
+
+    def path_of(arg: ast.AST | None) -> str:
+        if arg is None:
+            return ".env"
+        if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+            return _relative(arg.value)
+        if isinstance(arg, ast.Call) and name_of(arg.func) == "find_dotenv":   # searches upward for the name
+            return path_of(arg.args[0]) if arg.args else ".env"
+        return UNKNOWN
+
+    found: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Call):
-            f = node.func
-            name = f.id if isinstance(f, ast.Name) else f.attr if isinstance(f, ast.Attribute) else ""
-            if name in ("load_dotenv", "dotenv_values"):
-                return True
-            if any(k.arg == "env_file" for k in node.keywords):
-                return True
+            if name_of(node.func) in ("load_dotenv", "dotenv_values"):
+                given = node.args[0] if node.args else next(
+                    (k.value for k in node.keywords if k.arg == "dotenv_path"), None)
+                found.add(path_of(given))
+            for k in node.keywords:
+                if k.arg == "env_file":
+                    found.add(path_of(k.value))
         if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "env_file" for t in node.targets):
-            return True
-    return False
+            found.add(path_of(node.value))
+    return _one(found)
+
+
+def _one(found: set[str]) -> str | None:
+    """The one file every loader names; UNKNOWN when they disagree or one can't be told; None with no loader."""
+    if not found:
+        return None
+    return found.pop() if len(found) == 1 else UNKNOWN
 
 
 _JS_SOURCE = re.compile(r"""\brequire\s*\(\s*(?=['"])|\bimport\s+(?=['"])|\bfrom\s+(?=['"])""")
 _QUOTED_AT = re.compile(r"""(['"])([^'"\n]*)\1""")
 
 
-def _js_loads_env(text: str, lang: str) -> bool:
-    """dotenv loaded by code: `require('dotenv').config()`, `import 'dotenv/config'`, `dotenv.config()`, or `config()`
-    imported from 'dotenv'. Read from the code with comments and strings blanked, so a word in either doesn't count
-    (Codex review); a module's name is then read from the quotes the code points at."""
+_CONFIG_CALL = re.compile(r"\bdotenv\s*\.\s*config\s*\(|\)\s*\.\s*config\s*\(|(?<![\w.])config\s*\(")
+_PATH_OPTION = re.compile(r"""\bpath\s*:\s*(['"])([^'"\n]+)\1""")
+
+
+def _js_env_file(text: str, lang: str) -> str | None:
+    """The dotenv file the code loads: `import 'dotenv/config'` (`.env`), or `dotenv.config()` / `config()` imported
+    from 'dotenv', with its `path:` when given. Read from the code with comments and strings blanked, so a word in
+    either doesn't count; a path that isn't a plain string is UNKNOWN (Codex review)."""
     from flowforge.flow.curly import mask
 
     code = mask(text, lang)   # same length; comments and string contents blanked, quotes kept
@@ -147,11 +183,27 @@ def _js_loads_env(text: str, lang: str) -> bool:
         quoted = _QUOTED_AT.match(text, m.end())
         if quoted:
             modules.append(quoted.group(2))
+    found: set[str] = set()
     if "dotenv/config" in modules:
-        return True
+        found.add(".env")
     if "dotenv" in modules:
-        return bool(re.search(r"\bdotenv\s*\.\s*config\s*\(|\)\s*\.\s*config\s*\(|(?<![\w.])config\s*\(", code))
-    return False
+        for m in _CONFIG_CALL.finditer(code):
+            args = text[m.end():m.end() + 300].split(")", 1)[0]
+            named = _PATH_OPTION.search(args)
+            found.add(_relative(named.group(2)) if named else UNKNOWN if re.search(r"\bpath\b", args) else ".env")
+    return _one(found)
+
+
+_ENV_FILE_FLAG = re.compile(r"--env-file[= ](\S+)")
+
+
+def _node_env_file(deps: dict[str, Any], scripts: str, texts: dict[str, str]) -> str | None:
+    found = {_relative(m.group(1).strip("'\"")) for m in _ENV_FILE_FLAG.finditer(scripts)}
+    if "dotenv/config" in scripts or "next" in deps:
+        found.add(".env")
+    found |= {f for p, t in texts.items() if language(p) in ("javascript", "typescript")
+              and (f := _js_env_file(t, language(p) or ""))}
+    return _one(found)
 
 
 def _facts(root: Path, texts: dict[str, str]) -> _Facts:
@@ -163,14 +215,20 @@ def _facts(root: Path, texts: dict[str, str]) -> _Facts:
     deps = {**pkg.get("dependencies", {}), **pkg.get("devDependencies", {})} if isinstance(pkg, dict) else {}
     scripts = " ".join(map(str, (pkg.get("scripts") or {}).values())) if isinstance(pkg, dict) else ""
     return _Facts(
-        python_env=any(_py_loads_env(t) for p, t in texts.items() if language(p) == "python"),
+        python_env=_one({f for p, t in texts.items() if language(p) == "python" and (f := _py_env_file(t))}),
         # loaded, not just listed (Codex review): a call in the code, a start script, or Next.js, which loads .env
-        node_env="next" in deps or "--env-file" in scripts or "dotenv/config" in scripts
-        or any(_js_loads_env(t, language(p) or "") for p, t in texts.items()
-               if language(p) in ("javascript", "typescript")),
+        node_env=_node_env_file(deps, scripts, texts),
         vite="vite" in deps or any((root / f"vite.config.{e}").exists() for e in ("js", "ts", "mjs", "mts")),
         **dict(zip(("dart_dotenv", "dart_dotenv_why"), _dart_dotenv(root, texts), strict=True)),
     )
+
+
+def _loaded(name: str, env_file: str | None) -> tuple[str, str | None, str | None]:
+    if env_file is None:
+        return name, None, NO_FILE
+    if env_file == UNKNOWN:
+        return name, None, CANT_TELL
+    return name, env_file, None
 
 
 def _place(hit: SpotHit, lang: str, text: str, facts: _Facts) -> tuple[str, str | None, str | None]:
@@ -180,14 +238,14 @@ def _place(hit: SpotHit, lang: str, text: str, facts: _Facts) -> tuple[str, str 
             return hit.name, facts.dart_dotenv, facts.dart_dotenv_why
         return hit.name, "dart-defines", None
     if lang == "python":
-        return (hit.name, ".env", None) if facts.python_env else (hit.name, None, NO_FILE)
+        return _loaded(hit.name, facts.python_env)
     from flowforge.security.fixes import _runs_on_node
 
     if hit.reader == "vite":   # the code's own name: its envPrefix may not be VITE_ (Codex review)
         return hit.name, ".env.local", None
     if hit.kind != "reads" and facts.vite and not _runs_on_node(text, lang):
         return (hit.name if hit.name.startswith("VITE_") else f"VITE_{hit.name}"), ".env.local", None
-    return (hit.name, ".env", None) if facts.node_env else (hit.name, None, NO_FILE)
+    return _loaded(hit.name, facts.node_env)
 
 
 def _code_texts(root: Path) -> dict[str, str]:
@@ -381,13 +439,20 @@ def _check_destination(root: Path, path: Path) -> None:
         raise CantAdd(f"{rel.as_posix()} is outside this folder.")
 
 
+def _save(root: Path, name: str, value: str) -> None:
+    try:
+        KeyStore(root).add(name, value)
+    except Exception as e:   # a locked keychain, a wrong master key: nothing else is touched
+        raise CantAdd(f"The Vault couldn't save the key ({type(e).__name__}), so nothing was changed.") from None
+
+
 def _hide_only(root: Path, spot: Spot, hit: SpotHit, text: str, target: Path, value: str) -> dict[str, Any]:
     """A key written in the code of an app that loads no key file: the line reads it, the value goes to the Vault
     (Codex review: getting it out of the code comes first)."""
     _check_destination(root, target)
+    _save(root, spot.name, value)   # the Vault first: if it fails, the key stays in the code
     mode = target.stat().st_mode & 0o777
     _write_private(target, _rewrite(text, spot, hit).encode("utf-8"), mode)
-    KeyStore(root).add(spot.name, value)
     return {"name": spot.name, "ref": spot.ref, "changed": [spot.ref, "Vault"],
             "note": "This app loads no key file, so your agent's run_app passes the key when it starts the app."}
 
@@ -450,7 +515,11 @@ def add_to_code(root: Path, name: str, ref: str, check: str, value: str | None) 
             writes[conf] = (new, False)
             changed.append(f"Run config ({conf.name})")
     else:
-        writes[sink_path] = (_merge_dotenv(_read(sink_path), spot.name, value), True)
+        try:
+            writes[sink_path] = (_merge_dotenv(_read(sink_path), spot.name, value), True)
+        except CantAdd:   # a value .env would change: kept in the Vault, as the message says (Codex review)
+            _save(root, spot.name, value)
+            raise
     changed.insert(0, sink_rel)
     if spot.kind in ("placeholder", "open"):
         writes[target] = (_rewrite(text, spot, hit), False)
@@ -468,10 +537,10 @@ def add_to_code(root: Path, name: str, ref: str, check: str, value: str | None) 
         changed.append("Claude Code told not to read it")
     for file in writes:
         _check_destination(root, file)   # every write checked before the first (Codex review, P1)
+    _save(root, spot.name, value)   # the Vault before any file: an open key is never lost (Codex review)
     for file, (new, private) in sorted(writes.items(), key=lambda w: w[0] != sink_path):   # the key's file first
         mode = 0o600 if private else (file.stat().st_mode & 0o777 if file.exists() else 0o644)
         _write_private(file, new.encode("utf-8"), mode)
-    KeyStore(root).add(spot.name, value)
     changed.append("Vault")
     out: dict[str, Any] = {"name": spot.name, "ref": ref, "changed": changed}
     if spot.sink == "dart-defines":

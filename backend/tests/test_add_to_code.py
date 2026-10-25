@@ -456,7 +456,8 @@ def test_a_key_with_a_dollar_is_refused_for_dotenv_not_mangled(tmp_path, flutter
     before = snapshot(root)
     with pytest.raises(CantAdd, match=r"\$"):
         add_to_code(root, s.name, s.ref, s.check, "ab${HOME}cd")
-    assert snapshot(root) == before and KeyStore(root).names() == []
+    assert snapshot(root) == before
+    assert KeyStore(root).env() == {"TOKEN": "ab${HOME}cd"}   # saved, as the message says (Codex review)
     d = spot(flutter, "SUPABASE_ANON_KEY")
     add_to_code(flutter, d.name, d.ref, d.check, "ab${HOME}cd")
     assert json.loads((flutter / ".flowforge/dart-defines.json").read_text())["SUPABASE_ANON_KEY"] == "ab${HOME}cd"
@@ -576,3 +577,37 @@ def test_a_key_in_flutter_dotenvs_own_file_shows_as_in_the_app(tmp_path, monkeyp
     with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
         k = {k["name"]: k for k in c.get("/keys").json()["keys"]}["MAPS_KEY"]
     assert k["in_app"] is True and k["spot"]["where"] == "config/app.env"
+
+
+def test_the_vault_holds_an_open_key_before_the_code_loses_it(tmp_path, monkeypatch):
+    """Codex review: if the Vault can't save, the key must still be in the code."""
+    root = write(tmp_path / "shop", {"pay.py": f'from dotenv import load_dotenv\nload_dotenv()\nSTRIPE_KEY = "{FAKE}"\n'})
+    before = snapshot(root)
+    s = spot(root, "STRIPE_KEY")
+
+    def broken(self, name, value):
+        raise OSError("the keychain is locked")
+
+    monkeypatch.setattr(KeyStore, "add", broken)
+    with pytest.raises((CantAdd, OSError)):
+        add_to_code(root, s.name, s.ref, s.check, None)
+    assert snapshot(root) == before
+
+
+@pytest.mark.parametrize("files, sink", [
+    ({"app.py": 'from dotenv import load_dotenv\nload_dotenv("config/app.env")\ntoken = ""\n'}, "config/app.env"),
+    ({"app.py": 'from dotenv import load_dotenv\nload_dotenv(dotenv_path=".env.dev")\ntoken = ""\n'}, ".env.dev"),
+    ({"app.py": "from dotenv import load_dotenv, find_dotenv\nload_dotenv(find_dotenv())\ntoken = ''\n"}, ".env"),
+    ({"app.py": "import dotenv, sys\ndotenv.load_dotenv(sys.argv[1])\ntoken = ''\n"}, None),   # can't tell
+    ({"package.json": "{}", "s.js": "require('dotenv').config({ path: 'cfg/.env.local' });\nconst token = '';\n"},
+     "cfg/.env.local"),
+    ({"package.json": '{"scripts": {"start": "node --env-file=.env.prod s.js"}}', "s.js": "require('http');\nconst token = '';\n"},
+     ".env.prod"),
+])
+def test_the_key_goes_to_the_dotenv_file_the_app_loads(tmp_path, files, sink):
+    """Codex review: a custom dotenv path is where the key must go, or nowhere."""
+    root = write(tmp_path / "app", files)
+    s = spot(root, "TOKEN")
+    assert s.sink == sink
+    if sink is None:
+        assert "can't tell" in s.why_not

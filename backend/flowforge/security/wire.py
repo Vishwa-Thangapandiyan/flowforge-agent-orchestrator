@@ -317,7 +317,23 @@ def app_settings(root: Path) -> dict[str, str]:
     for env in (".env", ".env.local"):
         if (root / env).is_file():
             found.update({k: v for k, v in dotenv_values(root / env).items() if v})
-    return {k: v for k, v in found.items() if not is_secret_name(k) and re.match(r"https?://", v)}
+    return {k: clean for k, v in found.items() if not is_secret_name(k) and (clean := _bare_url(v))}
+
+
+def _bare_url(value: str) -> str | None:
+    """scheme://host[:port]/path of an http(s) URL: no user, password, query or fragment, which a check never sends
+    (D24; Codex review)."""
+    from urllib.parse import urlsplit
+
+    try:
+        parts = urlsplit(value.strip())
+        port = parts.port
+    except ValueError:
+        return None
+    if parts.scheme not in ("http", "https") or not parts.hostname:
+        return None
+    host = f"[{parts.hostname}]" if ":" in parts.hostname else parts.hostname
+    return f"{parts.scheme}://{host}{f':{port}' if port else ''}{parts.path}"
 
 
 # the writes, prepared in memory first

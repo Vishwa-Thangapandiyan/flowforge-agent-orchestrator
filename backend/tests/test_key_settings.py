@@ -139,3 +139,11 @@ def test_a_dependency_with_no_address_in_code_is_checked_at_the_apps_url(travel)
                                                                 "TILES_URL": "https://tiles.test"})
     assert got.target == "https://p.supabase.co"
     assert target_for(dep, ScanResult(root="travel")).target is None
+
+
+def test_an_app_url_loses_credentials_and_query_before_a_check(travel):
+    """Codex review (P1): D24 sends no key and no query; a setting's userinfo or ?apikey= never reaches a check."""
+    (travel / ".flowforge").mkdir()
+    (travel / ".flowforge/dart-defines.json").write_text(json.dumps({
+        "SUPABASE_URL": "https://user:FAKEPASS1234@p.supabase.co:8443/rest/v1?apikey=sk_test_FAKEFAKE12345678#x"}))
+    assert app_settings(travel) == {"SUPABASE_URL": "https://p.supabase.co:8443/rest/v1"}

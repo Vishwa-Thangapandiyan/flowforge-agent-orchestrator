@@ -169,3 +169,15 @@ def test_a_wrong_value_already_in_the_app_shows_as_missing_with_the_suggestion(s
     with served() as c:
         setting = {s["name"]: s for s in c.get("/keys").json()["settings"]}["SUPABASE_URL"]
     assert setting["in_app"] is False and setting["suggestion"] == "https://myproject12345.supabase.co"
+
+
+@pytest.mark.parametrize("value, ok", [
+    ("https://p.supabase.co", True), ("http://localhost:54321", True), ("https://p.supabase.co/rest/v1", True),
+    ("https://example.com garbage", False), ("https://host:bad", False), ("https://", False), ("https://:443", False),
+    ("ftp://p.supabase.co", False),
+])
+def test_a_url_setting_must_be_a_whole_url(value, ok):
+    """Codex review: the whole URL, host and port included, not just how it starts."""
+    from flowforge.security.wire import setting_problem
+
+    assert (setting_problem("SUPABASE_URL", value) is None) is ok

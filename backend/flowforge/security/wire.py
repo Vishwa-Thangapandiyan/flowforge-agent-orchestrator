@@ -292,7 +292,7 @@ def setting_problem(name: str, value: str) -> str | None:
     v = value.strip()
     if any(p.search(v) for _, p in KEY_SHAPES) or looks_secret(v):
         return f"This looks like a key, not {name}. Paste the key in its own box above; {name} is an address."
-    if _URL_NAME.search(name) and not re.match(r"https?://[^\s/]+", v):
+    if _URL_NAME.search(name) and _bare_url(v) is None:
         return f"{name} takes an address that starts with https://."
     return None
 
@@ -345,10 +345,10 @@ def _bare_url(value: str) -> str | None:
     try:
         parts = urlsplit(value.strip())
         port = parts.port
-    except ValueError:
+    except ValueError:   # a port that isn't a number
         return None
-    if parts.scheme not in ("http", "https") or not parts.hostname:
-        return None
+    if parts.scheme not in ("http", "https") or not parts.hostname or re.search(r"\s", value.strip()):
+        return None   # the whole URL, not just how it starts (Codex review)
     host = f"[{parts.hostname}]" if ":" in parts.hostname else parts.hostname
     return f"{parts.scheme}://{host}{f':{port}' if port else ''}{parts.path}"
 

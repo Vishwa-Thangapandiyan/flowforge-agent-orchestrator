@@ -93,7 +93,7 @@ test("the Checks page puts problems first, filters them, and shows one dependenc
   renderAt("/checks");
   expect(await screen.findByRole("heading", { name: "Checks", level: 1 })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Checks" })).toHaveAttribute("aria-current", "page");
-  const rows = screen.getAllByRole("row").slice(1);
+  const rows = (await screen.findAllByRole("row")).slice(1);
   expect(rows).toHaveLength(6);
   expect(within(rows[0]).getByRole("rowheader")).toHaveTextContent("Ollama");   // down first
   expect(within(rows[1]).getByRole("rowheader")).toHaveTextContent("fetch");    // then needs a look

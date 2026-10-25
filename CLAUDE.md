@@ -275,7 +275,7 @@ Fixed in Phase 1: `LLMNode` is no longer NIM-only (D10); `MCPNode` has tool disc
   - No authenticated checks: a check never uses a key (D24 records how an opt-in one must work).
   - A check is one request: any answer below 500 counts as up, so a POST-only endpoint answering 405 is "up". Public servers can throttle repeated checks; Overpass stalls a computer that asks often, so a connection with no reply is amber "Connected, but no reply", not down (D46).
   - The first check of an `npx`/`uvx` server includes its download, so it often shows as slow.
-  - Check history is never pruned.
+  - Each dependency keeps its newest 200 checks (D48).
   - At most 3 MCP servers start at once; the limit sits in `CheckNode`, not the scheduler, and MCP step timeouts grow with the number of rounds.
   - Example mode's results are recorded, not live (D16).
 - Map gates are inserted by code (D17), but scheduled runs have no gate step yet (D11, V2). A GET to a payment API isn't gated; any other method is, and an HTTP block with no method counts as a write (D17).

@@ -33,6 +33,7 @@ That's all: no Python, no virtual env. The first run downloads FlowForge's ready
 | You have | Run | |
 |---|---|---|
 | Node (most developers) | `npx flowforge-map` | ⭐ no Python needed |
+| Node, every day | `npm i -g flowforge-map`, then just `flowforge` | installs the launcher; the program comes on first run |
 | Python people | `uvx flowforge-map` or `pipx install flowforge-map` | Python 3.12+; no virtual env to manage |
 | No terminal | the desktop app (Releases) | download and open |
 

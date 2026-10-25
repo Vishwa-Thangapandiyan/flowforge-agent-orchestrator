@@ -31,7 +31,7 @@ Run the app with `uv run uvicorn flowforge.main:app --reload` and open http://lo
 
 ## Branches
 
-Work on a branch named `feat/<what>` and open a pull request into `main`. The `DAA` branch is the frozen course project: never commit to it or target it.
+Work on a branch named `feat/<what>` and open a pull request into `main`.
 
 ## Releasing (maintainers)
 

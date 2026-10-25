@@ -78,21 +78,34 @@ class AddToCode(BaseModel):
     value: str | None = None   # none: the saved value, or for a key written in the open, the code's
 
 
-_FIRST = {"open": 0, "placeholder": 1, "reads": 2}
+_FIRST = {"open": 0, "placeholder": 1, "reads": 2, "setting": 3}
 
 
 def _spots(repo: Path) -> dict[str, Spot]:
-    """Each key's spot (D44): an open key first, then a placeholder, then a line that reads it."""
+    """Each key's or setting's spot (D44, D45): an open key first, then a placeholder, then a line that reads it."""
     out: dict[str, Spot] = {}
     for spot in sorted(key_spots(repo), key=lambda sp: (_FIRST[sp.kind], sp.path, sp.line)):
         out.setdefault(spot.name, spot)
     return out
 
 
-def _in_app(repo: Path, saved: dict[str, str], env_files: set[str]) -> set[str]:
-    """Saved keys whose value is already in a file the app reads (`.flowforge/dart-defines.json`, `.env`,
-    `.env.local`): the same value, so `NAME=` or an old one isn't "in your app" (Codex review). Values are compared
-    here and dropped; only names leave."""
+def _settings(repo: Path, spots: dict[str, Spot], saved: dict[str, str]) -> list[dict[str, Any]]:
+    """The settings the keys need (D45): where each goes, whether the app has it, and a suggested value."""
+    from flowforge.security.wire import suggest
+
+    given = _given(repo, {sp.sink for sp in spots.values() if sp.sink and sp.sink != "dart-defines"})
+    out = []
+    for name, spot in sorted(spots.items()):
+        if spot.kind != "setting":
+            continue
+        has = bool(given.get(name))
+        out.append({**spot.public(), "in_app": has, "suggestion": None if has else suggest(name, saved)})
+    return out
+
+
+def _given(repo: Path, env_files: set[str]) -> dict[str, str]:
+    """Every value the app is given in its key files (`.flowforge/dart-defines.json`, `.env`, `.env.local`, others
+    the code loads). Stays in this module: callers keep names only."""
     from dotenv import dotenv_values
 
     found: dict[str, str] = {}
@@ -104,6 +117,13 @@ def _in_app(repo: Path, saved: dict[str, str], env_files: set[str]) -> set[str]:
     for env in sorted({".env", ".env.local", *env_files}):
         if (repo / env).is_file() and (repo / env).resolve().is_relative_to(repo.resolve()):
             found |= {k: v for k, v in dotenv_values(repo / env).items() if v}
+    return found
+
+
+def _in_app(repo: Path, saved: dict[str, str], env_files: set[str]) -> set[str]:
+    """Saved keys whose value is already in a file the app reads: the same value, so `NAME=` or an old one isn't
+    "in your app" (Codex review). Values are compared here and dropped; only names leave."""
+    found = _given(repo, env_files)
     return {name for name, value in saved.items() if found.get(name) == value}
 
 
@@ -174,7 +194,8 @@ def keys() -> dict[str, Any]:
     asked = key_requests(s.storage, repo)
     clear_key_requests(s.storage, repo, [n for n in store.names() if any(r["name"] == n for r in asked)])
     asked = [r for r in asked if r["name"] not in set(store.names())]
-    spots = _spots(repo)
+    every = _spots(repo)
+    spots = {n: sp for n, sp in every.items() if sp.kind != "setting"}
     found = report(store, stored_scan(s, repo), also=[*(r["name"] for r in asked), *spots])
     env_files = {sp.sink for sp in spots.values() if sp.sink and sp.sink != "dart-defines"}
     in_app = _in_app(repo, store.env(), env_files) if store.names() else set()
@@ -186,7 +207,9 @@ def keys() -> dict[str, Any]:
         if spot and not k["ref"]:
             k["ref"] = spot.ref
     summary = Counter(k["status"] for k in found if k["status"] != "saved")
+    saved = store.env() if any(sp.kind == "setting" for sp in every.values()) and store.names() else {}
     return {"repo": repo.name, "example": s.example, "summary": dict(summary), "keys": found,
+            "settings": _settings(repo, every, saved),
             "requests": [{"name": r["name"], "why": r["why"], "at": r["at"]} for r in asked]}
 
 

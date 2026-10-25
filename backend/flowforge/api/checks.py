@@ -64,9 +64,17 @@ def _address(what: str | None) -> str | None:
     return clean_url(what) if "://" in what else (what if "." in what or ":" in what else None)
 
 
-def target_for(dep: Dependency, scan: ScanResult, name: str | None = None) -> CheckTarget:
-    """What a check of a scanned dependency reaches (D24); shared by Check now and the MCP server (D29)."""
-    return CheckTarget(id=dep.id, kind=dep.kind, name=name or dep.name, target=dep.target, command=dep.command,
+def target_for(dep: Dependency, scan: ScanResult, name: str | None = None,
+               settings: dict[str, str] | None = None) -> CheckTarget:
+    """What a check of a scanned dependency reaches (D24); shared by Check now and the MCP server (D29). With no
+    address in the code, a URL setting the app is given for the same service (D45: SUPABASE_URL for Supabase)."""
+    target = dep.target
+    if not target and settings and dep.kind == "api":
+        from flowforge.security.wire import _service
+
+        want = {(dep.catalog or "").lower(), _service(dep.name.upper().replace(" ", "_"))} - {""}
+        target = next((v for k, v in sorted(settings.items()) if _service(k) in want), None)
+    return CheckTarget(id=dep.id, kind=dep.kind, name=name or dep.name, target=target, command=dep.command,
                        model=dep.model, catalog=dep.catalog, env_names=dep.env_names, reads_env=_reads_env(dep, scan))
 
 
@@ -75,9 +83,10 @@ def confirmed_commands(storage: Any) -> set[str]:
     return set(json.loads(storage.setting(CONFIRMED_SETTING) or "[]"))
 
 
-def _target(node: dict[str, Any], dep: Dependency | None, scan: ScanResult | None) -> CheckTarget:
+def _target(node: dict[str, Any], dep: Dependency | None, scan: ScanResult | None,
+            settings: dict[str, str] | None = None) -> CheckTarget:
     if dep is not None and scan is not None:
-        return target_for(dep, scan, node["title"])
+        return target_for(dep, scan, node["title"], settings)
     what = (node.get("what") or "").strip()   # a dependency the user added on the map: its address or command
     address = _address(what)
     if node["kind"] in ("mcp", "local") and what and "://" not in what:
@@ -97,7 +106,11 @@ def _map(s: AppState) -> tuple[list[dict[str, Any]], dict[str, CheckTarget], dic
     scan = ScanResult.model_validate(analysis["scan"]) if analysis.get("scan") else None
     deps = {d.id: d for d in scan.dependencies} if scan else {}
     nodes = [n for n in view["nodes"] if n["kind"] in CHECKABLE]
-    targets = {n["id"]: _target(n, deps.get(n["id"]), scan) for n in nodes if n["status"] != "unconfirmed"}
+    repo = repo_path(s)
+    from flowforge.security.wire import app_settings
+
+    settings = app_settings(repo) if repo is not None and repo.is_dir() and not s.example else {}
+    targets = {n["id"]: _target(n, deps.get(n["id"]), scan, settings) for n in nodes if n["status"] != "unconfirmed"}
     return nodes, targets, deps
 
 

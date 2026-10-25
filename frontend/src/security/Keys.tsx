@@ -43,11 +43,18 @@ export interface Added {
   note?: string;
 }
 
+/** A setting a key needs, such as SUPABASE_URL (D45): not secret, so a plain box, and never the Vault */
+export interface SettingInfo extends KeySpot {
+  in_app: boolean;
+  suggestion: string | null;
+}
+
 export interface KeysResponse {
   repo: string | null;
   example: boolean;
   summary: Partial<Record<KeyStatus, number>>;
   keys: KeyInfo[];
+  settings?: SettingInfo[];
   /** keys your coding agent asked for, waiting for you (D38) */
   requests?: { name: string; why: string; at: string }[];
 }
@@ -212,5 +219,49 @@ export function AddedNote({ added, onClose }: { added: Added; onClose: () => voi
       <p className="key-changed">Changed: {added.changed.join(" · ")}</p>
       <button type="button" className="btn sm quiet key-close" onClick={onClose} aria-label="Close">×</button>
     </div>
+  );
+}
+
+/** A setting the keys need (D45): a plain box (it isn't secret), filled with a suggestion when FlowForge has one. */
+export function SettingRow({ st, example, onSaved, onAdded }: {
+  st: SettingInfo; example?: boolean; onSaved: () => void; onAdded?: (added: Added) => void;
+}) {
+  const [value, setValue] = useState(st.suggestion ?? "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+  const add = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(undefined);
+    try {
+      onAdded?.(await api.post<Added>(`/keys/${encodeURIComponent(st.name)}/add-to-code`, { value, ref: st.ref, check: st.check }));
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "That didn't work");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <li className={`key-row ks-${st.in_app ? "saved" : "missing"}`}>
+      <span className={`key-ic ks-${st.in_app ? "saved" : "missing"}`} aria-hidden="true">{Icons.gear(16)}</span>
+      <span className="key-what">
+        <b>{st.name}</b>
+        <span><span className={`key-st ks-${st.in_app ? "saved" : "missing"}`}>{st.in_app ? "✓ in your app" : "missing"}</span>
+          <code>{st.ref}</code>
+          {!st.in_app && st.suggestion && <span className="key-hint">filled in from your key</span>}
+        </span>
+      </span>
+      <span className="key-act" />
+      {!st.in_app && st.sink && !example && (
+        <form className="key-box" onSubmit={add}>
+          <input type="text" autoComplete="off" spellCheck={false} value={value} aria-label={`Value of ${st.name}`}
+            placeholder="https://…" onChange={(e) => setValue(e.target.value)} />
+          <button className="btn sm primary" type="submit" disabled={busy || !value.trim()}>{Icons.code(14)} Add to code</button>
+        </form>
+      )}
+      {!st.in_app && !st.sink && st.why_not && <span className="key-hint key-why">{st.why_not}</span>}
+      {error && <span className="key-err" role="alert">{error}</span>}
+    </li>
   );
 }

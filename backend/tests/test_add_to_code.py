@@ -59,8 +59,8 @@ def test_spots_in_a_dart_file():
         final stripeKey = "sk_test_FAKEFAKE12345678";
     """)
     got = {(s.line, s.kind, s.name) for s in spots_in(text, "dart")}
-    assert got == {(1, "reads", "SUPABASE_ANON_KEY"), (3, "placeholder", "API_KEY"), (4, "placeholder", "TOKEN"),
-                   (6, "open", "STRIPE_KEY")}   # SUPABASE_URL isn't a key; a title isn't a spot
+    assert got == {(1, "reads", "SUPABASE_ANON_KEY"), (2, "setting", "SUPABASE_URL"), (3, "placeholder", "API_KEY"),
+                   (4, "placeholder", "TOKEN"), (6, "open", "STRIPE_KEY")}   # the URL is a setting (D45); a title isn't
     assert all(FAKE not in repr(s) for s in spots_in(text, "dart"))
 
 

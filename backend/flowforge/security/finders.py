@@ -175,7 +175,7 @@ def key_span(text: str, language: str | None, line: int) -> tuple[int, int, str]
 @dataclass(frozen=True)
 class SpotHit:
     line: int
-    kind: str                # "reads" | "placeholder" | "open"
+    kind: str                # "reads" | "placeholder" | "open" | "setting" (not a key: D45)
     name: str                # the env var the app reads: SUPABASE_ANON_KEY, API_KEY
     reader: str              # how the line reads it: env, vite, dart-define, dart-dotenv; "" for a literal
     start: int | None = None  # the literal's span on the line, quotes included (placeholder, open)
@@ -262,9 +262,9 @@ def _curly_literals(source: str, language: str) -> list[tuple[int, int, str, str
     return out
 
 
-def _python_reads(text: str) -> list[tuple[int, str]]:
-    """(line, name) for os.environ["X"], os.environ.get("X"), os.getenv("X"), getenv("X"): from the AST, so a comment
-    or a string that mentions one isn't a read (Codex review)."""
+def _python_reads(text: str) -> list[tuple[int, str, bool]]:
+    """(line, name, has a default) for os.environ["X"], os.environ.get("X"[, d]), os.getenv("X"[, d]), getenv(…): from
+    the AST, so a comment or a string that mentions one isn't a read (Codex review)."""
     try:
         tree = ast.parse(text)
     except SyntaxError:
@@ -279,7 +279,7 @@ def _python_reads(text: str) -> list[tuple[int, str]]:
 
     out = []
     for node in ast.walk(tree):
-        name = None
+        name, default = None, False
         if isinstance(node, ast.Subscript) and environ(node.value):
             name = name_of(node.slice)
         elif isinstance(node, ast.Call) and node.args:
@@ -288,9 +288,21 @@ def _python_reads(text: str) -> list[tuple[int, str]]:
                     or isinstance(f, ast.Attribute) and f.attr == "getenv" \
                     or isinstance(f, ast.Name) and f.id == "getenv":
                 name = name_of(node.args[0])
+                default = len(node.args) > 1 or any(k.arg == "default" for k in node.keywords)
         if name and re.fullmatch(r"[A-Za-z_]\w*", name):
-            out.append((node.lineno, name))
+            out.append((node.lineno, name, default))
     return out
+
+
+def _has_default(source: str, at: int, reader: str) -> bool:
+    """A read that falls back to a value: Dart's `defaultValue:` / flutter_dotenv's `fallback:`, or `??` / `||` after
+    the read in JS/TS and Dart. Such a setting isn't needed (D45)."""
+    rest = source[at:]
+    if reader in ("dart-define", "dart-dotenv"):
+        call = rest.split(")", 1)[0]
+        if "defaultValue" in call or "fallback" in call:
+            return True
+    return re.match(r"\s*\)?\s*\]?\s*(?:\?\?|\|\|)", rest) is not None
 
 
 def spots_in(text: str, language: str | None) -> list[SpotHit]:
@@ -305,9 +317,11 @@ def spots_in(text: str, language: str | None) -> list[SpotHit]:
     found: dict[tuple[int, str], SpotHit] = {}
     literals: list[tuple[int, int, int, str, str]]
     if language == "python":
-        for n, name in _python_reads(text):
+        for n, name, default in _python_reads(text):
             if is_secret_name(name):
                 found.setdefault((n, name), SpotHit(n, "reads", name, "env"))
+            elif not default:   # a setting the app needs (D45); wire keeps those that go with a key
+                found.setdefault((n, name), SpotHit(n, "setting", name, "env"))
         literals = _python_literals(text)
     else:
         from flowforge.flow.curly import mask
@@ -323,8 +337,12 @@ def spots_in(text: str, language: str | None) -> list[SpotHit]:
             for pattern, reader in _READS[language]:
                 for m in pattern.finditer(source):
                     name = next(g for g in m.groups() if g)
-                    if is_secret_name(name) and is_code(n, m.start()):
+                    if not is_code(n, m.start()):
+                        continue
+                    if is_secret_name(name):
                         found.setdefault((n, name), SpotHit(n, "reads", name, reader))
+                    elif not _has_default(source, m.end(), reader):
+                        found.setdefault((n, name), SpotHit(n, "setting", name, reader))
             for start, end, name, value in _curly_literals(source, language):
                 quote = start + 1 if source[start] == "r" else start
                 at_name = source.rfind(name, 0, start)

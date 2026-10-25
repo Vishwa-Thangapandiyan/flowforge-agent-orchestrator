@@ -8,7 +8,7 @@ import { AgentRuns } from "./AgentRuns";
 import { Icons } from "../components/icons";
 import { EmptyState, ErrorBox } from "../components/ui";
 import { useCounts } from "./counts";
-import { type Added, AddedNote, type KeyInfo, KeyList, KeyRow } from "./Keys";
+import { type Added, AddedNote, type KeyInfo, KeyList, KeyRow, SettingRow } from "./Keys";
 import "./security.css";
 
 function ago(at: string): string {
@@ -81,6 +81,16 @@ export function KeysPage() {
       )}
       {(missing.length > 0 || inEnv.length > 0) && (
         <div className="key-page"><KeyList keys={[...missing, ...inEnv]} onSaved={counts.reload} example={data.example} onAdded={setAdded} /></div>
+      )}
+      {(data.settings ?? []).length > 0 && (
+        <section className="key-settings" aria-label="Your app also needs">
+          <h2 className="key-wait-title">{Icons.gear(15)} Your app also needs</h2>
+          <ul className="key-list">
+            {data.settings!.map((st) => (
+              <SettingRow key={st.name} st={st} example={data.example} onSaved={counts.reload} onAdded={setAdded} />
+            ))}
+          </ul>
+        </section>
       )}
       {saved.length > 0 && (
         <details className="key-saved">

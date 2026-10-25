@@ -1440,6 +1440,22 @@ Masking is FlowForge's job and the user shouldn't have to think about it. The co
 
 ---
 
+## D45. The settings a key needs go into the app too (Vishwa, 2026-10-25)
+
+**Context.** On Vishwa's Flutter app, **Add to code** put `SUPABASE_ANON_KEY` into the app, but the app stayed on fake data. It also reads `String.fromEnvironment('SUPABASE_URL')` and runs on fake data while the URL is empty. A URL isn't a key, so it was never offered. The map's Supabase block also said "Not checked: no address in the code", because the address lives in the app's settings, not its code.
+
+**Choice:**
+- **Settings.** A line that reads an env name that isn't a key, with no default, whose first word is a key's in the same repo, is a **setting** that goes with that key. For example, `SUPABASE_URL` goes with `SUPABASE_ANON_KEY`. A default is Dart's `defaultValue:`, a second argument to `os.environ.get` / `getenv`, or JavaScript's `??` / `||`. The Keys page lists settings under the keys, with a plain text box (a setting isn't secret) and the same **Add to code**.
+- A setting goes to the same file as its key (`dart-defines.json` + the Run config, `.env`, …), **never the Vault**, and the redactor doesn't learn it, so the address isn't masked on the map.
+- **A suggested value.** A Supabase anon key in the old JWT form names its project, so `SUPABASE_URL` is suggested as `https://<project>.supabase.co`, filled in the box for the user to check. The project id is part of a public URL, not a secret.
+- **Health.** When a dependency's code has no address, its check uses a URL setting the app is given (`dart-defines.json`, `.env`, `.env.local`) whose first word matches the dependency. It never uses a key's value. Only the dashboard does this: the agent's MCP server would have to open a file that holds keys, and it never reads a value (D36).
+
+**Why:** the app only works when everything it reads is there. One click for the key and one for its URL, with the URL already filled in.
+
+**Code:** `security/finders.py` (settings in `spots_in`), `security/wire.py` (`key_spots`, `add_to_code` (a setting skips the Vault), `suggest`, `app_settings`), `api/keys.py` (`settings` in `GET /keys`), `api/checks.py` (an address from the app's settings), the Keys page.
+
+---
+
 ## Step JSON schema (reference)
 
 ```json

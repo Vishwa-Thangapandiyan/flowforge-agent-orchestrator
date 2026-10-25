@@ -11,12 +11,14 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
 import threading
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from flowforge.home import flowforge_home
 from flowforge.scan.models import ScanResult
@@ -26,6 +28,57 @@ Status = Literal["saved", "unreadable", "env_file", "missing"]
 
 NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _lock = threading.RLock()   # the dashboard's routes run in a threadpool
+_held = 0                   # how deep this process is inside _changing (its file lock is taken once)
+
+
+@contextmanager
+def _changing(home: Path) -> Iterator[None]:
+    """Hold the keys for a change, across processes too: two `flowforge key add` at the same moment each read
+    keys.json, so one name was lost. A lock file in FLOWFORGE_HOME, taken once per process (re-entrant)."""
+    global _held
+    with _lock:
+        handle = None
+        if _held == 0:
+            home.mkdir(parents=True, exist_ok=True)
+            handle = open(home / "keys.lock", "a+b")   # noqa: SIM115 (closed in finally)
+            _lock_file(handle)
+        _held += 1
+        try:
+            yield
+        finally:
+            _held -= 1
+            if handle is not None:
+                _unlock_file(handle)
+                handle.close()
+
+
+def _lock_file(handle: Any) -> None:
+    if sys.platform == "win32":
+        import msvcrt
+        import time
+
+        handle.seek(0)
+        while True:
+            try:
+                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                return
+            except OSError:
+                time.sleep(0.02)
+    import fcntl
+
+    fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+
+
+def _unlock_file(handle: Any) -> None:
+    if sys.platform == "win32":
+        import msvcrt
+
+        handle.seek(0)
+        msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+        return
+    import fcntl
+
+    fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
 class BadKey(ValueError):
@@ -156,7 +209,7 @@ class KeyStore:
             raise BadKey("A key's name is an env var name: letters, digits and _, not starting with a digit.")
         if not value or "\x00" in value:
             raise BadKey("The value is empty.")
-        with _lock:
+        with _changing(self.home):
             self.remove(name)
             store: Store = "file"
             if _keychain_works():
@@ -175,7 +228,7 @@ class KeyStore:
             return store
 
     def remove(self, name: str) -> bool:
-        with _lock:
+        with _changing(self.home):
             entries = self._entries()
             entry = entries.pop(name, None)
             if entry is None:

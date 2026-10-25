@@ -282,7 +282,7 @@ Fixed in Phase 1: `LLMNode` is no longer NIM-only (D10); `MCPNode` has tool disc
 - `Storage` shares one SQLite connection across the threadpool, so every public method takes one `RLock` (a race existed since sync connector routes; `test_storage_threads.py`). Fine for one local user; revisit if a server version comes (section 5, "Later, maybe").
 - On a phone the map's zoom buttons are hidden (pinch to zoom).
 - One action's flow is laid out fresh each time it is picked; dragging its blocks isn't saved (D33).
-- The dashboard bundle is about 709 kB (React Flow + dagre); Vite warns over 500 kB. No code splitting yet.
+- Each page loads when it is opened: the first download is about 363 kB (121 kB gzipped); the map's React Flow + dagre (190 kB) load with the map.
 - Timing-sensitive tests: tests assert scheduling decisions, not wall-clock windows. Exception: `actual_critical_path` in `test_diamond_meets_lower_bound` still depends on measured durations; it held in 500 stress runs.
 
 ### Rules that already exist and must not break
@@ -686,5 +686,5 @@ Settled: the frontend stack (D15); where the design HTML lives (`docs/design/`);
 3. **Authenticated checks (Phase 5).** Should a health check ever call an endpoint that needs the user's key from `.env`, or only check reachability without one?
 4. **GitHub URLs.** When the "scan a GitHub URL" input lands (Phase 4 or after).
 5. **Antigravity (Phase 10).** Can it run headless, without its window? Check before relying on it.
-6. **Dashboard housekeeping.** Code-split the bundle (709 kB; Vite warns over 500 kB)? Delete `frontend/classic.html`?
+6. **Dashboard housekeeping.** Delete `frontend/classic.html`? (The bundle is split per page now.)
 7. **Flow advice grouping (Phase 6).** Advice groups calls that could start at the same moment (trip planner: {ip-api, Nominatim} and {the sight, Open-Meteo, fetch, currency}). The plan said the first four calls form one card. Keep the grouping by start time, or merge?

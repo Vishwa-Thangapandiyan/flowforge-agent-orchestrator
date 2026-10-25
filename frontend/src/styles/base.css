@@ -202,3 +202,4 @@ pre.code {
 .swatch.custom:focus-within { outline: 3px solid var(--blue); outline-offset: 2px; }
 .filter[aria-checked="true"] { background: var(--teal-bg); color: var(--teal-ink); border-color: transparent; font-weight: 600; }
 .event-log a { display: inline-flex; align-items: center; min-height: 26px; }
+.page-loading { min-height: 40vh; }   /* a page still loading (routes.tsx): no jump when it arrives */

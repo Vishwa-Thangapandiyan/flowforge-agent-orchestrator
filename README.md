@@ -14,12 +14,12 @@ npx flowforge-map --example      # a sample app's map in your browser: no keys, 
 | 💚 **Check now** | Green, amber or red for each one, with its latency. When something is down, it tells you why |
 | ⚡ **Faster** | Reads the order your code makes its calls and shows which ones could run together, with the time you'd save |
 | 🛡 **Issues** | Keys written in code, plain `http://`, MCP servers that aren't pinned. Fix one on a new branch, or send it to your agent |
-| 🔑 **Keys** | Paste a key once. **Add to code** puts it where your app reads it, and your coding agent only ever sees a mask |
+| 🔑 **Keys** | Paste a key once. **Add to code** writes it to a git-ignored file your app reads; FlowForge only ever hands your agent a mask |
 | 🤖 **Your agent** | One MCP entry gives Claude Code, Codex or Antigravity the map, the advice and the issues |
 
 ![Flow: 16.5 s as written, 11.6 s if four calls start together](docs/images/flow.png)
 
-**Free and local.** MIT, no account, no paid service. Everything stays in `~/.flowforge`, and the scan is plain code that sends nothing to any LLM.
+**Free and local.** MIT, no account, no paid service. FlowForge keeps its data on your machine, and the scan is plain code that sends nothing to any LLM.
 
 **Under the hood:** a DAG scheduler runs the checks concurrently under rate limits. It uses a topological sort, a critical-path DP and HLFET list scheduling (within `(2 − 1/k)` of optimal), and it caches repeat calls. See [Scheduling policies and benchmarks](#scheduling-policies-and-benchmarks).
 

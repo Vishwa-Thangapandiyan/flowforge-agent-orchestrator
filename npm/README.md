@@ -22,7 +22,7 @@ npx flowforge-map --repo .
 | 💚 **Check now** | Green, amber or red for each one, with its latency. When something is down, it tells you why |
 | ⚡ **Faster** | Reads the order your code makes its calls and shows which ones could run together, with the time you'd save |
 | 🛡 **Issues** | Keys written in code, plain `http://`, MCP servers that aren't pinned. Fix one on a new branch, or send it to your agent |
-| 🔑 **Keys** | Paste a key once. **Add to code** puts it where your app reads it, and your coding agent only ever sees a mask |
+| 🔑 **Keys** | Paste a key once. **Add to code** writes it to a git-ignored file your app reads; FlowForge only ever hands your agent a mask |
 
 ![Flow: 16.5 s as written, 11.6 s if four calls start together](https://raw.githubusercontent.com/Vishwa-Thangapandiyan/flowforge-agent-orchestrator/main/docs/images/flow.png)
 
@@ -41,7 +41,7 @@ Your agent can then ask for the map, the advice and the issues, and run your app
 ## Free, local, private
 
 - **Free and open source (MIT).** No account and no paid service.
-- **Local.** Everything stays on your machine, in `~/.flowforge`.
+- **Local.** FlowForge keeps its data on your machine. Keys you add go to the Vault and to git-ignored files in your repo.
 - **The scan is plain code.** It sends nothing to any LLM.
 - **Desktop app** for Windows, macOS (Apple chips) and Linux, if you'd rather click than type.
 

@@ -54,7 +54,8 @@
 .pk-tile[aria-expanded="true"] { box-shadow: 0 0 0 3px #4FD1C0; }
 .pk-caret { position: absolute; right: -8px; bottom: -5px; display: grid; place-items: center; width: 17px; height: 17px; border-radius: 50%;
   background: var(--nav-bg); color: var(--nav-fg); font-size: 9px; }
-.pk-pop { position: absolute; left: calc(100% + 14px); top: 0; z-index: 40; width: 300px; max-width: calc(100vw - 110px); padding: 8px;
+/* drawn on <body> at the tile (ProjectPicker sets left/top): fixed, above the page and the map */
+.pk-pop { position: fixed; z-index: 60; width: 300px; max-width: calc(100vw - 16px); padding: 8px;
   border-radius: 14px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow-3); color: var(--fg); }
 .pk-h { margin: 6px 10px; font: 600 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .pk-row { display: flex; align-items: center; border-radius: 10px; }
@@ -77,6 +78,5 @@
 .pk-note { margin: 6px 10px 4px; color: var(--muted); font-size: 12px; }
 @media (max-width: 760px) {
   .pk { margin: 0 6px 0 2px; }
-  .pk-pop { left: 0; top: calc(100% + 10px); }
 }
 @media (max-width: 480px) { .pk-tile { width: 38px; height: 38px; font-size: 13px; } }

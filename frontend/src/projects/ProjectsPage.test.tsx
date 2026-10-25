@@ -79,6 +79,19 @@ test("a new project is its folder, scanned, then its map", async () => {
   expect(router.state.location.pathname).toBe("/p/blog");
 });
 
+test("the picker's menu is drawn outside the rail, so the rail's scrolling can't cut it off", async () => {
+  api();
+  const router = createMemoryRouter(routes, { initialEntries: ["/p/blog/keys"] });
+  render(<RouterProvider router={router} />);
+  await screen.findByRole("heading", { level: 1, name: "Keys" });
+  await userEvent.click(screen.getByRole("button", { name: /Project: My blog/ }));
+  const menu = screen.getByRole("menu", { name: "Projects" });
+  expect(screen.getByRole("navigation", { name: "Main" })).not.toContainElement(menu);   // the rail scrolls (overflow)
+  expect(menu.style.position).toBe("fixed");
+  await userEvent.click(within(menu).getByRole("menuitem", { name: /All projects/ }));   // still clickable from there
+  expect(router.state.location.pathname).toBe("/");
+});
+
 test("the picker lists your open projects; switching brings you back where you were; × closes without deleting", async () => {
   const calls = api();
   const router = createMemoryRouter(routes, { initialEntries: ["/p/blog/keys"] });

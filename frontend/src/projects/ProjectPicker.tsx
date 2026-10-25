@@ -1,6 +1,7 @@
 // The project picker at the top of the rail (D39, docs/design/projects step 2): your open projects, each opening where
 // you left it; × closes one from this list and never deletes it; then All projects and + New project.
-import { useEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate as useRouterNavigate } from "react-router-dom";
 import { useApi } from "../api/client";
 import { closeProject, markOpen, openProjects, placeOf } from "./memory";
@@ -12,11 +13,32 @@ export function ProjectPicker({ current }: { current: string | undefined }) {
   const [open, setOpen] = useState(false);
   const [, redraw] = useState(0);
   const box = useRef<HTMLDivElement>(null);
+  const pop = useRef<HTMLDivElement>(null);
+  const [at, setAt] = useState<CSSProperties>({});
   useEffect(() => {
     if (!open) return;
-    const away = (e: MouseEvent) => { if (box.current && !box.current.contains(e.target as Node)) setOpen(false); };
+    const away = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!box.current?.contains(t) && !pop.current?.contains(t)) setOpen(false);
+    };
     document.addEventListener("mousedown", away);
     return () => document.removeEventListener("mousedown", away);
+  }, [open]);
+  // The menu is drawn on <body>, beside the tile (below it when the rail is a top bar): inside the rail, the rail's
+  // scrolling cut it off at the rail's edge
+  useLayoutEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const r = box.current?.querySelector(".pk-tile")?.getBoundingClientRect();
+      if (!r) return;
+      const topBar = window.matchMedia?.("(max-width: 760px)").matches ?? false;
+      setAt(topBar ? { position: "fixed", left: Math.max(8, r.left), top: r.bottom + 10 }
+        : { position: "fixed", left: r.right + 14, top: r.top });
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => { window.removeEventListener("resize", place); window.removeEventListener("scroll", place, true); };
   }, [open]);
   const data = list.data;
   const name = (id: string) => id === data?.example.id ? data.example.name : data?.projects.find((p) => p.id === id)?.name ?? id;
@@ -40,8 +62,9 @@ export function ProjectPicker({ current }: { current: string | undefined }) {
         style={{ background: current ? tileColor(current) : "var(--teal)" }}>
         {current ? initials(name(current)) : "⌂"}<span className="pk-caret" aria-hidden="true">▾</span>
       </button>
-      {open && (
-        <div className="pk-pop" role="menu" aria-label="Projects">
+      {open && createPortal(
+        <div className="pk-pop" role="menu" aria-label="Projects" ref={pop} style={{ position: "fixed", ...at }}
+          onKeyDown={(e) => { if (e.key === "Escape") { setOpen(false); box.current?.querySelector<HTMLElement>(".pk-tile")?.focus(); } }}>
           {ids.length > 0 && <h2 className="pk-h">Open projects</h2>}
           {ids.map((id) => (
             <div key={id} className={`pk-row${id === current ? " cur" : ""}`}>
@@ -56,7 +79,8 @@ export function ProjectPicker({ current }: { current: string | undefined }) {
           <button type="button" role="menuitem" className="pk-link" onClick={() => { setOpen(false); go("/"); }}>⌂ All projects</button>
           <button type="button" role="menuitem" className="pk-link pk-new" onClick={() => { setOpen(false); go("/projects/new"); }}>+ New project</button>
           {ids.length > 0 && <p className="pk-note">× closes it here. The project stays on the home page.</p>}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

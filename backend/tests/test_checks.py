@@ -372,3 +372,18 @@ async def test_some_addresses_refuse_and_the_rest_are_out_of_reach(tmp_path, mon
         result = await check(api("https://overpass.test/api/interpreter"), tmp_path, http=http)
     assert result.reason == ("2 of its 4 addresses (65.109.112.52, 162.55.144.139) refused connections on port 443. "
                              "The other 2 are unreachable from this network.")
+
+
+def test_each_dependency_keeps_its_newest_200_checks(tmp_path, monkeypatch):
+    """D48: history doesn't grow forever; the newest rows stay, per dependency."""
+    from flowforge import storage as storage_module
+    from flowforge.storage import Storage
+
+    monkeypatch.setattr(storage_module, "KEEP_CHECKS", 5)
+    s = Storage(tmp_path / "f.db")
+    for i in range(8):
+        s.add_checks(f"run-{i}", [{"id": "api-a", "kind": "api", "status": "up", "latency_ms": i, "summary": f"#{i}"},
+                                  {"id": "api-b", "kind": "api", "status": "up", "latency_ms": i, "summary": f"#{i}"}])
+    a = s.check_history("api-a", limit=100)
+    assert [r["summary"] for r in a] == ["#7", "#6", "#5", "#4", "#3"]
+    assert len(s.check_history("api-b", limit=100)) == 5

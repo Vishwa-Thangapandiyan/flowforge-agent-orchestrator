@@ -74,6 +74,8 @@ SUMMARY_FIELDS = ("id", "workflow_id", "workflow_name", "policy", "status", "sta
                   "steps_json")
 
 
+KEEP_CHECKS = 200   # per dependency (D48)
+
 def now_iso() -> str:
     return datetime.now(UTC).isoformat(timespec="milliseconds")
 
@@ -391,6 +393,10 @@ class Storage:
                          json.dumps(self.redact(detail)), at))
         self.conn.executemany("INSERT INTO checks (run_id, dep_id, kind, status, latency_ms, summary, detail_json, at)"
                               " VALUES (?, ?, ?, ?, ?, ?, ?, ?)", rows)
+        for dep_id in {r["id"] for r in results}:   # each dependency keeps its newest KEEP_CHECKS (D48)
+            self.conn.execute("DELETE FROM checks WHERE dep_id = ? AND id NOT IN "
+                              "(SELECT id FROM checks WHERE dep_id = ? ORDER BY id DESC LIMIT ?)",
+                              (dep_id, dep_id, KEEP_CHECKS))
         self.conn.commit()
 
     def check_history(self, dep_id: str | None = None, limit: int = 12) -> list[dict[str, Any]]:

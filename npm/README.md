@@ -1,17 +1,48 @@
-# flowforge-map
+# FlowForge
 
-**FlowForge** maps what your app depends on (LLMs, MCP servers, HTTP APIs, local programs) with the `file:line`
-each comes from, checks that each is healthy and safe, and keeps your API keys away from your coding agent.
+**See everything your AI app depends on: whether it's up, whether it's safe, and what's slowing it down.**
 
 ```bash
-npx flowforge-map --example      # try it on a sample app: no keys, nothing sent
-npx flowforge-map --repo .       # map the folder you're in
-npx flowforge-map mcp            # the MCP server for Claude Code, Codex and other agents
+npx flowforge-map --example
 ```
 
-No Python and no virtual env: the first run downloads FlowForge's ready-made program for your computer from the
-project's GitHub Release, checks it against the release's `SHA256SUMS`, keeps it in `~/.flowforge/bin/<version>`,
-and runs it. Later runs start at once, even offline. Windows, macOS (Apple chips) and Linux x64; elsewhere it
-runs `uvx flowforge-map` instead.
+One command opens a sample app's map in your browser. You don't need keys or sign-ups, and nothing about your code is sent anywhere.
 
-Docs, source and the desktop app: https://github.com/Vishwa-Thangapandiyan/flowforge-agent-orchestrator
+![The dependency map: every LLM, MCP server and API the app calls, with live health](https://raw.githubusercontent.com/Vishwa-Thangapandiyan/flowforge-agent-orchestrator/main/docs/images/map.png)
+
+## Point it at your repo
+
+```bash
+npx flowforge-map --repo .
+```
+
+| | |
+|---|---|
+| 🗺 **Map** | Every LLM, MCP server, HTTP API and local program your code calls, each with the `file:line` it came from |
+| 💚 **Check now** | Green, amber or red for each one, with its latency. When something is down, it tells you why |
+| ⚡ **Faster** | Reads the order your code makes its calls and shows which ones could run together, with the time you'd save |
+| 🛡 **Issues** | Keys written in code, plain `http://`, MCP servers that aren't pinned. Fix one on a new branch, or send it to your agent |
+| 🔑 **Keys** | Paste a key once. **Add to code** writes it to a git-ignored file your app reads; FlowForge only ever hands your agent a mask |
+
+![Flow: 16.5 s as written, 11.6 s if four calls start together](https://raw.githubusercontent.com/Vishwa-Thangapandiyan/flowforge-agent-orchestrator/main/docs/images/flow.png)
+
+## Works with your coding agent
+
+Add FlowForge to Claude Code, Codex or Antigravity with one entry:
+
+```json
+{ "command": "npx", "args": ["-y", "flowforge-map", "mcp"] }
+```
+
+Your agent can then ask for the map, the advice and the issues, and run your app with keys it never sees.
+
+![Issues: a key in the code, an unpinned MCP server, plain http](https://raw.githubusercontent.com/Vishwa-Thangapandiyan/flowforge-agent-orchestrator/main/docs/images/issues.png)
+
+## Free, local, private
+
+- **Free and open source (MIT).** No account and no paid service.
+- **Local.** FlowForge keeps its data on your machine. Keys you add go to the Vault and to git-ignored files in your repo.
+- **The scan is plain code.** It sends nothing to any LLM.
+- **Desktop app** for Windows, macOS (Apple chips) and Linux, if you'd rather click than type.
+
+**[Source, docs and the desktop app on GitHub →](https://github.com/Vishwa-Thangapandiyan/flowforge-agent-orchestrator)**

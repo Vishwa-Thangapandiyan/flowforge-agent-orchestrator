@@ -280,6 +280,23 @@ def _service(name: str) -> str:
     return "" if first in _NOT_A_SERVICE else first
 
 
+_URL_NAME = re.compile(r"_(?:URL|URI|ENDPOINT|HOST_URL)$")
+
+
+def setting_problem(name: str, value: str) -> str | None:
+    """Why a value can't go into a setting (D45), or None. A setting is never a key: it would sit outside the Vault
+    and the app would get its key in the wrong place. A URL setting takes an http(s) address. Found on Vishwa's app,
+    where the anon key went into the SUPABASE_URL box."""
+    from flowforge.security.finders import KEY_SHAPES, looks_secret
+
+    v = value.strip()
+    if any(p.search(v) for _, p in KEY_SHAPES) or looks_secret(v):
+        return f"This looks like a key, not {name}. Paste the key in its own box above; {name} is an address."
+    if _URL_NAME.search(name) and _bare_url(v) is None:
+        return f"{name} takes an address that starts with https://."
+    return None
+
+
 def suggest(name: str, saved: dict[str, str]) -> str | None:
     """A setting's likely value, from what is saved: Supabase's old JWT anon key names its project, so its URL is
     https://<project>.supabase.co (D45). Only the URL leaves this function, never the key."""
@@ -328,10 +345,14 @@ def _bare_url(value: str) -> str | None:
     try:
         parts = urlsplit(value.strip())
         port = parts.port
-    except ValueError:
+    except ValueError:   # a port that isn't a number
         return None
-    if parts.scheme not in ("http", "https") or not parts.hostname:
+    if port is not None and not 0 < port < 65536:   # Python lets 70000 through (Codex review)
         return None
+    if parts.netloc.endswith(":"):   # "https://host:" has no port, but isn't a whole URL either (Codex review)
+        return None
+    if parts.scheme not in ("http", "https") or not parts.hostname or re.search(r"\s", value.strip()):
+        return None   # the whole URL, not just how it starts (Codex review)
     host = f"[{parts.hostname}]" if ":" in parts.hostname else parts.hostname
     return f"{parts.scheme}://{host}{f':{port}' if port else ''}{parts.path}"
 
@@ -561,6 +582,8 @@ def add_to_code(root: Path, name: str, ref: str, check: str, value: str | None) 
         raise CantAdd("Paste the key first.")
     if not NAME.fullmatch(spot.name):
         raise CantAdd(f"{spot.name} isn't a name an app can read.")
+    if spot.kind == "setting" and (problem := setting_problem(spot.name, value)):
+        raise CantAdd(problem)
     if spot.sink is None:
         if spot.kind != "open":
             raise CantAdd(spot.why_not or NO_FILE)

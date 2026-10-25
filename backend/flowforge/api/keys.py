@@ -91,14 +91,15 @@ def _spots(repo: Path) -> dict[str, Spot]:
 
 def _settings(repo: Path, spots: dict[str, Spot], saved: dict[str, str]) -> list[dict[str, Any]]:
     """The settings the keys need (D45): where each goes, whether the app has it, and a suggested value."""
-    from flowforge.security.wire import suggest
+    from flowforge.security.wire import setting_problem, suggest
 
     given = _given(repo, {sp.sink for sp in spots.values() if sp.sink and sp.sink != "dart-defines"})
     out = []
     for name, spot in sorted(spots.items()):
         if spot.kind != "setting":
             continue
-        has = bool(given.get(name))
+        value = given.get(name) or ""
+        has = bool(value) and setting_problem(name, value) is None   # a key in the URL's place isn't "in your app"
         out.append({**spot.public(), "in_app": has, "suggestion": None if has else suggest(name, saved)})
     return out
 

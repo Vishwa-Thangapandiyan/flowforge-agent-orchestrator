@@ -147,3 +147,38 @@ def test_an_app_url_loses_credentials_and_query_before_a_check(travel):
     (travel / ".flowforge/dart-defines.json").write_text(json.dumps({
         "SUPABASE_URL": "https://user:FAKEPASS1234@p.supabase.co:8443/rest/v1?apikey=sk_test_FAKEFAKE12345678#x"}))
     assert app_settings(travel) == {"SUPABASE_URL": "https://p.supabase.co:8443/rest/v1"}
+
+
+def test_a_key_pasted_into_a_setting_box_is_refused(travel):
+    """Found on Vishwa's app: the anon key went into the SUPABASE_URL box, so it sat outside the Vault and the app
+    started with the key as its URL. A setting never takes a key, and a URL setting takes a URL."""
+    from flowforge.security.wire import CantAdd
+
+    s = by_name(key_spots(travel))["SUPABASE_URL"]
+    for wrong, why in ((fake_supabase_key(), "looks like a key"), (FAKE, "looks like a key"),
+                       ("not a url", "https://")):
+        with pytest.raises(CantAdd, match=why):
+            add_to_code(travel, s.name, s.ref, s.check, wrong)
+    assert not (travel / ".flowforge").exists()
+
+
+def test_a_wrong_value_already_in_the_app_shows_as_missing_with_the_suggestion(served, travel):
+    KeyStore(travel).add("SUPABASE_ANON_KEY", fake_supabase_key("myproject12345"))
+    (travel / ".flowforge").mkdir()
+    (travel / ".flowforge/dart-defines.json").write_text(json.dumps({"SUPABASE_URL": fake_supabase_key("myproject12345")}))
+    with served() as c:
+        setting = {s["name"]: s for s in c.get("/keys").json()["settings"]}["SUPABASE_URL"]
+    assert setting["in_app"] is False and setting["suggestion"] == "https://myproject12345.supabase.co"
+
+
+@pytest.mark.parametrize("value, ok", [
+    ("https://p.supabase.co", True), ("http://localhost:54321", True), ("https://p.supabase.co/rest/v1", True),
+    ("https://example.com garbage", False), ("https://host:bad", False), ("https://", False), ("https://:443", False),
+    ("ftp://p.supabase.co", False), ("https://p.supabase.co:70000", False), ("https://p.supabase.co:0", False),
+    ("https://p.supabase.co:65535", True), ("https://p.supabase.co:", False), ("https://p.supabase.co:/x", False),
+])
+def test_a_url_setting_must_be_a_whole_url(value, ok):
+    """Codex review: the whole URL, host and port included, not just how it starts."""
+    from flowforge.security.wire import setting_problem
+
+    assert (setting_problem("SUPABASE_URL", value) is None) is ok

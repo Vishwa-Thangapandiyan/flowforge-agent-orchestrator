@@ -35,11 +35,20 @@ Work on a branch named `feat/<what>` and open a pull request into `main`. The `D
 
 ## Releasing (maintainers)
 
-1. Set `version` in `pyproject.toml`, run `uv lock`, and merge that.
-2. Tag the merge: `git tag v0.1.0 && git push origin v0.1.0`.
+1. Set `version` in `pyproject.toml` **and** `npm/package.json` (the same number), run `uv lock`, and merge that.
+2. Tag the merge: `git tag v0.4.0 && git push origin v0.4.0`.
 3. The **Release** workflow builds the dashboard and the package, installs it alone in a clean environment, smoke-tests it (`scripts/smoke_installed.py`), and publishes to PyPI with trusted publishing: no token is stored anywhere. A tag that doesn't match the version stops it.
+4. The **desktop** workflow builds the frozen program and the installers on Linux, Windows and macOS (Apple and Intel), attaches each program as `flowforge-<platform>` with `SHA256SUMS`, publishes the GitHub Release, publishes `flowforge-map` to npm (trusted publishing, environment `npm`), and runs `npx flowforge-map@<version> --version` on every system (D49).
 
 Every pull request already runs the same build and smoke test (the `package` CI job), without publishing.
+
+**npm, the first time only.** npm allows trusted publishing only for a package that already exists, so the first `flowforge-map` goes up by hand. After the tag's GitHub Release has its four programs and `SHA256SUMS`:
+
+```bash
+cd npm && npm login && npm publish --access public
+```
+
+Then on npmjs.com, open `flowforge-map` → Settings → Trusted publisher → GitHub Actions: this repository, workflow `desktop.yml`, environment `npm`. Every later tag publishes by itself.
 
 ## Style
 

@@ -1507,6 +1507,34 @@ The same request with a browser's name answered in half a second.
 
 ---
 
+## D49. `npx flowforge-map`: FlowForge with no Python (Vishwa, 2026-10-25)
+
+**Context.** Vishwa didn't want users to need a virtual env to `pip install` (PEP 668 refuses a plain `pip install` on new systems). Developers who build AI apps nearly all have Node, and coding agents start MCP servers with `npx -y …`. The name stays **FlowForge**; `flowforge-map` is free on npm and matches PyPI.
+
+**Choice:**
+- **`npx flowforge-map …`** is the headline install, with the same words as the `flowforge` command (`--repo .`, `mcp`, `key add …`). `uvx flowforge-map` stays for Python people, and `pipx` is mentioned. Bare `pip` leaves the headline.
+- **The npm package is a small launcher** (`npm/`, no dependencies, Node 18+, no install script). It runs FlowForge's frozen program, the same one the desktop app carries (D42), from `~/.flowforge/bin/<version>/`. On first use it downloads it from this repo's GitHub Release for that version, so later runs start at once and offline.
+- **Safety of the download:**
+  - only from this repo's Releases on github.com, following redirects only to GitHub's own hosts;
+  - the npm version pins the program's version;
+  - its SHA-256 must match the release's `SHA256SUMS` before anything runs (a mismatch deletes the file);
+  - it is written under a temporary name, then renamed;
+  - arguments are a list, never a shell, and the exit code is passed through.
+- **Platforms:** linux-x64, macOS arm64 and x64, windows-x64. Any other platform, or a failed download, falls back to `uvx flowforge-map==<version>` when uv is there, else says in one line what to install.
+- **Agents:** run through npx, the Connect page gives `npx -y flowforge-map@<version> mcp`.
+- **Releases:** a `v*` tag builds the frozen program on each platform (desktop.yml), attaches it as `flowforge-<platform>` with `SHA256SUMS`, **publishes** the GitHub Release (it was a draft), then publishes the npm package. Its version must equal the Python package's.
+
+**Why:** one command a JavaScript developer already knows, no Python, no virtual env.
+
+**Honest limits:**
+- The first run downloads about 60 MB.
+- Linux ARM, Windows ARM and musl (Alpine) have no build yet, so they use the fallback.
+- A network that blocks GitHub downloads also gets the fallback.
+
+**Code:** `npm/` (`bin/flowforge.js`, `lib/launcher.js`), `home.py` (`install_kind` "npx"), `api/agent.py`, `.github/workflows/desktop.yml`.
+
+---
+
 ## Step JSON schema (reference)
 
 ```json

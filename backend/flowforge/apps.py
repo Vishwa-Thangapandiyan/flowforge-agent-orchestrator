@@ -16,10 +16,18 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from flowforge.security.finders import is_secret_name
 from flowforge.security.masks import fill, masks_in
 
 KEEP_LINES = 2000
 STOP_WAIT_S = 5
+
+
+def app_environment() -> dict[str, str]:
+    """What an app the agent runs inherits: your plain environment (PATH, HOME, language…), without FlowForge's own
+    variables (FLOWFORGE_MASTER_KEY…) or anything named like a key. Keys come from FlowForge only: the project's
+    saved ones, which the redactor knows and masks (Codex review, P1)."""
+    return {k: v for k, v in os.environ.items() if not k.upper().startswith("FLOWFORGE_") and not is_secret_name(k)}
 
 
 def _own_group() -> dict[str, object]:
@@ -85,7 +93,7 @@ class Runs:
               redact: Callable[[str], str]) -> AppRun:
         """Start `argv` with the keys filled in. Raises MissingKeys, before anything starts, for a mask whose key
         isn't saved."""
-        command, env = fill(argv, dict(os.environ), values)
+        command, env = fill(argv, app_environment(), values)
         named = masks_in(argv, {})
         run = AppRun(id=uuid.uuid4().hex[:12], project=project, argv=list(argv),
                      keys=sorted(set(values) | named), cwd=str(cwd))

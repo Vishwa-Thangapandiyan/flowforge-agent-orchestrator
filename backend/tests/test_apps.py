@@ -118,3 +118,18 @@ def test_a_mask_in_dot_env_works_because_the_real_value_is_already_set(runs, tmp
     run = runs.start("shop", [sys.executable, "-c", code], tmp_path, {"STRIPE_SECRET_KEY": FAKE}, redactor_for(FAKE))
     assert until(lambda: runs.get(run.id).status == "exited")
     assert seen.read_text() == FAKE
+
+
+def test_the_app_never_gets_flowforges_own_secrets_or_unsaved_keys_from_the_environment(runs, tmp_path, monkeypatch):
+    """Codex review (P1): the app inherited FlowForge's whole environment, FLOWFORGE_MASTER_KEY and any token in your
+    shell included, and masking only knows saved keys. It gets your plain environment and its saved keys only."""
+    monkeypatch.setenv("FLOWFORGE_MASTER_KEY", "fernet-FAKE-master-0000")
+    monkeypatch.setenv("SOME_API_TOKEN", "shell-token-FAKE-1111")
+    monkeypatch.setenv("FF_TEST_PLAIN", "plain-ok")
+    code = ("import os; print([os.environ.get(n) for n in "
+            "('FLOWFORGE_MASTER_KEY', 'SOME_API_TOKEN', 'FF_TEST_PLAIN', 'STRIPE_SECRET_KEY')]); "
+            "print(bool(os.environ.get('PATH')))")
+    run = runs.start("shop", [sys.executable, "-c", code], tmp_path, {"STRIPE_SECRET_KEY": FAKE}, redactor_for(FAKE))
+    assert until(lambda: runs.get(run.id).status == "exited")
+    lines = [line for _, line in runs.get(run.id).output()]
+    assert lines == ["[None, None, 'plain-ok', '[REDACTED]']", "True"]

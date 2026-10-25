@@ -1383,7 +1383,7 @@ Masking is FlowForge's job and the user shouldn't have to think about it. The co
   The setting `approve_runs` (on by default) can turn the question off later. Approval is what stops anyone from using FlowForge itself to leak a key with a crafted command.
 - **The runner is plain code doing what you would do by hand:**
   - It runs an argument list, never a shell, in the project's folder.
-  - Its environment is yours, plus the project's saved keys.
+  - Its environment is your plain one (PATH, HOME, language…), minus FlowForge's own variables (`FLOWFORGE_MASTER_KEY`…) and anything named like a key, plus the project's saved keys. Keys come from FlowForge only, and the redactor knows every one of them (Codex review, P1).
   - Each `ffkey://NAME` in an argument or an env value becomes the value. A mask for a key that isn't saved stops the run before anything starts.
   - Output is kept masked: the redactor knows every saved value (D36), so an app that prints a key gives back `[REDACTED]`.
   - `app_output` and `stop_app` follow a run; quitting FlowForge stops them all.

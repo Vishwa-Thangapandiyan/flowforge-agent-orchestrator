@@ -137,7 +137,14 @@ def _start(s: AppState, argv: list[str]) -> dict[str, Any]:
         run = RUNS.start(_project_id(), argv, repo, values, s.redactor.redact_text)
     except MissingKeys as e:
         raise HTTPException(409, str(e)) from None
-    return run.summary()
+    summary = run.summary()
+    if run.status == "failed":   # it never started: say why, never "running" (Codex review)
+        summary["error"] = run.output()[0][1] if run.output() else "It couldn't start."
+    return summary
+
+
+def _started(run: dict[str, Any]) -> str:
+    return "failed" if run["status"] == "failed" else "running"
 
 
 def _check_masks(s: AppState, argv: list[str]) -> list[str]:
@@ -157,7 +164,8 @@ def run_app(body: RunAsk, response: Response) -> dict[str, Any]:
     keys = _check_masks(s, body.argv)
     if not settings.load().approve_runs or body.argv in _approved(s):
         response.status_code = 201
-        return {"state": "running", "run": _start(s, body.argv)}
+        run = _start(s, body.argv)
+        return {"state": _started(run), "run": run}
     response.status_code = 202
     with _lock:   # look and add at once: asking again, even at the same moment, is the same card (Codex review)
         same = next((r for r in _requests.values() if r["project"] == _project_id() and r["state"] == "waiting"
@@ -181,14 +189,14 @@ def _request(request_id: str) -> dict[str, Any]:
     return found
 
 
-@router.get("/apps/requests/{request_id}", dependencies=[Depends(_agent)])
+@router.get("/apps/requests/{request_id}", dependencies=[Depends(_agent), Depends(from_this_machine)])
 def request_state(request_id: str) -> dict[str, Any]:
     return _public(_request(request_id))
 
 
 # the user's side
 
-@router.get("/apps")
+@router.get("/apps", dependencies=[Depends(from_this_machine)])   # what ran, and its output: this machine only
 def apps() -> dict[str, Any]:
     pid = _project_id()
     with _lock:
@@ -233,7 +241,7 @@ def _run(run_id: str):
     return run
 
 
-@router.get("/apps/runs/{run_id}/output")
+@router.get("/apps/runs/{run_id}/output", dependencies=[Depends(from_this_machine)])
 def output(run_id: str, since: int = 0) -> dict[str, Any]:
     run = _run(run_id)
     return {**run.summary(), "lines": [list(x) for x in run.output(since)]}

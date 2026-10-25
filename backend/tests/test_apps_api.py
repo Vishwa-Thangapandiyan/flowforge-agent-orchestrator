@@ -156,3 +156,18 @@ def test_one_command_gives_one_card_and_at_most_one_run_even_at_the_same_moment(
         with ThreadPoolExecutor(4) as pool:
             list(pool.map(lambda _: c.post(f"/p/shop/apps/requests/{request_id}/allow"), range(4)))
         assert len(c.get("/p/shop/apps").json()["runs"]) == 1
+
+
+def test_a_command_that_cant_start_is_reported_as_failed_not_running(shop):
+    """Codex review: a missing program used to come back as "running"."""
+    settings.save({"approve_runs": False})
+    with client() as c:
+        got = agent(c, "/p/shop/apps/run", {"argv": ["no-such-program-ffx"]}).json()
+    assert got["state"] == "failed" and "not found" in got["run"]["error"]
+
+
+@pytest.mark.parametrize("path", ["/p/shop/apps", "/p/shop/apps/runs/nope/output"])
+def test_runs_and_their_output_are_for_the_dashboard_on_this_machine_only(shop, path):
+    """Codex review: with FlowForge bound beyond localhost, another machine mustn't read what your app printed."""
+    with TestClient(main.app, base_url=LOCAL, client=("192.168.1.20", 50000)) as c:
+        assert c.get(path).status_code == 403

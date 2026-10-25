@@ -506,7 +506,10 @@ def build_server(repo: Path | None, storage: Storage | None, *,
             if request["state"] not in ("waiting", "starting"):
                 asked = {"state": "running" if request["state"] == "allowed" else "denied", "run": request["run"],
                          "request": request}
-        if asked["state"] == "running":
+        if asked["state"] in ("running", "failed") and (asked.get("run") or {}).get("status") == "failed":
+            data = {"state": "failed", "run": asked["run"],
+                    "message": f"It couldn't start: {asked['run'].get('error', 'unknown error')}"}
+        elif asked["state"] == "running":
             data = {"state": "running", "run": asked["run"],
                     "message": "Started with its keys. Follow it with app_output; stop it with stop_app."}
         elif asked["state"] == "denied":

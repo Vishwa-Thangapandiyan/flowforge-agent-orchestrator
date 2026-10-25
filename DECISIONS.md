@@ -1416,7 +1416,8 @@ Masking is FlowForge's job and the user shouldn't have to think about it. The co
   2. rewrites a placeholder or open key so the code reads the key: `const String.fromEnvironment('NAME')` (Dart), `os.environ["NAME"]` (Python), `process.env.NAME` (Node), `import.meta.env.VITE_NAME` (Vite). A line that already reads the key isn't touched;
   3. writes the value where the app reads it, never in a code file:
      - Dart `fromEnvironment` → `.flowforge/dart-defines.json`, plus `--dart-define-from-file=.flowforge/dart-defines.json` added once to the Flutter Run configs (`.idea/runConfigurations/*.xml`, `.vscode/launch.json`), so Run works as before;
-     - flutter_dotenv, and Python or Node apps that load `.env` → `.env`;
+     - flutter_dotenv → the file the code's `dotenv.load(…)` loads (`.env`, or its `fileName:`), only when that file is in pubspec.yaml's assets (Codex review);
+     - Python or Node apps that load `.env` → `.env`;
      - Vite → `.env.local`, under the name the code reads (a placeholder gets a `VITE_` name; a line that already reads `import.meta.env.X` keeps `X`: Codex review);
      - an IntelliJ / Android Studio project with no Flutter Run config gets one for `lib/main.dart`. With no IDE folder at all, the note shows the one complete command, `flutter run --dart-define-from-file=.flowforge/dart-defines.json`, with Copy (Codex review);
   4. makes sure the project's own `.gitignore` hides that file. A rule only in this machine's global ignore or `.git/info/exclude` doesn't count, because a clone elsewhere would commit the key (Codex review). It refuses if git already tracks the file;

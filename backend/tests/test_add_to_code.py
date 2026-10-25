@@ -538,3 +538,41 @@ def test_comments_and_strings_are_not_spots():
     py = ('MSG = "set os.environ[\'STRIPE_KEY\'] first"  # os.getenv("HF_TOKEN")\n'
           'import os\nK = os.environ.get("OPENAI_API_KEY")\n')
     assert {(s.line, s.name) for s in spots_in(py, "python")} == {(3, "OPENAI_API_KEY")}
+
+
+@pytest.mark.parametrize("main, pubspec, sink", [
+    ("await dotenv.load();", "flutter:\n  assets:\n    - .env\n", ".env"),
+    ("await dotenv.load(fileName: 'config/app.env');", "flutter:\n  assets:\n    - config/app.env\n", "config/app.env"),
+    ("// await dotenv.load();", "flutter:\n  assets:\n    - .env\n", None),            # only a comment: never loaded
+    ("await dotenv.load();", "name: a\n", None),                                     # not an asset: can't load
+])
+def test_flutter_dotenv_goes_to_the_file_the_app_loads(tmp_path, main, pubspec, sink):
+    """Codex review: dotenv.env reads need dotenv.load() of that file, listed in the pubspec's assets."""
+    root = write(tmp_path / "app", {"pubspec.yaml": pubspec, "lib/main.dart": f"Future<void> main() async {{ {main} }}\n",
+                                    "lib/k.dart": "final k = dotenv.env['MAPS_KEY'];\n"})
+    s = spot(root, "MAPS_KEY")
+    assert s.sink == sink
+    if sink:
+        add_to_code(root, s.name, s.ref, s.check, FAKE)
+        assert f"MAPS_KEY={FAKE}" in (root / sink).read_text()
+        assert sink in (root / ".gitignore").read_text().splitlines()
+    else:
+        assert "load" in s.why_not or "asset" in s.why_not
+
+
+def test_a_key_in_flutter_dotenvs_own_file_shows_as_in_the_app(tmp_path, monkeypatch):
+    root = write(tmp_path / "app", {"pubspec.yaml": "flutter:\n  assets:\n    - config/app.env\n",
+                                    "lib/main.dart": "Future<void> main() async { await dotenv.load(fileName: 'config/app.env'); }\n",
+                                    "lib/k.dart": "final k = dotenv.env['MAPS_KEY'];\n"})
+    s = spot(root, "MAPS_KEY")
+    add_to_code(root, s.name, s.ref, s.check, FAKE)
+    monkeypatch.delenv("FLOWFORGE_EXAMPLE", raising=False)
+    monkeypatch.setenv("FLOWFORGE_DB", str(tmp_path / "f.db"))
+    monkeypatch.setenv("FLOWFORGE_REPO", str(root))
+    from fastapi.testclient import TestClient
+
+    from flowforge import main
+
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
+        k = {k["name"]: k for k in c.get("/keys").json()["keys"]}["MAPS_KEY"]
+    assert k["in_app"] is True and k["spot"]["where"] == "config/app.env"

@@ -89,7 +89,7 @@ def _spots(repo: Path) -> dict[str, Spot]:
     return out
 
 
-def _in_app(repo: Path, saved: dict[str, str]) -> set[str]:
+def _in_app(repo: Path, saved: dict[str, str], env_files: set[str]) -> set[str]:
     """Saved keys whose value is already in a file the app reads (`.flowforge/dart-defines.json`, `.env`,
     `.env.local`): the same value, so `NAME=` or an old one isn't "in your app" (Codex review). Values are compared
     here and dropped; only names leave."""
@@ -101,8 +101,8 @@ def _in_app(repo: Path, saved: dict[str, str]) -> set[str]:
         found |= {k: v for k, v in defines.items() if isinstance(v, str)} if isinstance(defines, dict) else {}
     except (OSError, ValueError):
         pass
-    for env in (".env", ".env.local"):
-        if (repo / env).is_file():
+    for env in sorted({".env", ".env.local", *env_files}):
+        if (repo / env).is_file() and (repo / env).resolve().is_relative_to(repo.resolve()):
             found |= {k: v for k, v in dotenv_values(repo / env).items() if v}
     return {name for name, value in saved.items() if found.get(name) == value}
 
@@ -176,7 +176,8 @@ def keys() -> dict[str, Any]:
     asked = [r for r in asked if r["name"] not in set(store.names())]
     spots = _spots(repo)
     found = report(store, stored_scan(s, repo), also=[*(r["name"] for r in asked), *spots])
-    in_app = _in_app(repo, store.env()) if store.names() else set()
+    env_files = {sp.sink for sp in spots.values() if sp.sink and sp.sink != "dart-defines"}
+    in_app = _in_app(repo, store.env(), env_files) if store.names() else set()
     for k in found:
         k["requested"] = any(r["name"] == k["name"] for r in asked)
         spot = spots.get(str(k["name"]))

@@ -44,7 +44,7 @@ class Spot:
     line: int
     lang: str
     reader: str
-    sink: str | None     # dart-defines | .env | .env.local; None: the app reads no file
+    sink: str | None     # dart-defines, or the env file: .env, .env.local, flutter_dotenv's; None: the app reads none
     why_not: str | None
     check: str           # the line as the page saw it (a hash): a changed line is refused
 
@@ -54,10 +54,10 @@ class Spot:
 
     def public(self) -> dict[str, Any]:
         return {"name": self.name, "kind": self.kind, "ref": self.ref, "sink": self.sink, "why_not": self.why_not,
-                "check": self.check, "where": _WHERE.get(self.sink or "", None)}
+                "check": self.check, "where": _WHERE.get(self.sink or "", self.sink)}
 
 
-_WHERE = {"dart-defines": "your Run config", ".env": ".env", ".env.local": ".env.local"}
+_WHERE = {"dart-defines": "your Run config"}   # any other sink is the file's own name
 
 
 def _check(line: str) -> str:
@@ -77,6 +77,38 @@ class _Facts:
     python_env: bool
     node_env: bool
     vite: bool
+    dart_dotenv: str | None = None   # the file flutter_dotenv loads, when the code loads one listed in the assets
+    dart_dotenv_why: str | None = None
+
+
+_DOTENV_LOAD = re.compile(r"\bdotenv\s*\.\s*load\s*\(")
+_FILE_NAME = re.compile(r"""\bfileName\s*:\s*(['"])([^'"\n]+)\1""")
+
+
+def _dart_dotenv(root: Path, texts: dict[str, str]) -> tuple[str | None, str | None]:
+    """(the file flutter_dotenv loads, why there is none): a real `dotenv.load(…)` call in the code (default `.env`,
+    or its `fileName:`), and that file listed in pubspec.yaml's assets, where flutter_dotenv reads it from (Codex
+    review)."""
+    from flowforge.flow.curly import mask
+
+    loaded = None
+    for rel, text in texts.items():
+        if language(rel) != "dart":
+            continue
+        code = mask(text, "dart")
+        for m in _DOTENV_LOAD.finditer(code):
+            args = text[m.end():m.end() + 200].split(")", 1)[0]
+            named = _FILE_NAME.search(args)
+            loaded = named.group(2) if named else ".env"
+            break
+        if loaded:
+            break
+    if loaded is None:
+        return None, "This app reads dotenv.env but never calls dotenv.load(), so no key file is read."
+    assets = re.findall(r"^\s*-\s*['\"]?([^'\"\n#]+?)['\"]?\s*$", _read(root / "pubspec.yaml"), re.MULTILINE)
+    if loaded.strip("/") not in {a.strip().strip("/") for a in assets}:
+        return None, f"{loaded} isn't in pubspec.yaml's assets, so flutter_dotenv can't load it. Add it there first."
+    return loaded, None
 
 
 def _py_loads_env(text: str) -> bool:
@@ -137,13 +169,16 @@ def _facts(root: Path, texts: dict[str, str]) -> _Facts:
         or any(_js_loads_env(t, language(p) or "") for p, t in texts.items()
                if language(p) in ("javascript", "typescript")),
         vite="vite" in deps or any((root / f"vite.config.{e}").exists() for e in ("js", "ts", "mjs", "mts")),
+        **dict(zip(("dart_dotenv", "dart_dotenv_why"), _dart_dotenv(root, texts), strict=True)),
     )
 
 
 def _place(hit: SpotHit, lang: str, text: str, facts: _Facts) -> tuple[str, str | None, str | None]:
     """(the name the app reads, the file the key goes to, why there is none)."""
     if lang == "dart":
-        return hit.name, ".env" if hit.reader == "dart-dotenv" else "dart-defines", None
+        if hit.reader == "dart-dotenv":
+            return hit.name, facts.dart_dotenv, facts.dart_dotenv_why
+        return hit.name, "dart-defines", None
     if lang == "python":
         return (hit.name, ".env", None) if facts.python_env else (hit.name, None, NO_FILE)
     from flowforge.security.fixes import _runs_on_node

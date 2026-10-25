@@ -479,3 +479,36 @@ def test_two_open_keys_on_one_line_each_move_their_own_value(tmp_path):
     assert KeyStore(root).env()["BACKUP_KEY"] == second
     line = (root / "pay.py").read_text().splitlines()[-1]
     assert first in line and second not in line and 'os.environ["BACKUP_KEY"]' in line
+
+
+def test_a_machine_only_ignore_rule_isnt_enough(tmp_path):
+    """Codex review (P1): .git/info/exclude ignores it here only; a clone elsewhere would commit the key."""
+    root = write(tmp_path / "bot", {"app.py": "from dotenv import load_dotenv\nload_dotenv()\ntoken = ''\n"})
+    subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+    (root / ".git" / "info").mkdir(exist_ok=True)
+    (root / ".git" / "info" / "exclude").write_text(".env\n")
+    s = spot(root, "TOKEN")
+    add_to_code(root, s.name, s.ref, s.check, FAKE)
+    assert ".env" in (root / ".gitignore").read_text().splitlines()
+
+
+def test_a_project_rule_that_already_covers_it_isnt_repeated(tmp_path):
+    root = write(tmp_path / "bot", {"app.py": "from dotenv import load_dotenv\nload_dotenv()\ntoken = ''\n",
+                                    ".gitignore": ".env*\n"})
+    subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+    s = spot(root, "TOKEN")
+    add_to_code(root, s.name, s.ref, s.check, FAKE)
+    assert (root / ".gitignore").read_text() == ".env*\n"
+
+
+@pytest.mark.parametrize("code, loads", [
+    ("const example = \"require('dotenv').config()\";\n", False),
+    ("const s = `import 'dotenv/config'`;\n", False),
+    ("require('dotenv').config();\n", True),
+    ("import 'dotenv/config';\n", True),
+    ("import dotenv from 'dotenv';\ndotenv.config();\n", True),
+    ("import { config } from 'dotenv';\nconfig();\n", True),
+])
+def test_dotenv_loads_in_code_not_in_strings(tmp_path, code, loads):
+    root = write(tmp_path / "api", {"package.json": "{}", "server.js": code + "const k = process.env.STRIPE_SECRET_KEY;\n"})
+    assert (spot(root, "STRIPE_SECRET_KEY").sink == ".env") is loads

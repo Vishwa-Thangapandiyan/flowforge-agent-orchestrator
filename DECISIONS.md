@@ -1419,7 +1419,7 @@ Masking is FlowForge's job and the user shouldn't have to think about it. The co
      - flutter_dotenv, and Python or Node apps that load `.env` → `.env`;
      - Vite → `.env.local`, under the name the code reads (a placeholder gets a `VITE_` name; a line that already reads `import.meta.env.X` keeps `X`: Codex review);
      - an IntelliJ / Android Studio project with no Flutter Run config gets one for `lib/main.dart`. With no IDE folder at all, the note shows the one complete command, `flutter run --dart-define-from-file=.flowforge/dart-defines.json`, with Copy (Codex review);
-  4. makes sure that file is git-ignored, and refuses if git already tracks it;
+  4. makes sure the project's own `.gitignore` hides that file. A rule only in this machine's global ignore or `.git/info/exclude` doesn't count, because a clone elsewhere would commit the key (Codex review). It refuses if git already tracks the file;
   5. adds "don't read" rules for those files to `.claude/settings.local.json`;
   6. edits one line, and only if that line is still what the dashboard showed. Everything is checked before the first write. No write goes through a link or out of the folder, and temporary files get fresh names (Codex review, P1).
   7. writes `.env` values every loader reads back exactly. A key with a `$` or a line break is refused for `.env` files, because python-dotenv expands `${X}` whatever the quotes (Codex review); it stays in the Vault.

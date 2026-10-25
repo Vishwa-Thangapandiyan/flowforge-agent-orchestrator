@@ -29,8 +29,6 @@ DEFINE_ARG = f"--dart-define-from-file={DEFINES}"
 NO_FILE = ("This app can't take keys from a file: it doesn't load .env. The key is saved in the Vault, and your "
            "agent's run_app passes it to the app.")
 _CODE = ("python", "dart", "javascript", "typescript")
-_JS_LOADS_ENV = re.compile(r"""\brequire\(\s*['"]dotenv(?:/config)?['"]\s*\)|['"]dotenv/config['"]"""
-                           r"""|\bdotenv\.config\(""")
 _PLAIN_VALUE = re.compile(r"[A-Za-z0-9_\-.+/=:@]+")
 
 
@@ -101,13 +99,27 @@ def _py_loads_env(text: str) -> bool:
     return False
 
 
+_JS_SOURCE = re.compile(r"""\brequire\s*\(\s*(?=['"])|\bimport\s+(?=['"])|\bfrom\s+(?=['"])""")
+_QUOTED_AT = re.compile(r"""(['"])([^'"\n]*)\1""")
+
+
 def _js_loads_env(text: str, lang: str) -> bool:
-    """A dotenv load in the code, not in a comment: the match must survive the reader's comment blanking."""
+    """dotenv loaded by code: `require('dotenv').config()`, `import 'dotenv/config'`, `dotenv.config()`, or `config()`
+    imported from 'dotenv'. Read from the code with comments and strings blanked, so a word in either doesn't count
+    (Codex review); a module's name is then read from the quotes the code points at."""
     from flowforge.flow.curly import mask
 
-    code = mask(text, lang)   # same length; comments blanked, quotes kept
-    return any(code[m.start()] == text[m.start()] and not code[m.start()].isspace()
-               for m in _JS_LOADS_ENV.finditer(text))
+    code = mask(text, lang)   # same length; comments and string contents blanked, quotes kept
+    modules = []
+    for m in _JS_SOURCE.finditer(code):
+        quoted = _QUOTED_AT.match(text, m.end())
+        if quoted:
+            modules.append(quoted.group(2))
+    if "dotenv/config" in modules:
+        return True
+    if "dotenv" in modules:
+        return bool(re.search(r"\bdotenv\s*\.\s*config\s*\(|\)\s*\.\s*config\s*\(|(?<![\w.])config\s*\(", code))
+    return False
 
 
 def _facts(root: Path, texts: dict[str, str]) -> _Facts:
@@ -164,13 +176,21 @@ def key_spots(root: Path) -> list[Spot]:
 
 # the writes, prepared in memory first
 
-def _gitignored(root: Path, rel: str) -> bool | None:
-    """True or False in a git repo; None outside one (or without git)."""
+def _ignored_by_project(root: Path, rel: str) -> bool:
+    """A `.gitignore` inside the project hides `rel`, so every clone hides it. A rule only in this machine's global
+    ignore or `.git/info/exclude` doesn't count (Codex review, P1)."""
     try:
-        done = subprocess.run(["git", "check-ignore", "-q", rel], cwd=root, capture_output=True)
+        done = subprocess.run(["git", "check-ignore", "-v", "--no-index", rel], cwd=root, capture_output=True,
+                              text=True)
     except OSError:
-        return None
-    return {0: True, 1: False}.get(done.returncode)
+        return False
+    if done.returncode != 0:
+        return False
+    source = done.stdout.split(":", 1)[0]
+    if not source or source.startswith(".git/"):
+        return False
+    where = (root / source).resolve()
+    return where.name == ".gitignore" and where.is_relative_to(root)
 
 
 def _tracked(root: Path, rel: str) -> bool:
@@ -388,7 +408,7 @@ def add_to_code(root: Path, name: str, ref: str, check: str, value: str | None) 
         writes[target] = (_rewrite(text, spot, hit), False)
         changed.insert(0, ref)
     entry = _ignore_entry(spot.sink)
-    if _gitignored(root, sink_rel) is not True:
+    if not _ignored_by_project(root, sink_rel):
         ignore = root / ".gitignore"
         old = _read(ignore)
         if entry not in old.splitlines():

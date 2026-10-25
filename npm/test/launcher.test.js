@@ -12,10 +12,10 @@ const L = require("../lib/launcher");
 
 const WIN = process.platform === "win32";
 
-/** A stand-in for FlowForge: prints its arguments as JSON, exits with the code in FAKE_EXIT. */
+/** A stand-in for FlowForge: prints its arguments as JSON, exits with the code in FAKE_EXIT. Run by node itself,
+ *  so no system needs a shell or a script wrapper to start it. */
 function fakeProgram() {
-  if (WIN) return Buffer.from(`@echo off\r\nnode -e "console.log(JSON.stringify(process.argv.slice(1)))" -- %*\r\nexit /b %FAKE_EXIT%\r\n`);
-  return Buffer.from(`#!/usr/bin/env node\nconsole.log(JSON.stringify(process.argv.slice(2)));\nprocess.exit(Number(process.env.FAKE_EXIT || 0));\n`);
+  return Buffer.from(`console.log(JSON.stringify(process.argv.slice(2)));\nprocess.exit(Number(process.env.FAKE_EXIT || 0));\n`);
 }
 
 function sha(buf) { return crypto.createHash("sha256").update(buf).digest("hex"); }
@@ -107,14 +107,27 @@ test("only GitHub's own hosts are trusted for the real releases", () => {
 
 test("the program runs with your arguments as they are, no shell, and its exit code is yours", async () => {
   const h = home();
-  const program = path.join(h, WIN ? "fake.cmd" : "fake");
-  fs.writeFileSync(program, fakeProgram(), { mode: 0o755 });
+  const script = path.join(h, "fake.js");
+  fs.writeFileSync(script, fakeProgram());
   const marker = path.join(h, "shell-ran");
-  const out = await L.runProgram(program, ["key", "add", "A_KEY", `; touch ${marker}`], { ...process.env, FAKE_EXIT: "7" },
+  const args = ["key", "add", "A_KEY", `; touch ${marker}`, "a & b | c > d"];
+  const out = await L.runProgram(process.execPath, [script, ...args], { ...process.env, FAKE_EXIT: "7" },
                                  { capture: true });
   assert.equal(out.code, 7);
   assert.ok(!fs.existsSync(marker), "no shell");
-  if (!WIN) assert.deepEqual(JSON.parse(out.stdout), ["key", "add", "A_KEY", `; touch ${marker}`]);
+  assert.deepEqual(JSON.parse(out.stdout), args);
+});
+
+test("a script wrapper (.cmd, .bat) is never run: it would need a shell (Codex review)", async () => {
+  const out = await L.runProgram("C:\\tools\\uvx.cmd", ["x"], process.env, { capture: true });
+  assert.equal(out.code, 127);
+  assert.match(out.error, /script|shell/);
+});
+
+test("Alpine and other musl Linux get the uv fallback, not the glibc build (Codex review)", () => {
+  assert.equal(L.assetFor("linux", "x64", { musl: true }), null);
+  assert.equal(L.assetFor("linux", "x64", { musl: false }), "flowforge-linux-x64");
+  assert.equal(typeof L.isMusl(), "boolean");
 });
 
 test("the program knows it was started by npx, for the agent's command", () => {
@@ -128,8 +141,9 @@ test("with no build for this computer, uv runs the same version; with no uv eith
   const h = home();
   const bin = path.join(h, "bin");
   fs.mkdirSync(bin);
-  const uvx = path.join(bin, WIN ? "uvx.cmd" : "uvx");
+  const uvx = path.join(bin, WIN ? "uvx.exe" : "uvx");
   fs.writeFileSync(uvx, fakeProgram(), { mode: 0o755 });
+  fs.writeFileSync(path.join(bin, "uvx.cmd"), "@echo off\r\n");   // a script wrapper is never picked
   const plan = L.fallback("0.4.0", ["--repo", "."], { PATH: bin, PATHEXT: process.env.PATHEXT });
   assert.equal(plan.command, uvx);
   assert.deepEqual(plan.args, ["flowforge-map==0.4.0", "--repo", "."]);

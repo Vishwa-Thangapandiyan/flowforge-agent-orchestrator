@@ -14,8 +14,19 @@ const PACKAGE = "flowforge-map";
 // the GitHub hosts a release download goes through (github.com redirects to its asset storage)
 const GITHUB_HOSTS = ["github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com"];
 
-/** The release file built for this computer, or null when there is none (D49's four platforms). */
-function assetFor(platform, arch) {
+/** Linux with musl (Alpine) rather than glibc: the glibc build can't start there (Codex review). */
+function isMusl() {
+  if (process.platform !== "linux") return false;
+  try {
+    return !process.report.getReport().header.glibcVersionRuntime;
+  } catch {
+    return false;
+  }
+}
+
+/** The release file built for this computer, or null when there is none (D49's four platforms; not musl). */
+function assetFor(platform, arch, { musl = platform === "linux" && isMusl() } = {}) {
+  if (platform === "linux" && musl) return null;
   const builds = {
     "linux-x64": "flowforge-linux-x64",
     "darwin-arm64": "flowforge-darwin-arm64",
@@ -126,16 +137,11 @@ function programEnv(env, version) {
   return { ...env, FLOWFORGE_LAUNCHER: "npx", FLOWFORGE_NPX_VERSION: version };
 }
 
+/** A real program on PATH: on Windows only `name.exe`, never a .cmd/.bat wrapper, which would need a shell. */
 function onPath(name, env) {
-  const exts = process.platform === "win32" ? (env.PATHEXT || ".EXE;.CMD;.BAT").split(";").concat([""]) : [""];
+  const file = process.platform === "win32" ? `${name}.exe` : name;
   for (const dir of (env.PATH || "").split(path.delimiter)) {
-    if (!dir) continue;
-    for (const ext of exts) {
-      const candidate = path.join(dir, name + ext.toLowerCase());
-      if (fs.existsSync(candidate)) return candidate;
-      const upper = path.join(dir, name + ext);
-      if (ext && fs.existsSync(upper)) return upper;
-    }
+    if (dir && fs.existsSync(path.join(dir, file))) return path.join(dir, file);
   }
   return null;
 }
@@ -153,11 +159,12 @@ function fallback(version, args, env = process.env) {
 
 /** Run `program` with `args` (a list, never a shell). Resolves to { code } (and stdout when `capture`). */
 function runProgram(program, args, env, { capture = false } = {}) {
+  if (/\.(cmd|bat)$/i.test(program)) {   // a script wrapper runs through a shell: never (Codex review)
+    return Promise.resolve({ code: 127, stdout: "", error: "a script wrapper needs a shell: not run" });
+  }
   return new Promise((resolve) => {
-    const windowsScript = process.platform === "win32" && /\.(cmd|bat)$/i.test(program);   // tests' stand-ins only
     const child = spawn(program, args, {
       env, stdio: capture ? ["ignore", "pipe", "inherit"] : "inherit", shell: false, windowsHide: true,
-      ...(windowsScript ? { shell: true } : {}),
     });
     let stdout = "";
     if (capture) child.stdout.on("data", (d) => { stdout += d; });
@@ -191,6 +198,6 @@ async function main(argv = process.argv.slice(2), env = process.env) {
 }
 
 module.exports = {
-  REPO, PACKAGE, assetFor, releaseBase, trustedHosts, flowforgeHome, parseSums, ensureProgram, programEnv, fallback,
+  REPO, PACKAGE, isMusl, assetFor, releaseBase, trustedHosts, flowforgeHome, parseSums, ensureProgram, programEnv, fallback,
   runProgram, main,
 };

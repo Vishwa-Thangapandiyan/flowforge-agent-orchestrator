@@ -1,6 +1,6 @@
 [project]
 name = "flowforge-map"   # on PyPI: "flowforge" is taken by a near-identical name (D34)
-version = "0.3.0"
+version = "0.4.0"
 description = "Map what your app depends on (LLMs, MCP servers, APIs), check their health and security, and see what could run faster. Local and free; the scan needs no AI."
 readme = "README.md"
 requires-python = ">=3.12"

@@ -750,7 +750,7 @@ A dependency with nothing to check is `skipped` (grey) and says why. Two cases:
 **Storage.** Table `checks`, one row per dependency per check: `run_id, dep_id, kind, status, latency_ms, summary, detail, at`.
 - Rows are written when the run ends, from its events, so a stopped run keeps the checks that finished.
 - A check that breaks (a FlowForge bug) is recorded as `skipped`, "The check couldn't run", never as the dependency being down. A check that never ran records nothing.
-- Every check is kept; there is no pruning yet.
+- Every check is kept; there is no pruning yet. (Superseded by D48: the newest 200 per dependency.)
 - Choosing a different repo (D22) clears the history and every yes.
 
 **Timeouts.** At most 3 MCP servers start at once. That limit sits in the check node, because the scheduler's slots are per step type. So an MCP step's timeout covers its wait for a turn: 30 s for each round of 3.
@@ -1472,6 +1472,18 @@ The same request with a browser's name answered in half a second.
 **Why:** red means "this is broken". A busy public server that throttles our one request isn't broken, and showing it red for days is a false alarm.
 
 **Code:** `checks/probes.py` (`USER_AGENT`, `_get`).
+
+---
+
+## D48. Each dependency keeps its newest 200 checks (Vishwa, 2026-10-25)
+
+**Context.** D24 kept every check ("there is no pruning yet"), so a project that is checked often grows its database forever.
+
+**Choice:** after each check, a dependency's rows beyond its newest 200 are deleted. The Checks page's history and the map's bars show far fewer than that, and the flow's weights use only the latest latency. Clearing a project's history (Settings, D40) still empties it.
+
+**Why:** a database that only grows is a slow leak; 200 checks are weeks of history at any sensible pace.
+
+**Code:** `storage.py` (`add_checks`, `KEEP_CHECKS`).
 
 ---
 

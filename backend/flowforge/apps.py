@@ -5,7 +5,9 @@ redactor, which knows every saved value. Runs live in FlowForge's process and st
 from __future__ import annotations
 
 import os
+import signal
 import subprocess
+import sys
 import threading
 import time
 import uuid
@@ -18,6 +20,27 @@ from flowforge.security.masks import fill, masks_in
 
 KEEP_LINES = 2000
 STOP_WAIT_S = 5
+
+
+def _own_group() -> dict[str, object]:
+    """A run gets its own process group, so Stop ends what it started too (`npm run dev` starts children)."""
+    if sys.platform == "win32":
+        return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+    return {"start_new_session": True}
+
+
+def _end_tree(proc: subprocess.Popen) -> None:
+    """Ask the whole group to stop, then make it stop."""
+    if sys.platform == "win32":   # taskkill /T ends the process and every child it started
+        subprocess.run(["taskkill", "/T", "/F", "/PID", str(proc.pid)], capture_output=True, check=False)
+        return
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+        proc.wait(timeout=STOP_WAIT_S)
+    except subprocess.TimeoutExpired:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except ProcessLookupError:   # already gone
+        pass
 
 
 @dataclass
@@ -70,7 +93,8 @@ class Runs:
             self._runs[run.id] = run
         try:
             run._proc = subprocess.Popen(command, cwd=cwd, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                                         stderr=subprocess.STDOUT, text=True, errors="replace", bufsize=1)
+                                         stderr=subprocess.STDOUT, text=True, errors="replace", bufsize=1,
+                                         **_own_group())
         except OSError as e:
             run.status, run.ended = "failed", time.time()
             run.add(redact(f"FlowForge couldn't start it: {argv[0]} not found ({e.strerror})"
@@ -103,11 +127,7 @@ class Runs:
         if run is None or run._proc is None or run.status != "running":
             return False
         run.status = "stopped"
-        run._proc.terminate()
-        try:
-            run._proc.wait(timeout=STOP_WAIT_S)
-        except subprocess.TimeoutExpired:
-            run._proc.kill()
+        _end_tree(run._proc)
         return True
 
     def clear(self) -> None:

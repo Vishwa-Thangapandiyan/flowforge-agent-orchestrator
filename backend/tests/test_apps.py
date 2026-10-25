@@ -82,3 +82,27 @@ def test_output_since_a_point_and_runs_per_project(runs, tmp_path):
 def test_a_program_that_doesnt_exist_fails_plainly(runs, tmp_path):
     run = runs.start("shop", ["no-such-program-ffx"], tmp_path, {}, redactor_for())
     assert run.status == "failed" and "not found" in run.output()[0][1]
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX process groups; Windows ends the tree with taskkill /T")
+def test_stop_ends_the_apps_children_too(runs, tmp_path):
+    """Codex review: `npm run dev` starts children; Stop must end them, not only the process FlowForge started."""
+    import os
+
+    pid_file = tmp_path / "child.pid"
+    code = ("import subprocess, sys, time; "
+            "c = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)']); "
+            f"open({str(pid_file)!r}, 'w').write(str(c.pid)); print('up', flush=True); time.sleep(60)")
+    run = runs.start("shop", [sys.executable, "-c", code], tmp_path, {}, redactor_for())
+    assert until(lambda: pid_file.exists() and pid_file.read_text())
+    child = int(pid_file.read_text())
+    assert runs.stop(run.id) is True
+
+    def gone() -> bool:
+        try:
+            os.kill(child, 0)
+        except ProcessLookupError:
+            return True
+        return False
+
+    assert until(gone)

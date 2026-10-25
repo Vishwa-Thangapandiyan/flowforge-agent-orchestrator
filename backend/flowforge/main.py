@@ -120,6 +120,8 @@ class ProjectPrefix:
         self.app = app
 
     async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
+        if scope["type"] == "http" and not apps_api.registered() and (scope.get("server") or (None, None))[1]:
+            apps_api.register(int(scope["server"][1]))   # started without the port known: tell the agent (D43)
         path = scope.get("path", "") if scope["type"] in ("http", "websocket") else ""
         if not path.startswith("/p/"):
             await self.app(scope, receive, send)

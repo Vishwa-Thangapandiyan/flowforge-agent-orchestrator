@@ -43,6 +43,7 @@ RUNS = Runs()
 _requests: dict[str, dict[str, Any]] = {}
 _lock = threading.Lock()
 _token = secrets.token_urlsafe(32)
+_registered = False
 
 
 class RunAsk(BaseModel):
@@ -67,9 +68,23 @@ def started() -> None:
     RUNS.clear()
     with _lock:
         _requests.clear()
+    global _registered
+    _registered = False
     port = os.getenv("FLOWFORGE_PORT")
     if port and port.isdigit():
-        _write_private(server_file(), json.dumps({"port": int(port), "token": _token, "pid": os.getpid()}).encode())
+        register(int(port))
+
+
+def register(port: int) -> None:
+    """server.json: this FlowForge's port and token, readable only by you. At start-up when the port is known (the
+    `flowforge` command); else from the first request's own address (plain `uvicorn`: Codex review)."""
+    global _registered
+    _write_private(server_file(), json.dumps({"port": port, "token": _token, "pid": os.getpid()}).encode())
+    _registered = True
+
+
+def registered() -> bool:
+    return _registered
 
 
 def stopping() -> None:

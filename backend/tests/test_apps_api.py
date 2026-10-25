@@ -125,3 +125,13 @@ def test_the_server_file_tells_the_agent_where_flowforge_is_and_only_you_can_rea
         if os.name != "nt":
             assert stat.S_IMODE(path.stat().st_mode) == 0o600
     assert not path.exists()   # gone when FlowForge stops
+
+
+def test_started_by_plain_uvicorn_the_first_request_tells_the_agent_where_flowforge_is(shop, monkeypatch):
+    """Codex review: `uvicorn flowforge.main:app` sets no FLOWFORGE_PORT; the first request's own address is used."""
+    monkeypatch.delenv("FLOWFORGE_PORT", raising=False)
+    with client() as c:
+        assert apps_api.read_server_file() is None
+        c.get("/meta")
+        found = apps_api.read_server_file()
+        assert found["port"] == 8000 and found["token"] == apps_api.token()

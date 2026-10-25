@@ -24,15 +24,23 @@ fn free_port() -> std::io::Result<u16> {
 
 /// What the sidecar is started with: the dashboard on `port`, no browser of its own.
 fn server_args(port: u16) -> Vec<String> {
-    ["serve", "--no-open", "--port"].iter().map(|s| s.to_string()).chain([port.to_string()]).collect()
+    ["serve", "--no-open", "--port"]
+        .iter()
+        .map(|s| s.to_string())
+        .chain([port.to_string()])
+        .collect()
 }
 
 /// Does FlowForge answer `GET /meta` with 200 on `port`?
 fn answers(port: u16) -> bool {
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
-    let Ok(mut stream) = TcpStream::connect_timeout(&addr, Duration::from_millis(500)) else { return false };
+    let Ok(mut stream) = TcpStream::connect_timeout(&addr, Duration::from_millis(500)) else {
+        return false;
+    };
     let _ = stream.set_read_timeout(Some(Duration::from_secs(2)));
-    let request = format!("GET /meta HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nAccept: application/json\r\nConnection: close\r\n\r\n");
+    let request = format!(
+        "GET /meta HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nAccept: application/json\r\nConnection: close\r\n\r\n"
+    );
     if stream.write_all(request.as_bytes()).is_err() {
         return false;
     }
@@ -54,7 +62,7 @@ fn wait_until_ready(port: u16) -> bool {
 fn show_failure(app: &tauri::AppHandle, why: &str) {
     if let Some(window) = app.get_webview_window("main") {
         let message = serde_json_string(why);
-        let _ = window.eval(&format!("window.flowforgeFailed && window.flowforgeFailed({message})"));
+        let _ = window.eval(format!("window.flowforgeFailed && window.flowforgeFailed({message})"));
     }
 }
 
@@ -107,9 +115,10 @@ fn main() {
             let handle = app.handle().clone();
             std::thread::spawn(move || {
                 if wait_until_ready(port) {
-                    if let (Some(window), Ok(url)) =
-                        (handle.get_webview_window("main"), format!("http://127.0.0.1:{port}/").parse())
-                    {
+                    if let (Some(window), Ok(url)) = (
+                        handle.get_webview_window("main"),
+                        format!("http://127.0.0.1:{port}/").parse(),
+                    ) {
                         let _ = window.navigate(url);
                     }
                 } else {
@@ -125,7 +134,10 @@ fn main() {
                             eprintln!("[flowforge-server] {}", String::from_utf8_lossy(&line).trim_end());
                         }
                         CommandEvent::Terminated(status) => {
-                            show_failure(&handle, &format!("FlowForge's server stopped (code {:?}).", status.code));
+                            show_failure(
+                                &handle,
+                                &format!("FlowForge's server stopped (code {:?}).", status.code),
+                            );
                             break;
                         }
                         _ => {}

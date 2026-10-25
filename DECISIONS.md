@@ -1475,6 +1475,26 @@ The same request with a browser's name answered in half a second.
 
 ---
 
+## D47. The whole API answers only to this machine (Vishwa, 2026-10-25)
+
+**Context.** Only the key, fix and lock routes checked who was asking (D36, D37). Any web page you visit could reach the rest, because FlowForge listens on `127.0.0.1`:
+- through DNS rebinding (its own name pointed at your computer), it could read the map or edit a connector;
+- by sending a form from another site, it could start a scan or a check.
+
+**Choice:**
+- **The connection** must come from this machine: a loopback address (`127.0.0.0/8`, `::1`). A header can be forged, the address can't, so on a `0.0.0.0` bind another computer is refused whatever `Host` it claims (Codex review, P1). Remote access waits for §6.5's token.
+- **Every request** must name this machine in its `Host`: `localhost`, `127.0.0.1` or `::1`. A page reached through DNS rebinding carries its own name, so it gets 403.
+- **Every change** (any method but GET, HEAD and OPTIONS) that carries an `Origin` must come from those names too. Browsers send `Origin` with every cross-site POST, so another site's form gets 403. A command-line client sends none and is let through.
+- It is one ASGI middleware in front of everything (`security/local_only.py`), so a new route can't forget it.
+
+**Why:** FlowForge reads your code, starts MCP servers and holds your keys. Only you, at this computer, should be able to drive it.
+
+**Honest limits:** a program running as you on this machine can still call the API; that is §6.5's single local user. `--host 0.0.0.0` no longer opens FlowForge to other machines until there is a token.
+
+**Code:** `security/local_only.py`, `main.py`.
+
+---
+
 ## D48. Each dependency keeps its newest 200 checks (Vishwa, 2026-10-25)
 
 **Context.** D24 kept every check ("there is no pruning yet"), so a project that is checked often grows its database forever.

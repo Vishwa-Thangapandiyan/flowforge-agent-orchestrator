@@ -33,6 +33,8 @@ def server_command(repo: str | None, db: str | None) -> list[str]:
     kind = home.install_kind()
     if kind == "checkout":
         return [shutil.which("uv") or "uv", "--directory", str(home.CHECKOUT), "run", "flowforge", *tail]
+    if kind == "npx":   # the agent starts it the way MCP servers usually start, pinned to this version (D49)
+        return [shutil.which("npx") or "npx", "-y", f"{home.DIST_NAME}@{home.version()}", *tail]
     if kind == "desktop":   # the bundled binary is the `flowforge` command; it has no `-m` (D42)
         return [sys.executable, *tail]
     if kind == "uvx":

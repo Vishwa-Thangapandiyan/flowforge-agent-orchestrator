@@ -38,12 +38,12 @@ def version() -> str:
 
 
 def install_kind() -> str:
-    """"checkout" (run from source), "desktop" (the desktop app's bundled Python, D42), "uvx" (a throwaway environment
-    uv made for one run) or "pip" (installed)."""
+    """"checkout" (run from source), "desktop" (the desktop app's bundled Python, D42), "npx" (the same program, run
+    by `npx flowforge-map`, D49), "uvx" (a throwaway environment uv made for one run) or "pip" (installed)."""
     if IN_CHECKOUT:
         return "checkout"
-    if getattr(sys, "frozen", False):
-        return "desktop"
+    if getattr(sys, "frozen", False):   # the frozen program: the desktop app's, or one `npx flowforge-map` runs (D49)
+        return "npx" if os.getenv("FLOWFORGE_LAUNCHER") == "npx" else "desktop"
     return "uvx" if "archive-v" in Path(sys.prefix).as_posix() else "pip"
 
 
@@ -62,6 +62,8 @@ def command_line(*args: str) -> str:
         prefix = ["uv", "--directory", str(CHECKOUT), "run", "flowforge"]
     elif kind == "uvx":
         prefix = ["uvx", DIST_NAME]
+    elif kind == "npx":
+        prefix = ["npx", DIST_NAME]
     elif kind == "desktop" and not _cargo_build(Path(sys.executable)):   # the installed app's binary (D42)
         prefix = [sys.executable]
     elif kind == "desktop":   # a development build moves with every rebuild: the command that stays

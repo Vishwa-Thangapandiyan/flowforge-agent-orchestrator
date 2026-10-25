@@ -122,3 +122,28 @@ def test_a_desktop_development_build_never_hands_out_its_build_path(monkeypatch)
     assert "target/debug" not in line and line.split()[0] in ("flowforge", "uvx") and line.endswith("key add API_KEY")
     monkeypatch.setattr(sys, "executable", "/opt/FlowForge/flowforge-server")   # an installed app: its own path
     assert home.command_line("key", "list").startswith("/opt/FlowForge/flowforge-server")
+
+
+def test_started_by_npx_the_agent_and_you_get_npx_commands(monkeypatch):
+    """D49: the frozen program, started by `npx flowforge-map`, says so; its commands keep using npx."""
+    monkeypatch.setattr(home, "IN_CHECKOUT", False)
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setenv("FLOWFORGE_LAUNCHER", "npx")
+    assert home.install_kind() == "npx"
+    assert home.command_line("key", "add", "API_KEY").split()[:2] == ["npx", "flowforge-map"]
+    cmd = agent.server_command(None, None)
+    assert Path(cmd[0]).stem.lower() == "npx" and cmd[1:3] == ["-y", f"flowforge-map@{home.version()}"]
+    assert cmd[3:] == ["mcp"]
+    monkeypatch.delenv("FLOWFORGE_LAUNCHER")
+    assert home.install_kind() == "desktop"
+
+
+def test_the_npm_package_is_the_same_version_as_the_python_one():
+    """A tag publishes both; the launcher downloads the release of its own version (D49)."""
+    import json
+    import tomllib
+
+    py = tomllib.loads((home.CHECKOUT / "pyproject.toml").read_text())["project"]["version"]
+    npm = json.loads((home.CHECKOUT / "npm" / "package.json").read_text())
+    assert npm["version"] == py and npm["name"] == home.DIST_NAME
+    assert "postinstall" not in npm.get("scripts", {}) and not npm.get("dependencies")   # nothing runs at install

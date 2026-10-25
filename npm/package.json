@@ -1,0 +1,13 @@
+{
+  "name": "flowforge-map",
+  "version": "0.3.0",
+  "description": "See what your app depends on (LLMs, MCP servers, APIs), whether each is healthy and safe, and keep your keys away from your coding agent. No Python needed.",
+  "keywords": ["mcp", "llm", "dependencies", "security", "api-keys", "coding-agent", "claude-code", "codex"],
+  "homepage": "https://github.com/Vishwa-Thangapandiyan/flowforge-agent-orchestrator",
+  "repository": { "type": "git", "url": "git+https://github.com/Vishwa-Thangapandiyan/flowforge-agent-orchestrator.git", "directory": "npm" },
+  "license": "MIT",
+  "bin": { "flowforge-map": "bin/flowforge.js", "flowforge": "bin/flowforge.js" },
+  "files": ["bin", "lib", "README.md"],
+  "engines": { "node": ">=18" },
+  "scripts": { "test": "node --test test/launcher.test.js" }
+}

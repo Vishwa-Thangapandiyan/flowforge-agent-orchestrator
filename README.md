@@ -24,14 +24,20 @@ What makes it different: **it knows which chain of steps is the bottleneck and s
 ### Install
 
 ```bash
-uvx flowforge-map --example      # try it: a sample app's maps in your browser, no keys, nothing sent
-pipx install flowforge-map       # or install it (the command is `flowforge`)
-flowforge --repo ~/my-app        # map your own repo
+npx flowforge-map --example      # try it: a sample app's maps in your browser, no keys, nothing sent
+npx flowforge-map --repo .       # map the folder you're in
 ```
 
-You need Python 3.12 or newer ([uv](https://docs.astral.sh/uv/) installs it for you). The dashboard is inside the package: no Node needed. Your data lives in `~/.flowforge`.
+That's all: no Python, no virtual env. The first run downloads FlowForge's ready-made program for your computer (about 60 MB, checked against the release's checksums) into `~/.flowforge/bin`; after that it starts at once, even offline. Works on Windows, macOS (Apple and Intel) and Linux x64 with Node 18+. Your data lives in `~/.flowforge`.
 
-**Using pip?** Install inside a virtual environment (`python -m venv .venv && . .venv/bin/activate && pip install flowforge-map`). Many systems refuse a plain `pip install` outside one ("externally managed environment", PEP 668). `pipx` and `uvx` make that environment for you.
+| You have | Run | |
+|---|---|---|
+| Node (most developers) | `npx flowforge-map` | ⭐ no Python needed |
+| Node, every day | `npm i -g flowforge-map`, then just `flowforge` | installs the launcher; the program comes on first run |
+| Python people | `uvx flowforge-map` or `pipx install flowforge-map` | Python 3.12+; no virtual env to manage |
+| No terminal | the desktop app (Releases) | download and open |
+
+Every way gives the same `flowforge` command: `npx flowforge-map status`, `npx flowforge-map key add STRIPE_KEY`, and so on. Linux ARM and Windows ARM have no ready-made build yet, so `npx` uses `uvx` there.
 
 The first time, a short welcome walks you through three steps, each one skippable: your app's folder (or the example), pairing your coding agent once, and a lock for your keys. **⚙ Settings** at the bottom of the rail keeps what applies to every project: your agent, the theme and map style, the Vault's lock, and your data (each project's size, the MCP servers it may start, its check history, and the version, with **Check for updates**, which asks pypi.org only when you press it).
 

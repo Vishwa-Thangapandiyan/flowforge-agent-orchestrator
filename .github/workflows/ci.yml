@@ -47,6 +47,24 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  npx:
+    name: npx launcher / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    defaults:
+      run:
+        working-directory: npm
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 18   # the oldest Node the package promises (D49)
+      - run: npm test
+      - run: npm pack --dry-run   # what would be published: bin/, lib/, README.md, package.json
+
   package:
     # The installable package (D34): build the dashboard and the wheel, install the wheel alone in a fresh
     # environment outside the repo, and use it as a stranger would. Nothing is published here.

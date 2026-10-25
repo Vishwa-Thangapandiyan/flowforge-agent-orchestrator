@@ -1,0 +1,21 @@
+[package]
+name = "flowforge-desktop"
+version = "0.3.0"
+description = "FlowForge's desktop app (D42): the same dashboard, with Python inside"
+license = "MIT"
+edition = "2021"
+publish = false
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-single-instance = "2"
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1

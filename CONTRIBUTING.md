@@ -44,3 +44,16 @@ Every pull request already runs the same build and smoke test (the `package` CI 
 ## Style
 
 Match the code around you: type hints, `from __future__ import annotations`, short docstrings that cite decisions (`(D7)`), Pydantic models with `extra="forbid"`. Prefer the standard library and existing patterns over new abstractions; a new runtime dependency needs a reason in the pull request.
+
+## The desktop app (D42)
+
+Needs Rust and, on Linux, WebKitGTK (`libwebkit2gtk-4.1-dev` on Debian/Ubuntu, `webkit2gtk4.1-devel` on Fedora).
+
+```bash
+cd frontend && npm run build && cd ..          # the dashboard the server ships
+uv run python scripts/build_sidecar.py         # FlowForge frozen into desktop/src-tauri/binaries/, smoke-tested
+cd desktop && npm ci && npm run dev            # the app in a window (npm run build: the installers)
+```
+
+`cargo test`, `cargo clippy` and `cargo fmt` run in `desktop/src-tauri`. A `v*` tag builds every platform's installer in
+CI and attaches them to a draft GitHub Release.

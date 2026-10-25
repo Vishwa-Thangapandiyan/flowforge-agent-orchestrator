@@ -38,9 +38,12 @@ def version() -> str:
 
 
 def install_kind() -> str:
-    """"checkout" (run from source), "uvx" (a throwaway environment uv made for one run) or "pip" (installed)."""
+    """"checkout" (run from source), "desktop" (the desktop app's bundled Python, D42), "uvx" (a throwaway environment
+    uv made for one run) or "pip" (installed)."""
     if IN_CHECKOUT:
         return "checkout"
+    if getattr(sys, "frozen", False):
+        return "desktop"
     return "uvx" if "archive-v" in Path(sys.prefix).as_posix() else "pip"
 
 
@@ -53,6 +56,8 @@ def command_line(*args: str) -> str:
         prefix = ["uv", "--directory", str(CHECKOUT), "run", "flowforge"]
     elif kind == "uvx":
         prefix = ["uvx", DIST_NAME]
+    elif kind == "desktop":   # the app's bundled binary, by its full path (D42)
+        prefix = [sys.executable]
     else:
         prefix = ["flowforge"]
     return shlex.join([*prefix, *args])

@@ -1,0 +1,15 @@
+{
+  "name": "flowforge-desktop",
+  "private": true,
+  "version": "0.3.0",
+  "description": "FlowForge's desktop app (D42): the same dashboard, with Python inside",
+  "scripts": {
+    "tauri": "tauri",
+    "sidecar": "cd .. && uv run python scripts/build_sidecar.py",
+    "dev": "tauri dev",
+    "build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.9.0"
+  }
+}

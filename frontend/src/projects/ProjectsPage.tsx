@@ -4,6 +4,7 @@ import { type FormEvent, useState } from "react";
 import { Navigate as RouterNavigate, useLocation, useNavigate as useRouterNavigate } from "react-router-dom";
 import { api, useApi } from "../api/client";
 import { Icons } from "../components/icons";
+import { BrowseButton } from "../components/FolderPicker";
 import { EmptyState, ErrorBox } from "../components/ui";
 import type { SettingsData } from "../settings/types";
 import { Welcome } from "../welcome/Welcome";
@@ -183,6 +184,7 @@ export function NewProjectPage() {
         <div className="pj-in">
           <input aria-label="Your app's folder" placeholder="/home/you/code/my-app" value={path} autoFocus
             onChange={(e) => setPath(e.target.value)} disabled={busy} />
+          <BrowseButton onPick={setPath} disabled={busy} />
           <button className="btn primary" type="submit" disabled={busy || !path.trim()}>{busy ? "Reading your code…" : <>Scan {Icons.arrow(16)}</>}</button>
         </div>
         {busy && <div className="pj-prog" role="progressbar" aria-label="Reading your code"><i /></div>}

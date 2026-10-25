@@ -47,6 +47,22 @@ flowforge key list             # key names and statuses, never values
 
 Project commands use the current folder's project, else the last opened; PROJECT is its name or id. They read local files and work with the dashboard stopped. `--plain` or `NO_COLOR` disables colour and the banner; pipes have no colour or animation.
 
+### Desktop app
+
+The same dashboard in its own window, with Python inside: nothing else to install. Download the installer for your computer from the [Releases](https://github.com/Vishwa-Thangapandiyan/flowforge-agent-orchestrator/releases) page:
+
+| Your computer | Download |
+|---|---|
+| Windows | `FlowForge_x.y.z_x64-setup.exe` or `.msi` |
+| Mac (Apple Silicon or Intel) | `FlowForge_x.y.z_aarch64.dmg` or `_x64.dmg` |
+| Linux | `.AppImage`, `.deb` or `.rpm` |
+
+The builds aren't signed yet (signing costs money every year), so the first launch asks once:
+- **Mac:** right-click FlowForge in Applications → **Open** → **Open**.
+- **Windows:** on "Windows protected your PC", click **More info** → **Run anyway**.
+
+After that it opens normally. **Browse…** picks your app's folder; **Settings → Your agent** pairs your coding agent with the app's own FlowForge.
+
 ### From source (to work on FlowForge)
 
 You need **[uv](https://docs.astral.sh/uv/)** (it installs Python for you) and **[Node.js](https://nodejs.org/) 20 or newer** for the dashboard.

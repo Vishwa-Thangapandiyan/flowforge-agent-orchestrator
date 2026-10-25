@@ -1,0 +1,23 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "FlowForge",
+  "version": "0.3.0",
+  "identifier": "dev.flowforge.desktop",
+  "build": { "frontendDist": "../ui" },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      { "label": "main", "title": "FlowForge", "url": "index.html", "width": 1320, "height": 860, "minWidth": 390, "minHeight": 600 }
+    ],
+    "security": { "csp": null }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "DeveloperTool",
+    "shortDescription": "Map what your app depends on, and keep it healthy and safe",
+    "longDescription": "FlowForge reads your repo (nothing is run or sent) and maps every LLM, MCP server, HTTP API and local program it calls, checks their health and security, and keeps your keys away from your coding agent.",
+    "externalBin": ["binaries/flowforge-server"],
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"]
+  }
+}

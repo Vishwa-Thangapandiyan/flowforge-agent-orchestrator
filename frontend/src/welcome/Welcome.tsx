@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { Setup } from "../agent/ConnectAgent";
 import { api, useApi } from "../api/client";
+import { BrowseButton } from "../components/FolderPicker";
 import { Icons } from "../components/icons";
 import { markOpen, placeOf } from "../projects/memory";
 import { type LockState, SetUp } from "../security/VaultPage";
@@ -37,6 +38,7 @@ function AppStep({ exampleId, onMapped }: { exampleId: string; onMapped: (id: st
       <div className="wc-in">
         <input aria-label="Your app's folder" placeholder="/home/you/code/my-app" value={path} autoFocus disabled={busy}
           onChange={(e) => setPath(e.target.value)} />
+        <BrowseButton onPick={setPath} disabled={busy} />
         <button className="btn primary" type="submit" disabled={busy || !path.trim()}>
           {busy ? "Reading your code…" : <>Map it {Icons.arrow(16)}</>}
         </button>

@@ -67,3 +67,48 @@ def test_the_first_launch_creates_the_data_folder(tmp_path):
     db = tmp_path / "not-yet" / "deeper" / "flowforge.db"
     Storage(db).set_setting("hello", "world")   # a fresh install: ~/.flowforge doesn't exist yet
     assert db.is_file()
+
+
+def test_a_bundled_desktop_app_is_its_own_command(monkeypatch):
+    """D42: inside the desktop app, Python is frozen by PyInstaller and `-m` doesn't exist; the binary is `flowforge`."""
+    from flowforge.api.agent import server_command
+
+    monkeypatch.setattr(home, "IN_CHECKOUT", False)
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "executable", "/Applications/FlowForge.app/Contents/MacOS/flowforge-server")
+    assert home.install_kind() == "desktop"
+    assert server_command(None, None) == ["/Applications/FlowForge.app/Contents/MacOS/flowforge-server", "mcp"]
+    assert server_command("/home/me/app", "/x.db")[1:] == ["mcp", "--repo", "/home/me/app", "--db", "/x.db"]
+    assert home.command_line("key", "add", "A_KEY") == \
+        "/Applications/FlowForge.app/Contents/MacOS/flowforge-server key add A_KEY"
+
+
+def test_the_desktop_apps_server_stops_when_the_app_is_gone(tmp_path):
+    """D42: the app holds the server's stdin. When the app quits or crashes the pipe closes, and the server stops
+    instead of running on in the background holding its port."""
+    import os
+    import socket
+    import subprocess
+    import time
+
+    import httpx
+
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    env = {**os.environ, "FLOWFORGE_HOME": str(tmp_path), "FLOWFORGE_DB": str(tmp_path / "f.db"),
+           "FLOWFORGE_STOP_ON_EOF": "1"}
+    server = subprocess.Popen([sys.executable, "-m", "flowforge.cli", "serve", "--no-open", "--port", str(port)],
+                              stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
+    try:
+        for _ in range(80):
+            try:
+                if httpx.get(f"http://127.0.0.1:{port}/meta", timeout=1).status_code == 200:
+                    break
+            except httpx.HTTPError:
+                time.sleep(0.25)
+        server.stdin.close()   # the app is gone
+        assert server.wait(timeout=15) is not None
+    finally:
+        if server.poll() is None:
+            server.kill()

@@ -17,7 +17,7 @@ const THEME_CHOICES: { id: Theme; label: string; icon: (s?: number) => ReactNode
 ];
 
 const REFRESH_MS = 3000;
-const INSTALL_WORD = { checkout: "from source", uvx: "with uvx", pip: "with pip" };
+const INSTALL_WORD = { checkout: "from source", desktop: "as the desktop app", uvx: "with uvx", pip: "with pip" };
 
 function Look() {
   const [theme, setTheme] = useState<Theme>(readTheme);

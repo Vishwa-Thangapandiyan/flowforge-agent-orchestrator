@@ -50,7 +50,7 @@ async def test_an_api_that_answers_is_up_with_its_latency(tmp_path):
     (request,) = seen
     assert request.method == "GET" and request.url == "https://api.weather.test/v1/forecast"
     assert "authorization" not in request.headers and "cookie" not in request.headers
-    assert request.headers["user-agent"].startswith("FlowForge health check")
+    assert request.headers["user-agent"].startswith("FlowForge/")
 
 
 async def test_an_api_asking_for_a_key_is_up(tmp_path):
@@ -69,11 +69,39 @@ async def test_a_server_error_or_no_answer_is_down(tmp_path):
         result = await check(api("https://api.gone.test/v1"), tmp_path, http=http)
     assert result.status == "down" and result.summary == "Refused the connection"
 
-    def hang(request):
-        raise httpx.ReadTimeout("timed out")
-    async with client(hang) as http:
+    def never_connects(request):
+        raise httpx.ConnectTimeout("timed out")
+    async with client(never_connects) as http:
         result = await check(api("https://api.slowpoke.test/v1"), tmp_path, http=http)
-    assert result.status == "down" and result.summary == "No answer within 10 s"
+    assert result.status == "down"
+
+
+async def test_connected_but_no_reply_is_busy_not_down(tmp_path):
+    """D46: Overpass accepted the connection and stayed silent for days; it was throttling, not down."""
+    def silent(request):
+        raise httpx.ReadTimeout("timed out")
+    async with client(silent) as http:
+        result = await check(api("https://overpass-api.test/api/interpreter"), tmp_path, http=http)
+    assert result.status == "warn" and result.summary == "Connected, but no reply within 10 s"
+    assert "asks often" in result.reason and "few minutes" in result.fix
+
+
+async def test_a_check_names_itself_the_standard_way(tmp_path):
+    """D46: product/version (+contact); no word an anti-bot rule looks for, and still no key, cookie or query."""
+    import re
+
+    from flowforge.home import version
+
+    seen = {}
+
+    def record(request):
+        seen.update(request.headers)
+        return httpx.Response(200)
+    async with client(record) as http:
+        await check(api("https://api.example.test/v1?token=x"), tmp_path, http=http)
+    ua = seen["user-agent"]
+    assert re.fullmatch(r"FlowForge/\S+ \(\+https://github\.com/[\w-]+/[\w-]+\)", ua) and version() in ua
+    assert "check" not in ua.lower()
 
 
 async def test_slow_or_unencrypted_needs_a_look(tmp_path, monkeypatch):

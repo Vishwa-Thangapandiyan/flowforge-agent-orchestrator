@@ -23,6 +23,7 @@ from mcp.client.stdio import get_default_environment, stdio_client
 
 from flowforge.checks.models import CheckResult, CheckTarget, Status
 from flowforge.connectors.presets import MODEL_LISTS
+from flowforge.home import version
 from flowforge.scan.urls import host_of, is_local
 from flowforge.security.logfilter import REDACTED, Redactor
 
@@ -34,7 +35,8 @@ MCP_TIMEOUT_S: float = 30
 STDERR_LINES = 3
 KNOCK_TIMEOUT_S = 5       # when a request can't connect: how long each address gets to accept a connection
 MAX_ADDRESSES = 4
-USER_AGENT = "FlowForge health check (one request, no keys)"
+# product/version (+contact): the form Nominatim's policy asks for; Overpass ignored "health check" (D46)
+USER_AGENT = f"FlowForge/{version()} (+https://github.com/Vishwa-Thangapandiyan/flowforge-agent-orchestrator)"
 _redactor = Redactor()
 
 
@@ -179,6 +181,11 @@ async def _get(t: CheckTarget, url: str, http: httpx.AsyncClient, *, read: bool 
             if read and response.status_code == 200:
                 answer.body = await response.aread()
             return answer
+    except httpx.ReadTimeout:   # connected and asked, then silence: busy or throttling us, not down (D46)
+        return _result(t, "warn", f"Connected, but no reply within {HTTP_TIMEOUT_S} s",
+                       reason="The server took the request and didn't answer. A public server may stop answering "
+                              "a computer that asks often; your app's own requests may still work.",
+                       fix="Check again in a few minutes.")
     except httpx.TimeoutException:
         return _result(t, "down", f"No answer within {HTTP_TIMEOUT_S} s")
     except httpx.ConnectError as exc:

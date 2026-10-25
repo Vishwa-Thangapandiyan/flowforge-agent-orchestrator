@@ -1456,6 +1456,24 @@ Masking is FlowForge's job and the user shouldn't have to think about it. The co
 
 ---
 
+## D46. A server that connects but doesn't reply is busy, not down; checks name themselves the standard way (Vishwa, 2026-10-25)
+
+**Context.** On Vishwa's map, Overpass API showed red, "No answer within 10 s", on every check for two days. Overpass was working. It accepts the connection and then stays silent:
+- for a User-Agent that says "health check" or "(one request, no keys)";
+- and for any computer that asks often (it limits each computer).
+
+The same request with a browser's name answered in half a second.
+
+**Choice:**
+- **Connected, no reply** (the request was sent, the read timed out) is **warn**, not down: "Connected, but no reply within 10 s". The reason says a public server may stop answering a computer that asks often, and the fix is to check again in a few minutes. A connect timeout, a refusal or a 5xx stays **down**, so a server that can't be reached still shows red.
+- **The User-Agent** is `FlowForge/<version> (+https://github.com/Vishwa-Thangapandiyan/flowforge-agent-orchestrator)`, the standard product/version (+contact) form. Nominatim's usage policy asks for exactly that, and no anti-bot rule looks for words like "check". It still carries no key, cookie or query (D24).
+
+**Why:** red means "this is broken". A busy public server that throttles our one request isn't broken, and showing it red for days is a false alarm.
+
+**Code:** `checks/probes.py` (`USER_AGENT`, `_get`).
+
+---
+
 ## Step JSON schema (reference)
 
 ```json

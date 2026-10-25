@@ -15,7 +15,8 @@ const WIN = process.platform === "win32";
 /** A stand-in for FlowForge: prints its arguments as JSON, exits with the code in FAKE_EXIT. Run by node itself,
  *  so no system needs a shell or a script wrapper to start it. */
 function fakeProgram() {
-  return Buffer.from(`console.log(JSON.stringify(process.argv.slice(2)));\nprocess.exit(Number(process.env.FAKE_EXIT || 0));\n`);
+  // exitCode, not exit(): a piped stdout is written before Node leaves (Codex review)
+  return Buffer.from(`console.log(JSON.stringify(process.argv.slice(2)));\nprocess.exitCode = Number(process.env.FAKE_EXIT || 0);\n`);
 }
 
 function sha(buf) { return crypto.createHash("sha256").update(buf).digest("hex"); }

@@ -4,6 +4,7 @@
 import { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Link } from "../projects/links";
+import { AgentRuns } from "./AgentRuns";
 import { Icons } from "../components/icons";
 import { EmptyState, ErrorBox } from "../components/ui";
 import { useCounts } from "./counts";
@@ -38,7 +39,7 @@ export function KeysPage() {
     <div className="page-head">
       <div className="titles">
         <h1>Keys</h1>
-        <p className="lede">Paste each key once. Your coding agent only ever sees its name.</p>
+        <p className="lede">Paste each key once. Your coding agent only ever sees a mask of it.</p>
       </div>
       {keys.length > 0 && (
         <span className="is-chips">
@@ -58,6 +59,7 @@ export function KeysPage() {
           action={data.repo ? undefined : <Link className="btn primary" to="/">Scan a folder</Link>}>
           {data.repo ? "Keys show here when the code reads one, or when your agent asks for one." : "Keys come from the scan of a folder."}
         </EmptyState>
+        <AgentRuns />
       </div>
     );
   }
@@ -87,9 +89,11 @@ export function KeysPage() {
           <div className="key-page"><KeyList keys={saved} onSaved={counts.reload} /></div>
         </details>
       )}
+      <AgentRuns />
       <p className="key-runrow">
-        {Icons.play(14)} Your app gets them: <code title={run}>flowforge run -- …</code>
-        <button type="button" className="btn sm" onClick={() => copy(run)}>{Icons.copy(14)} Copy</button>
+        {Icons.play(14)} Your agent starts your app with <b>run_app</b>: FlowForge fills each <code>ffkey://</code> mask.
+        <span className="key-noagent">No agent? Start it yourself with its keys:
+          <button type="button" className="btn sm" onClick={() => copy(run)} title={run}>{Icons.copy(14)} Copy the start command</button></span>
         <span aria-live="polite">{said}</span>
         <Link className="key-vault-link" to="/vault">{Icons.lock(14)} See your keys in the Vault</Link>
       </p>

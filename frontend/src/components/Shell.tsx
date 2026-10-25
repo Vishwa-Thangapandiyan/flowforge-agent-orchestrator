@@ -8,6 +8,7 @@ import type { Meta } from "../api/types";
 import { Icons } from "./icons";
 import { applyTheme, readTheme } from "./theme";
 import { adoptMapStyle, styleInLink, type GraphTheme } from "../flowmap/themes";
+import { RunPrompt } from "../security/AgentRuns";
 import { CountsProvider, useCounts } from "../security/counts";
 
 const MetaContext = createContext<Meta>({ project: "My project", example: false, version: "" });
@@ -109,6 +110,7 @@ function ProjectShell({ pid }: { pid: string | undefined }) {
             {Icons.gear(20)}<span>Settings</span>
           </Link>
         </nav>
+        {pid && <RunPrompt />}
         <main className="main" id="main" tabIndex={-1}>
           <div key={location.pathname} className={`page${bleed ? "" : " page-enter"}`}>
             <Outlet />

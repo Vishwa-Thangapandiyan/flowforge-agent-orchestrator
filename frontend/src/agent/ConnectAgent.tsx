@@ -39,6 +39,9 @@ const TOOLS: Record<string, { ask: string; icon: (s?: number) => ReactNode }> = 
   get_flow: { ask: "What waits for what?", icon: Icons.route },
   get_advice: { ask: "What could run together?", icon: Icons.bolt },
   what_changed: { ask: "What did the edit change?", icon: Icons.refresh },
+  run_app: { ask: "Run the app with its keys", icon: Icons.play },
+  app_output: { ask: "What did the app print?", icon: Icons.list },
+  stop_app: { ask: "Stop the app", icon: Icons.stop },
 };
 
 /** Tiles: Claude Code has its own mark; simple-icons has none for the others, so they get monograms (D15). */

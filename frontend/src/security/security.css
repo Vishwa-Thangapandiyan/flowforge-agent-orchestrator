@@ -220,3 +220,7 @@ a.sec-chip { text-decoration: none; }
 .run-out pre { max-height: 240px; overflow: auto; margin: 6px 0 0; padding: 8px; border-radius: var(--r-sm); background: var(--surface-2);
   font: 12px var(--mono); white-space: pre-wrap; }
 @media (max-width: 560px) { .run-row { grid-template-columns: auto 1fr; } }
+/* Add to code (D44): what changed, after the click */
+.key-added { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0 0;
+  color: var(--teal); font-size: 13px; }
+.key-why { flex-basis: 100%; }

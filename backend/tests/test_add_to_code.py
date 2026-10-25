@@ -327,3 +327,13 @@ async def test_the_agent_sees_where_each_key_goes_never_a_value(flutter, tmp_pat
     assert FAKE not in text
     keys = {k["name"]: k for k in json.loads(text)["keys"]}
     assert keys["MAPS_KEY"]["spot"]["ref"] == "lib/dev/app_config.dart:2"
+
+
+def test_a_key_saved_before_goes_into_the_app_with_no_retyping(served, flutter):
+    KeyStore(flutter).add("SUPABASE_ANON_KEY", FAKE)   # saved with the old box: in the Vault, not in the app
+    with served() as c:
+        k = {k["name"]: k for k in c.get("/keys").json()["keys"]}["SUPABASE_ANON_KEY"]
+        assert k["status"] == "saved" and k["in_app"] is False
+        r = c.post("/keys/SUPABASE_ANON_KEY/add-to-code", json={"ref": k["spot"]["ref"], "check": k["spot"]["check"]})
+        assert r.status_code == 200, r.text
+    assert json.loads((flutter / ".flowforge/dart-defines.json").read_text()) == {"SUPABASE_ANON_KEY": FAKE}

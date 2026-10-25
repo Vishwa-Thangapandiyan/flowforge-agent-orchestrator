@@ -75,7 +75,7 @@ class AddToCode(BaseModel):
     model_config = ConfigDict(extra="forbid")
     ref: str
     check: str
-    value: str | None = None   # none for a key written in the open: its value comes from the code
+    value: str | None = None   # none: the saved value, or for a key written in the open, the code's
 
 
 _FIRST = {"open": 0, "placeholder": 1, "reads": 2}
@@ -223,8 +223,11 @@ def add_key_to_code(name: str, body: AddToCode) -> dict[str, Any]:
     if s.example:
         raise HTTPException(409, "The example's code isn't changed. Open your own project to add keys to code.")
     repo = _writable(s)
+    value = body.value
+    if value is None:   # saved before, so nothing to retype (an open key's value comes from the code instead)
+        value = KeyStore(repo).env().get(name)
     try:
-        done = add_to_code(repo, name, body.ref, body.check, body.value)
+        done = add_to_code(repo, name, body.ref, body.check, value)
     except CantAdd as e:
         raise HTTPException(409, str(e)) from None
     saved = KeyStore(repo).env().get(str(done["name"]))

@@ -1,15 +1,14 @@
 // The Keys page (D36–D38, docs/design/vault step 3): adding keys only. What your agent is waiting for comes first, then
 // what's missing, then keys still in .env, then the saved ones, folded. Values never come back to this page: seeing
 // them is the Vault's job.
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Link } from "../projects/links";
 import { AgentRuns } from "./AgentRuns";
 import { Icons } from "../components/icons";
 import { EmptyState, ErrorBox } from "../components/ui";
 import { useCounts } from "./counts";
-import { type KeyInfo, KeyList, KeyRow } from "./Keys";
-import { useCopy } from "./Security";
+import { type Added, AddedNote, type KeyInfo, KeyList, KeyRow } from "./Keys";
 import "./security.css";
 
 function ago(at: string): string {
@@ -20,8 +19,8 @@ function ago(at: string): string {
 export function KeysPage() {
   const counts = useCounts();
   const data = counts.keysData;
-  const [said, copy] = useCopy();
   const [params] = useSearchParams();
+  const [added, setAdded] = useState<Added>();
   const focus = params.get("key");
   useEffect(() => {   // /keys?key=NAME: that key's box, ready to paste into (D38)
     if (!focus || !data) return;
@@ -63,9 +62,9 @@ export function KeysPage() {
       </div>
     );
   }
-  const run = `${data.run ?? "flowforge run --"} <how you start your app>`;
   return (
     <div className="sec-page">{head}
+      {added && <AddedNote added={added} onClose={() => setAdded(undefined)} />}
       {asked.length > 0 && (
         <section className="key-wait" aria-label="Your agent is waiting for">
           <h2 className="key-wait-title"><i className="sec-dot lv-high" /> Your agent is waiting for</h2>
@@ -73,7 +72,7 @@ export function KeysPage() {
             {asked.map((k) => {
               const ask = data.requests?.find((r) => r.name === k.name);
               return (
-                <KeyRow key={k.name} k={k} onSaved={counts.reload}
+                <KeyRow key={k.name} k={k} onSaved={counts.reload} example={data.example} onAdded={setAdded}
                   note={ask ? `${ask.why} · asked ${ago(ask.at)}` : undefined} />
               );
             })}
@@ -81,20 +80,17 @@ export function KeysPage() {
         </section>
       )}
       {(missing.length > 0 || inEnv.length > 0) && (
-        <div className="key-page"><KeyList keys={[...missing, ...inEnv]} onSaved={counts.reload} /></div>
+        <div className="key-page"><KeyList keys={[...missing, ...inEnv]} onSaved={counts.reload} example={data.example} onAdded={setAdded} /></div>
       )}
       {saved.length > 0 && (
         <details className="key-saved">
           <summary>{Icons.check(15)} {saved.length} saved · {saved.map((k) => k.name).join(", ")}</summary>
-          <div className="key-page"><KeyList keys={saved} onSaved={counts.reload} /></div>
+          <div className="key-page"><KeyList keys={saved} onSaved={counts.reload} example={data.example} onAdded={setAdded} /></div>
         </details>
       )}
       <AgentRuns />
       <p className="key-runrow">
-        {Icons.play(14)} Your agent starts your app with <b>run_app</b>: FlowForge fills each <code>ffkey://</code> mask.
-        <span className="key-noagent">No agent? Start it yourself with its keys:
-          <button type="button" className="btn sm" onClick={() => copy(run)} title={run}>{Icons.copy(14)} Copy the start command</button></span>
-        <span aria-live="polite">{said}</span>
+        {Icons.code(14)} <b>Add to code</b> puts a key where your app reads it. Your agent only ever sees a mask.
         <Link className="key-vault-link" to="/vault">{Icons.lock(14)} See your keys in the Vault</Link>
       </p>
     </div>

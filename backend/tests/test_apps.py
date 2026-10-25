@@ -106,3 +106,15 @@ def test_stop_ends_the_apps_children_too(runs, tmp_path):
         return False
 
     assert until(gone)
+
+
+def test_a_mask_in_dot_env_works_because_the_real_value_is_already_set(runs, tmp_path):
+    """Codex review: masks aren't filled inside files. A .env line NAME=ffkey://NAME still works: FlowForge sets NAME
+    first, and .env loaders keep a variable that is already set (python-dotenv's default, like Node's and Vite's)."""
+    (tmp_path / ".env").write_text("STRIPE_SECRET_KEY=ffkey://STRIPE_SECRET_KEY\n")
+    seen = tmp_path / "seen.txt"
+    code = ("import os, pathlib; from dotenv import load_dotenv; load_dotenv(); "
+            f"pathlib.Path({str(seen)!r}).write_text(os.environ['STRIPE_SECRET_KEY'])")
+    run = runs.start("shop", [sys.executable, "-c", code], tmp_path, {"STRIPE_SECRET_KEY": FAKE}, redactor_for(FAKE))
+    assert until(lambda: runs.get(run.id).status == "exited")
+    assert seen.read_text() == FAKE

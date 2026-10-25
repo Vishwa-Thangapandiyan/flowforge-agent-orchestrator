@@ -140,7 +140,7 @@ FlowForge asks you once: "Your agent wants to run flutter run … with STRIPE_SE
 FlowForge (plain code, no AI) fills the mask and starts the app → the output comes back masked
 ```
 
-After you allow a command once, the same command runs without asking (**Settings** can turn the question off). The Keys page lists your agent's runs with **Stop**. This covers keys read when the app is *built* too, such as Flutter's `--dart-define` and Vite's `import.meta.env`. On the map, a 🔑 badge marks a block whose key is missing. With no keychain (a server, CI), keys go to an encrypted file in `~/.flowforge`.
+Masks work in commands, in the environment and in `.env` lines; other config files never get the key written into them, so read the env var there. After you allow a command once, the same command runs without asking (**Settings** can turn the question off). The Keys page lists your agent's runs with **Stop**. This covers keys read when the app is *built* too, such as Flutter's `--dart-define` and Vite's `import.meta.env`. On the map, a 🔑 badge marks a block whose key is missing. With no keychain (a server, CI), keys go to an encrypted file in `~/.flowforge`.
 
 **No agent?** The same works by hand:
 ```bash

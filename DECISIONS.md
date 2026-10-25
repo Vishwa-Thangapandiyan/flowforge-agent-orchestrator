@@ -1367,9 +1367,12 @@ D39 left pairing the agent once to this step.
 Masking is FlowForge's job and the user shouldn't have to think about it. The commands from D36 stay for people without an agent. This also covers keys read when an app is **built** (Flutter's `String.fromEnvironment` filled by `--dart-define`, Vite's `import.meta.env`), which `flowforge run -- flutter run` missed.
 
 **Choice:**
-- **The mask is `ffkey://NAME`.** `get_keys` gives each key's mask and where it goes:
-  - code reads the env var `NAME`;
-  - a config file, or a command line, gets the mask, e.g. `--dart-define=NAME=ffkey://NAME`.
+- **The mask is `ffkey://NAME`.** `get_keys` gives each key's mask and the three places it works:
+  - code that reads the env var `NAME`;
+  - a command-line argument, e.g. `--dart-define=NAME=ffkey://NAME`;
+  - a `.env` line `NAME=ffkey://NAME`. FlowForge sets the real `NAME` first, and `.env` loaders keep a variable that is already set (python-dotenv's default, like Node's dotenv and Vite).
+  
+  Other files (YAML, JSON, a bundled asset such as flutter_dotenv's) are never filled, because that would write the key to disk: there, read the env var (Codex review).
   
   The agent's MCP server still never reads a value (D36).
 - **The run happens in the dashboard's process**, which holds the keys, never in the agent's.

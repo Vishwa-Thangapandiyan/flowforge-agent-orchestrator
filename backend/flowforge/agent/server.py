@@ -214,10 +214,12 @@ def _keys_data(root: Path, result: ScanResult) -> dict[str, Any]:
             "note": "saved means FlowForge has it on record; this server never reads a value"}
 
 
-HOW_KEYS = ("You never get a key's value and never need one. In code, read the env var NAME. Where a value must be "
-            "written (a config file, or a command-line flag such as --dart-define=NAME=ffkey://NAME), write the key's "
-            "mask. Then run the app with run_app: FlowForge fills every mask as the app starts, and the output comes "
-            "back masked. A missing key: request_key, then wait_for_keys.")
+HOW_KEYS = (
+    "You never get a key's value and never need one. Where it works: (1) code reads the env var NAME; "
+    "(2) a command-line argument such as --dart-define=NAME=ffkey://NAME; (3) a .env line NAME=ffkey://NAME "
+    "(FlowForge sets the real NAME first and .env loaders keep it, unless told to override). Other config files "
+    "(YAML, JSON, assets such as flutter_dotenv's) are NOT filled: read the env var there instead. Run the app with "
+    "run_app; the output comes back masked. A missing key: request_key, then wait_for_keys.")
 OPEN_FLOWFORGE = ("Open FlowForge first (the desktop app, or `flowforge` in a terminal): it starts the app with the "
                   "keys, so this server never holds one.")
 

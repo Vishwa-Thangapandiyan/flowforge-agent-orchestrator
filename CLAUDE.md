@@ -256,7 +256,7 @@ Fixed in Phase 1: `LLMNode` is no longer NIM-only (D10); `MCPNode` has tool disc
   - `run_app` needs FlowForge running (the desktop app or `flowforge`); without it the agent is told to open it.
   - Approval is per exact argument list: a different flag is a new command and asks again.
   - Runs and waiting requests live in FlowForge's process: restarting it stops runs and forgets unanswered requests (allowed commands are kept).
-  - A Flutter app that loads `.env` as an asset (flutter_dotenv) sees the mask; `--dart-define` with the mask works.
+  - Masks are filled in commands and the environment only; a `.env` line works through the environment (loaders keep a variable already set), but other config files and assets (flutter_dotenv) see the mask: read the env var or use `--dart-define`.
   - Output keeps the last 2000 lines of a run.
 - MCP server (D29) limits:
   - The agent's command follows the install (D34): a checkout uses `uv --directory`, `uvx` pins the version, a `pip` install uses its own Python.

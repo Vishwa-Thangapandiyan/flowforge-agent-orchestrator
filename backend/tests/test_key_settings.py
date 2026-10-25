@@ -175,7 +175,7 @@ def test_a_wrong_value_already_in_the_app_shows_as_missing_with_the_suggestion(s
     ("https://p.supabase.co", True), ("http://localhost:54321", True), ("https://p.supabase.co/rest/v1", True),
     ("https://example.com garbage", False), ("https://host:bad", False), ("https://", False), ("https://:443", False),
     ("ftp://p.supabase.co", False), ("https://p.supabase.co:70000", False), ("https://p.supabase.co:0", False),
-    ("https://p.supabase.co:65535", True),
+    ("https://p.supabase.co:65535", True), ("https://p.supabase.co:", False), ("https://p.supabase.co:/x", False),
 ])
 def test_a_url_setting_must_be_a_whole_url(value, ok):
     """Codex review: the whole URL, host and port included, not just how it starts."""

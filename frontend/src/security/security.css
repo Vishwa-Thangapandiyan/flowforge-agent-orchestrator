@@ -195,3 +195,28 @@ a.sec-chip { text-decoration: none; }
 .vt-acts { white-space: nowrap; }
 .vt-acts .btn { margin-right: 4px; }
 @media (max-width: 760px) { .vt-wiz { grid-template-columns: 1fr; } }
+
+/* your agent's app runs (D43): the Allow card on every page, and the runs list on the Keys page */
+.run-asks { position: fixed; right: 16px; bottom: 16px; z-index: 40; display: grid; gap: 10px; width: min(440px, calc(100vw - 32px)); }
+.run-ask { display: grid; gap: 8px; padding: 14px; border-radius: var(--r-md); border: 2px solid var(--amber); background: var(--surface);
+  box-shadow: var(--shadow-3); }
+.run-ask h2 { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 15px; }
+.run-cmd { display: block; padding: 8px 10px; border-radius: var(--r-sm); background: var(--surface-2); font: 12.5px var(--mono);
+  overflow-wrap: anywhere; }
+.run-keys { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 0; font-size: 13px; }
+.run-keys span, .run-note { color: var(--muted); font-size: 12px; }
+.run-note { margin: 0; }
+.run-btns { display: flex; justify-content: flex-end; gap: 8px; }
+.run-list { display: grid; gap: 8px; }
+.run-list h2 { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 15px; }
+.run-list ul { display: grid; margin: 0; padding: 0; list-style: none; }
+.run-row { display: grid; grid-template-columns: auto 1fr auto; gap: 6px 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+.run-what { display: grid; min-width: 0; }
+.run-what code { font: 12.5px var(--mono); overflow-wrap: anywhere; }
+.run-what small { color: var(--muted); font-size: 12px; }
+.run-st { font: 600 11px/1.4 var(--mono); text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.run-st.st-running { color: var(--teal); } .run-st.st-failed { color: var(--coral); }
+.run-out { grid-column: 1 / -1; }
+.run-out pre { max-height: 240px; overflow: auto; margin: 6px 0 0; padding: 8px; border-radius: var(--r-sm); background: var(--surface-2);
+  font: 12px var(--mono); white-space: pre-wrap; }
+@media (max-width: 560px) { .run-row { grid-template-columns: auto 1fr; } }

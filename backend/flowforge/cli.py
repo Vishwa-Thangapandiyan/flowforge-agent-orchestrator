@@ -99,6 +99,7 @@ def main(argv: list[str] | None = None) -> None:
         threading.Timer(1.5, webbrowser.open, args=(url,)).start()
     if os.getenv("FLOWFORGE_STOP_ON_EOF") == "1":
         stop_when_parent_is_gone()
+    os.environ["FLOWFORGE_PORT"] = str(args.port)   # server.json tells the agent's MCP server where this is (D43)
     uvicorn.run("flowforge.main:app", host=args.host, port=args.port, reload=args.reload,
                 reload_dirs=[str(Path(__file__).parent)] if args.reload else None)
 
@@ -237,7 +238,12 @@ def run_with_keys(argv: list[str]) -> None:
         parser.error("give the command after --, e.g. flowforge run -- python app.py")
     if not Path(args.repo).expanduser().is_dir():
         parser.error(f"{args.repo} is not a folder")
-    env = {**os.environ, **KeyStore(Path(args.repo)).env()}
+    from flowforge.security.masks import MissingKeys, fill
+
+    try:   # every ffkey://NAME in the command or the environment becomes the saved value (D43)
+        command, env = fill(command, dict(os.environ), KeyStore(Path(args.repo)).env())
+    except MissingKeys as e:
+        parser.error(str(e))
     try:
         code = subprocess.call(command, env=env)
     except FileNotFoundError:

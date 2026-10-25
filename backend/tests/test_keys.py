@@ -268,3 +268,19 @@ def test_the_key_commands_work_where_output_is_not_utf8(shop):
                              capture_output=True, text=True, env=env, encoding="cp1252")
         assert run.returncode == 0, (args, run.stderr[-400:])
         assert FAKE not in run.stdout + run.stderr
+
+
+def test_run_fills_masks_in_the_command_too(shop, tmp_path):
+    """D43: `flowforge run -- app --key=ffkey://NAME` gets the value, like run_app."""
+    KeyStore(shop).add("STRIPE_SECRET_KEY", FAKE)
+    out = tmp_path / "seen.txt"
+    script = f"import sys, pathlib; pathlib.Path({str(out)!r}).write_text(sys.argv[1])"
+    with pytest.raises(SystemExit) as e:
+        cli.main(["run", "--repo", str(shop), "--", sys.executable, "-c", script, "ffkey://STRIPE_SECRET_KEY"])
+    assert e.value.code == 0 and out.read_text() == FAKE
+
+
+def test_run_refuses_a_mask_for_a_key_that_isnt_saved(shop, capsys):
+    with pytest.raises(SystemExit) as e:
+        cli.main(["run", "--repo", str(shop), "--", sys.executable, "-c", "pass", "ffkey://NOT_SAVED"])
+    assert e.value.code == 2 and "NOT_SAVED" in capsys.readouterr().err

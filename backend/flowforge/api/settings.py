@@ -134,6 +134,7 @@ class Change(BaseModel):
     model_config = ConfigDict(extra="forbid")
     welcome_done: bool | None = None
     map_style: settings_file.MapStyle | None = None
+    approve_runs: bool | None = None
 
 
 @router.patch("/settings", dependencies=[Depends(from_this_machine)])

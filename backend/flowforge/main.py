@@ -20,6 +20,7 @@ from fastapi import FastAPI, HTTPException
 from flowforge import example_data, spa
 from flowforge import state as app_state_module
 from flowforge.api import agent as agent_api
+from flowforge.api import apps as apps_api
 from flowforge.api import checks as checks_api
 from flowforge.api import connectors as connectors_api
 from flowforge.api import flowmap as flowmap_api
@@ -102,9 +103,11 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
             app_state_module.projects[project.id] = s
             app_state_module.default_id = project.id
             Projects().touch(project.id)
+    apps_api.started()   # server.json: where the agent's MCP server finds FlowForge (D43)
     try:
         yield
     finally:
+        apps_api.stopping()
         for each in {id(x): x for x in [s, *app_state_module.projects.values()]}.values():
             await close_state(each)
         restore_logging()
@@ -117,6 +120,8 @@ class ProjectPrefix:
         self.app = app
 
     async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
+        if scope["type"] == "http" and not apps_api.registered() and (scope.get("server") or (None, None))[1]:
+            apps_api.register(int(scope["server"][1]))   # started without the port known: tell the agent (D43)
         path = scope.get("path", "") if scope["type"] in ("http", "websocket") else ""
         if not path.startswith("/p/"):
             await self.app(scope, receive, send)
@@ -153,6 +158,7 @@ app.include_router(issues_api.router)
 app.include_router(lock_api.router)
 app.include_router(projects_api.router)
 app.include_router(settings_api.router)
+app.include_router(apps_api.router)
 
 
 @app.get("/workflows")

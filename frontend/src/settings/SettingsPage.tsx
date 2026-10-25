@@ -55,6 +55,29 @@ function Look() {
   );
 }
 
+/** D43: a new command your agent wants to run with your keys waits for your Allow (on by default). */
+function AskBeforeRuns({ initial }: { initial: boolean }) {
+  const [on, setOn] = useState(initial);
+  const [error, setError] = useState<string>();
+  const change = (next: boolean) => {
+    setOn(next);
+    setError(undefined);
+    api.patch("/settings", { approve_runs: next }).catch((err: unknown) => {
+      setOn(!next);
+      setError(err instanceof Error ? err.message : "Couldn't save it");
+    });
+  };
+  return (
+    <>
+      <label className="st-row st-check">
+        <input type="checkbox" checked={on} onChange={(e) => change(e.target.checked)} />
+        <span>Ask me before my agent runs a new command with my keys</span>
+      </label>
+      {error && <p className="key-err" role="alert">{error}</p>}
+    </>
+  );
+}
+
 function Vault({ data }: { data: SettingsData }) {
   const lock = { none: "Not set", pending: "Set-up not finished", on: "Set" }[data.vault.lock];
   return (
@@ -65,6 +88,7 @@ function Vault({ data }: { data: SettingsData }) {
         <div><dt>Keys kept in</dt><dd>{data.vault.store === "keychain" ? "your keychain" : "an encrypted file"}</dd></div>
       </dl>
       <Link className="btn" to="/vault">{data.vault.lock === "on" ? "Open the Vault" : "Set the lock"} {Icons.arrow(15)}</Link>
+      <AskBeforeRuns initial={data.approve_runs} />
       <p className="st-note">No key is shown here. Seeing one needs your password and the code on your phone.</p>
     </section>
   );

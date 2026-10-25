@@ -13,6 +13,7 @@ export interface ProjectData {
 
 export interface SettingsData {
   welcome_done: boolean;
+  approve_runs: boolean;
   map_style: GraphTheme | null;
   version: string;
   install: "checkout" | "desktop" | "uvx" | "pip";

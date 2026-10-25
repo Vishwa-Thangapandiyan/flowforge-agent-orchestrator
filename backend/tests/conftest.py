@@ -23,5 +23,6 @@ def no_real_database(tmp_path_factory, monkeypatch):
 
 @pytest.fixture(autouse=True)
 def test_client_host(monkeypatch):
-    """Starlette's TestClient calls itself "testserver"; the API answers only to this machine's names (D47)."""
-    monkeypatch.setenv("FLOWFORGE_ALLOWED_HOSTS", "testserver")
+    """Starlette's TestClient calls the server "testserver" and itself "testclient"; the API answers only to this
+    machine (D47)."""
+    monkeypatch.setenv("FLOWFORGE_ALLOWED_HOSTS", "testserver,testclient")

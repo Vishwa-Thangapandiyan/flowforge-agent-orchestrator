@@ -1,9 +1,11 @@
-"""The whole API answers only to this machine (D47): every request must name it in its Host (against DNS rebinding),
-and every change that carries an Origin must come from it (against another site's form). One ASGI middleware in
-front of everything, so a new route can't forget it."""
+"""The whole API answers only to this machine (D47): the connection must come from it (a loopback address: a header
+can be forged, the address can't), every request must name it in its Host (against DNS rebinding), and every change
+that carries an Origin must come from it (against another site's form). One ASGI middleware in front of everything,
+so a new route can't forget it."""
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import os
 from typing import Any
@@ -15,14 +17,18 @@ REFUSED = json.dumps({"detail": "FlowForge answers only to this machine: open it
 
 
 def allowed_hosts() -> set[str]:
-    """This machine's names, the address chosen with --host (FLOWFORGE_HOST, unless it means every address), and
-    FLOWFORGE_ALLOWED_HOSTS (tests: Starlette's TestClient is "testserver")."""
-    names = set(LOOPBACK)
-    chosen = os.getenv("FLOWFORGE_HOST", "").strip().strip("[]").lower()
-    if chosen and chosen not in ("0.0.0.0", "::"):
-        names.add(chosen)
-    names |= {h.strip().lower() for h in os.getenv("FLOWFORGE_ALLOWED_HOSTS", "").split(",") if h.strip()}
-    return names
+    """This machine's names, plus FLOWFORGE_ALLOWED_HOSTS (tests: Starlette's TestClient is "testserver" and
+    "testclient")."""
+    return set(LOOPBACK) | {h.strip().lower() for h in os.getenv("FLOWFORGE_ALLOWED_HOSTS", "").split(",") if h.strip()}
+
+
+def loopback_peer(address: str | None) -> bool:
+    """The connection itself comes from this machine (127.0.0.0/8 or ::1, also as ::ffff:127.x)."""
+    try:
+        ip = ipaddress.ip_address(address or "")
+    except ValueError:
+        return False
+    return (getattr(ip, "ipv4_mapped", None) or ip).is_loopback
 
 
 def _hostname(value: str) -> str | None:
@@ -32,9 +38,11 @@ def _hostname(value: str) -> str | None:
         return None
 
 
-def refused(method: str, headers: dict[str, str]) -> bool:
-    """Does this request come from somewhere other than this machine?"""
+def refused(method: str, headers: dict[str, str], peer: str | None = None) -> bool:
+    """Does this request come from somewhere other than this machine? `peer` is the connection's own address."""
     names = allowed_hosts()
+    if not loopback_peer(peer) and (peer or "") not in names:   # another computer, whatever Host it claims
+        return True
     if _hostname(headers.get("host", "")) not in names:
         return True
     origin = headers.get("origin")
@@ -48,7 +56,8 @@ class LocalOnly:
     async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
         if scope["type"] in ("http", "websocket"):
             headers = {k.decode("latin-1").lower(): v.decode("latin-1") for k, v in scope.get("headers", [])}
-            if refused(scope.get("method", "GET").upper(), headers):
+            peer = (scope.get("client") or (None, None))[0]
+            if refused(scope.get("method", "GET").upper(), headers, peer):
                 if scope["type"] == "http":
                     await send({"type": "http.response.start", "status": 403,
                                 "headers": [(b"content-type", b"application/json")]})

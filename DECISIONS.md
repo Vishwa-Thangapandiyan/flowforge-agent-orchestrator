@@ -1421,7 +1421,8 @@ Masking is FlowForge's job and the user shouldn't have to think about it. The co
      - an IntelliJ / Android Studio project with no Flutter Run config gets one for `lib/main.dart`. With no IDE folder at all, the note shows the one complete command, `flutter run --dart-define-from-file=.flowforge/dart-defines.json`, with Copy (Codex review);
   4. makes sure that file is git-ignored, and refuses if git already tracks it;
   5. adds "don't read" rules for those files to `.claude/settings.local.json`;
-  6. edits one line, and only if that line is still what the dashboard showed. Everything is checked before the first write.
+  6. edits one line, and only if that line is still what the dashboard showed. Everything is checked before the first write. No write goes through a link or out of the folder, and temporary files get fresh names (Codex review, P1).
+  7. writes `.env` values every loader reads back exactly. A key with a `$` or a line break is refused for `.env` files, because python-dotenv expands `${X}` whatever the quotes (Codex review); it stays in the Vault.
 - **Python or Node that doesn't load `.env`**: there's no file the app reads, so the box says so in one line and only saves to the Vault. Your agent's `run_app` (D43) still works.
 - **Example data** is never rewritten (409).
 - **No command with a `<placeholder>` is shown anywhere.** A command is shown only when it is complete and works. The "Copy the start command" box goes.

@@ -298,3 +298,15 @@ def spots_in(text: str, language: str | None) -> list[SpotHit]:
         elif _asks_for_key(name, value):
             found.setdefault((line, env), SpotHit(line, "placeholder", env, "", start, end))
     return sorted(found.values(), key=lambda h: (h.line, h.name))
+
+
+def literal_at(text: str, language: str | None, line: int, start: int, end: int) -> str | None:
+    """The value of the string literal a spot points at (its exact span), for moving an open key (D44): the one that
+    was clicked, even with two on a line (Codex review). Only for the move into the Vault, never for display."""
+    if language == "python":
+        found = [v for n, s, e, _, v in _python_literals(text) if (n, s, e) == (line, start, end)]
+    else:
+        lines = text.splitlines()
+        source = lines[line - 1] if 0 < line <= len(lines) else ""
+        found = [v for s, e, _, v in _curly_literals(source, language or "") if (s, e) == (start, end)]
+    return found[0] if found else None

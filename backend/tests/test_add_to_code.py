@@ -411,3 +411,71 @@ def test_an_empty_or_old_value_in_dotenv_isnt_in_the_app(served, flutter, tmp_pa
         k = keys["HF_TOKEN"]
         assert c.post("/keys/HF_TOKEN/add-to-code", json={"ref": k["spot"]["ref"], "check": k["spot"]["check"]}).status_code == 200
         assert {k["name"]: k for k in c.get("/keys").json()["keys"]}["HF_TOKEN"]["in_app"] is True
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="symlinks need admin rights on Windows")
+def test_a_symlink_in_the_repo_never_receives_the_key(flutter, tmp_path):
+    """Codex review (P1): a project can't redirect the key through a link where FlowForge writes."""
+    outside = tmp_path / "outside.json"
+    outside.write_text("{}")
+    (flutter / ".flowforge").mkdir()
+    (flutter / ".flowforge" / "dart-defines.json").symlink_to(outside)
+    s = spot(flutter, "SUPABASE_ANON_KEY")
+    with pytest.raises(CantAdd, match="link"):
+        add_to_code(flutter, s.name, s.ref, s.check, FAKE)
+    assert outside.read_text() == "{}" and KeyStore(flutter).names() == []
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="symlinks need admin rights on Windows")
+def test_a_linked_folder_never_receives_the_key(flutter, tmp_path):
+    away = tmp_path / "away"
+    away.mkdir()
+    (flutter / ".flowforge").symlink_to(away, target_is_directory=True)
+    s = spot(flutter, "SUPABASE_ANON_KEY")
+    with pytest.raises(CantAdd, match="link"):
+        add_to_code(flutter, s.name, s.ref, s.check, FAKE)
+    assert list(away.iterdir()) == []
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="symlinks need admin rights on Windows")
+def test_the_temporary_file_is_never_a_predictable_name(tmp_path):
+    from flowforge.security.keystore import _write_private
+
+    target = tmp_path / "keys.json"
+    trap = tmp_path / "trap"
+    (tmp_path / "keys.json.tmp").symlink_to(trap)
+    _write_private(target, b"secret")
+    assert target.read_bytes() == b"secret" and not trap.exists()
+
+
+def test_a_key_with_a_dollar_is_refused_for_dotenv_not_mangled(tmp_path, flutter):
+    """Codex review: python-dotenv expands ${X} whatever the quotes, with no escape; a key that would arrive changed
+    is refused, with nothing written. Flutter's JSON file holds it as it is."""
+    root = write(tmp_path / "bot", {"app.py": "from dotenv import load_dotenv\nload_dotenv()\ntoken = ''\n"})
+    s = spot(root, "TOKEN")
+    before = snapshot(root)
+    with pytest.raises(CantAdd, match=r"\$"):
+        add_to_code(root, s.name, s.ref, s.check, "ab${HOME}cd")
+    assert snapshot(root) == before and KeyStore(root).names() == []
+    d = spot(flutter, "SUPABASE_ANON_KEY")
+    add_to_code(flutter, d.name, d.ref, d.check, "ab${HOME}cd")
+    assert json.loads((flutter / ".flowforge/dart-defines.json").read_text())["SUPABASE_ANON_KEY"] == "ab${HOME}cd"
+
+
+def test_a_loader_only_in_a_comment_or_docstring_doesnt_count(tmp_path):
+    root = write(tmp_path / "cli", {"tool.py": '"""Call load_dotenv() first, says the doc."""\n# load_dotenv()\nimport os\n'
+                                               'KEY = os.environ["OPENAI_API_KEY"]\n',
+                                    "web.js": "// require('dotenv').config()\nconst k = process.env.STRIPE_SECRET_KEY;\n"})
+    assert spot(root, "OPENAI_API_KEY").sink is None
+    assert spot(root, "STRIPE_SECRET_KEY").sink is None
+
+
+def test_two_open_keys_on_one_line_each_move_their_own_value(tmp_path):
+    first, second = "sk_test_FAKEFAKE12345678", "sk_test_FAKEOTHER9876543"
+    root = write(tmp_path / "shop", {"pay.py": "from dotenv import load_dotenv\nload_dotenv()\n"
+                                               f'KEYS = {{"stripe_key": "{first}", "backup_key": "{second}"}}\n'})
+    s = spot(root, "BACKUP_KEY")
+    add_to_code(root, s.name, s.ref, s.check, None)
+    assert KeyStore(root).env()["BACKUP_KEY"] == second
+    line = (root / "pay.py").read_text().splitlines()[-1]
+    assert first in line and second not in line and 'os.environ["BACKUP_KEY"]' in line

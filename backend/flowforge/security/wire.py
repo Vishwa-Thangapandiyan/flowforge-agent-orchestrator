@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from flowforge.scan.files import language, list_files
-from flowforge.security.finders import SpotHit, key_span, spots_in
+from flowforge.security.finders import SpotHit, literal_at, spots_in
 from flowforge.security.keystore import NAME, KeyStore, _write_private
 
 DEFINES = ".flowforge/dart-defines.json"
@@ -29,8 +29,8 @@ DEFINE_ARG = f"--dart-define-from-file={DEFINES}"
 NO_FILE = ("This app can't take keys from a file: it doesn't load .env. The key is saved in the Vault, and your "
            "agent's run_app passes it to the app.")
 _CODE = ("python", "dart", "javascript", "typescript")
-_PY_LOADS_ENV = re.compile(r"\bload_dotenv\s*\(|\bdotenv_values\s*\(|\bfind_dotenv\s*\(|env_file\s*=\s*['\"]\.env")
-_JS_LOADS_ENV = re.compile(r"""\brequire\(\s*['"]dotenv['"]\s*\)|['"]dotenv/config['"]|\bdotenv\.config\(""")
+_JS_LOADS_ENV = re.compile(r"""\brequire\(\s*['"]dotenv(?:/config)?['"]\s*\)|['"]dotenv/config['"]"""
+                           r"""|\bdotenv\.config\(""")
 _PLAIN_VALUE = re.compile(r"[A-Za-z0-9_\-.+/=:@]+")
 
 
@@ -81,6 +81,35 @@ class _Facts:
     vite: bool
 
 
+def _py_loads_env(text: str) -> bool:
+    """The code calls load_dotenv() / dotenv_values(), or gives a settings class env_file=".env": a real call, not a
+    word in a comment or docstring (Codex review)."""
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return False
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            f = node.func
+            name = f.id if isinstance(f, ast.Name) else f.attr if isinstance(f, ast.Attribute) else ""
+            if name in ("load_dotenv", "dotenv_values"):
+                return True
+            if any(k.arg == "env_file" for k in node.keywords):
+                return True
+        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "env_file" for t in node.targets):
+            return True
+    return False
+
+
+def _js_loads_env(text: str, lang: str) -> bool:
+    """A dotenv load in the code, not in a comment: the match must survive the reader's comment blanking."""
+    from flowforge.flow.curly import mask
+
+    code = mask(text, lang)   # same length; comments blanked, quotes kept
+    return any(code[m.start()] == text[m.start()] and not code[m.start()].isspace()
+               for m in _JS_LOADS_ENV.finditer(text))
+
+
 def _facts(root: Path, texts: dict[str, str]) -> _Facts:
     package = _read(root / "package.json")
     try:
@@ -90,10 +119,11 @@ def _facts(root: Path, texts: dict[str, str]) -> _Facts:
     deps = {**pkg.get("dependencies", {}), **pkg.get("devDependencies", {})} if isinstance(pkg, dict) else {}
     scripts = " ".join(map(str, (pkg.get("scripts") or {}).values())) if isinstance(pkg, dict) else ""
     return _Facts(
-        python_env=any(_PY_LOADS_ENV.search(t) for p, t in texts.items() if language(p) == "python"),
+        python_env=any(_py_loads_env(t) for p, t in texts.items() if language(p) == "python"),
         # loaded, not just listed (Codex review): a call in the code, a start script, or Next.js, which loads .env
         node_env="next" in deps or "--env-file" in scripts or "dotenv/config" in scripts
-        or any(_JS_LOADS_ENV.search(t) for p, t in texts.items() if language(p) in ("javascript", "typescript")),
+        or any(_js_loads_env(t, language(p) or "") for p, t in texts.items()
+               if language(p) in ("javascript", "typescript")),
         vite="vite" in deps or any((root / f"vite.config.{e}").exists() for e in ("js", "ts", "mjs", "mts")),
     )
 
@@ -152,8 +182,15 @@ def _tracked(root: Path, rel: str) -> bool:
 
 
 def _dotenv_line(name: str, value: str) -> str:
+    """One `.env` line every loader reads back exactly. A `$` is refused: python-dotenv expands `${X}` whatever the
+    quotes, with no escape, so the app would get a different key (Codex review)."""
+    if "$" in value or "\n" in value:
+        raise CantAdd("This key has a $ or a line break, which .env loaders change. It's saved in the Vault only; "
+                      "your agent's run_app passes it as it is.")
     if _PLAIN_VALUE.fullmatch(value):
         return f"{name}={value}"
+    if "'" not in value:
+        return f"{name}='{value}'"
     return f'{name}="' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
@@ -277,6 +314,18 @@ def _deny(root: Path, sink: str) -> tuple[Path, str] | None:
     return path, json.dumps(data, indent=2) + "\n"
 
 
+def _check_destination(root: Path, path: Path) -> None:
+    """A write stays inside the folder and never goes through a link: a project can't send the key elsewhere."""
+    rel = path.relative_to(root)
+    at = root
+    for part in rel.parts:
+        at = at / part
+        if at.is_symlink():
+            raise CantAdd(f"{at.relative_to(root).as_posix()} is a link, so FlowForge won't write the key through it.")
+    if not path.parent.resolve().is_relative_to(root):
+        raise CantAdd(f"{rel.as_posix()} is outside this folder.")
+
+
 def add_to_code(root: Path, name: str, ref: str, check: str, value: str | None) -> dict[str, Any]:
     """Put one key into the app (D44). `value` is what the user typed; None for a key written in the open, whose value
     is taken from the code. Raises CantAdd, having written nothing."""
@@ -302,11 +351,11 @@ def add_to_code(root: Path, name: str, ref: str, check: str, value: str | None) 
             spot, hit = Spot(n, h.kind, path, line, lang, h.reader, sink, why, check), h
     if spot is None or hit is None:
         raise CantAdd(f"{name} isn't at {ref} any more. Re-scan.")
-    if spot.kind == "open":
-        found = key_span(text, lang, line)
+    if spot.kind == "open":   # the clicked literal itself, even with two keys on the line (Codex review)
+        found = literal_at(text, lang, line, hit.start or 0, hit.end or 0)
         if found is None:
             raise CantAdd(f"The key at {ref} isn't a whole string FlowForge can move. Send it to your agent.")
-        value = found[2]
+        value = found
     value = (value or "").strip()
     if not value or "\x00" in value:
         raise CantAdd("Paste the key first.")
@@ -349,12 +398,11 @@ def add_to_code(root: Path, name: str, ref: str, check: str, value: str | None) 
     if deny:
         writes[deny[0]] = (deny[1], False)
         changed.append("Claude Code told not to read it")
+    for file in writes:
+        _check_destination(root, file)   # every write checked before the first (Codex review, P1)
     for file, (new, private) in sorted(writes.items(), key=lambda w: w[0] != sink_path):   # the key's file first
-        if private:
-            _write_private(file, new.encode("utf-8"))
-        else:
-            file.parent.mkdir(parents=True, exist_ok=True)
-            file.write_bytes(new.encode("utf-8"))
+        mode = 0o600 if private else (file.stat().st_mode & 0o777 if file.exists() else 0o644)
+        _write_private(file, new.encode("utf-8"), mode)
     KeyStore(root).add(spot.name, value)
     changed.append("Vault")
     out: dict[str, Any] = {"name": spot.name, "ref": ref, "changed": changed}

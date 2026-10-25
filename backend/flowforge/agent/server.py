@@ -20,6 +20,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
+from flowforge.api.apps import read_server_file
 from flowforge.api.checks import CHECKABLE, check_workflow, command_text, confirmed_commands, target_for
 from flowforge.api.issues import FIX_REQUESTS_SETTING, fix_requests
 from flowforge.api.keys import add_key_request, clear_key_requests
@@ -35,6 +36,7 @@ from flowforge.scan import ScanResult, scan
 from flowforge.scheduler.executor import StepState, run_workflow
 from flowforge.security.keystore import NAME, KeyStore, report
 from flowforge.security.logfilter import Redactor, redact_code, secret_values_for
+from flowforge.security.masks import mask
 from flowforge.storage import Storage, now_iso
 
 log = logging.getLogger(__name__)
@@ -54,6 +56,7 @@ INSTRUCTIONS = (
 READ = ToolAnnotations(read_only_hint=True, open_world_hint=False)
 ASK = ToolAnnotations(read_only_hint=False, destructive_hint=False, idempotent_hint=True, open_world_hint=False)
 MAX_WAIT_S = 110
+RUN = ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=True)   # starts the user's app
 CHECKS = ToolAnnotations(read_only_hint=True, open_world_hint=True)   # makes requests and may start servers
 
 
@@ -204,10 +207,19 @@ def _security_data(result: ScanResult) -> dict[str, Any]:
 def _keys_data(root: Path, result: ScanResult) -> dict[str, Any]:
     """Names and statuses only: this server, which the agent starts, never reads a value (D36)."""
     found = report(KeyStore(root), result, verify=False)
+    for k in found:
+        k["mask"] = mask(str(k["name"]))   # what you write where the value goes (D43)
     return {"keys": found, "summary": dict(Counter(k["status"] for k in found if k["status"] != "saved")),
-            "run": "flowforge run -- <the command that starts the app>",
-            "note": "saved means FlowForge has it on record; this server never reads a value, so the user's "
-                    "`flowforge key list` is what confirms it can be read"}
+            "how": HOW_KEYS,
+            "note": "saved means FlowForge has it on record; this server never reads a value"}
+
+
+HOW_KEYS = ("You never get a key's value and never need one. In code, read the env var NAME. Where a value must be "
+            "written (a config file, or a command-line flag such as --dart-define=NAME=ffkey://NAME), write the key's "
+            "mask. Then run the app with run_app: FlowForge fills every mask as the app starts, and the output comes "
+            "back masked. A missing key: request_key, then wait_for_keys.")
+OPEN_FLOWFORGE = ("Open FlowForge first (the desktop app, or `flowforge` in a terminal): it starts the app with the "
+                  "keys, so this server never holds one.")
 
 
 def _fix_requests_data(r: _Repo) -> dict[str, Any]:
@@ -289,9 +301,10 @@ def preview(repo: Path, storage: Storage) -> dict[str, Any]:
 
 
 def build_server(repo: Path | None, storage: Storage | None, *,
-                 transport: httpx.AsyncBaseTransport | None = None) -> MCPServer:
+                 transport: httpx.AsyncBaseTransport | None = None,
+                 dashboard: httpx.AsyncBaseTransport | None = None) -> MCPServer:
     """The server for one repo, or (repo None) for every project (D39: the agent is paired once). `transport` answers
-    the health checks' requests in tests."""
+    the health checks' requests in tests; `dashboard` reaches the running FlowForge in tests (D43)."""
     fixed = _Repo(repo, storage, transport) if repo is not None and storage is not None else None
     opened: dict[str, _Repo] = {}
 
@@ -312,6 +325,29 @@ def build_server(repo: Path | None, storage: Storage | None, *,
         if found.id not in opened:
             opened[found.id] = _Repo(Path(found.path), Storage(Path(found.db)), transport)
         return opened[found.id]
+
+    async def ask_flowforge(r: _Repo, method: str, path: str, body: dict[str, Any] | None = None) -> httpx.Response:
+        """The running FlowForge, which holds the keys, does the run (D43): found through server.json."""
+        found = read_server_file()
+        if not found or not found.get("port") or not found.get("token"):
+            raise ToolError(OPEN_FLOWFORGE)
+        project = Projects().by_folder(r.root)
+        prefix = f"/p/{project.id}" if project else ""
+        try:
+            async with httpx.AsyncClient(base_url=f"http://127.0.0.1:{int(found['port'])}", transport=dashboard,
+                                         timeout=15) as client:
+                answer = await client.request(method, prefix + path, json=body,
+                                              headers={"X-FlowForge-Token": str(found["token"])})
+        except httpx.HTTPError:
+            raise ToolError(OPEN_FLOWFORGE) from None
+        if answer.status_code == 403:
+            raise ToolError("FlowForge refused: it was restarted. Call the tool again.")
+        if answer.status_code == 404:
+            raise ToolError("FlowForge doesn't know that run or request.")
+        if answer.status_code == 409:
+            raise ToolError(f"{answer.json().get('detail', 'Not ready.')} Ask the user for it with request_key, "
+                            "then wait_for_keys.")
+        return answer
 
     server = MCPServer(name="flowforge", title="FlowForge", instructions=INSTRUCTIONS)
 
@@ -401,9 +437,8 @@ def build_server(repo: Path | None, storage: Storage | None, *,
     @server.tool(annotations=READ)
     def get_keys(project: str | None = None) -> dict[str, Any]:
         """The keys the repo's code reads from its environment (names that look like keys), each with where it is
-        read, the dependencies that use it, and its status: saved in FlowForge, only in .env, or missing. You never
-        get a value and never need one: write code that reads the name from the environment, then ask the user to
-        run the `command` given (they type the key, hidden). Their app gets the keys with `flowforge run -- <app>`."""
+        read, the dependencies that use it, its status (saved in FlowForge, only in .env, or missing) and its mask
+        (`ffkey://NAME`, D43). You never get a value and never need one: see `how`, then run the app with run_app."""
         r = pick(project)
         return r.answer("get_keys", _keys_data(r.root, r.scan()))
 
@@ -411,8 +446,8 @@ def build_server(repo: Path | None, storage: Storage | None, *,
     def request_key(name: str, why: str, project: str | None = None) -> dict[str, Any]:
         """Ask the user for a key your change needs (D38), e.g. after adding Stripe: name="STRIPE_SECRET_KEY",
         why="for Stripe in pay.py". It shows first on FlowForge's Keys page. You never get or send the value: write
-        code that reads the name from the environment, tell the user to paste the key on the Keys page, then call
-        wait_for_keys. Their app gets it with `flowforge run`."""
+        code that reads the name from the environment (or write its mask, ffkey://NAME), tell the user to paste the key
+        on the Keys page, then call wait_for_keys. Then run the app with run_app."""
         r = pick(project)
         if not NAME.fullmatch(name):
             raise ToolError("name must be an env var name: letters, digits and _, not starting with a digit")
@@ -447,8 +482,54 @@ def build_server(repo: Path | None, storage: Storage | None, *,
         waiting = [n for n in wanted if n not in saved]
         return r.answer("wait_for_keys", {
             "saved": saved, "waiting": waiting, "done": not waiting,
-            "message": "All saved: run the app with `flowforge run -- <its command>`." if not waiting else
+            "message": "All saved: run the app with run_app." if not waiting else
             f"Still waiting for {', '.join(waiting)}: call wait_for_keys again, or remind the user."})
+
+    @server.tool(annotations=RUN)
+    async def run_app(command: list[str], wait_seconds: int = 60, project: str | None = None) -> dict[str, Any]:
+        """Run the user's app (or build it) with its keys, through FlowForge (D43). `command` is the argument list,
+        e.g. ["flutter", "run", "--dart-define=STRIPE_KEY=ffkey://STRIPE_KEY"] or ["npm", "run", "dev"]. Write a key's
+        mask (from get_keys) wherever a value goes; code that reads the env var NAME gets it too. FlowForge fills
+        every mask as the app starts; you never see a value, and the output comes back masked. The first time a
+        command is used, the user must Allow it in FlowForge: this waits up to `wait_seconds` (at most 110); call
+        again with the same command to keep waiting. Follow a run with app_output; stop it with stop_app."""
+        import asyncio
+
+        r = pick(project)
+        if not command or not all(isinstance(a, str) and a for a in command):
+            raise ToolError("command is the argument list, e.g. [\"npm\", \"run\", \"dev\"]")
+        asked = (await ask_flowforge(r, "POST", "/apps/run", {"argv": command})).json()
+        deadline = time.monotonic() + max(1, min(MAX_WAIT_S, int(wait_seconds)))
+        while asked["state"] == "waiting" and time.monotonic() < deadline:
+            await asyncio.sleep(1)
+            request = (await ask_flowforge(r, "GET", f"/apps/requests/{asked['request']['id']}")).json()
+            if request["state"] != "waiting":
+                asked = {"state": "running" if request["state"] == "allowed" else "denied", "run": request["run"],
+                         "request": request}
+        if asked["state"] == "running":
+            data = {"state": "running", "run": asked["run"],
+                    "message": "Started with its keys. Follow it with app_output; stop it with stop_app."}
+        elif asked["state"] == "denied":
+            data = {"state": "denied", "message": "The user denied this command in FlowForge. Ask them why first."}
+        else:
+            data = {"state": "waiting", "request": asked["request"]["id"],
+                    "message": "Waiting for the user to Allow it in FlowForge (every page shows the request). Call "
+                               "run_app again with the same command to keep waiting."}
+        return r.answer("run_app", data)
+
+    @server.tool(annotations=READ)
+    async def app_output(run_id: str, since: int = 0, project: str | None = None) -> dict[str, Any]:
+        """A run's output after line `since` (masked: a key's value shows as [REDACTED]), and whether it is still
+        running, exited (with its code) or stopped."""
+        r = pick(project)
+        got = (await ask_flowforge(r, "GET", f"/apps/runs/{run_id}/output?since={max(0, int(since))}")).json()
+        return r.answer("app_output", got)
+
+    @server.tool(annotations=RUN)
+    async def stop_app(run_id: str, project: str | None = None) -> dict[str, Any]:
+        """Stop a run started with run_app."""
+        r = pick(project)
+        return r.answer("stop_app", (await ask_flowforge(r, "POST", f"/apps/runs/{run_id}/stop")).json())
 
     @server.tool(annotations=READ)
     def get_fix_requests(project: str | None = None) -> dict[str, Any]:

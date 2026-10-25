@@ -19,7 +19,7 @@ TRIP_PLANNER = ROOT / "examples" / "trip-planner"
 FAKE_KEY = "sk_test_FAKEFAKE12345678"
 TOOLS = {"get_map", "get_flow", "get_advice", "check_health", "get_security_findings", "get_keys",
          "get_fix_requests", "request_key", "wait_for_keys", "what_changed",
-         "list_projects"}
+         "list_projects", "run_app", "app_output", "stop_app"}
 
 
 def write(root: Path, files: dict[str, str]) -> Path:
@@ -45,13 +45,15 @@ def storage_for(tmp_path: Path, repo: Path | None = None) -> Storage:
     return storage
 
 
-async def test_the_agents_tools_read_only_but_one_that_asks_for_a_key(tmp_path):
+async def test_the_agents_tools_read_only_but_asking_for_a_key_and_running_the_app(tmp_path):
     server = build_server(TRIP_PLANNER, storage_for(tmp_path))
     async with Client(server) as client:
         tools = {t.name: t for t in (await client.list_tools()).tools}
     assert set(tools) == TOOLS
     for name, tool in tools.items():
         if name == "request_key":   # writes one thing, a request on the Keys page, never a value (D38)
+            assert tool.annotations.read_only_hint is False and tool.annotations.destructive_hint is False
+        elif name in ("run_app", "stop_app"):   # starts or stops the user's app, after the user's Allow (D43)
             assert tool.annotations.read_only_hint is False and tool.annotations.destructive_hint is False
         else:
             assert tool.annotations.read_only_hint is True, name   # (D29)

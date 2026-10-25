@@ -143,6 +143,12 @@ def run_app(body: RunAsk, response: Response) -> dict[str, Any]:
     if not settings.load().approve_runs or body.argv in _approved(s):
         response.status_code = 201
         return {"state": "running", "run": _start(s, body.argv)}
+    with _lock:   # asking again while waiting: the same request, not a second card
+        same = next((r for r in _requests.values() if r["project"] == _project_id() and r["state"] == "waiting"
+                     and r["argv"] == body.argv), None)
+    if same is not None:
+        response.status_code = 202
+        return {"state": "waiting", "request": _public(same)}
     request = {"id": uuid.uuid4().hex[:12], "project": _project_id(), "argv": body.argv, "keys": keys,
                "at": time.time(), "state": "waiting", "run": None}
     with _lock:

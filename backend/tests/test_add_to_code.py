@@ -64,6 +64,17 @@ def test_spots_in_a_dart_file():
     assert all(FAKE not in repr(s) for s in spots_in(text, "dart"))
 
 
+def test_a_string_built_from_values_or_a_bare_key_is_not_a_spot():
+    """Found on Vishwa's Flutter app: a route's cache key built from coordinates isn't an API key."""
+    text = textwrap.dedent("""\
+        final key = '${trip.id}:${points.map((p) => '${p.latitude}').join(';')}';
+        final cacheKey = 'route-$day';
+        const key = "your-key";
+        final apiKey = "${prefix}abc";
+    """)
+    assert spots_in(text, "dart") == []
+
+
 def test_spots_in_python_and_typescript():
     py = 'import os\nA = os.environ["OPENAI_API_KEY"]\nB = os.getenv("HF_TOKEN")\napi_key = "your-api-key"\nn = "x"\n'
     assert {(s.line, s.kind, s.name) for s in spots_in(py, "python")} == {

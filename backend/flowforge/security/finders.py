@@ -204,9 +204,14 @@ _LABEL_ENDS = frozenset({"hint", "label", "title", "text", "placeholder", "messa
 _EMPTY_OK = frozenset({"key", "apikey", "token", "secret"})   # "" counts only for these: a form's password = "" doesn't
 
 
+_BUILT = re.compile(r"\$\{|\$[A-Za-z_]")   # a string built from values: `${x}`, Dart's `$x`
+
+
 def _asks_for_key(name: str, value: str) -> bool:
     parts = [p.lower() for p in _WORDS.findall(name)]
-    if not is_secret_name(name) or (parts and parts[-1] in _LABEL_ENDS):
+    if not is_secret_name(name) or (parts and parts[-1] in _LABEL_ENDS) or parts in (["key"], ["keys"]):
+        return False   # a bare `key` is a widget's, a map's or a cache's far more often than an API's
+    if _BUILT.search(value):
         return False
     if not value.strip():
         return bool(set(parts) & _EMPTY_OK)

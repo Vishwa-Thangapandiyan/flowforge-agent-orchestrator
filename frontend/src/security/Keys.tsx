@@ -187,11 +187,12 @@ export function KeyList({ keys, onSaved, example, onAdded }: {
 
 /** What "Add to code" just changed, kept on the page after the key moves to the saved ones (D44). */
 export function AddedNote({ added, onClose }: { added: Added; onClose: () => void }) {
+  const run = added.changed.some((c) => c.startsWith("Run config"));
   return (
-    <p className="key-added" role="status">
-      {Icons.check(15)} <b>{added.name}</b> is in your app: {added.changed.join(" · ")}.
-      {added.changed.some((c) => c.startsWith("Run config")) ? " Press Run as always." : " Start your app as always."}
+    <div className="key-added" role="status">
+      <p>{Icons.check(16)} <b>{added.name}</b> is in your app. {run ? "Press Run as always." : "Start your app as always."}</p>
+      <p className="key-changed">Changed: {added.changed.join(" · ")}</p>
       <button type="button" className="btn sm quiet" onClick={onClose} aria-label="Close">×</button>
-    </p>
+    </div>
   );
 }

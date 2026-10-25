@@ -48,7 +48,7 @@ test("paste a key, press Add to code: it goes into the app, the box clears, and 
   await userEvent.type(box, FAKE);
   await userEvent.click(within(row("SUPABASE_ANON_KEY")).getByRole("button", { name: /Add to code/ }));
   expect(body(calls, "/keys/SUPABASE_ANON_KEY/add-to-code")).toEqual({ value: FAKE, ref: "lib/dev/app_config.dart:8", check: "abc123" });
-  expect(await screen.findByText(/is in your app: .*Run config/)).toBeInTheDocument();
+  expect(await screen.findByText(/Changed: .*Run config/)).toBeInTheDocument();
   expect(screen.getByText(/Press Run as always/)).toBeInTheDocument();
   expect(document.body.innerHTML).not.toContain(FAKE);
   expect(document.body.textContent).not.toMatch(/<how you start|Copy the start command/);

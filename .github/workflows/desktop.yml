@@ -39,7 +39,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [ubuntu-22.04, windows-latest, macos-14, macos-15-intel]
+        # Intel Macs wait: the frozen program's cryptography didn't load there (v0.4.0's run); they use npx's uv fallback
+        platform: [ubuntu-22.04, windows-latest, macos-14]
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v7
@@ -78,6 +79,8 @@ jobs:
         working-directory: desktop
       - name: Build the installers
         uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}   # it creates the release and uploads the installers
         with:
           projectPath: desktop
           tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
@@ -112,7 +115,7 @@ jobs:
         run: |
           mkdir assets && cd assets
           gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern 'flowforge-*'
-          ls flowforge-linux-x64 flowforge-darwin-arm64 flowforge-darwin-x64 flowforge-windows-x64.exe
+          ls flowforge-linux-x64 flowforge-darwin-arm64 flowforge-windows-x64.exe
           sha256sum flowforge-* > SHA256SUMS
           cat SHA256SUMS
           gh release upload "$GITHUB_REF_NAME" SHA256SUMS --repo "$GITHUB_REPOSITORY" --clobber
@@ -150,7 +153,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest, macos-15-intel]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/setup-node@v7

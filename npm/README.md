@@ -11,7 +11,7 @@ npx flowforge-map mcp            # the MCP server for Claude Code, Codex and oth
 
 No Python and no virtual env: the first run downloads FlowForge's ready-made program for your computer from the
 project's GitHub Release, checks it against the release's `SHA256SUMS`, keeps it in `~/.flowforge/bin/<version>`,
-and runs it. Later runs start at once, even offline. Windows, macOS (Apple and Intel) and Linux x64; elsewhere it
+and runs it. Later runs start at once, even offline. Windows, macOS (Apple chips) and Linux x64; elsewhere it
 runs `uvx flowforge-map` instead.
 
 Docs, source and the desktop app: https://github.com/Vishwa-Thangapandiyan/flowforge-agent-orchestrator

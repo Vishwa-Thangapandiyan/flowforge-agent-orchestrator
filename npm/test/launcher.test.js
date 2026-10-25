@@ -42,7 +42,7 @@ function home() { return fs.mkdtempSync(path.join(os.tmpdir(), "ffnpx-")); }
 test("each computer gets its own build, and an unknown one gets none", () => {
   assert.equal(L.assetFor("linux", "x64"), "flowforge-linux-x64");
   assert.equal(L.assetFor("darwin", "arm64"), "flowforge-darwin-arm64");
-  assert.equal(L.assetFor("darwin", "x64"), "flowforge-darwin-x64");
+  assert.equal(L.assetFor("darwin", "x64"), null);   // Intel Macs: the uv fallback, for now
   assert.equal(L.assetFor("win32", "x64"), "flowforge-windows-x64.exe");
   assert.equal(L.assetFor("linux", "arm64"), null);
   assert.equal(L.assetFor("freebsd", "x64"), null);

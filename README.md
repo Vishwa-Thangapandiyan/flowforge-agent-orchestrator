@@ -28,7 +28,7 @@ npx flowforge-map --example      # try it: a sample app's maps in your browser, 
 npx flowforge-map --repo .       # map the folder you're in
 ```
 
-That's all: no Python, no virtual env. The first run downloads FlowForge's ready-made program for your computer (about 60 MB, checked against the release's checksums) into `~/.flowforge/bin`; after that it starts at once, even offline. Works on Windows, macOS (Apple and Intel) and Linux x64 with Node 18+. Your data lives in `~/.flowforge`.
+That's all: no Python, no virtual env. The first run downloads FlowForge's ready-made program for your computer (about 60 MB, checked against the release's checksums) into `~/.flowforge/bin`; after that it starts at once, even offline. Works on Windows, macOS (Apple chips) and Linux x64 with Node 18+. Your data lives in `~/.flowforge`.
 
 | You have | Run | |
 |---|---|---|
@@ -37,7 +37,7 @@ That's all: no Python, no virtual env. The first run downloads FlowForge's ready
 | Python people | `uvx flowforge-map` or `pipx install flowforge-map` | Python 3.12+; no virtual env to manage |
 | No terminal | the desktop app (Releases) | download and open; **Settings → Terminal** adds the `flowforge` command too (Linux .rpm/.deb have it already) |
 
-Every way gives the same `flowforge` command: `npx flowforge-map status`, `npx flowforge-map key add STRIPE_KEY`, and so on. Linux ARM and Windows ARM have no ready-made build yet, so `npx` uses `uvx` there.
+Every way gives the same `flowforge` command: `npx flowforge-map status`, `npx flowforge-map key add STRIPE_KEY`, and so on. Intel Macs, Linux ARM and Windows ARM have no ready-made build yet, so `npx` uses `uvx` there.
 
 The first time, a short welcome walks you through three steps, each one skippable: your app's folder (or the example), pairing your coding agent once, and a lock for your keys. **⚙ Settings** at the bottom of the rail keeps what applies to every project: your agent, the theme and map style, the Vault's lock, and your data (each project's size, the MCP servers it may start, its check history, and the version, with **Check for updates**, which asks pypi.org only when you press it).
 

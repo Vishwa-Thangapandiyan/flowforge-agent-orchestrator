@@ -444,7 +444,7 @@ Coding agents (Claude Code, Codex, Antigravity) connect to FlowForge with one MC
 
 ### Phase 8: Launch
 - **Docs:** rewrite the README around the one-command demo, record a demo GIF, write a short "how it works".
-- **Install:** `uvx flowforge-map` / `pip install flowforge-map` (D34: `flowforge` is blocked on PyPI by `flow-forge`; the command stays `flowforge`).
+- **Install:** `uvx flowforge-map` / `pipx install flowforge-map`, or `pip` inside a virtual environment (D34: `flowforge` is blocked on PyPI by `flow-forge`; the command stays `flowforge`).
 - **Release:** CI green, first tagged release, merge into `main`.
 
 ### Phase 9: CLI agent + Tauri desktop app

@@ -58,8 +58,8 @@ def test_settings_start_empty_and_keep_what_is_set():
     assert settings.load().welcome_done is False and settings.load().map_style is None
     settings.save({"welcome_done": True, "map_style": "metro"})
     assert settings.load().welcome_done is True and settings.load().map_style == "metro"
-    assert json.loads((home.flowforge_home() / "settings.json").read_text()) == {"welcome_done": True,
-                                                                                 "map_style": "metro"}
+    assert json.loads((home.flowforge_home() / "settings.json").read_text()) == {
+        "welcome_done": True, "map_style": "metro", "approve_runs": True}   # D43's default: a new run waits for you
 
 
 @pytest.mark.parametrize("changes", [{"map_style": "neon"}, {"api_key": FAKE}, {"welcome_done": "yes please"}])

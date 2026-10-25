@@ -1,5 +1,5 @@
-"""Settings for every project (D40): `FLOWFORGE_HOME/settings.json`. It never holds a secret: only whether the welcome
-is done and the map style a new map opens in."""
+"""Settings for every project (D40): `FLOWFORGE_HOME/settings.json`. It never holds a secret: whether the welcome is
+done, the map style a new map opens in, and whether the agent's app runs wait for your Allow (D43)."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ class Settings(BaseModel):
     model_config = ConfigDict(extra="forbid")
     welcome_done: bool = False
     map_style: MapStyle | None = None
+    approve_runs: bool = True   # D43: a new command the agent asks to run waits for your Allow
 
 
 def _path():

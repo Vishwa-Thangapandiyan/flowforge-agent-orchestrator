@@ -110,6 +110,12 @@ class Runs:
             run._proc.kill()
         return True
 
+    def clear(self) -> None:
+        """A fresh start: every run stopped and forgotten."""
+        self.stop_all()
+        with self._lock:
+            self._runs.clear()
+
     def stop_all(self) -> None:
         with self._lock:
             running = [r.id for r in self._runs.values() if r.status == "running"]

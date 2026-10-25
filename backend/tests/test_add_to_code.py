@@ -383,3 +383,31 @@ def test_a_second_key_still_says_the_run_config_has_it(flutter):
         s = spot(flutter, name)
         done = add_to_code(flutter, s.name, s.ref, s.check, FAKE)
     assert done["run_config"] is True   # added by the first key, still there
+
+
+def test_node_that_lists_dotenv_but_never_loads_it_reads_no_file(tmp_path):
+    """Codex review: a dependency isn't a call; the key would sit in .env where the app never looks."""
+    root = write(tmp_path / "api", {"package.json": json.dumps({"dependencies": {"dotenv": "^16", "express": "^4"}}),
+                                    "server.js": "const express = require('express');\nconst apiKey = '';\n"})
+    assert spot(root, "API_KEY").sink is None
+    root2 = write(tmp_path / "api2", {"package.json": json.dumps({"dependencies": {"dotenv": "^16"},
+                                                                  "scripts": {"start": "node -r dotenv/config s.js"}}),
+                                      "s.js": "require('http');\nconst apiKey = '';\n"})
+    assert spot(root2, "API_KEY").sink == ".env"
+
+
+def test_an_empty_or_old_value_in_dotenv_isnt_in_the_app(served, flutter, tmp_path, monkeypatch):
+    """Codex review: `NAME=` or a stale value must still offer Add to code for the saved key."""
+    root = write(tmp_path / "bot", {"app.py": "from dotenv import load_dotenv\nload_dotenv()\nimport os\n"
+                                              "K = os.environ['OPENAI_API_KEY']\nT = os.environ['HF_TOKEN']\n",
+                                    ".env": f"OPENAI_API_KEY=\nHF_TOKEN=old-{OTHER}\n"})
+    KeyStore(root).add("OPENAI_API_KEY", FAKE)
+    KeyStore(root).add("HF_TOKEN", FAKE)
+    monkeypatch.setenv("FLOWFORGE_REPO", str(root))
+    with served() as c:
+        keys = {k["name"]: k for k in c.get("/keys").json()["keys"]}
+    assert keys["OPENAI_API_KEY"]["in_app"] is False and keys["HF_TOKEN"]["in_app"] is False
+    with served() as c:
+        k = keys["HF_TOKEN"]
+        assert c.post("/keys/HF_TOKEN/add-to-code", json={"ref": k["spot"]["ref"], "check": k["spot"]["check"]}).status_code == 200
+        assert {k["name"]: k for k in c.get("/keys").json()["keys"]}["HF_TOKEN"]["in_app"] is True

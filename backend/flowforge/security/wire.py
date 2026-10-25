@@ -91,7 +91,8 @@ def _facts(root: Path, texts: dict[str, str]) -> _Facts:
     scripts = " ".join(map(str, (pkg.get("scripts") or {}).values())) if isinstance(pkg, dict) else ""
     return _Facts(
         python_env=any(_PY_LOADS_ENV.search(t) for p, t in texts.items() if language(p) == "python"),
-        node_env="dotenv" in deps or "next" in deps or "--env-file" in scripts
+        # loaded, not just listed (Codex review): a call in the code, a start script, or Next.js, which loads .env
+        node_env="next" in deps or "--env-file" in scripts or "dotenv/config" in scripts
         or any(_JS_LOADS_ENV.search(t) for p, t in texts.items() if language(p) in ("javascript", "typescript")),
         vite="vite" in deps or any((root / f"vite.config.{e}").exists() for e in ("js", "ts", "mjs", "mts")),
     )

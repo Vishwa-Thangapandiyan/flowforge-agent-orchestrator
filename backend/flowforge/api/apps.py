@@ -4,7 +4,7 @@ the project's keys filled in. Nothing here answers with a value: commands are sh
 keys by name, output masked.
 
 POST /apps/run                     {argv} + X-FlowForge-Token → 201 running {run} | 202 waiting {request} | 409 missing
-GET  /apps/requests/{id}           + token → {state: waiting|allowed|denied, run?}
+GET  /apps/requests/{id}           + token → {state: waiting|starting|allowed|denied, run?}
 GET  /apps                         the dashboard: {requests (waiting), runs, approve_runs}
 POST /apps/requests/{id}/allow     the dashboard on this machine → {state: allowed, run}
 POST /apps/requests/{id}/deny      → {state: denied}
@@ -158,18 +158,15 @@ def run_app(body: RunAsk, response: Response) -> dict[str, Any]:
     if not settings.load().approve_runs or body.argv in _approved(s):
         response.status_code = 201
         return {"state": "running", "run": _start(s, body.argv)}
-    with _lock:   # asking again while waiting: the same request, not a second card
+    response.status_code = 202
+    with _lock:   # look and add at once: asking again, even at the same moment, is the same card (Codex review)
         same = next((r for r in _requests.values() if r["project"] == _project_id() and r["state"] == "waiting"
                      and r["argv"] == body.argv), None)
-    if same is not None:
-        response.status_code = 202
+        if same is None:
+            same = {"id": uuid.uuid4().hex[:12], "project": _project_id(), "argv": body.argv, "keys": keys,
+                    "at": time.time(), "state": "waiting", "run": None}
+            _requests[same["id"]] = same
         return {"state": "waiting", "request": _public(same)}
-    request = {"id": uuid.uuid4().hex[:12], "project": _project_id(), "argv": body.argv, "keys": keys,
-               "at": time.time(), "state": "waiting", "run": None}
-    with _lock:
-        _requests[request["id"]] = request
-    response.status_code = 202
-    return {"state": "waiting", "request": _public(request)}
 
 
 def _public(request: dict[str, Any]) -> dict[str, Any]:
@@ -204,12 +201,18 @@ def apps() -> dict[str, Any]:
 def allow(request_id: str) -> dict[str, Any]:
     s = app_state()
     request = _request(request_id)
-    if request["state"] != "waiting":
-        return _public(request)
+    with _lock:   # only the first Allow starts it, even when two land at once (Codex review)
+        if request["state"] != "waiting":
+            return _public(request)
+        request["state"] = "starting"
     approved = _approved(s)
     if request["argv"] not in approved:
         s.storage.set_setting(APPROVED_SETTING, json.dumps([*approved, request["argv"]]))
-    request["run"] = _start(s, request["argv"])
+    try:
+        request["run"] = _start(s, request["argv"])
+    except HTTPException:
+        request["state"] = "waiting"   # a key went missing meanwhile: the card stays
+        raise
     request["state"] = "allowed"
     return _public(request)
 
@@ -217,8 +220,9 @@ def allow(request_id: str) -> dict[str, Any]:
 @router.post("/apps/requests/{request_id}/deny", dependencies=[Depends(from_this_machine)])
 def deny(request_id: str) -> dict[str, Any]:
     request = _request(request_id)
-    if request["state"] == "waiting":
-        request["state"] = "denied"
+    with _lock:
+        if request["state"] == "waiting":
+            request["state"] = "denied"
     return _public(request)
 
 

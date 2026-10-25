@@ -135,3 +135,24 @@ def test_started_by_plain_uvicorn_the_first_request_tells_the_agent_where_flowfo
         c.get("/meta")
         found = apps_api.read_server_file()
         assert found["port"] == 8000 and found["token"] == apps_api.token()
+
+
+def test_one_command_gives_one_card_and_at_most_one_run_even_at_the_same_moment(shop, monkeypatch):
+    """Codex review: two asks for the same command at once make one request; two Allows at once start one run."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    real_start = apps_api._start
+
+    def slow_start(s, argv):   # widen the window two Allows could race through
+        time.sleep(0.2)
+        return real_start(s, argv)
+
+    monkeypatch.setattr(apps_api, "_start", slow_start)
+    with client() as c:
+        with ThreadPoolExecutor(4) as pool:
+            asks = list(pool.map(lambda _: agent(c, "/p/shop/apps/run", {"argv": PRINTS_KEY}).json(), range(4)))
+        assert len({a["request"]["id"] for a in asks}) == 1
+        request_id = asks[0]["request"]["id"]
+        with ThreadPoolExecutor(4) as pool:
+            list(pool.map(lambda _: c.post(f"/p/shop/apps/requests/{request_id}/allow"), range(4)))
+        assert len(c.get("/p/shop/apps").json()["runs"]) == 1

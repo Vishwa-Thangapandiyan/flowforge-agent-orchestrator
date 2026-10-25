@@ -503,7 +503,7 @@ def build_server(repo: Path | None, storage: Storage | None, *,
         while asked["state"] == "waiting" and time.monotonic() < deadline:
             await asyncio.sleep(1)
             request = (await ask_flowforge(r, "GET", f"/apps/requests/{asked['request']['id']}")).json()
-            if request["state"] != "waiting":
+            if request["state"] not in ("waiting", "starting"):
                 asked = {"state": "running" if request["state"] == "allowed" else "denied", "run": request["run"],
                          "request": request}
         if asked["state"] == "running":

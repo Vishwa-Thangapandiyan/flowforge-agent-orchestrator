@@ -40,6 +40,7 @@ from flowforge.project_states import build_state, point_at_example
 from flowforge.project_states import close as close_state
 from flowforge.project_states import ensure as ensure_project
 from flowforge.projects import EXAMPLE_ID, Projects, valid_id
+from flowforge.security.local_only import LocalOnly
 from flowforge.security.logfilter import Redactor, install_log_redaction
 from flowforge.state import app_state
 from flowforge.storage import Storage
@@ -145,6 +146,7 @@ class ProjectPrefix:
 
 app = FastAPI(title="FlowForge", lifespan=lifespan)
 app.add_middleware(ProjectPrefix)
+app.add_middleware(LocalOnly)   # added last, so it runs first: nothing answers another machine or site (D47)
 app.include_router(runs_api.router)
 app.include_router(connectors_api.router)
 app.include_router(stats_api.router)

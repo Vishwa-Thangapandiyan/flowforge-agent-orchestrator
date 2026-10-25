@@ -1356,6 +1356,47 @@ D39 left pairing the agent once to this step.
 
 ---
 
+## D43. Masked keys: the agent places them, FlowForge fills them (Vishwa, 2026-10-25)
+
+**Context.** D36 kept keys from the agent, but it left the user typing commands: `flowforge key add`, `flowforge run -- …`. That isn't what Vishwa asked for:
+- you paste a key once;
+- your coding agent gets only a **mask** of it;
+- the agent puts the mask where the app needs it and runs the app through FlowForge;
+- FlowForge, plain code with no AI, swaps in the real value as the app starts.
+
+Masking is FlowForge's job and the user shouldn't have to think about it. The commands from D36 stay for people without an agent. This also covers keys read when an app is **built** (Flutter's `String.fromEnvironment` filled by `--dart-define`, Vite's `import.meta.env`), which `flowforge run -- flutter run` missed.
+
+**Choice:**
+- **The mask is `ffkey://NAME`.** `get_keys` gives each key's mask and where it goes:
+  - code reads the env var `NAME`;
+  - a config file, or a command line, gets the mask, e.g. `--dart-define=NAME=ffkey://NAME`.
+  
+  The agent's MCP server still never reads a value (D36).
+- **The run happens in the dashboard's process**, which holds the keys, never in the agent's.
+  - `run_app` (MCP) asks the running FlowForge, the desktop app or `flowforge`, through `FLOWFORGE_HOME/server.json`. That file holds its port and a random token, mode 0600.
+  - With no FlowForge running, the tool says to open it.
+- **You approve each new command once** (Vishwa's choice, to try out). The first time the agent asks to run a command (its exact argument list) in a project, every page shows "Your agent wants to run … with KEY (masked)" with Allow / Deny. After Allow, the same command runs without asking.
+  
+  The setting `approve_runs` (on by default) can turn the question off later. Approval is what stops anyone from using FlowForge itself to leak a key with a crafted command.
+- **The runner is plain code doing what you would do by hand:**
+  - It runs an argument list, never a shell, in the project's folder.
+  - Its environment is yours, plus the project's saved keys.
+  - Each `ffkey://NAME` in an argument or an env value becomes the value. A mask for a key that isn't saved stops the run before anything starts.
+  - Output is kept masked: the redactor knows every saved value (D36), so an app that prints a key gives back `[REDACTED]`.
+  - `app_output` and `stop_app` follow a run; quitting FlowForge stops them all.
+  - The Keys page lists the agent's runs (command, the key names given, running or stopped) with Stop.
+
+**Why:** the user hands a key over once, and the rest is FlowForge's job. Nothing that can be talked into anything ever touches the value: the agent handles masks, and plain code fills them.
+
+**What's outside FlowForge:**
+- what your own app does with a key;
+- a key built into an app (`--dart-define`, Vite), which anyone holding the app can read, so use publishable keys there;
+- a process of your own user that reads another's memory or environment.
+
+**Code:** `security/masks.py`, `apps.py`, `api/apps.py`, `agent/server.py` (`run_app`, `app_output`, `stop_app`, masks in `get_keys`), `settings.py` (`approve_runs`), `main.py` (server.json), the dashboard's run prompt and Agent runs list.
+
+---
+
 ## Step JSON schema (reference)
 
 ```json

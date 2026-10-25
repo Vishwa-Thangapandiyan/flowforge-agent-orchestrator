@@ -25,7 +25,7 @@ from mcp import Client, StdioServerParameters
 
 EXPECTED_DEPENDENCIES = 12   # the trip planner's
 EXPECTED_FINDINGS = 3
-EXPECTED_KEYS = 1            # OLLAMA_API_KEY, read in config.py (D36)
+EXPECTED_KEYS = 2            # OLLAMA_API_KEY read in config.py (D36), and the planted key in the open (D44)
 FAKE_KEY = "sk_test_FAKEFAKE12345678"
 
 

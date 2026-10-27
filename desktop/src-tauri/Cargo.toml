@@ -1,6 +1,6 @@
 [package]
 name = "flowforge-desktop"
-version = "0.4.1"
+version = "0.4.2"
 description = "FlowForge's desktop app (D42): the same dashboard, with Python inside"
 license = "MIT"
 edition = "2021"

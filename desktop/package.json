@@ -1,7 +1,7 @@
 {
   "name": "flowforge-desktop",
   "private": true,
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "FlowForge's desktop app (D42): the same dashboard, with Python inside",
   "scripts": {
     "tauri": "tauri",

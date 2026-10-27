@@ -86,7 +86,7 @@ def test_status_projects_issues_and_keys(project, capsys, monkeypatch):
         output = capsys.readouterr().out
         assert FAKE not in output and "\x1b" not in output
         if command[0] == "status":
-            assert "up" in output and "Keys missing: 1" in output and "OTHER_TOKEN" in output
+            assert "reachable" in output and "Keys missing: 1" in output and "OTHER_TOKEN" in output
             assert f"Issues: {len(result.findings)}" in output
         elif command[0] == "projects":
             assert "shop" in output and "Dependencies" in output and "Keys missing" in output

@@ -197,7 +197,7 @@ export const McpMapSvg = forwardRef<SVGSVGElement, Props>(function McpMapSvg({ m
         <circle cx={870} cy={keyY + 48} r={4} className="hdot h-up" />
         <circle cx={882} cy={keyY + 48} r={4} className="hdot h-warn" />
         <circle cx={894} cy={keyY + 48} r={4} className="hdot h-down" />
-        <text x={906} y={keyY + 52} className="key-label">health: up · needs a look · down</text>
+        <text x={906} y={keyY + 52} className="key-label">health: reachable · needs a look · down</text>
         <text x={1160} y={keyY + 52} className="key-label">✎ writes   ↻ repeats in a loop</text>
       </g>
     </svg>

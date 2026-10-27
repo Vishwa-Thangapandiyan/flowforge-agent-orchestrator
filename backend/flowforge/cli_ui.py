@@ -73,9 +73,13 @@ def level(value: str) -> Text:
     return Text(value, style=STYLES.get(value, ""))
 
 
+HEALTH_WORDS = {"up": "reachable", "warn": "needs a look"}   # what a check proves (D52)
+
+
 def dot(out: Console, status: str) -> Text:
     """Health keeps its label even without colour (D41)."""
-    return Text(f"{'●' if utf8(out) else '*'} {status}", style=STYLES.get(status, "bright_black"))
+    word = HEALTH_WORDS.get(status, status)
+    return Text(f"{'●' if utf8(out) else '*'} {word}", style=STYLES.get(status, "bright_black"))
 
 
 def table(out: Console, title: str, columns: list[str], rows: list[list[Any]], *, border: bool = True) -> None:

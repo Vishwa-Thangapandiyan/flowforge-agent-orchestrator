@@ -298,6 +298,9 @@ def scan_with_places(root: str | Path) -> tuple[ScanResult, Places]:
         if lang:
             languages[lang] = languages.get(lang, 0) + 1
 
+    for rel in listing.tests:   # off the map, but searched for keys (D52)
+        texts[rel] = (root / rel).read_text(encoding="utf-8", errors="replace").splitlines()
+
     constants: Constants = {name: (value, f.path, line) for f in facts for name, (value, line) in f.constants.items()}
     merge = _Merge(texts, constants)
     app_servers: set[str] = set()
@@ -342,7 +345,8 @@ def scan_with_places(root: str | Path) -> tuple[ScanResult, Places]:
         ev = merge.evidence(path, line, "")
         return ev.first_line or line, ev.lines
 
-    findings = findings_for(texts, {rel: language(rel) for rel in texts}, dependencies, by_dep, config_keys, excerpt)
+    findings = findings_for(texts, {rel: language(rel) for rel in texts}, dependencies, by_dep, config_keys, excerpt,
+                            tests=set(listing.tests))
     result = ScanResult(root=root.name, files_scanned=len(listing.files), skipped=listing.skipped,
                         languages=languages, dependencies=dependencies,
                         env_names=[EnvName(name=n, ref=r) for n, r in sorted(seen.items())], findings=findings,

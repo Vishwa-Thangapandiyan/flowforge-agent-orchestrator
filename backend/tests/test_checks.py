@@ -45,7 +45,7 @@ async def test_an_api_that_answers_is_up_with_its_latency(tmp_path):
         return httpx.Response(200)
     async with client(handler) as http:
         result = await check(api("https://api.weather.test/v1/forecast"), tmp_path, http=http)
-    assert result.status == "up" and result.summary == "Up" and result.latency_ms is not None
+    assert result.status == "up" and result.summary == "Reachable" and result.latency_ms is not None
     # one GET, with no key, cookie or query, saying who it is (D24)
     (request,) = seen
     assert request.method == "GET" and request.url == "https://api.weather.test/v1/forecast"
@@ -56,7 +56,24 @@ async def test_an_api_that_answers_is_up_with_its_latency(tmp_path):
 async def test_an_api_asking_for_a_key_is_up(tmp_path):
     async with client(lambda r: httpx.Response(403)) as http:
         result = await check(api("https://maps.test/staticmap"), tmp_path, http=http)
-    assert result.status == "up" and result.summary == "Up, needs a key (403)"
+    assert result.status == "up" and result.summary == "Reachable, needs a key (403)"
+
+
+@pytest.mark.parametrize("code", [404, 405, 400, 410, 301, 308])
+async def test_any_other_answer_is_reachable_and_says_what_it_answered(tmp_path, code):
+    # D52: an answer proves the server is there, not that your call works, so the summary says what came back
+    async with client(lambda r: httpx.Response(code)) as http:
+        result = await check(api("https://api.weather.test/v1/forecast"), tmp_path, http=http)
+    assert result.status == "up" and result.summary == f"Reachable, answered {code}"
+
+
+async def test_an_api_or_llm_that_rate_limits_this_computer_needs_a_look(tmp_path):
+    for target in (api("https://api.weather.test/v1/forecast"),
+                   CheckTarget(id="llm-x", kind="llm", name="X", target="https://llm.test/v1")):
+        async with client(lambda r: httpx.Response(429)) as http:
+            result = await check(target, tmp_path, http=http)
+        assert result.status == "warn" and result.summary == "Reachable, but rate-limiting this computer (429)"
+        assert result.fix and "later" in result.fix
 
 
 async def test_a_server_error_or_no_answer_is_down(tmp_path):
@@ -111,11 +128,11 @@ async def test_slow_or_unencrypted_needs_a_look(tmp_path, monkeypatch):
         return httpx.Response(200)
     async with client(slow) as http:
         result = await check(api("https://api.slow.test/v1"), tmp_path, http=http)
-    assert result.status == "warn" and result.summary.startswith("Up, but slow")
+    assert result.status == "warn" and result.summary.startswith("Reachable, but slow")
 
     async with client(lambda r: httpx.Response(200)) as http:
         result = await check(api("http://ip-api.test/json/"), tmp_path, http=http)
-    assert result.status == "warn" and result.summary == "Up, but plain http://: not encrypted"
+    assert result.status == "warn" and result.summary == "Reachable, but plain http://: not encrypted"
     async with client(lambda r: httpx.Response(200)) as http:   # on this machine, http is fine
         assert (await check(api("http://localhost:8080/api"), tmp_path, http=http)).status == "up"
 
@@ -147,11 +164,11 @@ async def test_ollama_is_up_when_it_has_the_model(tmp_path):
         return httpx.Response(200, json={"models": [{"name": "llama3.1:8b"}, {"name": "qwen2.5:latest"}]})
     async with client(handler) as http:
         result = await check(ollama(), tmp_path, http=http)
-        assert result.status == "up" and result.summary == "Up, llama3.1:8b is ready"
+        assert result.status == "up" and result.summary == "Reachable, llama3.1:8b is ready"
         assert (await check(ollama("qwen2.5"), tmp_path, http=http)).status == "up"   # ":latest" is implied
         missing = await check(ollama("mistral:7b"), tmp_path, http=http)
     assert seen[0] == "http://localhost:11434/api/tags"
-    assert missing.status == "warn" and missing.summary == "Up, but mistral:7b isn't pulled"
+    assert missing.status == "warn" and missing.summary == "Reachable, but mistral:7b isn't pulled"
     assert missing.fix == "Run `ollama pull mistral:7b`."
 
 
@@ -173,7 +190,7 @@ async def test_a_hosted_llm_is_checked_at_its_model_list_without_a_key(tmp_path)
     async with client(handler) as http:
         result = await check(target, tmp_path, http=http)
     assert str(seen[0].url) == "https://api.openai.com/v1/models" and "authorization" not in seen[0].headers
-    assert result.status == "up" and result.summary == "Up, needs a key (401) to list its models"
+    assert result.status == "up" and result.summary == "Reachable, needs a key (401) to list its models"
 
 
 # --- MCP servers: real stdio processes ---------------------------------------------------------------------------
@@ -210,7 +227,7 @@ def script(tmp_path, name, text):
 
 async def test_an_mcp_server_that_lists_its_tools_is_up(tmp_path):
     result = await check(mcp(script(tmp_path, "tools.py", SERVER)), tmp_path)
-    assert result.status == "up" and result.summary == "Up: 2 tools" and result.detail["tools"] == ["echo", "ping"]
+    assert result.status == "up" and result.summary == "Reachable: 2 tools" and result.detail["tools"] == ["echo", "ping"]
     assert result.latency_ms > 0
 
 
@@ -244,7 +261,7 @@ async def test_a_slow_or_silent_mcp_server(tmp_path, monkeypatch):
     monkeypatch.setattr(checks.probes, "MCP_SLOW_MS", 300)
     slow = SERVER.replace('float(os.getenv("SLEEP_S", "0"))', "0.5")
     result = await check(mcp(script(tmp_path, "slow.py", slow)), tmp_path)
-    assert result.status == "warn" and result.summary.startswith("Up: 2 tools, but slow to start")
+    assert result.status == "warn" and result.summary.startswith("Reachable: 2 tools, but slow to start")
 
     monkeypatch.setattr(checks.probes, "MCP_TIMEOUT_S", 0.5)
     silent = SERVER.replace('float(os.getenv("SLEEP_S", "0"))', "5")

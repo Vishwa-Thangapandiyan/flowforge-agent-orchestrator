@@ -118,7 +118,7 @@ def test_check_now_gives_each_dependency_a_verdict_and_keeps_them(api):
     assert run["status"] == "succeeded"   # a dependency that is down is a result, not a failed run (D24)
     items = by_id(api)
     assert items["api-api-weather-test"]["status"] == "up" and api.calls == ["https://api.weather.test/v1/forecast"]
-    assert items["mcp-tools"]["status"] == "up" and items["mcp-tools"]["summary"] == "Up: 1 tool"
+    assert items["mcp-tools"]["status"] == "up" and items["mcp-tools"]["summary"] == "Reachable: 1 tool"
     broken = items["mcp-broken"]
     assert broken["status"] == "down" and "broken: refused key" in broken["reason"]
     assert broken["fix"] == "Its code reads BROKEN_API_URL (servers/broken.py:2), but its MCP config gives it no env."

@@ -1,6 +1,6 @@
 # FlowForge
 
-**See everything your AI app depends on: whether it's up, whether it's safe, and what's slowing it down.**
+**See everything your AI app depends on: whether it's reachable, whether it's safe, and what's slowing it down.**
 
 ```bash
 npx flowforge-map --example      # a sample app's map in your browser: no keys, nothing sent

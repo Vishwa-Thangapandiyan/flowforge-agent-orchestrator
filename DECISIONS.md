@@ -1579,6 +1579,25 @@ The same request with a browser's name answered in half a second.
 
 ---
 
+## D52. A check says "Reachable", and keys in test files are found (Vishwa, 2026-10-27; from the Codex review)
+
+**Context:** a check is one request with no key (D24), so green only ever proved that the server answered. "Up" read as "your integration works", and a 404, 405 or 429 was green too. Separately, the scan skips test and fake-data files (D23), and the key search inherited that, so a real key pasted into a test was never reported.
+
+**Decision:**
+- **Green says "Reachable"**, with the answer when it isn't plain success: "Reachable, answered 404", "Reachable, needs a key (401)", "Reachable: 2 tools". The stored status stays `up` (history and the API keep working).
+- **429 is amber:** "Reachable, but rate-limiting this computer (429)".
+- What a check proves, in order: **Reachable** (today) → **key accepted** (authenticated checks, open question 3) → **your call works** (your app's tests). The wording never claims more than the first.
+- **The key search reads test and fake-data files**; the map still skips them (D23). A key found there is "written in a test file", medium (not high).
+- A key there whose value looks made up (`fake`, `dummy`, `mock`, `stub`, `placeholder`, `xxxx`, `000000`, `12345678`) isn't reported. The judgement looks at the value, not the line.
+
+**Honest limits:**
+- "Looks made up" is a pattern: a real key that happens to contain `1234567` in a test file is missed.
+- Old checks keep the words they were stored with ("Up") until the next check.
+
+**Code:** `checks/probes.py`, `example_data.py`, `checks/Health.tsx`, `scan/files.py` (`Listing.tests`), `scan/scanner.py`, `security/findings.py`.
+
+---
+
 ## Step JSON schema (reference)
 
 ```json

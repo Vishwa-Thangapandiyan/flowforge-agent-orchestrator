@@ -185,7 +185,7 @@ def test_test_connection(client, tmp_path):
         lambda request: seen.append(request) or httpx.Response(401)))
     client.post("/connectors", json=llm())
     body = client.post("/connectors/gemini/test").json()
-    assert body == {"ok": True, "message": "Up, needs a key (401) to list its models"}
+    assert body == {"ok": True, "message": "Reachable, needs a key (401) to list its models"}
     assert str(seen[0].url).endswith("/models") and "authorization" not in seen[0].headers
 
 

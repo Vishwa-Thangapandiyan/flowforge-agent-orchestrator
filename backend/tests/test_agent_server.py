@@ -231,7 +231,7 @@ def test_the_preview_reads_stored_health_and_runs_nothing(tmp_path):
     storage.add_checks("r1", [{"id": "api-nominatim", "kind": "api", "status": "up", "summary": "Up"},
                               {"id": "mcp-currency", "kind": "mcp", "status": "down", "summary": "Down"}])
     cards = {c["tool"]: c for c in preview(TRIP_PLANNER, storage)["cards"]}
-    assert cards["check_health"]["headline"] == "1 up · 1 down" and cards["check_health"]["tone"] == "bad"
+    assert cards["check_health"]["headline"] == "1 reachable · 1 down" and cards["check_health"]["tone"] == "bad"
 
 
 async def test_flowforge_mcp_runs_over_a_real_stdio_pipe(tmp_path):

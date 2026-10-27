@@ -92,7 +92,7 @@ test("a dependency's Health says why it is down and how to fix it, and can be ch
   mockApi({ "/checks/llm-ollama": [
     { run_id: "chk1", status: "down", latency_ms: null, summary: "Nothing answers at localhost:11434",
       reason: "[Errno 111] Connection refused", fix: "Start Ollama (`ollama serve`).", at: "2026-10-21T10:44:00Z" },
-    { run_id: "chk0", status: "up", latency_ms: 300, summary: "Up", reason: null, fix: null, at: "2026-10-21T09:10:00Z" }] });
+    { run_id: "chk0", status: "up", latency_ms: 300, summary: "Reachable", reason: null, fix: null, at: "2026-10-21T09:10:00Z" }] });
   const onCheck = vi.fn();
   const ollama = DEPS.nodes.find((n) => n.id === "llm-ollama")!;
   render(<StepPanel node={ollama} flow={DEPS} tile={null} state="idle" cap="" waiting={false} connectors={[]} tipShown

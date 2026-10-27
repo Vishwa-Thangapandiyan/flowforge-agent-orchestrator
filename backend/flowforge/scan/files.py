@@ -27,6 +27,7 @@ LANGUAGES = {".py": "python", ".js": "javascript", ".jsx": "javascript", ".mjs":
 @dataclass
 class Listing:
     files: list[str] = field(default_factory=list)          # paths relative to the root, "/"-separated
+    tests: list[str] = field(default_factory=list)          # test and fake-data code: searched for keys only (D52)
     skipped: dict[str, int] = field(default_factory=dict)   # why -> how many: ignored, binary, too_big, outside…
 
     def skip(self, why: str) -> None:
@@ -35,6 +36,14 @@ class Listing:
 
 def language(rel: str) -> str | None:
     return LANGUAGES.get(Path(rel).suffix.lower())
+
+
+def is_test(rel: str) -> bool:
+    """Test or fake-data code outside hidden folders: left off the map (D23), searched for keys (D52)."""
+    path = Path(rel)
+    if language(rel) is None or any(part.startswith(".") for part in path.parent.parts):
+        return False
+    return any(part in TEST_DIRS for part in path.parent.parts) or bool(TEST_FILE.search(path.name))
 
 
 def classify(rel: str) -> str | None:
@@ -93,20 +102,19 @@ def list_files(root: Path) -> Listing:
         kind = classify(rel)
         if kind is None:
             continue
+        keys_only = kind == "ignored" and is_test(rel)
         if kind == "ignored":
             out.skip("ignored")
-            continue
+            if not keys_only:
+                continue
         path = root / rel
-        if path.is_symlink() and not path.resolve().is_relative_to(root):
-            out.skip("outside")
+        why = ("outside" if path.is_symlink() and not path.resolve().is_relative_to(root)
+               else "missing" if not path.is_file()
+               else "too_big" if path.stat().st_size > MAX_BYTES
+               else "binary" if _is_binary(path) else None)
+        if why is not None:
+            if why != "missing" and not keys_only:
+                out.skip(why)
             continue
-        if not path.is_file():
-            continue
-        if path.stat().st_size > MAX_BYTES:
-            out.skip("too_big")
-            continue
-        if _is_binary(path):
-            out.skip("binary")
-            continue
-        out.files.append(rel)
+        (out.tests if keys_only else out.files).append(rel)
     return out

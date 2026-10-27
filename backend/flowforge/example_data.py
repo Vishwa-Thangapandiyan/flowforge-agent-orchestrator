@@ -176,21 +176,21 @@ def _recorded(id: str, status: Status, latency_ms: float | None, summary: str, *
 
 # Recorded check results for the trip planner (D24): what a real check run gave, so example mode stays offline.
 CHECK_RESULTS: dict[str, CheckResult] = {r.id: r for r in [
-    _recorded("mcp-time", "up", 1900, "Up: 2 tools"),
-    _recorded("mcp-files", "up", 2400, "Up: 14 tools"),
-    _recorded("mcp-fetch", "warn", 6800, "Up: 1 tool, but slow to start: 6.8 s"),
+    _recorded("mcp-time", "up", 1900, "Reachable: 2 tools"),
+    _recorded("mcp-files", "up", 2400, "Reachable: 14 tools"),
+    _recorded("mcp-fetch", "warn", 6800, "Reachable: 1 tool, but slow to start: 6.8 s"),
     _recorded("mcp-currency", "down", None, "Stopped while starting",
               reason="currency server: CURRENCY_API_URL is not set",
               fix="Its code reads CURRENCY_API_URL (mcp_servers/currency.py:9), but its MCP config gives it no env."),
     _recorded("local-packing-list", "up", None, "Found, not run"),
     _recorded("llm-ollama", "down", None, "Nothing answers at localhost:11434",
               reason="[Errno 111] Connection refused", fix="Start Ollama (`ollama serve`)."),
-    _recorded("api-osrm", "up", 640, "Up"),
-    _recorded("api-open-meteo", "up", 180, "Up"),
-    _recorded("api-nominatim", "up", 420, "Up"),
-    _recorded("api-ip-api-com", "warn", 210, "Up, but plain http://: not encrypted"),
-    _recorded("api-google-maps", "up", 230, "Up, needs a key (403)"),
-    _recorded("api-wikipedia", "up", 310, "Up"),
+    _recorded("api-osrm", "up", 640, "Reachable"),
+    _recorded("api-open-meteo", "up", 180, "Reachable"),
+    _recorded("api-nominatim", "up", 420, "Reachable"),
+    _recorded("api-ip-api-com", "warn", 210, "Reachable, but plain http://: not encrypted"),
+    _recorded("api-google-maps", "up", 230, "Reachable, needs a key (403)"),
+    _recorded("api-wikipedia", "up", 310, "Reachable"),
 ]}
 
 

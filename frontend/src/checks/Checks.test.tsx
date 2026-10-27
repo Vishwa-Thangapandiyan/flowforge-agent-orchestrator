@@ -87,7 +87,7 @@ test("the Checks page puts problems first, filters them, and shows one dependenc
     "/checks/llm-ollama": [
       { run_id: "chk1", status: "down", latency_ms: null, summary: "Nothing answers at localhost:11434",
         reason: "[Errno 111] Connection refused", fix: "Start Ollama (`ollama serve`).", at: "2026-10-21T10:44:00Z" },
-      { run_id: "chk0", status: "up", latency_ms: 300, summary: "Up, llama3.1:8b is ready", reason: null, fix: null,
+      { run_id: "chk0", status: "up", latency_ms: 300, summary: "Reachable, llama3.1:8b is ready", reason: null, fix: null,
         at: "2026-10-21T09:10:00Z" }],
   });
   renderAt("/checks");
@@ -101,16 +101,26 @@ test("the Checks page puts problems first, filters them, and shows one dependenc
   expect(screen.getAllByRole("row").slice(1)).toHaveLength(2);
   await userEvent.click(within(rows[0]).getByRole("button", { name: /Ollama/ }));
   const side = await screen.findByRole("region", { name: "Ollama history" });
-  expect(within(side).getByText("Up, llama3.1:8b is ready")).toBeInTheDocument();
+  expect(within(side).getByText("Reachable, llama3.1:8b is ready")).toBeInTheDocument();
   expect(within(side).getByText("Start Ollama (`ollama serve`).")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Workflow runs (advanced)" })).toHaveAttribute("href", "/p/test/runs");
 });
 
 test("a block's caption shows its latency once, then what needs a look", async () => {
   const { caption } = await import("./Health");
-  expect(caption("warn", "Up: 1 tool, but slow to start: 6.8 s", 6800)).toBe("6.8 s · slow to start");
-  expect(caption("warn", "Up, but plain http://: not encrypted", 210)).toBe("210 ms · plain http://: not encrypted");
-  expect(caption("up", "Up, needs a key (403)", 230)).toBe("230 ms · needs a key");
+  expect(caption("warn", "Reachable: 1 tool, but slow to start: 6.8 s", 6800)).toBe("6.8 s · slow to start");
+  expect(caption("warn", "Reachable, but plain http://: not encrypted", 210)).toBe("210 ms · plain http://: not encrypted");
+  expect(caption("up", "Reachable, needs a key (403)", 230)).toBe("230 ms · needs a key");
+  // D52: green only proves the server answered, so an answer other than success shows on the block
+  expect(caption("up", "Reachable, answered 404", 120)).toBe("120 ms · answered 404");
+  expect(caption("up", "Reachable", 120)).toBe("120 ms");
+  expect(caption("warn", "Reachable, but rate-limiting this computer (429)", 90)).toBe("90 ms · rate-limiting this computer (429)");
   expect(caption("down", "Stopped while starting", null)).toBe("stopped while starting");
   expect(caption("unconfirmed", "Not checked: unconfirmed", null)).toBe("");
+});
+
+test("green says what a check proves: the server is reachable (D52)", async () => {
+  const { WORD, countsText } = await import("./Health");
+  expect(WORD.up).toBe("Reachable");
+  expect(countsText(["up", "up", "warn", "down"])).toBe("2 reachable, 1 needs a look, 1 down");
 });

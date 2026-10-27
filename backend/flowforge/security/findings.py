@@ -14,6 +14,7 @@ from pathlib import PurePosixPath
 from flowforge.scan.models import Dependency, Finding
 from flowforge.scan.urls import is_local
 from flowforge.security.finders import KeyHit, find_keys
+from flowforge.security.logfilter import KEY_PATTERNS
 
 Excerpt = Callable[[str, int], tuple[int, list[str]]]   # (path, line) -> (first line, masked lines)
 CODE = frozenset({"python", "javascript", "typescript", "dart"})
@@ -83,15 +84,17 @@ class _Builder:
                     return dep
         return None
 
-    def keys(self, path: str, language: str | None, skip: set[int]) -> None:
+    def keys(self, path: str, language: str | None, skip: set[int], test: bool = False) -> None:
         for hit in find_keys("\n".join(self.texts[path]), language if language in CODE else None):
-            if hit.line in skip:
+            if hit.line in skip or (test and _made_up(self.texts[path][hit.line - 1])):
                 continue
             dep_id = self.key_owner(path, hit)
             used = next((f" for {d.name}" for d in self.deps if d.id == dep_id), "")
             article = "An" if hit.label[0].lower() in "aeiou" else "A"
             name = env_name(hit.name, "API_KEY" if hit.label == "secret" else hit.label)
-            self.add("key_in_code", "high", path, hit.line, f"{article} {hit.label} is written in the code",
+            where = "a test file" if test else "the code"   # a test's key: still a key, but less exposed (D52)
+            self.add("key_in_code", "medium" if test else "high", path, hit.line,
+                     f"{article} {hit.label} is written in {where}",
                      "Move it to .env and read it from the environment. Then replace the key: it may be in your git "
                      "history.",
                      f"In {path}:{hit.line}, a {hit.label}{used} is written in the code. Move it to an environment "
@@ -151,16 +154,28 @@ def _pinned(program: str, package: str) -> bool:
     return package.count("@") >= 2 if package.startswith("@") else "@" in package
 
 
+# In a test or fake-data file, a key whose value says it's made up isn't reported (D52). The value decides, not the
+# line: `mock_client = Client(api_key="sk-…")` still counts.
+_MADE_UP = re.compile(r"fake|dummy|mock|stub|placeholder|x{4,}|0{6,}|12345678", re.IGNORECASE)
+_QUOTED = re.compile(r"""(['"`])((?:\\.|(?!\1).)*)\1""")
+
+
+def _made_up(line: str) -> bool:
+    values = [m.group(0) for p in KEY_PATTERNS for m in p.finditer(line)]
+    values = values or [m.group(2) for m in _QUOTED.finditer(line)]   # a key of no known shape: the strings
+    return bool(values) and all(_MADE_UP.search(v) for v in values)
+
+
 def findings_for(texts: dict[str, list[str]], languages: dict[str, str | None], deps: list[Dependency],
                  places: dict[str, list[tuple[str, int, str]]], config_keys: list[ConfigKey],
-                 excerpt: Excerpt) -> list[Finding]:
+                 excerpt: Excerpt, tests: set[str] | None = None) -> list[Finding]:
     """Every finding, high first, then by file and line."""
     b = _Builder(texts, deps, places, excerpt)
     for c in config_keys:
         b.config_key(c)
     in_configs = {(c.path, c.line) for c in config_keys}
     for path in sorted(texts):
-        b.keys(path, languages.get(path), {n for p, n in in_configs if p == path})
+        b.keys(path, languages.get(path), {n for p, n in in_configs if p == path}, path in (tests or set()))
     for dep in deps:
         if dep.kind in ("api", "llm"):
             b.plain_http(dep)

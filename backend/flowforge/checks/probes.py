@@ -205,6 +205,13 @@ def _warnings(url: str, answer: _Answer) -> list[str]:
     return out
 
 
+def _reachable(code: int) -> str:
+    """What one answer proves (D52): the server is there. Not that a key works, nor that your call does."""
+    if code in (401, 403):
+        return f"Reachable, needs a key ({code})"
+    return "Reachable" if code < 300 else f"Reachable, answered {code}"   # a redirect isn't followed: say so
+
+
 async def api(t: CheckTarget, http: httpx.AsyncClient) -> CheckResult:
     if not t.target:
         return _result(t, "skipped", "Not checked: no address in the code")
@@ -215,7 +222,11 @@ async def api(t: CheckTarget, http: httpx.AsyncClient) -> CheckResult:
     detail = {"http_status": answer.code}
     if answer.code >= 500:
         return _result(t, "down", f"Answered {answer.code}", latency_ms=answer.ms, detail=detail)
-    up = f"Up, needs a key ({answer.code})" if answer.code in (401, 403) else "Up"
+    if answer.code == 429:
+        return _result(t, "warn", "Reachable, but rate-limiting this computer (429)", latency_ms=answer.ms,
+                       detail=detail, fix="Check again later. If it keeps happening, your app may be hitting the "
+                                          "same limit.")
+    up = _reachable(answer.code)
     if warnings := _warnings(url, answer):
         return _result(t, "warn", f"{up}, but {'; '.join(warnings)}", latency_ms=answer.ms, detail=detail)
     return _result(t, "up", up, latency_ms=answer.ms, detail=detail)
@@ -252,8 +263,12 @@ async def llm(t: CheckTarget, http: httpx.AsyncClient) -> CheckResult:
     detail = {"http_status": answer.code}
     if answer.code >= 500:
         return _result(t, "down", f"Answered {answer.code}", latency_ms=answer.ms, detail=detail)
+    if answer.code == 429:
+        return _result(t, "warn", "Reachable, but rate-limiting this computer (429)", latency_ms=answer.ms,
+                       detail=detail, fix="Check again later. If it keeps happening, your app may be hitting the "
+                                          "same limit.")
     if answer.code in (401, 403):
-        return _result(t, "up", f"Up, needs a key ({answer.code}) to list its models", latency_ms=answer.ms,
+        return _result(t, "up", f"Reachable, needs a key ({answer.code}) to list its models", latency_ms=answer.ms,
                        detail=detail)
     if t.model and answer.body is not None:
         listed = t.model.removesuffix(":latest") in _model_names(answer.body)
@@ -261,8 +276,8 @@ async def llm(t: CheckTarget, http: httpx.AsyncClient) -> CheckResult:
         if not listed:
             fix = f"Run `ollama pull {t.model}`." if t.catalog == "ollama" else None
             what = "isn't pulled" if t.catalog == "ollama" else "isn't in its model list"
-            return _result(t, "warn", f"Up, but {t.model} {what}", latency_ms=answer.ms, detail=detail, fix=fix)
-    up = f"Up, {t.model} is ready" if t.model and detail.get("model_listed") else "Up"
+            return _result(t, "warn", f"Reachable, but {t.model} {what}", latency_ms=answer.ms, detail=detail, fix=fix)
+    up = f"Reachable, {t.model} is ready" if t.model and detail.get("model_listed") else _reachable(answer.code)
     if warnings := _warnings(url, answer):
         return _result(t, "warn", f"{up}, but {'; '.join(warnings)}", latency_ms=answer.ms, detail=detail)
     return _result(t, "up", up, latency_ms=answer.ms, detail=detail)
@@ -329,7 +344,7 @@ async def mcp(t: CheckTarget, root: Path, http: httpx.AsyncClient) -> CheckResul
                 reason += f"\nIts config sets {', '.join(t.env_names)}."
             return _result(t, "down", "Stopped while starting", reason=reason, fix=_env_fix(t))
     ms = (time.perf_counter() - start) * 1000
-    up = f"Up: {len(tools)} tool{'s' if len(tools) != 1 else ''}"
+    up = f"Reachable: {len(tools)} tool{'s' if len(tools) != 1 else ''}"
     detail = {"tools": tools}
     if ms > MCP_SLOW_MS:
         return _result(t, "warn", f"{up}, but slow to start: {took(ms)}", latency_ms=ms, detail=detail)

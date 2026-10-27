@@ -12,14 +12,14 @@ export function took(ms: number | null | undefined): string {
 }
 
 export const WORD: Record<LiveStatus, string> = {
-  up: "Up", warn: "Needs a look", down: "Down", skipped: "Not checked", unchecked: "Not checked yet",
+  up: "Reachable", warn: "Needs a look", down: "Down", skipped: "Not checked", unchecked: "Not checked yet",
   unconfirmed: "Not checked", checking: "Checking",
 };
 
-/** "3 up, 1 needs a look, 1 down": the counts that matter, in plain words. */
+/** "3 reachable, 1 needs a look, 1 down": the counts that matter, in plain words (D52). */
 export function countsText(statuses: LiveStatus[]): string {
   const n = (s: LiveStatus) => countOf(statuses, s);
-  const parts = [`${n("up")} up`];
+  const parts = [`${n("up")} reachable`];
   if (n("warn")) parts.push(`${n("warn")} need${n("warn") === 1 ? "s" : ""} a look`);
   if (n("down")) parts.push(`${n("down")} down`);
   return parts.join(", ");
@@ -60,7 +60,8 @@ export function caption(status: LiveStatus, summary: string, latency: number | n
   const ms = took(latency);
   // the warning without a repeat of the latency already shown ("slow to start: 6.8 s" → "slow to start")
   const warning = (summary.split(", but ")[1] ?? "").replace(/: [\d.]+ m?s$/, "");
-  const note = summary.includes("needs a key") ? "needs a key" : status === "warn" ? warning : "";
+  const answered = summary.match(/answered \d{3}/)?.[0] ?? "";   // green only proves the server answered (D52)
+  const note = summary.includes("needs a key") ? "needs a key" : status === "warn" ? warning : answered;
   if (status === "down") return summary.toLowerCase();
   return [ms, note].filter(Boolean).join(" · ");
 }

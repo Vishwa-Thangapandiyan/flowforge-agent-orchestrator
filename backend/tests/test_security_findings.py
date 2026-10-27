@@ -86,13 +86,26 @@ def test_plain_http_counts_only_for_hosts_that_arent_local(tmp_path):
     assert [(f.ref, f.dep_id) for f in found["plain_http"]] == [("main.py:6", "api-api-weather-test")]
 
 
-def test_test_and_fake_files_are_not_searched(tmp_path):
+# made up for these tests, with none of the words that mark a made-up key: it must be reported (D52). Built from two
+# parts, so this file holds no key-shaped text for secret scanners (GitHub's push protection) to stop.
+LOOKS_REAL = "sk_test_" + "Zq8Wm3Xr7Tn2Yp5Lk9Jh4Gf6"
+
+
+def test_keys_in_test_and_fake_data_files_are_found_unless_they_look_made_up(tmp_path):
+    # D52 (Codex review): the map skips test files (D23), but a real key pasted into a test must still be reported
     repo = write(tmp_path / "app", {
-        "tests/test_pay.py": f'KEY = "{FAKE}"\n',
-        "fake_data.py": f'KEY = "{FAKE}"\n',
+        "tests/test_pay.py": f'KEY = "{LOOKS_REAL}"\nhttpx.get("https://api.stripe.com/v1/charges")\n',
+        "tests/conftest.py": f'mock_client = Client(api_key="{LOOKS_REAL}")\n',   # "mock" in the line, not the key
+        "tests/test_fake.py": f'KEY = "{FAKE}"\nDUMMY = "sk_test_dummydummydummy1"\n',
+        "fake_data.py": f'KEY = "{LOOKS_REAL}"\n',
         "main.py": "print('hi')\n",
     })
-    assert scan(repo).findings == []
+    result = scan(repo)
+    found = {f.ref: f for f in result.findings}
+    assert set(found) == {"tests/test_pay.py:1", "tests/conftest.py:1", "fake_data.py:1"}
+    assert all(f.level == "medium" and "test file" in f.title and f.kind == "key_in_code" for f in found.values())
+    assert result.dependencies == [] and result.files_scanned == 1   # the map still skips them (D23)
+    assert LOOKS_REAL not in result.model_dump_json()
 
 
 @pytest.fixture

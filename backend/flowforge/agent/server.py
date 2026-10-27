@@ -157,7 +157,8 @@ def headline(tool: str, data: dict[str, Any]) -> str | None:
         return _plural(len(data["dependencies"]), "dependency", "dependencies")
     if tool == "check_health":
         counts = data["summary"]
-        parts = [f"{counts[s]} {s}" for s in ("up", "warn", "down", "skipped") if counts.get(s)]
+        words = {"up": "reachable", "warn": "need a look", "down": "down", "skipped": "not checked"}   # D52
+        parts = [f"{counts[s]} {w}" for s, w in words.items() if counts.get(s)]
         return " · ".join(parts) or "Nothing to check"
     if tool in ("get_flow", "get_advice") and not data["available"]:
         return "No flow: no Python calls found"

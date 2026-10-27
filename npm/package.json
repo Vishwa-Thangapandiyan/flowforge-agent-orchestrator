@@ -1,6 +1,6 @@
 {
   "name": "flowforge-map",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "See what your app depends on (LLMs, MCP servers, APIs), whether each is healthy and safe, and keep your keys away from your coding agent. No Python needed.",
   "keywords": ["mcp", "llm", "dependencies", "security", "api-keys", "coding-agent", "claude-code", "codex"],
   "homepage": "https://github.com/Vishwa-Thangapandiyan/flowforge-agent-orchestrator",

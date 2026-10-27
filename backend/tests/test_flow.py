@@ -373,6 +373,24 @@ def test_the_written_change_says_when_asyncio_needs_importing_and_masks_keys(tmp
     assert key not in advice.model_dump_json()
 
 
+def test_no_change_is_written_when_a_key_split_over_lines_sits_in_the_block(tmp_path):
+    part = "SPLITPARTONE1234"
+    write(tmp_path, {"app.py": APP, "main.py": f"""
+        import httpx
+        from app import news, weather
+
+        async def run():
+            async with httpx.AsyncClient() as client:
+                today = await weather(client, ("sk_test_FAKEFAKE"
+                                               "{part}"))
+                headlines = await news(client)
+                return today, headlines
+    """})
+    (advice,) = flow_of(tmp_path).flow.advice
+    assert advice.change is None and "asyncio.gather" in advice.prompt
+    assert part not in flow_of(tmp_path).flow.model_dump_json()
+
+
 def test_a_plain_call_beside_an_await_runs_in_a_thread():
     measured = {k: v for k, v in LATENCIES.items() if k != "local-packing-list"}   # its 1 s estimate, then
     flow = flow_of(TRIP_PLANNER, latencies=measured).flow

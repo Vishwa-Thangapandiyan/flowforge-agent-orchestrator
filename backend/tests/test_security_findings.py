@@ -137,6 +137,63 @@ async def test_agents_get_the_findings_masked(leaky, tmp_path):
     assert FAKE not in result.content[0].text
 
 
+SPLIT = "SPLITPARTONE1234"
+PEM_BODY = "MIIEFAKEPEMBODYFAKEPEMBODYFAKEPEMBODYFAKEPEMBODYFAKEPEMBODY0000"
+
+
+@pytest.fixture
+def split_keys(tmp_path: Path) -> Path:
+    """Keys the finders catch but a line-by-line mask can't: split over lines, and a private-key block."""
+    return write(tmp_path / "split", {
+        "main.py": f'''
+            import httpx
+
+            STRIPE_KEY = (
+                "sk_test_FAKEFAKE"
+                "{SPLIT}"
+            )
+            PEM = """-----BEGIN RSA PRIVATE KEY-----
+            {PEM_BODY}
+            -----END RSA PRIVATE KEY-----"""
+
+            def pay():
+                return httpx.post("https://api.stripe.com/v1/charges", headers={{"Authorization": STRIPE_KEY}})
+        ''',
+        "web.js": f'''
+            const KEY = "sk_test_FAKEFAKE" +
+              "{SPLIT}";
+            fetch("https://api.stripe.com/v1/charges", {{ headers: {{ Authorization: KEY }} }});
+        ''',
+    })
+
+
+def _no_part(text: str) -> bool:
+    return SPLIT not in text and PEM_BODY not in text
+
+
+async def test_a_key_split_over_lines_appears_nowhere(split_keys, tmp_path, monkeypatch, caplog):
+    result = scan(split_keys)
+    assert {f.kind for f in result.findings} == {"key_in_code"}
+    assert _no_part(result.model_dump_json())
+    db = tmp_path / "flowforge.db"
+    monkeypatch.delenv("FLOWFORGE_EXAMPLE", raising=False)
+    monkeypatch.setenv("FLOWFORGE_DB", str(db))
+    monkeypatch.setenv("FLOWFORGE_REPO", str(split_keys))
+    caplog.set_level(logging.DEBUG)
+    with TestClient(main.app) as client:
+        answers = [client.get(r.path).text for r in main.app.routes
+                   if "GET" in getattr(r, "methods", ()) and "{" not in r.path]
+        answers += [client.get("/flow", params={"map": m}).text for m in ("deps", "flow")]
+    assert all(_no_part(text) for text in answers)
+    assert SPLIT.encode() not in db.read_bytes() and PEM_BODY.encode() not in db.read_bytes()
+    assert _no_part(caplog.text)
+    storage = Storage(tmp_path / "agent.db")
+    async with Client(build_server(split_keys, storage)) as agent:
+        for tool in ("get_map", "get_flow", "get_security_findings"):
+            got = await agent.call_tool(tool, {})
+            assert _no_part(got.content[0].text), tool
+
+
 def test_a_scan_stored_before_findings_existed_is_read_again(tmp_path, monkeypatch):
     monkeypatch.setenv("FLOWFORGE_EXAMPLE", "1")
     monkeypatch.setenv("FLOWFORGE_DB", str(tmp_path / "example.db"))

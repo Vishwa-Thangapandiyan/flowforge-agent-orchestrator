@@ -19,8 +19,10 @@ from flowforge.flow.order import Body, Stmt, flatten, label, preds, reduce
 from flowforge.flow.reach import Hit, Reach, writes
 from flowforge.flowmap.models import Evidence, Flow, FlowEdge, FlowNode, Op
 from flowforge.flowmap.validate import DEFAULT_MS, actions_of
+from flowforge.scan.files import language
 from flowforge.scan.models import Dependency, ScanResult
 from flowforge.scan.scanner import Places, scan_with_places
+from flowforge.security.finders import masked_lines
 from flowforge.security.logfilter import Redactor, redact_code
 
 NO_CODE = "Flow order reads Python, Dart, JavaScript and TypeScript."
@@ -130,7 +132,7 @@ class _Builder:
 
     def entry(self, func: Any, body: Body, lang: Any) -> None:
         self.lang = lang
-        lines = self.sources[func.path].splitlines()
+        lines = masked_lines(self.sources[func.path], language(func.path), _redactor)   # every key masked first
         start = f"start-{func.name.replace('.', '-')}"[:64]
         self.nodes.append(FlowNode(id=start, kind="start", title=f"{func.name}()"[:80],
                                    what=f"An entry point in {func.path}.",

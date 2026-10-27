@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from flowforge.flowmap.models import Change
+from flowforge.security.finders import split_key_in
 from flowforge.security.logfilter import redact_code
 
 
@@ -106,12 +107,14 @@ def change(calls: list[Call], source: str, module: ast.Module) -> Change | None:
             return None   # code between them uses a result, or changes what a call reads
 
     lines = source.splitlines()
+    end = plain[-1].stmt.end_lineno or plain[-1].stmt.lineno
+    if split_key_in(source, "python", plain[0].stmt.lineno, end):
+        return None   # a key split over lines sits in the block: the prompt only, never its pieces
     indent = lines[plain[0].stmt.lineno - 1][: plain[0].stmt.col_offset]
     names = [_awaited(c.stmt)[0] for c in plain]
     lhs = "" if all(n == "_" for n in names) else f"{', '.join(names)} = "
     gather = [f"{indent}{lhs}await asyncio.gather(",
               *(f"{indent}    {ast.unparse(_awaited(c.stmt)[1])}," for c in plain), f"{indent})"]
-    end = plain[-1].stmt.end_lineno or plain[-1].stmt.lineno
     spans = [(c.stmt.lineno, c.stmt.end_lineno or c.stmt.lineno) for c in plain]
     after: list[str] = []
     for n in range(plain[0].stmt.lineno, end + 1):

@@ -185,6 +185,18 @@ def _writable(s: AppState) -> Path:
     return repo
 
 
+@router.get("/keys/asked")
+def keys_asked() -> dict[str, list[str]]:
+    """The names your agent asked for and you haven't saved yet (D38): cheap enough for the rail's badge to poll,
+    since it never reads the code. Names only."""
+    s = app_state()
+    repo = repo_path(s)
+    if repo is None or not repo.is_dir():
+        return {"names": []}
+    saved = set(KeyStore(repo).names())
+    return {"names": [r["name"] for r in key_requests(s.storage, repo) if r["name"] not in saved]}
+
+
 @router.get("/keys")
 def keys() -> dict[str, Any]:
     s = app_state()

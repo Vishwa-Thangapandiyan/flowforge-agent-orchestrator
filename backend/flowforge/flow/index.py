@@ -58,6 +58,7 @@ class Index:
     def __init__(self, sources: dict[str, str]):
         self.modules: dict[str, Module] = {}
         self.funcs: dict[str, Func] = {}
+        self.changed: dict[str, set[str]] = {}   # func key -> parameters it changes in place (D51)
         for path, text in sources.items():
             try:
                 tree = ast.parse(text)

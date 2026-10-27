@@ -16,6 +16,7 @@ from flowforge.flow.rewrite import Call
 from flowforge.flowmap.models import Change
 from flowforge.scan import services
 from flowforge.scan.scanner import Places
+from flowforge.security.finders import split_key_in
 from flowforge.security.logfilter import redact_code
 
 LANGUAGES = frozenset({"dart", "javascript", "typescript"})
@@ -852,6 +853,8 @@ def change(calls: list[Call], lang: Lang) -> Change | None:
     first_line = plain[0][0].line
     last_line = lang.end_line(func, plain[-1][0].stmt)
     lines = src.text.splitlines()
+    if split_key_in(src.text, func.language, first_line, last_line):
+        return None   # a key split over lines sits in the block: the prompt only, never its pieces
     indent = re.match(r"\s*", lines[first_line - 1]).group(0)
     semi = ";" if func.language == "dart" or all(p[4] for _, p in plain) else ""
     if func.language == "dart":

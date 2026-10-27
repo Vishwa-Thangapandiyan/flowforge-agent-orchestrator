@@ -11,7 +11,7 @@ import ast
 import re
 from dataclasses import dataclass, field
 
-from flowforge.flow.index import Func, Index
+from flowforge.flow.index import Func, Index, Module
 from flowforge.flow.reach import Hit, Reach, gathers
 
 MUTATORS = frozenset({"append", "extend", "update", "add", "insert", "pop", "remove", "clear", "setdefault", "write",
@@ -41,17 +41,82 @@ def _reads(node: ast.AST) -> set[str]:
 
 
 def _writes(node: ast.AST) -> set[str]:
-    out = {n.id for n in ast.walk(node) if isinstance(n, ast.Name) and isinstance(n.ctx, (ast.Store, ast.Del))}
+    bound = {n.id for n in ast.walk(node) if isinstance(n, ast.Name) and isinstance(n.ctx, (ast.Store, ast.Del))}
+    return bound | changes(node)
+
+
+def _base(node: ast.AST) -> str | None:
+    while isinstance(node, (ast.Subscript, ast.Attribute)):
+        node = node.value
+    return node.id if isinstance(node, ast.Name) else None
+
+
+def changes(node: ast.AST) -> set[str]:
+    """Names whose object the code changes in place: `x[k] = …`, `x.a = …`, `x.append(…)` (rebinding `x` isn't)."""
+    out: set[str] = set()
     for n in ast.walk(node):
-        if isinstance(n, (ast.Subscript, ast.Attribute)) and isinstance(n.ctx, ast.Store):
-            base = n.value
-            while isinstance(base, (ast.Subscript, ast.Attribute)):
-                base = base.value
-            if isinstance(base, ast.Name):
-                out.add(base.id)
+        if isinstance(n, (ast.Subscript, ast.Attribute)) and isinstance(n.ctx, (ast.Store, ast.Del)) \
+                and (base := _base(n.value)):
+            out.add(base)
         if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in MUTATORS \
-                and isinstance(n.func.value, ast.Name):
-            out.add(n.func.value.id)   # facts.append(x) writes facts
+                and (base := _base(n.func.value)):
+            out.add(base)   # facts.append(x) writes facts
+    return out
+
+
+def _params(func: Func) -> list[str]:
+    a = func.node.args
+    return [p.arg for p in (*a.posonlyargs, *a.args, *a.kwonlyargs)]
+
+
+def _is_method(func: Func) -> bool:
+    static = any(isinstance(d, ast.Name) and d.id == "staticmethod" for d in func.node.decorator_list)
+    return "." in func.name and not static
+
+
+def _passed(call: ast.Call, target: Func, changed: set[str]) -> set[str]:
+    """The caller's names that land on `changed` parameters of `target`: by position, by keyword, and the receiver
+    of a method (`cart.add(x)` passes `cart` as `self`)."""
+    params = _params(target)
+    out: set[str] = set()
+    if _is_method(target) and isinstance(call.func, ast.Attribute):
+        if params and params[0] in changed and (base := _base(call.func.value)):
+            out.add(base)
+        params = params[1:]
+    for i, arg in enumerate(call.args):
+        if i < len(params) and params[i] in changed and (base := _base(arg)):
+            out.add(base)
+    for kw in call.keywords:
+        if kw.arg in changed and (base := _base(kw.value)):
+            out.add(base)
+    return out
+
+
+def changed_params(index: Index, key: str, _stack: frozenset[str] = frozenset()) -> set[str]:
+    """The parameters a function in the repo changes in place, itself or through the repo's functions it calls (D51).
+    Library calls are taken not to change their arguments."""
+    if key in index.changed:
+        return index.changed[key]
+    func = index.funcs[key]
+    params = set(_params(func))
+    found = changes(func.node) & params
+    module = index.modules[func.module]
+    cls = func.name.split(".")[0] if "." in func.name else None
+    for n in ast.walk(func.node):
+        if isinstance(n, ast.Call) and (sub := index.resolve(n, module, cls)) and sub not in _stack | {key}:
+            found |= _passed(n, index.funcs[sub], changed_params(index, sub, _stack | {key})) & params
+    if not _stack:
+        index.changed[key] = found   # a result found inside a cycle may be partial: kept only from the top
+    return found
+
+
+def call_writes(node: ast.AST, index: Index, module: Module, cls: str | None) -> set[str]:
+    """Names a statement changes through the repo's own functions it calls: `await load(ctx)` writes `ctx` when `load`
+    fills it (D51)."""
+    out: set[str] = set()
+    for n in ast.walk(node):
+        if isinstance(n, ast.Call) and (key := index.resolve(n, module, cls)):
+            out |= _passed(n, index.funcs[key], changed_params(index, key))
     return out
 
 
@@ -71,7 +136,7 @@ def flatten(func: Func, index: Index, reach: Reach) -> Body:
     def add(node: ast.AST, line: int, ifs: list[tuple[int, str]], loop: bool, *, reads: set[str] | None = None,
             writes: set[str] | None = None, hit_node: ast.AST | None = None, is_if: bool = False) -> Stmt:
         s = Stmt(idx=len(body.stmts), node=node, line=line, reads=_reads(node) if reads is None else reads,
-                 writes=_writes(node) if writes is None else writes,
+                 writes=_writes(node) | call_writes(node, index, module, cls) if writes is None else writes,
                  hits=reach.statement(hit_node if hit_node is not None else node, module, cls) if hit_node is not False
                  else [], ifs=list(ifs), loop=loop, returns=isinstance(node, (ast.Return, ast.Raise)),
                  gathered=gathers(node), is_if=is_if)

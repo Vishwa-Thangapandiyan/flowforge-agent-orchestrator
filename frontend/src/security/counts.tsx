@@ -18,6 +18,8 @@ export interface Counts {
 
 const CountsContext = createContext<Counts>({ issues: 0, keys: 0, reload: () => {} });
 
+const ASKED_POLL_MS = 5_000;
+
 export function CountsProvider({ children, active = true }: { children: ReactNode; active?: boolean }) {
   const issues = useApi<IssuesResponse>(active ? "/issues" : null);   // the home page has no project to count
   const keys = useApi<KeysResponse>(active ? "/keys" : null);
@@ -31,6 +33,15 @@ export function CountsProvider({ children, active = true }: { children: ReactNod
     reloadIssues();
     reloadKeys();
   }, [pathname, reloadIssues, reloadKeys]);
+  // a key your agent asks for shows while you stay on one page: poll the names (cheap), read /keys only on a change
+  const asked = useApi<{ names: string[] }>(active ? "/keys/asked" : null, ASKED_POLL_MS);
+  const askedNames = asked.data?.names.join("\n");
+  const seenAsked = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (askedNames === undefined) return;
+    if (seenAsked.current !== undefined && seenAsked.current !== askedNames) reloadKeys();
+    seenAsked.current = askedNames;
+  }, [askedNames, reloadKeys]);
   const value = useMemo<Counts>(() => ({
     issues: (issues.data?.issues ?? []).filter((i) => i.state !== "fixed").length,
     keys: needsAction(keys.data?.keys ?? []).length,

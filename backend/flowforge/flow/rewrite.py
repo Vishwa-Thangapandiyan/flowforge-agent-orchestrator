@@ -12,7 +12,9 @@ import ast
 from dataclasses import dataclass
 from typing import Any
 
+from flowforge.flow.order import changes
 from flowforge.flowmap.models import Change
+from flowforge.security.finders import split_key_in
 from flowforge.security.logfilter import redact_code
 
 
@@ -75,6 +77,20 @@ def _names(node: ast.AST, ctx: type) -> set[str]:
     return {n.id for n in ast.walk(node) if isinstance(n, ast.Name) and isinstance(n.ctx, ctx)}
 
 
+def _handed(node: ast.AST) -> set[str]:
+    """Names handed to any call: a function we can't see into might change them, so a written change won't move a
+    call past it (D51)."""
+    out: set[str] = set()
+    for n in ast.walk(node):
+        if isinstance(n, ast.Call):
+            for arg in [*n.args, *(k.value for k in n.keywords)]:
+                while isinstance(arg, (ast.Subscript, ast.Attribute, ast.Starred)):
+                    arg = arg.value
+                if isinstance(arg, ast.Name):
+                    out.add(arg.id)
+    return out
+
+
 def _quoted(c: Call) -> str:
     return f'"{c.words}" ({c.ref})'
 
@@ -102,16 +118,19 @@ def change(calls: list[Call], source: str, module: ast.Module) -> Change | None:
     targets = set().union(*(_names(c.stmt, ast.Store) for c in plain))
     reads = set().union(*(_names(_awaited(c.stmt)[1], ast.Load) for c in plain))
     for st in body[first: last + 1]:
-        if id(st) not in members and (_names(st, ast.Load) & targets or _names(st, ast.Store) & reads):
-            return None   # code between them uses a result, or changes what a call reads
+        if id(st) not in members and (_names(st, ast.Load) & targets or _names(st, ast.Store) & reads
+                                      or (changes(st) | _handed(st)) & reads):
+            return None   # code between them uses a result, or changes (or may change) what a call reads (D51)
 
     lines = source.splitlines()
+    end = plain[-1].stmt.end_lineno or plain[-1].stmt.lineno
+    if split_key_in(source, "python", plain[0].stmt.lineno, end):
+        return None   # a key split over lines sits in the block: the prompt only, never its pieces
     indent = lines[plain[0].stmt.lineno - 1][: plain[0].stmt.col_offset]
     names = [_awaited(c.stmt)[0] for c in plain]
     lhs = "" if all(n == "_" for n in names) else f"{', '.join(names)} = "
     gather = [f"{indent}{lhs}await asyncio.gather(",
               *(f"{indent}    {ast.unparse(_awaited(c.stmt)[1])}," for c in plain), f"{indent})"]
-    end = plain[-1].stmt.end_lineno or plain[-1].stmt.lineno
     spans = [(c.stmt.lineno, c.stmt.end_lineno or c.stmt.lineno) for c in plain]
     after: list[str] = []
     for n in range(plain[0].stmt.lineno, end + 1):

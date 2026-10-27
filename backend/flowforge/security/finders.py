@@ -13,7 +13,7 @@ import re
 from collections import Counter
 from dataclasses import dataclass
 
-from flowforge.security.logfilter import KEY_PATTERNS
+from flowforge.security.logfilter import KEY_PATTERNS, REDACTED, Redactor, redact_code
 
 # Names for KEY_PATTERNS, in the same order
 KEY_SHAPES = list(zip(
@@ -167,6 +167,97 @@ def key_span(text: str, language: str | None, line: int) -> tuple[int, int, str]
         if _only_key(m.group(2)):
             return m.start(), m.end(), m.group(2)
     return None
+
+
+# Masked lines: a file safe to cut excerpts from. A key split over lines ("sk_…" "…" or a private-key block) is found
+# by the finders but slips past a line-by-line mask, so every line such a key touches is masked first (Codex review).
+
+_BASE64_LINE = re.compile(r"^\s*[A-Za-z0-9+/=]{16,}\s*$")
+_GLUE_AFTER = re.compile(r"""(?:\+|['"`])\s*$""")    # a line that goes on: ends with `+` or a string (Dart's 'a' 'b')
+_GLUE_BEFORE = re.compile(r"""^\s*(?:\+\s*)?['"`]""")   # a line that carries on one: starts with `+ "…` or a string
+
+
+def _secret_value(value: str) -> bool:
+    return any(p.search(value) for p in KEY_PATTERNS) or bool(PEM_START.search(value)) or _only_key(value)
+
+
+def _python_spans(text: str) -> list[tuple[int, int, int, int]]:
+    """(first line, first column, last line, last column) of each string over several lines that holds a key: an
+    implicit or `+` concatenation, or a triple-quoted block. Columns count characters; lines are 1-based."""
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return []
+    lines = text.splitlines()
+
+    def chars(line: int, col: int) -> int:   # AST columns count UTF-8 bytes
+        return len(lines[line - 1].encode()[:col].decode(errors="replace")) if 0 < line <= len(lines) else col
+
+    def joined(node: ast.AST) -> str | None:
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            return node.value
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+            left, right = joined(node.left), joined(node.right)
+            return None if left is None or right is None else left + right
+        return None
+
+    spans = []
+    for node in ast.walk(tree):
+        value = joined(node)
+        end = getattr(node, "end_lineno", None)
+        if value is not None and end is not None and end > node.lineno and _secret_value(value):
+            spans.append((node.lineno, chars(node.lineno, node.col_offset), end, chars(end, node.end_col_offset or 0)))
+    return spans
+
+
+def _wipe_strings(line: str) -> str:
+    return _LITERAL.sub(lambda m: f"{m.group(1)}{REDACTED}{m.group(1)}", line)
+
+
+def masked_lines(text: str, language: str | None, redactor: Redactor | None = None) -> list[str]:
+    """`text`'s lines, one for one, with every key masked, a key split over lines included: safe to store, show or
+    hand to an agent. Pattern-based like the finders: known key formats and these shapes, not everything."""
+    lines = text.splitlines()
+    out = list(lines)
+    if language == "python":
+        for first, start, last, end in _python_spans(text):
+            for n in range(first, last + 1):
+                raw = lines[n - 1]
+                lead = raw[:len(raw) - len(raw.lstrip())]
+                head = raw[:start] if n == first else lead
+                tail = raw[end:] if n == last else ""
+                out[n - 1] = f"{head}{REDACTED}{tail}"
+    in_pem = False
+    for n, raw in enumerate(lines):   # a private key's body, in any language
+        if PEM_START.search(raw):
+            in_pem = True
+        elif in_pem and _BASE64_LINE.match(raw):
+            out[n] = raw[:len(raw) - len(raw.lstrip())] + REDACTED
+        else:
+            in_pem = False
+    if language in ("javascript", "typescript", "dart"):
+        keyed = [n for n, raw in enumerate(lines) if _shape(raw) is not None]
+        for n in keyed:   # follow the string a key is part of, down and up
+            at = n
+            while at + 1 < len(lines) and (_GLUE_AFTER.search(lines[at]) or _GLUE_BEFORE.match(lines[at + 1])) \
+                    and _LITERAL.search(lines[at + 1]):
+                at += 1
+                out[at] = _wipe_strings(out[at])
+            at = n
+            while at > 0 and (_GLUE_AFTER.search(lines[at - 1]) or _GLUE_BEFORE.match(lines[at])) \
+                    and _LITERAL.search(lines[at - 1]):
+                at -= 1
+                out[at] = _wipe_strings(out[at])
+            out[n] = _wipe_strings(out[n])
+    return [redact_code(line, redactor) for line in out]
+
+
+def split_key_in(text: str, language: str | None, first: int, last: int) -> bool:
+    """A key split over lines touches lines `first`..`last` (1-based): masking the file differs there from masking
+    each line alone. Code built from those lines (a written change) would carry its pieces."""
+    whole = masked_lines(text, language)
+    raw = text.splitlines()
+    return any(whole[n - 1] != redact_code(raw[n - 1]) for n in range(max(1, first), min(len(raw), last) + 1))
 
 
 # Spots (D44): where a key goes in the code, for "Add to code". A line that already reads the key, a key-like name

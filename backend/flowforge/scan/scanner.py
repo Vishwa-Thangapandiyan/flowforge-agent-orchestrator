@@ -17,8 +17,9 @@ from flowforge.scan.facts import FileFacts, Ref
 from flowforge.scan.files import language, list_files
 from flowforge.scan.models import Dependency, EnvName, ScanEvidence, ScanResult
 from flowforge.scan.urls import api_shaped, clean_url, host_of, is_local, is_not_a_service
+from flowforge.security.finders import masked_lines
 from flowforge.security.findings import ConfigKey, findings_for
-from flowforge.security.logfilter import Redactor, redact_code
+from flowforge.security.logfilter import Redactor
 
 EXCERPT_RADIUS = 2
 MAX_LINE = 160
@@ -71,6 +72,7 @@ class _Dep:
 class _Merge:
     def __init__(self, texts: dict[str, list[str]], constants: Constants):
         self.texts = texts
+        self._masked: dict[str, list[str]] = {}
         self.constants = constants
         self.deps: dict[str, _Dep] = {}
 
@@ -212,11 +214,17 @@ class _Merge:
             for pkg, at in routers:
                 dep.add(f.path, at, f"imports {pkg.split('.')[0]}")
 
+    def masked(self, path: str) -> list[str]:
+        """The file's lines with every key masked, one split over lines included, cut from once per file."""
+        if path not in self._masked:
+            self._masked[path] = masked_lines("\n".join(self.texts.get(path, [])), language(path), _redactor)
+        return self._masked[path]
+
     def evidence(self, path: str, line: int, text: str) -> ScanEvidence:
-        lines = self.texts.get(path, [])
+        lines = self.masked(path)
         first = max(1, line - EXCERPT_RADIUS)
         last = min(len(lines), line + EXCERPT_RADIUS)
-        excerpt = [redact_code(raw, _redactor)[:MAX_LINE] for raw in lines[first - 1:last]]
+        excerpt = [raw[:MAX_LINE] for raw in lines[first - 1:last]]
         return ScanEvidence(ref=f"{path}:{line}", text=text, first_line=first, lines=excerpt, highlight=line)
 
     def result(self, env: dict[tuple[str, int], list[str]]) -> list[Dependency]:

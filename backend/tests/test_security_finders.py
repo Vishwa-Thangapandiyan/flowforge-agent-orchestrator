@@ -2,7 +2,7 @@
 
 import textwrap
 
-from flowforge.security.finders import KEY_SHAPES, entropy, find_keys, is_placeholder
+from flowforge.security.finders import KEY_SHAPES, entropy, find_keys, is_placeholder, masked_lines
 from flowforge.security.logfilter import KEY_PATTERNS
 
 FAKE = "sk_test_FAKEFAKE12345678"
@@ -99,3 +99,81 @@ def test_entropy_and_placeholders():
     for value in ("your-api-key-here", "<TOKEN>", "xxxxxxxxxxxxxxxx", "changeme", "${API_KEY}", "REPLACE_ME", "example-key"):
         assert is_placeholder(value), value
     assert not is_placeholder(RANDOM)
+
+
+# A key split over lines (Codex review, 2026-10-27): every line it touches is masked before an excerpt is cut
+PART = "SPLITPARTONE1234"
+PEM_BODY = "MIIEFAKEPEMBODYFAKEPEMBODYFAKEPEMBODYFAKEPEMBODYFAKEPEMBODY0000"
+
+
+def masked(text: str, language: str) -> str:
+    source = textwrap.dedent(text).lstrip("\n")
+    out = masked_lines(source, language)
+    assert len(out) == len(source.splitlines())   # line numbers stay put
+    return "\n".join(out)
+
+
+def test_a_python_key_split_over_lines_is_masked_on_every_line():
+    for text in (f'''
+            KEY = (
+                "sk_test_FAKEFAKE"
+                "{PART}"
+            )
+        ''', f'''
+            KEY = (
+                "{PART}"
+                "sk_test_FAKEFAKE"
+            )
+        ''', f'''
+            KEY = ("sk_test_FAKEFAKE" +
+                   "{PART}")
+        '''):
+        got = masked(text, "python")
+        assert PART not in got and "sk_test_FAKEFAKE" not in got
+        assert got.startswith("KEY = (")   # the code around it stays readable
+
+
+def test_a_private_key_block_is_masked_on_every_line():
+    for language, text in (("python", f'''
+            PEM = """-----BEGIN RSA PRIVATE KEY-----
+            {PEM_BODY}
+            {PEM_BODY[::-1]}
+            -----END RSA PRIVATE KEY-----"""
+        '''), ("typescript", f'''
+            const pem = `-----BEGIN PRIVATE KEY-----
+            {PEM_BODY}
+            -----END PRIVATE KEY-----`;
+        ''')):
+        got = masked(text, language)
+        assert PEM_BODY not in got and PEM_BODY[::-1] not in got
+
+
+def test_a_js_or_dart_key_split_over_lines_is_masked_on_every_line():
+    for language, text in (("javascript", f'''
+            const KEY = "sk_test_FAKEFAKE" +
+              "{PART}";
+            const OTHER = "a plain string";
+        '''), ("javascript", f'''
+            const KEY = "{PART}"
+              + "sk_test_FAKEFAKE";
+        '''), ("dart", f'''
+            const key = 'sk_test_FAKEFAKE'
+                '{PART}';
+        ''')):
+        got = masked(text, language)
+        assert PART not in got and "sk_test_FAKEFAKE" not in got
+    assert "a plain string" in masked(f'''
+        const KEY = "sk_test_FAKEFAKE" +
+          "{PART}";
+        const OTHER = "a plain string";
+    ''', "javascript")
+
+
+def test_ordinary_code_is_left_as_it_is():
+    text = '''
+        import httpx
+
+        def weather(city):
+            return httpx.get("https://api.open-meteo.com/v1/forecast", params={"q": city})
+    '''
+    assert masked(text, "python") == textwrap.dedent(text).lstrip("\n").rstrip("\n")

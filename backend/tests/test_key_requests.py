@@ -69,6 +69,19 @@ async def test_a_request_clears_once_the_key_is_saved(shop, tmp_path):
     assert next(k for k in keys["keys"] if k["name"] == "STRIPE_SECRET_KEY")["status"] == "saved"
 
 
+async def test_the_badge_polls_the_names_asked_for_without_reading_the_code(shop, tmp_path, monkeypatch):
+    """The rail's 🔑 badge asks every few seconds: names only, and no read of the code (that's /keys)."""
+    import flowforge.api.keys as keys_api
+    monkeypatch.setattr(keys_api, "_spots", lambda repo: (_ for _ in ()).throw(AssertionError("read the code")))
+    with TestClient(main.app, base_url=LOCAL, client=HERE) as c:
+        assert c.get("/keys/asked").json() == {"names": []}
+        server = build_server(shop, storage_for(tmp_path, shop))
+        await call(server, "request_key", {"name": "STRIPE_SECRET_KEY", "why": "for Stripe"})
+        assert c.get("/keys/asked").json() == {"names": ["STRIPE_SECRET_KEY"]}
+        KeyStore(shop).add("STRIPE_SECRET_KEY", FAKE)
+        assert c.get("/keys/asked").json() == {"names": []}   # saved: no longer asked
+
+
 async def test_wait_for_keys_returns_the_moment_the_key_is_saved(shop, tmp_path):
     server = build_server(shop, storage_for(tmp_path, shop))
 

@@ -68,8 +68,10 @@ The same dashboard in its own window, with Python inside: nothing else to instal
 | Your computer | Download |
 |---|---|
 | Windows | `FlowForge_x.y.z_x64-setup.exe` or `.msi` |
-| Mac (Apple Silicon or Intel) | `FlowForge_x.y.z_aarch64.dmg` or `_x64.dmg` |
+| Mac (Apple chip) | `FlowForge_x.y.z_aarch64.dmg` |
 | Linux | `.AppImage`, `.deb` or `.rpm` |
+
+Intel Macs have no desktop build yet: use `npx flowforge-map` (it runs FlowForge through `uv` there) or `uvx flowforge-map`.
 
 The builds aren't signed yet (signing costs money every year), so the first launch asks once:
 - **Mac:** right-click FlowForge in Applications → **Open** → **Open**.
@@ -128,7 +130,16 @@ FlowForge is also an **MCP server**, so Claude Code, Codex or Antigravity can as
 claude mcp add flowforge -- uvx flowforge-map mcp
 ```
 
-Pair your agent once and it sees every project: `flowforge mcp` with no folder answers about the project your agent is working in, or any other by name (`list_projects` shows them all). Your agent gets eleven tools: `list_projects`, `get_map`, `get_flow`, `get_advice`, `check_health`, `get_security_findings`, `get_keys`, `get_fix_requests`, `request_key`, `wait_for_keys` and `what_changed`. All read only, except `request_key`, which only asks you for a key by name. Every answer is masked (key values never appear), the agent can't make FlowForge change your code, and a check starts an MCP server only after you said yes to it on the Checks page. FlowForge needs no AI of its own for any of this.
+Pair your agent once and it sees every project: `flowforge mcp` with no folder answers about the project your agent is working in, or any other by name (`list_projects` shows them all). Your agent gets fourteen tools:
+
+| Kind | Tools |
+|---|---|
+| Read only | `list_projects`, `get_map`, `get_flow`, `get_advice`, `get_security_findings`, `get_keys`, `wait_for_keys`, `app_output`, `get_fix_requests`, `what_changed` |
+| Checks | `check_health`: makes requests, and starts an MCP server only after you said yes to it |
+| Asks you | `request_key`: asks for a key by name |
+| Runs your app | `run_app`, `stop_app`: start and stop your app with its keys filled in, only after you allow that exact command once (D43) |
+
+Every answer is masked (key values never appear), and the agent can't make FlowForge change your code. FlowForge needs no AI of its own for any of this.
 
 ### Fix what's unsafe, with one click
 

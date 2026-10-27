@@ -1559,6 +1559,26 @@ The same request with a browser's name answered in half a second.
 
 ---
 
+## D51. "Run together" looks inside your own helpers, and keys split over lines are masked whole (Codex review, 2026-10-27)
+
+**Found:** an outside review (Codex) reproduced two bugs the tests missed.
+- `await load(ctx)` then `await use(ctx)` was advised to run together, though `load` fills `ctx` and `use` reads it. D25 counted only what a statement itself writes.
+- A key split over lines (`"sk_…"` then `"…"` on the next line, or a private-key block) was flagged, but each line was masked on its own, so its other pieces showed in scan evidence, Issues excerpts, the flow map and agent answers.
+
+**Decision:**
+- **A call to a function in your repo writes what that function changes.** If the function (or one it calls in the repo) changes a parameter, the call writes the name passed there (`x[k] = …`, `x.a = …`, `x.append(…)`). A method that changes `self` writes its receiver: `cart.add(item)` writes `cart`. Advice and its written change follow the extra lines; two helpers that only read `ctx` can still run together.
+- **A file is masked whole before any excerpt is cut** (`finders.masked_lines`). Every line a key touches is masked: a Python string over several lines by the AST, a private key's body, and a JS/TS/Dart string glued over lines by `+` or Dart's adjacent strings. Excerpts in the scan, Issues and the flow map come from that copy. A written change (D27) is skipped, prompt only, when such a key sits in its block.
+
+**Honest limits:**
+- A library call is still assumed not to change its arguments.
+- Aliases aren't followed (`a = ctx; await load(a); await use(ctx)`).
+- JS/TS and Dart helpers aren't looked inside yet.
+- The mask is pattern-based like the finders: known key formats and these shapes, not everything.
+
+**Code:** `flow/order.py` (`call_writes`), `flow/index.py` (`changed`), `security/finders.py` (`masked_lines`, `split_key_in`), `scan/scanner.py`, `flow/__init__.py`, `flow/rewrite.py`, `flow/curly.py`.
+
+---
+
 ## Step JSON schema (reference)
 
 ```json

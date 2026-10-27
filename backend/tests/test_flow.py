@@ -391,6 +391,118 @@ def test_no_change_is_written_when_a_key_split_over_lines_sits_in_the_block(tmp_
     assert part not in flow_of(tmp_path).flow.model_dump_json()
 
 
+# D51: a call to your own function writes what that function changes (Codex review: load(ctx) then use(ctx))
+FILLS = """
+    import httpx
+
+    client = httpx.AsyncClient()
+
+    async def load(ctx):
+        ctx["weather"] = (await client.get("https://api.weather.test/v1/today")).json()
+
+    async def remember(ctx, key, value):
+        ctx.setdefault("seen", []).append((key, value))
+
+    async def load_through(ctx):
+        await remember(ctx, "weather", (await client.get("https://api.weather.test/v1/today")).json())
+
+    async def use(ctx):
+        return await client.get("https://api.news.test/v2/top", params={"q": ctx["weather"]})
+
+    async def peek(ctx):
+        return await client.get("https://api.weather.test/v1/today", params={"q": ctx.get("city")})
+
+    class Session:
+        async def load(self):
+            self.weather = (await client.get("https://api.weather.test/v1/today")).json()
+
+        async def use(self):
+            return await client.get("https://api.news.test/v2/top", params={"q": self.weather})
+"""
+
+
+def _runs(tmp_path: Path, body: str) -> list:
+    main = "from app import load, load_through, peek, use, Session\n\n" + textwrap.dedent(body).lstrip("\n")
+    write(tmp_path, {"app.py": FILLS, "main.py": main})
+    return flow_of(tmp_path).flow.advice
+
+
+def test_a_helper_that_fills_what_the_next_call_reads_is_not_advised_to_run_together(tmp_path):
+    assert _runs(tmp_path, """
+        async def run():
+            ctx = {}
+            await load(ctx)
+            return await use(ctx)
+    """) == []
+
+
+def test_a_helper_that_fills_it_through_another_helper_counts_too(tmp_path):
+    assert _runs(tmp_path, """
+        async def run():
+            ctx = {}
+            await load_through(ctx)
+            return await use(ctx)
+    """) == []
+
+
+def test_a_method_that_changes_its_object_writes_the_object(tmp_path):
+    app = textwrap.dedent(FILLS).lstrip("\n") + textwrap.dedent("""
+        class Day:
+            async def plan(self):
+                await self.load()
+                return await self.use()
+
+            async def load(self):
+                self.weather = (await client.get("https://api.weather.test/v1/today")).json()
+
+            async def use(self):
+                return await client.get("https://api.news.test/v2/top", params={"q": self.weather})
+
+        class Peeks:
+            async def plan(self):
+                await self.peek_a()
+                return await self.peek_b()
+
+            async def peek_a(self):
+                return await client.get("https://api.weather.test/v1/today")
+
+            async def peek_b(self):
+                return await client.get("https://api.news.test/v2/top")
+    """)
+    write(tmp_path, {"app.py": app})
+    at = [n for n, line in enumerate(app.splitlines(), 1) if "await self.peek_" in line and "return" in line or
+          line.strip() == "await self.peek_a()"]
+    advice = flow_of(tmp_path).flow.advice
+    assert [a.refs for a in advice] == [[f"app.py:{at[0]}", f"app.py:{at[1]}"]]   # Peeks.plan only: Day.load fills self
+
+
+def test_helpers_that_only_read_the_same_object_can_still_run_together(tmp_path):
+    (advice,) = _runs(tmp_path, """
+        async def run():
+            ctx = {"city": "Pune"}
+            a = await peek(ctx)
+            b = await use(ctx)
+            return a, b
+    """)
+    assert advice.change is not None and "asyncio.gather" in advice.change.after[0]
+
+
+def test_no_change_is_written_past_code_that_changes_what_a_call_reads(tmp_path):
+    for between in ('ctx["city"] = "Pune"', "ctx.update(city='Pune')", "prepare(ctx)"):
+        (advice,) = _runs(tmp_path, f"""
+            def prepare(ctx):
+                pass
+
+            async def run():
+                ctx = {{"city": "Mumbai"}}
+                a = await peek(ctx)
+                {between}
+                b = await use(ctx)
+                return a, b
+        """)
+        assert advice.change is None, between   # the prompt stays; the code isn't written for you
+
+
 def test_a_plain_call_beside_an_await_runs_in_a_thread():
     measured = {k: v for k, v in LATENCIES.items() if k != "local-packing-list"}   # its 1 s estimate, then
     flow = flow_of(TRIP_PLANNER, latencies=measured).flow
